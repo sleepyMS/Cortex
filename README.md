@@ -39,6 +39,7 @@ cd Project-Cortex
 
 # 3. 상세 가이드 확인 후 진행
 # -> docs/01_Getting_Started.md
+```
 
 **➡️ [전체 설치 및 실행 가이드 보기](https://www.google.com/search?q=./docs/01_Getting_Started.md)**
 
@@ -55,4 +56,3 @@ cd Project-Cortex
 **➡️ [전체 개발 로드맵 보기](https://www.google.com/search?q=./PROJECT_ROADMAP.md)**
 
 ---
-```
