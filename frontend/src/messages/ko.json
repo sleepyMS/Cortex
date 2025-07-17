@@ -1,0 +1,9 @@
+{
+  "Header": {
+    "title": "프로젝트: 코어텍스",
+    "backtester": "백테스터"
+  },
+  "LoginPage": {
+    "welcome": "다시 오신 것을 환영합니다!"
+  }
+}

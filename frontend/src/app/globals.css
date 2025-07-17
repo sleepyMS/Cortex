@@ -1,26 +1,22 @@
-@import "tailwindcss";
+/* frontend/app/globals.css */
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Tailwind CSS의 기본, 컴포넌트, 유틸리티 스타일을 불러옵니다. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* 전체 페이지에 적용될 기본 스타일을 정의합니다.
+  @apply 키워드를 사용하면 Tailwind의 유틸리티 클래스를 CSS 파일 내에서 사용할 수 있습니다.
+*/
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-gray-50 text-gray-900;
+  /* 기본 배경은 밝은 회색(bg-gray-50), 기본 글자색은 진한 회색(text-gray-900)으로 설정 */
+}
+
+/* (선택 사항) 다크 모드를 위한 기본 스타일입니다. 
+  <html> 태그에 'dark' 클래스가 추가되면 이 스타일이 적용됩니다.
+*/
+.dark body {
+  @apply bg-gray-900 text-gray-50;
+  /* 다크 모드에서는 배경은 아주 진한 회색, 글자색은 밝은 회색으로 변경 */
 }

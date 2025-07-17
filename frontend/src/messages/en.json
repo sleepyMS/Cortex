@@ -1,0 +1,9 @@
+{
+  "Header": {
+    "title": "Project: Cortex",
+    "backtester": "Backtester"
+  },
+  "LoginPage": {
+    "welcome": "Welcome back!"
+  }
+}
