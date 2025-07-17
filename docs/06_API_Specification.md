@@ -5,6 +5,7 @@
 - **Base URL:** `/api`
 - **Content-Type:** `application/json`
 - **Authorization:** 인증이 필요한 모든 요청은 `Authorization` 헤더에 `Bearer <access_token>` 을 포함해야 합니다.
+- **apiClient:** 백엔드와 통신할 중앙 API 클라이언트를 설정하여 관리해야 합니다.
 
 ---
 
