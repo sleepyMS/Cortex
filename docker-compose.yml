@@ -1,0 +1,17 @@
+# docker-compose.yml
+version: "3.8"
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: cortex-db
+    environment:
+      - POSTGRES_USER=cortex_user
+      - POSTGRES_PASSWORD=cortex_password # 실제 프로젝트에서는 더 복잡한 비밀번호 사용
+      - POSTGRES_DB=cortex_db
+    ports:
+      - "5432:5432" # 내 PC의 5432 포트를 컨테이너의 5432 포트와 연결
+    volumes:
+      - ./db_data:/var/lib/postgresql/data # 데이터베이스 데이터를 내 PC에 저장 (DB 초기화 방지)
+
+volumes:
+  db_data:
