@@ -41,18 +41,18 @@ cd Project-Cortex
 # -> docs/01_Getting_Started.md
 ```
 
-**➡️ [전체 설치 및 실행 가이드 보기](https://www.google.com/search?q=./docs/01_Getting_Started.md)**
+**➡️ [전체 설치 및 실행 가이드 보기](./docs/01_Getting_Started.md)**
 
 ## 📚 프로젝트 문서 (Documentation)
 
 본 프로젝트는 체계적인 문서화를 통해 관리됩니다. 모든 기획, 설계, API 명세 등은 `docs` 폴더에서 확인하실 수 있습니다.
 
-**➡️ [프로젝트 문서 전체 보기](https://www.google.com/search?q=./docs/)**
+**➡️ [프로젝트 문서 전체 보기](./docs/)**
 
 ## 🗺️ 개발 로드맵 (Roadmap)
 
 프로젝트의 전체 개발 계획과 각 기능의 진행 상황은 아래 로드맵 문서에서 실시간으로 확인하실 수 있습니다.
 
-**➡️ [전체 개발 로드맵 보기](https://www.google.com/search?q=./PROJECT_ROADMAP.md)**
+**➡️ [전체 개발 로드맵 보기](./PROJECT_ROADMAP.md)**
 
 ---
