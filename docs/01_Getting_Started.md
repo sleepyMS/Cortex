@@ -63,7 +63,7 @@ uvicorn main:app --reload
 # 1. 백엔드 폴더로 이동 및 가상환경 활성화 (이미 했다면 생략)
 cd backend
 source venv/bin/activate # macOS/Linux
-# .\\venv\\Scripts\\activate # Windows
+# .\venv\Scripts\activate # Windows
 
 # 2. Celery 워커 실행
 # (main.py가 아닌, celery 인스턴스가 있는 파일 경로를 지정해야 합니다. 예: worker.py)
