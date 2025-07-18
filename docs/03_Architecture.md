@@ -7,7 +7,7 @@
 ```mermaid
 graph TD
     subgraph "User's Browser"
-        User[👤 사용자] --> Browser[웹 브라우저]
+        User["👤 사용자"] --> Browser[웹 브라우저]
     end
 
     subgraph "Vercel"
@@ -31,9 +31,9 @@ graph TD
     end
 
     subgraph "Third-Party Services"
-        Browser -- Checkout --> PaymentGW[💳 결제 게이트웨이<br>(Stripe, 아임포트)]
+        Browser -- Checkout --> PaymentGW["💳 결제 게이트웨이<br>(Stripe, 아임포트)"]
         PaymentGW -- Webhook --> BE
-        Celery -- Exchange API Call --> CCXT[CCXT Library<br>via Exchange]
+        Celery -- Exchange API Call --> CCXT["CCXT Library<br>via Exchange"]
     end
 ```
 
@@ -58,3 +58,7 @@ graph TD
 2. **Job Dequeue & Execution:** 별도의 서버에서 대기하고 있던 **Celery Worker**들이 Redis를 계속 감시하다가, 새로운 작업 요청서가 들어오면 이를 가져와(Dequeue) 실제 작업을 실행합니다.
 3. **Execution:** Celery Worker는 거래소 API를 호출하여 데이터를 수집하거나(CCXT 활용), 복잡한 계산을 수행하고, 그 결과를 데이터베이스에 저장합니다.
 4. **이점:** 이 구조 덕분에 무거운 작업이 진행되는 동안에도 웹 서버(FastAPI)는 다른 사용자들의 요청에 쾌적하게 응답할 수 있습니다.
+
+```
+
+```
