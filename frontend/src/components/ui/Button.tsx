@@ -18,11 +18,14 @@ const buttonVariants = cva(
         // [Secondary] 보조 버튼
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         // [Ghost] 배경 없이 텍스트만 있는 버튼 (테마/언어 전환 등에 사용)
         ghost: "hover:bg-accent hover:text-accent-foreground",
         // [Destructive] 삭제 등 위험한 작업 버튼
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",

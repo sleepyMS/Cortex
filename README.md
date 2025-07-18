@@ -3,7 +3,7 @@
 <p align="center">
   <img src="./assets/images/logo.png" alt="Cortex Logo" width="150"/>
 </p><p align="center"><strong>데이터 기반의 암호화폐 투자 전략을 손쉽게 검증하고, 커뮤니티와 공유하며, 자동매매를 실행하는 올인원 퀀트 플랫폼</strong></p><p align="center">    <img src="https://img.shields.io/badge/Status-In%20Development-blue?style=flat-square" alt="Status" />
-    <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
+    <!-- <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" /> -->
 </p>
 
 ---
@@ -32,10 +32,10 @@
 
 ```bash
 # 1. 저장소 클론
-git clone [https://github.com/YourUsername/Project-Cortex.git](https://github.com/YourUsername/Project-Cortex.git)
+git clone https://github.com/sleepyMS/Cortex.git
 
 # 2. 프로젝트 폴더로 이동
-cd Project-Cortex
+cd Cortex
 
 # 3. 상세 가이드 확인 후 진행
 # -> docs/01_Getting_Started.md

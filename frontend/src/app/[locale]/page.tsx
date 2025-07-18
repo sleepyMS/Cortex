@@ -11,7 +11,7 @@ export default function LandingPage() {
       {/* <Header /> */}
       <HeroSection />
       <FeatureSection />
-      <Footer />
+      {/* <Footer /> */}
     </main>
   );
 }
