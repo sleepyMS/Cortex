@@ -27,20 +27,20 @@
 > **목표:** 사용자가 회원가입/로그인 후, 기본 제공 전략으로 백테스팅을 실행하고 결과를 확인할 수 있다.
 
 - **Pages**
-  - [ ] **랜딩 페이지 (`/`)**: 서비스의 핵심 가치를 소개하는 첫 화면.
-  - [ ] **회원가입 페이지 (`/signup`)**: 신규 사용자 등록.
-  - [ ] **로그인 페이지 (`/login`)**: 기존 사용자 로그인.
+  - [x] **랜딩 페이지 (`/`)**: 서비스의 핵심 가치를 소개하는 첫 화면.
+  - [x] **회원가입 페이지 (`/signup`)**: 신규 사용자 등록.
+  - [x] **로그인 페이지 (`/login`)**: 기존 사용자 로그인.
   - [ ] **백테스팅 페이지 (`/backtester`)**
     - [ ] (1) 백테스팅 조건 설정 폼 구현
     - [ ] (2) 결과 요약 지표(수익률, MDD 등) 표시
     - [ ] (3) 누적 수익률 곡선 차트 표시
     - [ ] (4) 상세 거래 내역 테이블 표시
 - **Core Components**
-  - [ ] **UI Kit (`/ui`)**: `Button`, `Input`, `Card`, `Spinner` 등 기본 컴포넌트 개발
-  - [ ] **Layout (`/layout`)**: `Header`, `Footer` 등 레이아웃 컴포넌트 개발
-  - [ ] **Domain (`/domain`)**: `SignupForm`, `LoginForm`, `BacktestResultSummary`, `EquityChart` 등 MVP용 도메인 컴포넌트 개발
+  - [x] **UI Kit (`/ui`)**: `Button`, `Input`, `Card`, `Spinner` 등 기본 컴포넌트 개발
+  - [x] **Layout (`/layout`)**: `Header`, `Footer` 등 레이아웃 컴포넌트 개발
+  - [ ] **Domain (`/domain`)**: `-SignupForm-`, `-LoginForm-`, `BacktestResultSummary`, `EquityChart` 등 MVP용 도메인 컴포넌트 개발
 - **Backend & Infrastructure**
-  - [ ] **사용자 인증**: 회원가입 및 JWT 기반 로그인/인증 API 개발
+  - [x] **사용자 인증**: 회원가입 및 JWT 기반 로그인/인증 API 개발
   - [ ] **기본 백테스팅 엔진**: Long-only, 수수료/슬리피지 로직이 포함된 V1 엔진 개발
   - [ ] **백테스팅 API**: 백테스팅 실행 요청을 받아 결과를 반환하는 API 엔드포인트 개발
 
