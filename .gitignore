@@ -1,11 +1,21 @@
 # Python
 __pycache__/
 *.pyc
-.env
+.venv
 venv/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+
+# Docker
+db_data/
 
 # Node
 node_modules/
 .next/
-.env.local
-npm-debug.log
+*.log
