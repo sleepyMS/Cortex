@@ -27,7 +27,7 @@ export default function SocialLogins() {
       <div className="grid grid-cols-1 gap-2">
         {/* Google Login Button */}
         <Button variant="outline" className="w-full gap-2" asChild>
-          <a href={`${apiUrl}/api/auth/google/login`}>
+          <a href={`${apiUrl}/auth/google/login`}>
             {/* <GoogleIcon /> */}
             {t("googleLogin")}
           </a>

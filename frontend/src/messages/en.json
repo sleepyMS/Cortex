@@ -71,7 +71,26 @@
   "AuthCallback": {
     "processingLogin": "Processing login information...",
     "loginSuccess": "Login successful! Redirecting to dashboard.",
+    "loginFailed": "Login Failed.",
     "authError": "Authentication error: {errorDetail}",
     "loginProcessError": "An issue occurred during login processing."
+  },
+  "Dashboard": {
+    "loadingDashboard": "Loading your dashboard...",
+    "authRequired": "Login required to access this page.",
+    "fetchError": "Failed to load dashboard data: {errorDetail}. Please try again.",
+    "errorTitle": "An Error Occurred",
+    "loginAgain": "Login Again",
+    "welcomeMessage": "Welcome, {email}!",
+    "dashboardOverview": "Here's a quick overview of your Cortex activity. Manage your strategies and monitor performance.",
+    "yourInfo": "Your Information",
+    "idLabel": "ID",
+    "emailLabel": "Email",
+    "roleLabel": "Role",
+    "roleNotSet": "Not Set",
+    "portfolioOverviewTitle": "Portfolio Overview",
+    "portfolioOverviewDescription": "View your current asset allocation and performance.",
+    "activeBotsTitle": "Active Trading Bots",
+    "activeBotsDescription": "Monitor your running automated strategies."
   }
 }
