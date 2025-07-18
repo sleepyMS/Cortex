@@ -1,22 +1,78 @@
-/* frontend/app/globals.css */
+/* file: src/globals.css */
 
-/* Tailwind CSS의 기본, 컴포넌트, 유틸리티 스타일을 불러옵니다. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 전체 페이지에 적용될 기본 스타일을 정의합니다.
-  @apply 키워드를 사용하면 Tailwind의 유틸리티 클래스를 CSS 파일 내에서 사용할 수 있습니다.
-*/
-body {
-  @apply bg-gray-50 text-gray-900;
-  /* 기본 배경은 밝은 회색(bg-gray-50), 기본 글자색은 진한 회색(text-gray-900)으로 설정 */
+@layer base {
+  :root {
+    --background: 240 10% 100%; /* Light mode background - white */
+    --foreground: 240 10% 3.9%; /* Light mode text - almost black */
+
+    --card: 240 10% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 240 10% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 259 92% 66%; /* Violet */
+    --primary-foreground: 259 92% 98%; /* Light text for on-violet buttons */
+
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 259 92% 66%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%; /* Dark mode background - almost black */
+    --foreground: 0 0% 98%; /* Dark mode text - almost white */
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 259 92% 66%;
+    --primary-foreground: 259 92% 98%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 259 92% 66%;
+  }
 }
 
-/* (선택 사항) 다크 모드를 위한 기본 스타일입니다. 
-  <html> 태그에 'dark' 클래스가 추가되면 이 스타일이 적용됩니다.
-*/
-.dark body {
-  @apply bg-gray-900 text-gray-50;
-  /* 다크 모드에서는 배경은 아주 진한 회색, 글자색은 밝은 회색으로 변경 */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

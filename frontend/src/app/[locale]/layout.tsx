@@ -1,39 +1,38 @@
-// src/app/[locale]/layout.tsx
+// file: src/app/[locale]/layout.tsx
 
 import type { Metadata } from "next";
-import { Noto_Sans_KR } from "next/font/google";
+import { Inter } from "next/font/google";
 import "../globals.css";
-import { NextIntlClientProvider, useMessages } from "next-intl";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
 
-import Header from "@/components/layout/Header";
-// import Footer from "@/components/layout/Footer";
-
-const notoSansKr = Noto_Sans_KR({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Project: Cortex - 데이터 기반 퀀트 플랫폼",
-  description: "나만의 투자 전략을 검증하고 자동매매를 실행하세요.",
+  title: "Project: Cortex",
+  description: "데이터 기반 투자 플랫폼",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   params: { locale },
-}: Readonly<{
+}: {
   children: React.ReactNode;
   params: { locale: string };
-}>) {
-  const messages = useMessages();
+}) {
+  const messages = await getMessages();
 
   return (
-    <html lang={locale}>
-      <body className={`${notoSansKr.className} antialiased`}>
+    <html lang={locale} className="dark">
+      <body className={inter.className}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Header />
-          <main className="min-h-screen">{children}</main>
-          {/* <Footer /> */}
+          <div className="flex min-h-screen flex-col">
+            <Header />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+          </div>
         </NextIntlClientProvider>
       </body>
     </html>

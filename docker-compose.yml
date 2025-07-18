@@ -1,5 +1,4 @@
 # docker-compose.yml
-version: "3.8"
 services:
   db:
     image: timescale/timescaledb:latest-pg16
@@ -13,5 +12,16 @@ services:
     volumes:
       - ./db_data:/var/lib/postgresql/data # 데이터베이스 데이터를 내 PC에 저장 (DB 초기화 방지)
 
+  # 아래 redis 서비스 부분을 추가합니다.
+  redis:
+    image: redis:7-alpine
+    container_name: cortex-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
 volumes:
   db_data:
+  redis_data:

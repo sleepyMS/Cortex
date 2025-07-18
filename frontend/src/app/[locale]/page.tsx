@@ -1,17 +1,17 @@
-// src/app/[locale]/page.tsx
+// file: src/app/[locale]/page.tsx
 
-import HeroSection from "@/components/domain/landing/HeroSection";
-import ProblemSection from "@/components/domain/landing/ProblemSection";
-import FeaturesSection from "@/components/domain/landing/FeaturesSection";
-import CtaSection from "@/components/domain/landing/CtaSection";
+import { Header } from "@/components/layout/Header";
+import { HeroSection } from "@/components/domain/HeroSection";
+import { FeatureSection } from "@/components/domain/FeatureSection";
+import { Footer } from "@/components/layout/Footer";
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <>
+    <main className="flex min-h-screen flex-col">
+      {/* <Header /> */}
       <HeroSection />
-      <ProblemSection />
-      <FeaturesSection />
-      <CtaSection />
-    </>
+      <FeatureSection />
+      <Footer />
+    </main>
   );
 }

@@ -1,57 +1,46 @@
 {
   "Header": {
-    "title": "Project: Cortex",
-    "backtester": "Backtester",
-    "strategies": "Strategies",
-    "community": "Community"
+    "login": "Log In",
+    "startFree": "Start for Free"
   },
-  "HeroSection": {
-    "title": "Data Determines Your Next Investment",
-    "subtitle": "With Cortex, you no longer rely on gut feelings. Validate your investment ideas with historical data and automate them into a system.",
-    "ctaButton": "Get Started for Free",
-    "learnMore": "Learn More"
+  "Footer": {
+    "description": "Start a new investment journey with Cortex, the data-driven investment platform.",
+    "rights": "All Rights Reserved.",
+    "product": "Product",
+    "legal": "Legal",
+    "featuresLink": "Features",
+    "pricingLink": "Pricing",
+    "termsLink": "Terms of Service",
+    "privacyLink": "Privacy Policy"
   },
-  "ProblemSection": {
-    "tag": "The Investor's Dilemma",
-    "title": "Why is your investing always anxious?",
-    "description": "Market noise, complex data, and split-second emotions. There are too many factors that interfere with successful investing. Cortex eliminates these uncertainties and presents a clear, data-driven path.",
-    "problems": [
-      {
-        "title": "Emotional Trading",
-        "description": "Making buy/sell decisions at the wrong time, swayed by fear and greed."
-      },
-      {
-        "title": "Endless Analysis Time",
-        "description": "Wasting precious time trying to find meaningful signals amidst a flood of information."
-      },
-      {
-        "title": "Unverified Strategies",
-        "description": "Investing assets in strategies that don't actually work, based on hearsay."
+  "LanguageSwitcher": {
+    "label": "Change language",
+    "korean": "Korean",
+    "english": "English"
+  },
+  "Landing": {
+    "Hero": {
+      "title": "Dominate the Market with Data. <br></br> Remove Emotion, Leave Only Strategy.",
+      "subtitle": "Validate your investment ideas and automate them 24/7 on Cortex, the all-in-one quant platform for individual investors.",
+      "ctaButton": "Test Your First Strategy for Free"
+    },
+    "FeatureSection": {
+      "title": "The Entire Investment Process in One Place",
+      "subtitle": "Cortex supports every step, from brainstorming ideas and verifying strategies to automated execution and sharing.",
+      "features": {
+        "backtesting": {
+          "title": "Powerful Backtesting",
+          "description": "The past is a mirror to the future. Verify if your strategy actually worked with years of data in under a minute."
+        },
+        "autoTrading": {
+          "title": "24/7 Automated Trading",
+          "description": "No more emotional intervention. Save your time by executing verified strategies flawlessly, 24/7."
+        },
+        "community": {
+          "title": "A Growing Community",
+          "description": "Investing alone is lonely. Share strategies with other investors and grow together through collective intelligence."
+        }
       }
-    ]
-  },
-  "FeaturesSection": {
-    "tag": "Everything for your investment",
-    "title": "The entire investment process on one platform",
-    "description": "From brainstorming and validation to live trading. Cortex provides the essential tools for successful investing.",
-    "features": [
-      {
-        "name": "Advanced Backtesting",
-        "description": "Precisely analyze the past performance of your strategies with realistic simulations that consider fees and slippage."
-      },
-      {
-        "name": "Visual Strategy Builder",
-        "description": "Turn ideas into reality without coding. Easily build your own investment strategies through an intuitive UI."
-      },
-      {
-        "name": "24/7 Automated Trading",
-        "description": "Don't miss opportunities while you sleep. Automatically execute your verified strategies in the live market, 24/7."
-      }
-    ]
-  },
-  "CtaSection": {
-    "title": "It's time to turn your ideas into profit.",
-    "description": "Don't hesitate any longer. Join Cortex now to experience the world of data-driven trading and unlock your full investment potential.",
-    "ctaButton": "Create Your First Strategy"
+    }
   }
 }

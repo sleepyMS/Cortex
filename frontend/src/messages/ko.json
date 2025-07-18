@@ -1,57 +1,46 @@
 {
   "Header": {
-    "title": "Project: Cortex",
-    "backtester": "백테스터",
-    "strategies": "전략",
-    "community": "커뮤니티"
+    "login": "로그인",
+    "startFree": "무료로 시작하기"
   },
-  "HeroSection": {
-    "title": "데이터가 당신의 다음 투자를 결정합니다",
-    "subtitle": "Cortex와 함께라면, 더 이상 감에 의존하지 않습니다. 당신의 투자 아이디어를 과거 데이터로 검증하고, 시스템으로 자동화하세요.",
-    "ctaButton": "지금 무료로 시작하기",
-    "learnMore": "더 알아보기"
+  "Footer": {
+    "description": "데이터 기반 투자 플랫폼, Cortex와 함께 새로운 투자 여정을 시작하세요.",
+    "rights": "All Rights Reserved.",
+    "product": "프로젝트",
+    "legal": "법률",
+    "featuresLink": "핵심 기능",
+    "pricingLink": "가격 정책",
+    "termsLink": "이용약관",
+    "privacyLink": "개인정보처리방침"
   },
-  "ProblemSection": {
-    "tag": "투자의 딜레마",
-    "title": "왜 당신의 투자는 항상 불안할까요?",
-    "description": "시장의 소음, 복잡한 데이터, 그리고 한순간의 감정. 성공적인 투자를 방해하는 요소는 너무나도 많습니다. Cortex는 이러한 불확실성을 제거하고 데이터 기반의 명확한 길을 제시합니다.",
-    "problems": [
-      {
-        "title": "감정적 매매",
-        "description": "공포와 탐욕에 휘둘려 잘못된 타이밍에 매수/매도 결정을 내립니다."
-      },
-      {
-        "title": "끝없는 분석 시간",
-        "description": "수많은 정보 속에서 유의미한 신호를 찾기 위해 소중한 시간을 낭비합니다."
-      },
-      {
-        "title": "검증되지 않은 전략",
-        "description": "'카더라' 통신에 의존하여, 실제로는 동작하지 않는 전략에 자산을 투입합니다."
+  "LanguageSwitcher": {
+    "label": "언어 변경",
+    "korean": "한국어",
+    "english": "English"
+  },
+  "Landing": {
+    "Hero": {
+      "title": "데이터로 시장을 지배하세요. <br></br> 감정은 빼고, 전략만 남기세요.",
+      "subtitle": "개인 투자자를 위한 올인원 퀀트 플랫폼, Cortex에서 당신의 투자 아이디어를 검증하고 24시간 자동화하세요.",
+      "ctaButton": "지금 첫 전략 무료로 테스트하기"
+    },
+    "FeatureSection": {
+      "title": "투자의 모든 과정을 한 곳에서",
+      "subtitle": "Cortex는 아이디어 구상부터 전략 검증, 자동화 실행, 그리고 공유에 이르기까지 모든 단계를 지원합니다.",
+      "features": {
+        "backtesting": {
+          "title": "강력한 백테스팅",
+          "description": "과거는 미래의 거울입니다. 수년간의 데이터로 당신의 전략이 실제로 통했는지 1분 안에 확인하세요."
+        },
+        "autoTrading": {
+          "title": "24/7 자동매매",
+          "description": "검증된 전략을 24시간 흔들림 없이 실행하여 당신의 시간을 아껴드립니다. 감정의 개입은 이제 그만."
+        },
+        "community": {
+          "title": "성장하는 커뮤니티",
+          "description": "혼자 하는 투자는 외롭습니다. 다른 투자자들과 전략을 공유하고 집단 지성을 통해 함께 성장하세요."
+        }
       }
-    ]
-  },
-  "FeaturesSection": {
-    "tag": "당신의 투자를 위한 모든 것",
-    "title": "투자의 모든 과정을 하나의 플랫폼에서",
-    "description": "아이디어 구상부터 검증, 그리고 실전 투자까지. Cortex는 성공적인 투자를 위한 필수 도구를 제공합니다.",
-    "features": [
-      {
-        "name": "고도화된 백테스팅",
-        "description": "수수료, 슬리피지까지 고려한 현실적인 시뮬레이션으로 전략의 과거 성과를 정밀하게 분석하세요."
-      },
-      {
-        "name": "비주얼 전략 빌더",
-        "description": "코딩 없이, 아이디어를 현실로. 직관적인 UI를 통해 자신만의 투자 전략을 손쉽게 구축할 수 있습니다."
-      },
-      {
-        "name": "24/7 자동매매",
-        "description": "검증된 전략을 실제 시장에서 24시간 자동으로 실행하여, 잠자는 동안에도 수익의 기회를 놓치지 마세요."
-      }
-    ]
-  },
-  "CtaSection": {
-    "title": "이제, 당신의 아이디어를 수익으로 바꿀 시간입니다.",
-    "description": "더 이상 망설이지 마세요. 지금 바로 Cortex에 가입하여 데이터 기반 트레이딩의 세계를 경험하고, 당신의 투자 잠재력을 최대한으로 끌어올리세요.",
-    "ctaButton": "첫 전략 만들러 가기"
+    }
   }
 }

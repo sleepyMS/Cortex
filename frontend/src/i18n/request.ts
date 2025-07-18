@@ -1,13 +1,15 @@
+// file: src/i18n.ts
 import { getRequestConfig } from "next-intl/server";
-import { routing } from "./routing";
+import { notFound } from "next/navigation";
 
-export default getRequestConfig(async ({ requestLocale }) => {
-  let locale = await requestLocale;
-  if (!locale || !routing.locales.some((l) => l === locale)) {
-    locale = routing.defaultLocale;
-  }
+// 지원하는 언어 목록
+const locales = ["ko", "en"];
+
+export default getRequestConfig(async ({ locale }) => {
+  // URL에서 받은 locale 파라미터가 유효한지 확인
+  if (!locales.includes(locale as any)) notFound();
+
   return {
-    locale,
     messages: (await import(`../messages/${locale}.json`)).default,
   };
 });
