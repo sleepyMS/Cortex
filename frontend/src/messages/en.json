@@ -1,9 +1,57 @@
 {
   "Header": {
     "title": "Project: Cortex",
-    "backtester": "Backtester"
+    "backtester": "Backtester",
+    "strategies": "Strategies",
+    "community": "Community"
   },
-  "LoginPage": {
-    "welcome": "Welcome back!"
+  "HeroSection": {
+    "title": "Data Determines Your Next Investment",
+    "subtitle": "With Cortex, you no longer rely on gut feelings. Validate your investment ideas with historical data and automate them into a system.",
+    "ctaButton": "Get Started for Free",
+    "learnMore": "Learn More"
+  },
+  "ProblemSection": {
+    "tag": "The Investor's Dilemma",
+    "title": "Why is your investing always anxious?",
+    "description": "Market noise, complex data, and split-second emotions. There are too many factors that interfere with successful investing. Cortex eliminates these uncertainties and presents a clear, data-driven path.",
+    "problems": [
+      {
+        "title": "Emotional Trading",
+        "description": "Making buy/sell decisions at the wrong time, swayed by fear and greed."
+      },
+      {
+        "title": "Endless Analysis Time",
+        "description": "Wasting precious time trying to find meaningful signals amidst a flood of information."
+      },
+      {
+        "title": "Unverified Strategies",
+        "description": "Investing assets in strategies that don't actually work, based on hearsay."
+      }
+    ]
+  },
+  "FeaturesSection": {
+    "tag": "Everything for your investment",
+    "title": "The entire investment process on one platform",
+    "description": "From brainstorming and validation to live trading. Cortex provides the essential tools for successful investing.",
+    "features": [
+      {
+        "name": "Advanced Backtesting",
+        "description": "Precisely analyze the past performance of your strategies with realistic simulations that consider fees and slippage."
+      },
+      {
+        "name": "Visual Strategy Builder",
+        "description": "Turn ideas into reality without coding. Easily build your own investment strategies through an intuitive UI."
+      },
+      {
+        "name": "24/7 Automated Trading",
+        "description": "Don't miss opportunities while you sleep. Automatically execute your verified strategies in the live market, 24/7."
+      }
+    ]
+  },
+  "CtaSection": {
+    "title": "It's time to turn your ideas into profit.",
+    "description": "Don't hesitate any longer. Join Cortex now to experience the world of data-driven trading and unlock your full investment potential.",
+    "ctaButton": "Create Your First Strategy"
   }
 }

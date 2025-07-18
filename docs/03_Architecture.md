@@ -78,11 +78,11 @@ Cortex/
 │ ├── .env # 환경 변수 (DB URL, SECRET_KEY 등 민감 정보)
 │ ├── main.py # FastAPI 앱의 메인 시작점
 │ ├── requirements.txt # Python 의존성 목록
-│ └── app/ # (선택) 백엔드 소스코드 폴더
-│ ├── routers/ # API 엔드포인트 라우터
-│ ├── services/ # 비즈니스 로직
-│ ├── models/ # DB 테이블 모델
-│ └── schemas/ # Pydantic 데이터 스키마
+│ └── app/ # 백엔드 소스코드 폴더
+│  ├── routers/ # API 엔드포인트 라우터
+│  ├── services/ # 비즈니스 로직
+│  ├── models/ # DB 테이블 모델
+│  └── schemas/ # Pydantic 데이터 스키마
 │
 └── frontend/ # Next.js 프론트엔드 프로젝트 루트
 ├── .next/ # Next.js 빌드 결과물

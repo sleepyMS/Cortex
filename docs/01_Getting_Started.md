@@ -36,8 +36,8 @@ docker-compose up -d
 # 1. 백엔드 폴더로 이동 및 가상환경 생성/활성화
 cd backend
 python -m venv venv
-source venv/bin/activate  # macOS/Linux
-# .\venv\Scripts\activate  # Windows
+.\venv\Scripts\activate  # Windows
+# source venv/bin/activate  # macOS/Linux
 
 # 2. 모든 의존성 설치
 # (프로젝트에 requirements.txt가 있다면 'pip install -r requirements.txt' 사용)

@@ -1,7 +1,17 @@
-import Image from "next/image";
+// src/app/[locale]/page.tsx
+
+import HeroSection from "@/components/domain/landing/HeroSection";
+import ProblemSection from "@/components/domain/landing/ProblemSection";
+import FeaturesSection from "@/components/domain/landing/FeaturesSection";
+import CtaSection from "@/components/domain/landing/CtaSection";
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20"></div>
+    <>
+      <HeroSection />
+      <ProblemSection />
+      <FeaturesSection />
+      <CtaSection />
+    </>
   );
 }

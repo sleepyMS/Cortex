@@ -5,7 +5,7 @@ import { Noto_Sans_KR } from "next/font/google";
 import "../globals.css";
 import { NextIntlClientProvider, useMessages } from "next-intl";
 
-import Header from "@/src/components/layout/Header";
+import Header from "@/components/layout/Header";
 // import Footer from "@/components/layout/Footer";
 
 const notoSansKr = Noto_Sans_KR({
