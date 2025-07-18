@@ -17,9 +17,11 @@
 
     --primary: 259 92% 66%; /* Violet */
     --primary-foreground: 259 92% 98%; /* Light text for on-violet buttons */
+    --primary-rgb: 116, 12, 238; /* Approximate RGB for 259 92% 66% */
 
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
+    --accent-rgb: 244, 245, 247; /* Approximate RGB for 240 4.8% 95.9% (light mode accent) */
 
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
@@ -49,9 +51,11 @@
 
     --primary: 259 92% 66%;
     --primary-foreground: 259 92% 98%;
+    --primary-rgb: 116, 12, 238; /* R, G, B for --primary (consistent for dark mode) */
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
+    --accent-rgb: 23, 24, 25; /* Approximate RGB for 240 3.7% 15.9% (dark mode accent) */
 
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
@@ -74,5 +78,24 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* @keyframes float 애니메이션 정의 - globals.css로 이동 */
+@keyframes float {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-20px, 30px) scale(1.05);
+  } /* 움직임 범위 및 크기 변화 증가 */
+  50% {
+    transform: translate(20px, -30px) scale(0.95);
+  } /* 움직임 범위 및 크기 변화 증가 */
+  75% {
+    transform: translate(-10px, 20px) scale(1.03);
+  } /* 움직임 범위 및 크기 변화 증가 */
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
