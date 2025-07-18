@@ -4,8 +4,8 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl"; // useTranslations 임포트
-import { Spinner } from "@/components/ui/Spinner"; // Spinner 컴포넌트 임포트
+import { useTranslations } from "next-intl";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
