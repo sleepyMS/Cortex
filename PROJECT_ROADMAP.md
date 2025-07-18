@@ -8,13 +8,13 @@
 
 > **목표:** 코딩을 시작하기 전, 개발과 배포를 위한 모든 인프라와 환경을 완벽하게 구축한다.
 
-- [ ] **GitHub 저장소 생성 및 `docs` 초기화**
-  - [ ] `Project-Cortex` 저장소 생성
-  - [ ] `docs` 폴더 및 00~10번까지의 모든 기획/설계 문서 추가
-- [ ] **로컬 개발 환경 구축**
-  - [ ] `docker-compose.yml`을 이용한 PostgreSQL/TimescaleDB 컨테이너 실행
-  - [ ] `backend` 폴더 FastAPI 프로젝트 초기 설정
-  - [ ] `frontend` 폴더 Next.js 프로젝트 초기 설정
+- [x] **GitHub 저장소 생성 및 `docs` 초기화**
+  - [x] `Cortex` 저장소 생성
+  - [x] `docs` 폴더 및 00~10번까지의 모든 기획/설계 문서 추가
+- [x] **로컬 개발 환경 구축**
+  - [x] `docker-compose.yml`을 이용한 PostgreSQL/TimescaleDB 컨테이너 실행
+  - [x] `backend` 폴더 FastAPI 프로젝트 초기 설정
+  - [x] `frontend` 폴더 Next.js 프로젝트 초기 설정
 - [ ] **초기 배포 및 CI/CD 파이프라인 설정**
   - [ ] 프론트엔드 프로젝트를 Vercel에 연결
   - [ ] 백엔드 프로젝트를 위한 Dockerfile 작성
