@@ -1,7 +1,16 @@
 {
   "Header": {
     "login": "Log In",
-    "startFree": "Start for Free"
+    "startFree": "Start Free",
+    "startPro": "Start Pro",
+    "logout": "Log Out",
+    "dashboardLink": "Dashboard",
+    "toggleTheme": "Toggle theme",
+    "loggedInUser": "Logged In User",
+    "loginRequiredForDashboard": "Login is required to access the dashboard.",
+    "logoutSuccess": "Logged out successfully.",
+    "manageSubscription": "Manage Subscription",
+    "adminDashboard": "Admin Dashboard"
   },
   "Footer": {
     "description": "Start a new investment journey with Cortex, the data-driven investment platform.",
@@ -66,7 +75,10 @@
     "kakaoLogin": "Login with Kakao",
     "naverLogin": "Login with Naver",
     "hasAccount": "Already have an account?",
-    "loginLink": "Log in"
+    "loginLink": "Log in",
+    "loginSuccess": "Login successful!",
+    "loginFailedPrefix": "Login failed",
+    "loginFailedGeneric": "An error occurred during login."
   },
   "AuthCallback": {
     "processingLogin": "Processing login information...",

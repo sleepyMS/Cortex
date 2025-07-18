@@ -1,7 +1,16 @@
 {
   "Header": {
     "login": "로그인",
-    "startFree": "무료로 시작하기"
+    "startFree": "무료로 시작하기",
+    "startPro": "Pro로 시작하기",
+    "logout": "로그아웃",
+    "dashboardLink": "대시보드",
+    "toggleTheme": "테마 전환",
+    "loggedInUser": "로그인된 사용자",
+    "loginRequiredForDashboard": "대시보드에 접근하려면 로그인이 필요합니다.",
+    "logoutSuccess": "로그아웃되었습니다.",
+    "manageSubscription": "구독 관리",
+    "adminDashboard": "관리자 대시보드"
   },
   "Footer": {
     "description": "데이터 기반 투자 플랫폼, Cortex와 함께 새로운 투자 여정을 시작하세요.",
@@ -66,7 +75,10 @@
     "kakaoLogin": "카카오로 로그인",
     "naverLogin": "네이버로 로그인",
     "hasAccount": "이미 계정이 있으신가요?",
-    "loginLink": "로그인"
+    "loginLink": "로그인",
+    "loginSuccess": "로그인 성공!",
+    "loginFailedPrefix": "로그인 실패",
+    "loginFailedGeneric": "로그인 중 오류가 발생했습니다."
   },
   "AuthCallback": {
     "processingLogin": "로그인 정보를 처리 중입니다...",
