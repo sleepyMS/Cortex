@@ -42,5 +42,36 @@
         }
       }
     }
+  },
+  "Auth": {
+    "signupTitle": "Get started with Cortex",
+    "signupSubtitle": "Create an account to experience data-driven investing.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "signupButton": "Sign Up",
+    "errors": {
+      "emailRequired": "Email is required.",
+      "invalidEmail": "Invalid email format.",
+      "passwordRequired": "Password is required.",
+      "passwordLength": "Password must be at least 8 characters long."
+    },
+    "loginTitle": "Welcome Back",
+    "loginSubtitle": "Log in to Cortex to continue your analysis.",
+    "loginButton": "Log In",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "Don't have an account?",
+    "signupLink": "Sign up",
+    "socialLoginDivider": "Or continue with",
+    "googleLogin": "Login with Google",
+    "kakaoLogin": "Login with Kakao",
+    "naverLogin": "Login with Naver",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Log in"
+  },
+  "AuthCallback": {
+    "processingLogin": "Processing login information...",
+    "loginSuccess": "Login successful! Redirecting to dashboard.",
+    "authError": "Authentication error: {errorDetail}",
+    "loginProcessError": "An issue occurred during login processing."
   }
 }

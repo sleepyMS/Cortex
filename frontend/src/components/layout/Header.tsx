@@ -44,7 +44,9 @@ const Header = () => {
           </IconButton>
 
           <div className="hidden sm:flex items-center gap-2">
-            <Button variant="ghost">{t("login")}</Button>
+            <Link href="/login" passHref>
+              <Button variant="ghost">{t("login")}</Button>
+            </Link>
             <Button>{t("startFree")}</Button>
           </div>
         </div>
