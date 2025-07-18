@@ -73,5 +73,23 @@
     "loginSuccess": "로그인 성공! 대시보드로 이동합니다.",
     "authError": "인증 오류: {errorDetail}",
     "loginProcessError": "로그인 처리 중 문제가 발생했습니다."
+  },
+  "Dashboard": {
+    "loadingDashboard": "대시보드를 불러오는 중입니다...",
+    "authRequired": "이 페이지에 접근하려면 로그인이 필요합니다.",
+    "fetchError": "대시보드 데이터를 불러오지 못했습니다: {errorDetail}. 다시 시도해주세요.",
+    "errorTitle": "오류 발생",
+    "loginAgain": "다시 로그인",
+    "welcomeMessage": "{email}님, 환영합니다!",
+    "dashboardOverview": "여기에서 Cortex 활동의 간략한 개요를 확인하고, 전략을 관리하고, 성과를 모니터링하세요.",
+    "yourInfo": "회원 정보",
+    "idLabel": "ID",
+    "emailLabel": "이메일",
+    "roleLabel": "역할",
+    "roleNotSet": "설정 안됨",
+    "portfolioOverviewTitle": "포트폴리오 개요",
+    "portfolioOverviewDescription": "현재 자산 배분 및 성과를 확인하세요.",
+    "activeBotsTitle": "활성 트레이딩 봇",
+    "activeBotsDescription": "실행 중인 자동화된 전략을 모니터링하세요."
   }
 }
