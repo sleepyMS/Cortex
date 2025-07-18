@@ -92,14 +92,6 @@ const Header = () => {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
 
-          <IconButton onClick={toggleTheme} aria-label={t("toggleTheme")}>
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </IconButton>
-
           <div className="hidden sm:flex items-center gap-2">
             {/* hasHydrated가 true가 되기 전까지는 UI가 흔들리지 않도록 처리 */}
             {hasHydrated ? (
@@ -114,7 +106,7 @@ const Header = () => {
                     variant="ghost"
                     className="px-3"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
+                    {/* <LogOut className="h-4 w-4 mr-2" /> */}
                     {t("logout")}
                   </Button>
                   {/* 구독 등급에 따른 버튼 */}
@@ -150,6 +142,13 @@ const Header = () => {
               <div className="w-40 h-10 bg-muted animate-pulse rounded-md"></div>
             )}
           </div>
+          <IconButton onClick={toggleTheme} aria-label={t("toggleTheme")}>
+            {theme === "light" ? (
+              <Moon className="h-5 w-5" />
+            ) : (
+              <Sun className="h-5 w-5" />
+            )}
+          </IconButton>
         </div>
       </div>
     </header>
