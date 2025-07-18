@@ -71,6 +71,7 @@
   "AuthCallback": {
     "processingLogin": "Processing login information...",
     "loginSuccess": "Login successful! Redirecting to dashboard.",
+    "loginFailed": "Login Failed.",
     "authError": "Authentication error: {errorDetail}",
     "loginProcessError": "An issue occurred during login processing."
   },

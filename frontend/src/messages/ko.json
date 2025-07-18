@@ -71,6 +71,7 @@
   "AuthCallback": {
     "processingLogin": "로그인 정보를 처리 중입니다...",
     "loginSuccess": "로그인 성공! 대시보드로 이동합니다.",
+    "loginFailed": "로그인 실패.",
     "authError": "인증 오류: {errorDetail}",
     "loginProcessError": "로그인 처리 중 문제가 발생했습니다."
   },

@@ -53,13 +53,12 @@ export default function LoginForm() {
           localStorage.setItem("refreshToken", refresh_token);
         }
 
-        alert("로그인 성공! 대시보드로 이동합니다.");
+        // alert(t("loginSuccess");
         router.push("/dashboard"); // 로그인 성공 시 대시보드로 이동
       }
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || "로그인 중 오류가 발생했습니다.";
-      alert(`로그인 실패: ${errorMessage}`);
+      const errorMessage = error.response?.data?.detail || "Login error";
+      alert(`Login error: ${errorMessage}`);
     }
   }
 
