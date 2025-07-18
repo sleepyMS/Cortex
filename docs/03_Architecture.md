@@ -61,6 +61,7 @@ graph TD
 
 ## 3. 프로젝트 폴더 구조 (Project Folder Structure)
 
+```text
 Cortex/
 │
 ├── .gitignore # Git이 추적하지 않을 파일/폴더 목록 (node_modules, .env 등)
@@ -109,3 +110,4 @@ Cortex/
 ├── .env.local # 프론트엔드 환경 변수
 ├── next.config.ts # Next.js 메인 설정
 └── tsconfig.json # TypeScript 설정
+```
