@@ -10,7 +10,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# SQLAlchemy 엔진 생성
+# SQLAlchemy 엔진 생성  
 engine = create_engine(DATABASE_URL)
 
 # 세션 로컬 클래스 생성

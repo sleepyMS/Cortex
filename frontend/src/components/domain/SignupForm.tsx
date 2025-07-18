@@ -8,14 +8,16 @@ import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { motion, Variants } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import SocialLogins from "./SocialLogins";
-import { apiClient } from "@/lib/apiClient";
+import apiClient from "@/lib/apiClient";
 
 export default function SignupForm() {
   const t = useTranslations("Auth");
+  const router = useRouter();
 
   const formSchema = z.object({
     email: z
@@ -32,11 +34,11 @@ export default function SignupForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const response = await apiClient.post("/api/auth/signup", values);
+      const response = await apiClient.post("/auth/signup", values);
 
       if (response.status === 201) {
         alert("회원가입 성공! 로그인 페이지로 이동합니다.");
-        // TODO: 로그인 페이지로 리디렉션
+        router.push("/login");
       }
     } catch (error: any) {
       const errorMessage =

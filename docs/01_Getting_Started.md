@@ -212,7 +212,7 @@ alembic upgrade head
 
 ### 향후 스키마 변경 시
 
-- 1. 모델 변경: backend/app/models.py에서 SQLAlchemy 모델을 수정합니다.
+- 1. 모델 변경: `backend/app/models.py`에서 `SQLAlchemy` 모델을 수정합니다.
 
 ```bash
 # 새 마이그레이션 생성:

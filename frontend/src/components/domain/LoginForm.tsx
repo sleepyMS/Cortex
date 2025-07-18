@@ -12,8 +12,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import SocialLogins from "./SocialLogins";
-import { apiClient } from "@/lib/apiClient";
 import { useRouter } from "@/i18n/navigation";
+import apiClient from "@/lib/apiClient";
 
 export default function LoginForm() {
   const t = useTranslations("Auth");
@@ -39,15 +39,20 @@ export default function LoginForm() {
       formData.append("username", values.email);
       formData.append("password", values.password);
 
-      const response = await apiClient.post("/api/auth/login", formData, {
+      const response = await apiClient.post("/auth/login", formData, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
 
       if (response.data.access_token) {
-        const { access_token } = response.data;
+        const { access_token, refresh_token } = response.data; // refresh_token도 구조 분해 할당
         localStorage.setItem("accessToken", access_token);
+        if (refresh_token) {
+          // refresh_token이 있다면 저장 (옵션이므로 확인)
+          localStorage.setItem("refreshToken", refresh_token);
+        }
+
         alert("로그인 성공! 대시보드로 이동합니다.");
         router.push("/dashboard"); // 로그인 성공 시 대시보드로 이동
       }

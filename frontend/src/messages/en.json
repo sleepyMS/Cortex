@@ -67,5 +67,11 @@
     "naverLogin": "Login with Naver",
     "hasAccount": "Already have an account?",
     "loginLink": "Log in"
+  },
+  "AuthCallback": {
+    "processingLogin": "Processing login information...",
+    "loginSuccess": "Login successful! Redirecting to dashboard.",
+    "authError": "Authentication error: {errorDetail}",
+    "loginProcessError": "An issue occurred during login processing."
   }
 }

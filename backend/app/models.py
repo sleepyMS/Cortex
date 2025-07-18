@@ -1,12 +1,9 @@
 # file: backend/app/models.py
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from .database import Base # database.py에서 정의한 Base 임포트
 
-# SQLAlchemy Base 모델 (모든 모델이 상속받음)
-# Base = declarative_base() # database.py로 이동
 
 class User(Base):
     __tablename__ = "users"
