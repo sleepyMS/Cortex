@@ -12,7 +12,7 @@
 
 ```bash
 git clone https://github.com/sleepyMS/Cortex.git
-cd Project-Cortex
+cd Cortex
 ```
 
 ## 3. 필수 서비스 실행 (Docker)
