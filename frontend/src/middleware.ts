@@ -1,20 +1,20 @@
-// frontend/middleware.ts
+// file: frontend/src/middleware.ts
 
 import createMiddleware from "next-intl/middleware";
+// i18n/i18n.ts 파일에서 정의한 locales, defaultLocale, pathnames를 임포트합니다.
+import { locales, defaultLocale, pathnames } from "./i18n/i18n";
 
 export default createMiddleware({
-  // 지원하는 언어 목록
-  locales: ["ko", "en"],
-
-  // URL에 언어 코드가 없을 때 사용할 기본 언어
-  // 이 설정이 '/'를 '/ko'로 자동 이동시키는 역할을 합니다.
-  defaultLocale: "ko",
+  locales,
+  defaultLocale,
+  pathnames, // 미들웨어에 pathnames 전달
+  localePrefix: "as-needed", // 'ko'일 때 접두사를 제거하고, 'en'일 때 /en 접두사를 붙입니다.
 });
 
+// 미들웨어가 어떤 경로에 대해 실행될지 정의하는 Next.js의 필수 설정입니다.
+// 정적 파일, API 라우트 등을 제외합니다.
 export const config = {
-  // 미들웨어를 실행할 경로를 지정합니다.
-  // 아래 정규식은 API 경로, Next.js 내부 파일 경로 등을 제외한
-  // 모든 페이지 경로에서 미들웨어가 동작하도록 합니다.
-  // 이 방식이 가장 안정적입니다.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|png|jpg|jpeg|svg|css|js).*)",
+  ],
 };

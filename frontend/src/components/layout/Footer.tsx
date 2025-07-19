@@ -1,14 +1,18 @@
+// file: frontend/src/components/layout/Footer.tsx
+
+"use client"; // 이 컴포넌트가 클라이언트 컴포넌트임을 명시
+
 import * as React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { IconButton } from "@/components/ui/IconButton";
 import { Github, Twitter } from "lucide-react";
-// getTranslator 대신 getTranslations를 import 합니다.
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl"; // getTranslations 대신 useTranslations 훅 사용
 
-const Footer = async () => {
-  const t = await getTranslations("Footer");
-  const currentYear = new Date().getFullYear();
+const Footer = () => {
+  // async 키워드 제거
+  const t = useTranslations("Footer"); // useTranslations 훅 사용
+  const currentYear = new Date().getFullYear(); // 클라이언트에서 현재 연도 가져옴
 
   return (
     <footer className="w-full border-t border-border/40 bg-background">

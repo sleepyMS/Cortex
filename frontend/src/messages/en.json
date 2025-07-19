@@ -10,7 +10,9 @@
     "loginRequiredForDashboard": "Login is required to access the dashboard.",
     "logoutSuccess": "Logged out successfully.",
     "manageSubscription": "Manage Subscription",
-    "adminDashboard": "Admin Dashboard"
+    "adminDashboard": "Admin Dashboard",
+    "langKorean": "한국어",
+    "langEnglish": "English"
   },
   "Footer": {
     "description": "Start a new investment journey with Cortex, the data-driven investment platform.",
