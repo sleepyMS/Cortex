@@ -131,27 +131,4 @@ const useAuthStore = create<AuthState>()(
   )
 );
 
-// -----------------------------------------------------------
-// Hydration 제어 훅
-// -----------------------------------------------------------
-
-export const useAuthHydration = () => {
-  const hasHydrated = useAuthStore((state) => state._hasHydrated);
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined" && !hasHydrated) {
-      // 이 부분은 onRehydrateStorage가 제대로 작동한다면 필요 없지만,
-      // 혹시 모를 상황에 대비한 안전 장치로 유지할 수 있습니다.
-      // onRehydrateStorage의 반환 함수가 호출되지 않는 경우를 대비.
-      // (현재는 onRehydrateStorage가 항상 _hasHydrated를 설정하므로, 이 분기는 사실상 불필요)
-      useAuthStore.getState().setHasHydrated(true);
-      console.log(
-        "DEBUG(useAuthHydration): Forcing _hasHydrated to true on client mount as a fallback."
-      );
-    }
-  }, [hasHydrated]); // hasHydrated가 변경될 때만 이펙트 실행
-
-  return hasHydrated;
-};
-
 export default useAuthStore;

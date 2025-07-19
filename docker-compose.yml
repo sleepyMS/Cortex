@@ -10,7 +10,7 @@ services:
     ports:
       - "5432:5432" # 내 PC의 5432 포트를 컨테이너의 5432 포트와 연결
     volumes:
-      - ./db_data:/var/lib/postgresql/data # 데이터베이스 데이터를 내 PC에 저장 (DB 초기화 방지)
+      - db_data:/var/lib/postgresql/data # 데이터베이스 데이터를 내 PC에 저장 (DB 초기화 방지)
 
   # 아래 redis 서비스 부분을 추가합니다.
   redis:
