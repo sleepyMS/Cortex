@@ -4,32 +4,42 @@ import { useUserStore } from "@/store/userStore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Spinner } from "@/components/ui/Spinner";
-import { useHasHydrated } from "hooks/useHasHydrated";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const hasHydrated = useHasHydrated();
-  const accessToken = useUserStore((state) => state.accessToken);
+  const { isAuthInitialized, accessToken } = useUserStore();
 
   useEffect(() => {
-    // 상태 복원이 아직 안됐으면 아무것도 안함
-    if (!hasHydrated) return;
+    // 인증 초기화가 완료될 때까지 기다립니다.
+    if (!isAuthInitialized) {
+      return;
+    }
 
-    // 복원 후에도 토큰이 없으면 로그인 페이지로 이동
+    // 초기화 후에도 토큰이 없으면 로그인 페이지로 보냅니다.
     if (!accessToken) {
+      // alert("로그인이 필요합니다."); // alert는 제거하거나 toast로 변경하는 것을 권장
       router.push("/login");
     }
-  }, [hasHydrated, accessToken, router]);
+  }, [isAuthInitialized, accessToken, router]);
 
-  // 복원 중이거나, 토큰이 없어서 리디렉션 대기 중일 때 로딩 표시
-  if (!hasHydrated || !accessToken) {
+  // 인증 초기화가 진행 중일 때는 로딩 스피너를 표시합니다.
+  if (!isAuthInitialized) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Spinner />
+        <Spinner size="lg" />
       </div>
     );
   }
 
-  // 모든 조건 통과 시, 보호된 페이지 콘텐츠 표시
+  // 👇 초기화가 끝났지만 토큰이 없는 경우 (리디렉션 대기) 잠시 로딩 표시
+  if (!accessToken) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // 모든 조건이 충족되면 자식 컴포넌트(대시보드)를 렌더링합니다.
   return <>{children}</>;
 }

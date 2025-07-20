@@ -13,18 +13,21 @@ interface State {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
+  isAuthInitialized: boolean;
 }
 
 interface Actions {
   setTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
   setUser: (user: User | null) => void;
   logout: () => void;
+  setAuthInitialized: (isInitialized: boolean) => void;
 }
 
 const initialState: State = {
   user: null,
   accessToken: null,
   refreshToken: null,
+  isAuthInitialized: false, // 👈 3. 초기값은 false
 };
 
 export const useUserStore = create<State & Actions>()(
@@ -39,7 +42,10 @@ export const useUserStore = create<State & Actions>()(
       },
       logout: () => {
         delete apiClient.defaults.headers.common["Authorization"];
-        set(initialState);
+        set({ ...initialState, isAuthInitialized: true });
+      },
+      setAuthInitialized: (isInitialized) => {
+        set({ isAuthInitialized: isInitialized });
       },
     }),
     {
