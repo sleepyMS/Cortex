@@ -1,3 +1,5 @@
+// file: src/store/userStore.ts
+
 import apiClient from "@/lib/apiClient";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";

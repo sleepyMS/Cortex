@@ -1,76 +1,69 @@
-// file: frontend/src/lib/apiClient.ts
-
 import axios from "axios";
-import useAuthStore from "@/store/authStore";
+import { useUserStore } from "@/store/userStore"; // 👈 1. userStore를 임포트합니다.
 
-// 환경 변수에서 백엔드 API URL 가져오기
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Axios 인스턴스 생성
 const apiClient = axios.create({
-  baseURL: API_URL, // 백엔드 API 기본 URL
-  headers: {
-    "Content-Type": "application/json", // 기본 Content-Type 설정
-  },
+  baseURL: API_URL,
+  headers: { "Content-Type": "application/json" },
 });
 
 // 요청 인터셉터: 모든 요청에 인증 토큰 추가
 apiClient.interceptors.request.use(
   (config) => {
-    // Zustand 스토어에서 accessToken 가져오기
-    const accessToken = useAuthStore.getState().accessToken;
+    // 👇 2. userStore에서 accessToken을 가져옵니다.
+    const accessToken = useUserStore.getState().accessToken;
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// 응답 인터셉터: 에러 처리 및 토큰 갱신 로직
+// 응답 인터셉터: 401 에러 시 토큰 갱신
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
-    const requestUrl = originalRequest.url;
 
-    const isAuthEndpoint =
-      requestUrl === "/auth/login" || requestUrl === "/auth/signup";
-
-    if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const { refreshToken, logout, login } = useAuthStore.getState();
+      // 👇 3. userStore에서 토큰과 액션을 가져옵니다.
+      const { refreshToken, setTokens, logout } = useUserStore.getState();
 
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_URL}/auth/refresh`, {
             refresh_token: refreshToken,
           });
-          const {
-            access_token: new_accessToken,
-            refresh_token: new_refreshToken,
-          } = response.data;
 
-          const currentUserInfo = useAuthStore.getState().userInfo;
-          login(currentUserInfo!, new_accessToken, new_refreshToken);
+          const { access_token, refresh_token: new_refreshToken } =
+            response.data;
 
-          originalRequest.headers.Authorization = `Bearer ${new_accessToken}`;
+          // 👇 4. userStore의 setTokens 액션으로 새로운 토큰을 저장합니다.
+          setTokens({
+            accessToken: access_token,
+            refreshToken: new_refreshToken,
+          });
+
+          // 원래 요청 헤더에 새로운 액세스 토큰을 설정하고 재요청
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return apiClient(originalRequest);
-        } catch (refreshError: any) {
+        } catch (refreshError) {
           console.error("Refresh token failed:", refreshError);
           logout();
           alert("세션이 만료되었습니다. 다시 로그인해주세요.");
-          window.location.href = "/login"; // window.location.href로 리디렉션 (새로고침 포함)
+          window.location.href = "/login";
           return Promise.reject(refreshError);
         }
       } else {
+        // 리프레시 토큰이 없는 경우
         logout();
         alert("로그인이 필요합니다.");
-        window.location.href = "/login"; // window.location.href로 리디렉션 (새로고침 포함)
+        window.location.href = "/login";
         return Promise.reject(error);
       }
     }
