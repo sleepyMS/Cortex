@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # 다른 폴더에 정의한 라우터들을 가져옵니다.
-from app.routers import auth, users, backtests
+from app.routers import auth, users, backtests, dashboard
 from app.database import engine, Base
 
 # FastAPI 애플리케이션 인스턴스 생성
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api", tags=["Authentication"])
 app.include_router(users.router, prefix="/api")
 app.include_router(backtests.router, prefix="/api", tags=["Backtesting"])
+app.include_router(dashboard.router, prefix="/api") 
 
 
 # 서버가 살아있는지 확인하기 위한 루트 엔드포인트

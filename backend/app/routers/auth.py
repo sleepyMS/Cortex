@@ -1,201 +1,164 @@
-# file: backend/app/routers/auth.py
-
-from fastapi import APIRouter, HTTPException, Depends, Request, status
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session # DB 세션 임포트
-from .. import schemas, utils, models # schemas, utils, models 임포트
-from ..services.oauth import google_oauth # oauth 서비스 import
-from fastapi.security import OAuth2PasswordRequestForm # Form 데이터 처리를 위해 import
-from jose import JWTError, jwt
+from fastapi import APIRouter, HTTPException, Depends, status
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
 from datetime import datetime, timedelta
 import os
-import secrets # 리프레시 토큰 생성을 위해 import
-from ..database import get_db # get_db 함수 임포트
+import secrets
 
-# --- JWT 설정 ---
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+from .. import schemas, models, security
+from ..database import get_db
+
+from ..services.google_oauth import google_oauth_service
+from ..services.kakao_oauth import kakao_oauth_service
+from ..services.naver_oauth import naver_oauth_service
+from ..services import social_auth_service
+
+# --- 설정 (Configuration) ---
+SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)) # 리프레시 토큰 만료 기간 (예: 7일)
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
-router = APIRouter(
-    prefix="/auth", # 이 파일의 모든 경로는 /auth로 시작
-    tags=["auth"],   # API 문서 그룹화
-)
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-def create_access_token(data: dict):
+
+# --- 토큰 생성 헬퍼 함수 (Token Helper Functions) ---
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """주어진 데이터로 JWT 액세스 토큰을 생성합니다."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# 리프레시 토큰 생성 함수
-def create_refresh_token():
-    return secrets.token_urlsafe(32) # 안전한 URL-safe 문자열 생성
+def create_and_set_tokens(user: models.User, db: Session) -> tuple[str, str]:
+    """새로운 액세스 토큰과 리프레시 토큰을 생성하고 DB에 저장합니다."""
+    access_token = create_access_token(data={"sub": user.email})
+    
+    plain_refresh_token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+    new_token_record = models.RefreshToken(
+        user_id=user.id,
+        token=plain_refresh_token, # 실제 운영 시에는 이 토큰도 해싱하여 저장하는 것이 더 안전합니다.
+        expires_at=expires_at
+    )
+    db.add(new_token_record)
+    db.commit()
+    
+    return access_token, plain_refresh_token
+
+
+# --- 로컬 인증 엔드포인트 (Local Authentication) ---
+
+@router.post("/signup", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
+def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    """새로운 사용자를 생성합니다 (이메일/비밀번호 회원가입)."""
+    db_user = db.query(models.User).filter(models.User.email == user_in.email).first()
+    if db_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이미 사용 중인 이메일입니다.")
+    
+    hashed_password = security.get_password_hash(user_in.password)
+    new_user = models.User(
+        email=user_in.email, 
+        username=user_in.username, 
+        hashed_password=hashed_password
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 @router.post("/login", response_model=schemas.Token)
-async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db) # DB 세션 의존성 주입
-):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """이메일과 비밀번호로 로그인하여 토큰을 발급받습니다."""
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
-
-    if not user or not utils.verify_password(form_data.password, user.hashed_password):
+    if not user or not user.hashed_password or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="이메일 또는 비밀번호가 정확하지 않습니다.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    access_token = create_access_token(
-        data={"sub": user.email}
-    )
-    refresh_token = create_refresh_token()
-    
-    # 리프레시 토큰을 사용자 객체에 저장하고 DB에 반영
-    user.refresh_token = refresh_token
-    user.refresh_token_expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
+    access_token, refresh_token = create_and_set_tokens(user, db)
     return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}
 
-@router.post("/signup", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
-def create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)): # DB 세션 의존성 주입
-    existing_user = db.query(models.User).filter(models.User.email == user_in.email).first()
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이미 사용 중인 이메일입니다.")
-    
-    hashed_password = utils.get_password_hash(user_in.password)
-    
-    new_user = models.User(
-        email=user_in.email,
-        hashed_password=hashed_password,
-        is_active=True,
-        # refresh_token, refresh_token_expires_at는 기본값 (None)으로 둠
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user) # DB에서 생성된 ID 등을 가져옴
-    
-    print("New user registered:", new_user.email)
-    
-    return schemas.User.from_orm(new_user) # SQLAlchemy 모델 객체를 Pydantic 스키마로 변환
-
-# --- Refresh Token Endpoints ---
 @router.post("/refresh", response_model=schemas.Token)
-async def refresh_access_token(refresh_request: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
-    refresh_token_str = refresh_request.refresh_token
+def refresh_access_token(
+    refresh_token_data: schemas.RefreshTokenRequest, 
+    db: Session = Depends(get_db)
+):
+    """리프레시 토큰을 사용하여 새로운 액세스 토큰과 리프레시 토큰을 발급받습니다."""
+    token_str = refresh_token_data.refresh_token
+    token_record = db.query(models.RefreshToken).filter(models.RefreshToken.token == token_str).first()
 
-    # 1. 유효한 리프레시 토큰을 가진 사용자 찾기
-    user = db.query(models.User).filter(models.User.refresh_token == refresh_token_str).first()
-
-    if not user:
+    if not token_record or token_record.is_revoked or token_record.expires_at < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 리프레시 토큰입니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # 2. 리프레시 토큰 만료 시간 확인
-    if user.refresh_token_expires_at and user.refresh_token_expires_at < datetime.utcnow():
-        # 만료된 토큰이면 DB에서도 제거
-        user.refresh_token = None
-        user.refresh_token_expires_at = None
-        db.add(user)
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="유효하지 않거나 만료된 리프레시 토큰입니다. 다시 로그인해주세요.",
         )
 
-    # 3. 새 액세스 토큰 생성
-    new_access_token = create_access_token(data={"sub": user.email})
+    # 기존 토큰 무효화 (Refresh Token Rotation)
+    token_record.is_revoked = True
+    db.add(token_record)
+
+    user = token_record.user
+    new_access_token, new_plain_refresh_token = create_and_set_tokens(user, db)
     
-    # 선택 사항: 리프레시 토큰 롤링 (보안 강화)
-    # new_refresh_token = create_refresh_token()
-    # user.refresh_token = new_refresh_token
-    # user.refresh_token_expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    # db.add(user)
-    # db.commit()
-    # db.refresh(user)
-    # return {"access_token": new_access_token, "token_type": "bearer", "refresh_token": new_refresh_token}
+    db.commit()
 
-    return {"access_token": new_access_token, "token_type": "bearer", "refresh_token": refresh_token_str} # 기존 리프레시 토큰 반환
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer",
+        "refresh_token": new_plain_refresh_token,
+    }
 
+# --- 소셜 로그인 콜백 엔드포인트 (Social Login Callbacks) ---
 
-# --- Google OAuth Endpoints ---
-
-@router.get("/google/login", include_in_schema=False)
-async def google_login():
-    """
-    Google 로그인 페이지로 리디렉션합니다.
-    프론트엔드에서 이 URL로 사용자를 안내합니다.
-    """
-    auth_url = (
-        f"https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={google_oauth.client_id}&"
-        f"redirect_uri={google_oauth.redirect_uri}&"
-        f"response_type=code&"
-        f"scope=openid%20email%20profile"
+@router.post("/google/callback", response_model=schemas.Token, summary="Google OAuth2 Callback") # 👈 GET -> POST
+async def google_login_callback(code_body: schemas.AuthCode, db: Session = Depends(get_db)): # 👈 쿼리 파라미터 -> 요청 본문
+    """프론트엔드에서 받은 Google 인가 코드로 로그인/회원가입 처리 후 JWT를 발급합니다."""
+    user_profile = await google_oauth_service.get_user_info(code_body.code)
+    
+    user = social_auth_service.get_or_create_social_user(
+        provider=user_profile.provider,
+        social_id=user_profile.social_id,
+        email=user_profile.email,
+        username=user_profile.username,
+        db=db,
     )
-    return RedirectResponse(url=auth_url)
+    access_token, refresh_token = create_and_set_tokens(user, db)
+    
+    # 중요: 백엔드가 직접 리디렉션하는 대신, 프론트엔드가 토큰을 받아 처리하도록 JSON 응답을 반환합니다.
+    return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}
 
-@router.get("/google/callback", include_in_schema=False)
-async def google_callback(code: str, db: Session = Depends(get_db)): # DB 세션 의존성 주입
-    """
-    Google에서 인증 후 이리로 리디렉션됩니다.
-    받은 코드로 사용자 정보를 가져오고 JWT를 발급합니다.
-    """
-    try:
-        access_token_google = await google_oauth.get_access_token(code)
-        user_info = await google_oauth.get_user_info(access_token_google)
-        
-        # --- Cortex 로그인/회원가입 로직 ---
-        user_email = user_info.email
+@router.post("/kakao/callback", response_model=schemas.Token, summary="Kakao OAuth2 Callback") # 👈 GET -> POST
+async def kakao_login_callback(code_body: schemas.AuthCode, db: Session = Depends(get_db)):
+    user_profile = await kakao_oauth_service.get_user_info(code_body.code)
+ 
+    user = social_auth_service.get_or_create_social_user(
+        provider=user_profile.provider,
+        social_id=user_profile.social_id,
+        email=user_profile.email,
+        username=user_profile.username,
+        db=db,
+    )
+    access_token, refresh_token = create_and_set_tokens(user, db)
+    return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}
 
-        # 1. DB에서 user_info.email로 사용자 조회
-        user = db.query(models.User).filter(models.User.email == user_email).first()
-        
-        # 2. 사용자가 없으면 새로 생성 (소셜 회원가입)
-        if not user:
-            # 소셜 로그인은 비밀번호가 필요 없으므로, 임의의 안전한 비밀번호 생성
-            random_password = utils.generate_random_password() # utils.py에 이 함수가 있다고 가정
-            hashed_password = utils.get_password_hash(random_password)
-            
-            user = models.User(
-                email=user_email,
-                hashed_password=hashed_password, # 소셜 로그인 사용자도 일단 비밀번호 필드 가짐
-                is_active=True,
-                # refresh_token, refresh_token_expires_at는 기본값 (None)으로 둠
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            print(f"새로운 소셜 유저 등록: {user_email}")
-        
-        # 3. Cortex 자체 JWT 토큰 (액세스 + 리프레시) 생성
-        cortex_access_token = create_access_token(data={"sub": user.email})
-        cortex_refresh_token = create_refresh_token()
-
-        # 4. 리프레시 토큰을 사용자 정보에 저장
-        user.refresh_token = cortex_refresh_token
-        user.refresh_token_expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-        # 5. JWT 토큰을 담아 프론트엔드로 리디렉션
-        frontend_url = (
-            f"http://localhost:3000/auth/callback?"
-            f"access_token={cortex_access_token}&"
-            f"refresh_token={cortex_refresh_token}"
-        )
-        return RedirectResponse(url=frontend_url)
-        
-    except Exception as e:
-        # 실패 시 에러 페이지로 리디렉션 또는 에러 메시지 반환
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"로그인에 실패했습니다: {str(e)}")
+@router.post("/naver/callback", response_model=schemas.Token, summary="Naver OAuth2 Callback") # 👈 GET -> POST
+async def naver_login_callback(code_body: schemas.AuthCodeWithState, db: Session = Depends(get_db)):
+    user_profile = await naver_oauth_service.get_user_info(code_body.code, code_body.state)
+ 
+    user = social_auth_service.get_or_create_social_user(
+        provider=user_profile.provider,
+        social_id=user_profile.social_id,
+        email=user_profile.email,
+        username=user_profile.username,
+        db=db,
+    )
+    access_token, refresh_token = create_and_set_tokens(user, db)
+    return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}
