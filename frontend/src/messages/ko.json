@@ -106,5 +106,27 @@
     "portfolioOverviewDescription": "현재 자산 배분 및 성과를 확인하세요.",
     "activeBotsTitle": "활성 트레이딩 봇",
     "activeBotsDescription": "실행 중인 자동화된 전략을 모니터링하세요."
+  },
+  "StrategyBuilder": {
+    "title": "새 전략 만들기",
+    "form": {
+      "nameLabel": "전략 이름",
+      "descriptionLabel": "설명",
+      "rulesLabel": "규칙 (JSON 형식)",
+      "rulesPlaceholder": "{ \"buy\": [...], \"sell\": [...] }",
+      "saveButton": "전략 저장",
+      "successMessage": "전략이 성공적으로 저장되었습니다!",
+      "genericErrorMessage": "전략 저장에 실패했습니다.",
+      "jsonErrorMessage": "규칙(Rules)이 유효한 JSON 형식이 아닙니다.",
+      "errorPrefix": "오류",
+      "errors": {
+        "nameRequired": "전략 이름은 필수입니다.",
+        "rulesRequired": "전략 규칙은 필수입니다."
+      }
+    }
+  },
+  "Navigation": {
+    "strategies": "전략",
+    "community": "커뮤니티"
   }
 }

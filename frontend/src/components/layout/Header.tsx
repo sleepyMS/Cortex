@@ -17,12 +17,12 @@ import { useHasHydrated } from "hooks/useHasHydrated";
 
 export function Header() {
   const t = useTranslations("Header");
+  const tNav = useTranslations("Navigation"); // 👈 1. 네비게이션용 번역 함수 추가
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { user, logout } = useUserStore();
   const hasHydrated = useHasHydrated();
 
-  // user 객체의 존재 여부로 로그인 상태를 판단합니다.
   const isLoggedIn = !!user;
 
   const toggleTheme = () => {
@@ -42,6 +42,20 @@ export function Header() {
           <Link href="/" passHref>
             <Logo />
           </Link>
+
+          {/* 👇 2. 로그인 시 네비게이션 메뉴 표시 */}
+          <nav className="hidden items-center gap-4 md:flex">
+            {hasHydrated && isLoggedIn && (
+              <>
+                <Link href="/strategies" passHref>
+                  <Button variant="ghost">{tNav("strategies")}</Button>
+                </Link>
+                <Link href="/community" passHref>
+                  <Button variant="ghost">{tNav("community")}</Button>
+                </Link>
+              </>
+            )}
+          </nav>
         </div>
 
         <div className="flex items-center gap-2">
@@ -62,24 +76,6 @@ export function Header() {
                   >
                     {t("logout")}
                   </Button>
-
-                  {/* --- 사용자 역할(role)에 따른 버튼 --- */}
-                  {user.role === "basic" && (
-                    <Link href="/pricing" passHref>
-                      <Button>{t("startPro")}</Button>
-                    </Link>
-                  )}
-                  {user.role === "pro" && (
-                    <Link href="/settings/subscription" passHref>
-                      <Button>{t("manageSubscription")}</Button>
-                    </Link>
-                  )}
-                  {user.role === "admin" && (
-                    <Link href="/admin/dashboard" passHref>
-                      <Button>{t("adminDashboard")}</Button>
-                    </Link>
-                  )}
-                  {/* Hydration 완료 후 로그인 상태일 때만 대시보드 아이콘 표시 */}
 
                   <IconButton
                     onClick={() => router.push("/dashboard")}

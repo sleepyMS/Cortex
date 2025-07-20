@@ -63,3 +63,20 @@ class SocialCallbackRequest(BaseModel):
     """모든 소셜 로그인 콜백 요청을 처리하기 위한 통합 스키마"""
     code: str
     state: str | None = None # Naver를 위한 선택적 state 필드
+
+class StrategyBase(BaseModel):
+    name: str
+    description: str | None = None
+    rules: dict # JSON 형태의 전략 규칙
+
+class StrategyCreate(StrategyBase):
+    pass
+
+class Strategy(StrategyBase):
+    id: int
+    author_id: int
+    is_public: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

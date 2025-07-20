@@ -106,5 +106,27 @@
     "portfolioOverviewDescription": "View your current asset allocation and performance.",
     "activeBotsTitle": "Active Trading Bots",
     "activeBotsDescription": "Monitor your running automated strategies."
+  },
+  "StrategyBuilder": {
+    "title": "Create New Strategy",
+    "form": {
+      "nameLabel": "Strategy Name",
+      "descriptionLabel": "Description",
+      "rulesLabel": "Rules (JSON Format)",
+      "rulesPlaceholder": "{ \"buy\": [...], \"sell\": [...] }",
+      "saveButton": "Save Strategy",
+      "successMessage": "Strategy saved successfully!",
+      "genericErrorMessage": "Failed to save strategy.",
+      "jsonErrorMessage": "Rules are not in a valid JSON format.",
+      "errorPrefix": "Error",
+      "errors": {
+        "nameRequired": "Strategy name is required.",
+        "rulesRequired": "Strategy rules are required."
+      }
+    }
+  },
+  "Navigation": {
+    "strategies": "Strategies",
+    "community": "Community"
   }
 }
