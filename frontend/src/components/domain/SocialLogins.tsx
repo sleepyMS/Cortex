@@ -28,7 +28,7 @@ export default function SocialLogins() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            {t("orContinueWith")}
+            {t("socialLoginDivider")}
           </span>
         </div>
       </div>
