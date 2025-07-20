@@ -12,43 +12,40 @@ function AuthCallback() {
   const { setTokens } = useUserStore();
 
   useEffect(() => {
-    // URL에서 'code'와 'provider'를 추출합니다.
     const code = searchParams.get("code");
-    const state = searchParams.get("state"); // Naver 로그인 시 필요
+    const state = searchParams.get("state");
+    const provider = localStorage.getItem("social_provider");
 
-    // 이 페이지로 리디렉션시킨 provider를 식별하는 로직이 필요합니다.
-    // 간단하게는 localStorage를 사용하거나, state 파라미터에 정보를 담을 수 있습니다.
-    // 여기서는 'google'로 가정합니다.
-    const provider = "google"; // 실제로는 동적으로 이 값을 알아내야 합니다.
-
-    if (code) {
+    if (code && provider) {
       const exchangeCodeForToken = async () => {
         try {
-          // 4. 프론트엔드가 백엔드 API로 'code'를 보냅니다.
-          const response = await apiClient.post(`/auth/${provider}/callback`, {
+          // 👇 바로 이 부분의 URL을 올바른 최종 주소로 수정해야 합니다.
+          const response = await apiClient.post(`/auth/callback/${provider}`, {
             code,
             state,
           });
 
-          const { access_token, refresh_token } = response.data;
+          localStorage.removeItem("social_provider");
 
+          const { access_token, refresh_token } = response.data;
           if (access_token) {
-            // 7. 받은 토큰을 스토어에 저장합니다.
             setTokens({
               accessToken: access_token,
               refreshToken: refresh_token,
             });
-            // 8. 대시보드로 리디렉션합니다.
             router.push("/dashboard");
           }
         } catch (error) {
           console.error("소셜 로그인 처리 실패:", error);
           alert("로그인에 실패했습니다. 로그인 페이지로 이동합니다.");
+          localStorage.removeItem("social_provider");
           router.push("/login");
         }
       };
-
       exchangeCodeForToken();
+    } else {
+      alert("인증 정보가 올바르지 않습니다.");
+      router.push("/login");
     }
   }, [router, searchParams, setTokens]);
 

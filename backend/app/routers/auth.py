@@ -118,41 +118,35 @@ def refresh_access_token(
 
 # --- 소셜 로그인 콜백 엔드포인트 (Social Login Callbacks) ---
 
-@router.post("/google/callback", response_model=schemas.Token, summary="Google OAuth2 Callback") # 👈 GET -> POST
-async def google_login_callback(code_body: schemas.AuthCode, db: Session = Depends(get_db)): # 👈 쿼리 파라미터 -> 요청 본문
-    """프론트엔드에서 받은 Google 인가 코드로 로그인/회원가입 처리 후 JWT를 발급합니다."""
-    user_profile = await google_oauth_service.get_user_info(code_body.code)
-    
-    user = social_auth_service.get_or_create_social_user(
-        provider=user_profile.provider,
-        social_id=user_profile.social_id,
-        email=user_profile.email,
-        username=user_profile.username,
-        db=db,
-    )
-    access_token, refresh_token = create_and_set_tokens(user, db)
-    
-    # 중요: 백엔드가 직접 리디렉션하는 대신, 프론트엔드가 토큰을 받아 처리하도록 JSON 응답을 반환합니다.
-    return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}
+PROVIDER_SERVICES = {
+    "google": google_oauth_service,
+    "kakao": kakao_oauth_service,
+    "naver": naver_oauth_service,
+}
 
-@router.post("/kakao/callback", response_model=schemas.Token, summary="Kakao OAuth2 Callback") # 👈 GET -> POST
-async def kakao_login_callback(code_body: schemas.AuthCode, db: Session = Depends(get_db)):
-    user_profile = await kakao_oauth_service.get_user_info(code_body.code)
- 
-    user = social_auth_service.get_or_create_social_user(
-        provider=user_profile.provider,
-        social_id=user_profile.social_id,
-        email=user_profile.email,
-        username=user_profile.username,
-        db=db,
-    )
-    access_token, refresh_token = create_and_set_tokens(user, db)
-    return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}
+@router.post("/callback/{provider}", response_model=schemas.Token, summary="Unified OAuth2 Callback")
+async def social_login_callback(
+    provider: str,
+    code_body: schemas.SocialCallbackRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    모든 소셜 로그인 제공자의 콜백을 동적으로 처리합니다.
+    Provider: 'google', 'kakao', 'naver'
+    """
+    if provider not in PROVIDER_SERVICES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="지원하지 않는 소셜 로그인 제공자입니다.")
 
-@router.post("/naver/callback", response_model=schemas.Token, summary="Naver OAuth2 Callback") # 👈 GET -> POST
-async def naver_login_callback(code_body: schemas.AuthCodeWithState, db: Session = Depends(get_db)):
-    user_profile = await naver_oauth_service.get_user_info(code_body.code, code_body.state)
- 
+    # provider 이름에 맞는 서비스 선택
+    oauth_service = PROVIDER_SERVICES[provider]
+    
+    try:
+        # 선택된 서비스의 get_user_info 메소드 호출
+        user_profile = await oauth_service.get_user_info(code_body.code, code_body.state)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"소셜 프로필 정보를 가져오는 데 실패했습니다: {e}")
+
+    # 중앙 서비스를 통해 사용자 생성 또는 조회
     user = social_auth_service.get_or_create_social_user(
         provider=user_profile.provider,
         social_id=user_profile.social_id,
@@ -160,5 +154,7 @@ async def naver_login_callback(code_body: schemas.AuthCodeWithState, db: Session
         username=user_profile.username,
         db=db,
     )
+    
+    # 최종적으로 우리 서비스의 토큰 발급
     access_token, refresh_token = create_and_set_tokens(user, db)
     return {"access_token": access_token, "token_type": "bearer", "refresh_token": refresh_token}

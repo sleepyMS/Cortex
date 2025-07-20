@@ -7,21 +7,24 @@ class KakaoOAuth2(OAuth2ServiceBase):
     def __init__(self):
         super().__init__(provider_name="kakao")
         self.client_id = os.getenv("KAKAO_CLIENT_ID")
+        self.client_secret = os.getenv("KAKAO_CLIENT_SECRET") # 👈 1. 시크릿 로드
         self.redirect_uri = os.getenv("KAKAO_REDIRECT_URI")
         self.token_url = "https://kauth.kakao.com/oauth/token"
         self.user_info_url = "https://kapi.kakao.com/v2/user/me"
 
     async def _get_access_token(self, code: str) -> str:
+        payload = {
+            "grant_type": "authorization_code",
+            "client_id": self.client_id,
+            "redirect_uri": self.redirect_uri,
+            "code": code,
+        }
+        # 👇 2. 시크릿이 존재하면 payload에 추가
+        if self.client_secret:
+            payload["client_secret"] = self.client_secret
+            
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.token_url,
-                data={
-                    "grant_type": "authorization_code",
-                    "client_id": self.client_id,
-                    "redirect_uri": self.redirect_uri,
-                    "code": code,
-                },
-            )
+            response = await client.post(self.token_url, data=payload)
             response.raise_for_status()
             return response.json()["access_token"]
 

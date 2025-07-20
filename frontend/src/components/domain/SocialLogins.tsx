@@ -13,8 +13,10 @@ export default function SocialLogins() {
   const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI}&response_type=code`;
   const NAVER_AUTH_URL = `https://nid.naver.com/oauth2.0/authorize?client_id=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_NAVER_REDIRECT_URI}&response_type=code&state=STATE_STRING`; // state는 CSRF 방지를 위해 랜덤 문자열 생성 필요
 
-  const handleSocialLogin = (url: string) => {
-    // 사용자를 해당 소셜 플랫폼의 인증 페이지로 보냅니다.
+  const handleSocialLogin = (provider: string, url: string) => {
+    // 👈 1. 어떤 제공자인지 localStorage에 저장
+    localStorage.setItem("social_provider", provider);
+    // 2. 사용자를 해당 소셜 플랫폼의 인증 페이지로 보냄
     window.location.href = url;
   };
 
@@ -35,7 +37,7 @@ export default function SocialLogins() {
         {/* Google 로그인 버튼 */}
         <Button
           variant="outline"
-          onClick={() => handleSocialLogin(GOOGLE_AUTH_URL)}
+          onClick={() => handleSocialLogin("google", GOOGLE_AUTH_URL)} // 👈 provider 이름 전달
         >
           <Image
             src="/images/google-icon.svg"
@@ -50,7 +52,7 @@ export default function SocialLogins() {
         {/* Kakao 로그인 버튼 */}
         <Button
           variant="outline"
-          onClick={() => handleSocialLogin(KAKAO_AUTH_URL)}
+          onClick={() => handleSocialLogin("kakao", KAKAO_AUTH_URL)} // 👈 provider 이름 전달
         >
           <Image
             src="/images/kakao-icon.svg"
@@ -65,7 +67,7 @@ export default function SocialLogins() {
         {/* Naver 로그인 버튼 */}
         <Button
           variant="outline"
-          onClick={() => handleSocialLogin(NAVER_AUTH_URL)}
+          onClick={() => handleSocialLogin("naver", NAVER_AUTH_URL)} // 👈 provider 이름 전달
         >
           <Image
             src="/images/naver-icon.svg"

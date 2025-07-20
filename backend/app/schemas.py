@@ -58,3 +58,8 @@ class DashboardSummary(BaseModel):
 
     class Config:
         from_attributes = True # ORM 모델과 호환되도록 설정
+
+class SocialCallbackRequest(BaseModel):
+    """모든 소셜 로그인 콜백 요청을 처리하기 위한 통합 스키마"""
+    code: str
+    state: str | None = None # Naver를 위한 선택적 state 필드
