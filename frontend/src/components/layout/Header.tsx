@@ -42,15 +42,6 @@ export function Header() {
           <Link href="/" passHref>
             <Logo />
           </Link>
-          {/* Hydration 완료 후 로그인 상태일 때만 대시보드 아이콘 표시 */}
-          {hasHydrated && isLoggedIn && (
-            <IconButton
-              onClick={() => router.push("/dashboard")}
-              aria-label={t("dashboardLink")}
-            >
-              <LayoutDashboard className="h-5 w-5" />
-            </IconButton>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -88,6 +79,14 @@ export function Header() {
                       <Button>{t("adminDashboard")}</Button>
                     </Link>
                   )}
+                  {/* Hydration 완료 후 로그인 상태일 때만 대시보드 아이콘 표시 */}
+
+                  <IconButton
+                    onClick={() => router.push("/dashboard")}
+                    aria-label={t("dashboardLink")}
+                  >
+                    <LayoutDashboard className="h-5 w-5" />
+                  </IconButton>
                 </>
               ) : (
                 // --- 로그아웃 시 UI ---
