@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useRef, Suspense } from "react"; // 👈 useRef 임포트
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
 import apiClient from "@/lib/apiClient";
@@ -10,16 +10,24 @@ function AuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setTokens } = useUserStore();
+  const hasProcessed = useRef(false); // 👈 1. 처리 여부를 저장할 ref 생성
 
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     const provider = localStorage.getItem("social_provider");
 
+    // 👇 2. 이미 처리했다면, 즉시 실행을 중단
+    if (hasProcessed.current) {
+      return;
+    }
+
     if (code && provider) {
+      // 👇 3. 처리 시작을 동기적으로 표시 (리렌더링 없음)
+      hasProcessed.current = true;
+
       const exchangeCodeForToken = async () => {
         try {
-          // 👇 바로 이 부분의 URL을 올바른 최종 주소로 수정해야 합니다.
           const response = await apiClient.post(`/auth/callback/${provider}`, {
             code,
             state,
@@ -42,12 +50,10 @@ function AuthCallback() {
           router.push("/login");
         }
       };
+
       exchangeCodeForToken();
-    } else {
-      alert("인증 정보가 올바르지 않습니다.");
-      router.push("/login");
     }
-  }, [router, searchParams, setTokens]);
+  }, [router, searchParams, setTokens]); // 👈 ref는 의존성 배열에 넣지 않음
 
   return (
     <div className="flex h-screen w-full items-center justify-center">
@@ -57,7 +63,6 @@ function AuthCallback() {
   );
 }
 
-// Suspense로 감싸 useSearchParams 사용을 지원
 export default function AuthCallbackPage() {
   return (
     <Suspense>
