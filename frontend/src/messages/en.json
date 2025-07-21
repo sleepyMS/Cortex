@@ -123,10 +123,25 @@
         "nameRequired": "Strategy name is required.",
         "rulesRequired": "Strategy rules are required."
       }
+    },
+    "indicatorHubTitle": "Indicator Hub",
+    "indicatorHubDescription": "Search and select an indicator for your strategy.",
+    "searchIndicatorPlaceholder": "Search by indicator name...",
+    "indicatorCategories": {
+      "all": "All",
+      "price": "Price",
+      "trend": "Trend",
+      "momentum": "Momentum",
+      "volatility": "Volatility",
+      "volume": "Volume"
     }
   },
   "Navigation": {
     "strategies": "Strategies",
     "community": "Community"
+  },
+  "ParameterPopover": {
+    "title": "Indicator Settings",
+    "description": "Modify the parameters of the indicator."
   }
 }
