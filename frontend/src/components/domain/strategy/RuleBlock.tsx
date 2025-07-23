@@ -33,7 +33,7 @@ interface RuleBlockProps {
   onAddRule: (parentId: string, as: "AND" | "OR") => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, newSignalData: SignalBlockData) => void;
-  onSlotClick: (itemId: string, condition: ConditionType) => void; // onSlotClick 타입 유지
+  onSlotClick: (itemId: string, condition: ConditionType) => void;
 }
 
 // --- 내부 컴포넌트: 조건 슬롯 ---
@@ -42,7 +42,6 @@ function ConditionSlot({
   onAddClick,
   onParamUpdate,
   onValueChange,
-  // ✨ 추가: ParameterPopover로 전달할 props
   indicatorNameForPopover,
   onIndicatorChangeForPopover,
 }: {
@@ -50,8 +49,8 @@ function ConditionSlot({
   onAddClick: () => void;
   onParamUpdate: (newValues: Record<string, any>) => void;
   onValueChange: (newValue: number) => void;
-  indicatorNameForPopover?: string; // ParameterPopover에 전달할 지표 이름
-  onIndicatorChangeForPopover?: () => void; // ParameterPopover에 전달할 지표 변경 콜백
+  indicatorNameForPopover?: string;
+  onIndicatorChangeForPopover?: () => void;
 }) {
   if (!condition) {
     return (
@@ -106,11 +105,11 @@ function ConditionSlot({
 
   return (
     <ParameterPopover
-      indicatorName={indicatorNameForPopover || indicatorDef.name} // ✨ prop 전달
+      indicatorName={indicatorNameForPopover || indicatorDef.name}
       parameters={indicatorDef.parameters}
       values={currentValues}
       onValuesChange={onParamUpdate}
-      onIndicatorChange={onIndicatorChangeForPopover || (() => {})} // ✨ prop 전달. 기본값은 빈 함수
+      onIndicatorChange={onIndicatorChangeForPopover || (() => {})}
     >
       <Button
         variant="outline"
@@ -134,7 +133,7 @@ export function RuleBlock({
   onAddRule,
   onDelete,
   onUpdate,
-  onSlotClick, // onSlotClick 그대로 사용
+  onSlotClick,
 }: RuleBlockProps) {
   if (item.type !== "signal") {
     return null;
@@ -146,11 +145,7 @@ export function RuleBlock({
     onUpdate(item.id, { ...signalData, operator: newOperator });
   };
 
-  // ConditionSlot으로 전달할 onIndicatorChange 핸들러
   const handleIndicatorChangeForSlot = (conditionType: ConditionType) => {
-    // ParameterPopover 내부의 '지표 변경' 버튼 클릭 시,
-    // 현재 RuleBlock의 ID와 변경하려는 conditionType을 가지고 IndicatorHub를 다시 연다.
-    // 이는 결국 RuleBlock의 onSlotClick을 호출하는 것과 동일한 효과를 낸다.
     onSlotClick(item.id, conditionType);
   };
 
@@ -202,10 +197,9 @@ export function RuleBlock({
   });
 
   return (
-    <div
-      style={{ paddingLeft: `${depth * 1.5}rem` }}
-      className="w-full relative group"
-    >
+    <div className="w-full relative group">
+      {" "}
+      {/* ✨ 변경: paddingLeft 속성 제거 */}
       <Card
         className={clsx("p-3 rounded-lg shadow-sm transition-all", depthStyles)}
       >
@@ -219,7 +213,6 @@ export function RuleBlock({
             onValueChange={(newValue) =>
               handleConditionChange("conditionA", { type: "value", newValue })
             }
-            // ✨ ParameterPopover에 prop 전달
             indicatorNameForPopover={signalData.conditionA?.name}
             onIndicatorChangeForPopover={() =>
               handleIndicatorChangeForSlot("conditionA")
@@ -258,7 +251,6 @@ export function RuleBlock({
             onValueChange={(newValue) =>
               handleConditionChange("conditionB", { type: "value", newValue })
             }
-            // ✨ ParameterPopover에 prop 전달
             indicatorNameForPopover={signalData.conditionB?.name}
             onIndicatorChangeForPopover={() =>
               handleIndicatorChangeForSlot("conditionB")
@@ -304,11 +296,7 @@ export function RuleBlock({
           </Popover>
         </div>
       </Card>
-      {depth > 0 && (
-        <div className="absolute left-0 top-0 bottom-0 w-4 pointer-events-none">
-          <div className="absolute left-2.5 top-0 w-0.5 h-full bg-border group-hover:bg-primary/50 transition-colors"></div>
-        </div>
-      )}
+      {/* 이전에 추가했던 좌측 세로선은 RuleBlock에서 제거. RecursiveRuleRenderer에서 처리 */}
     </div>
   );
 }

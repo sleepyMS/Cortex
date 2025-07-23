@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { ScrollArea } from "@/components/ui/ScrollArea";
-import { HorizontalScrollArea } from "@/components/ui/HorizontalScrollArea"; // 👈 1. 수평 스크롤 임포트
+import { HorizontalScrollArea } from "@/components/ui/HorizontalScrollArea";
 
 interface IndicatorHubProps {
   isOpen: boolean;
@@ -42,27 +42,37 @@ export function IndicatorHub({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* 👇 2. DialogContent를 Flexbox 컨테이너로 변경 */}
-      <DialogContent className="max-w-4xl h-[75vh] flex flex-col p-0">
-        <DialogHeader className="p-4 pb-4 border-b">
+      {/* DialogContent는 이제 Dialog.tsx에서 기본 스타일(패딩, 보더 등)을 제거했으므로,
+          여기서 필요한 모든 스타일을 다시 명시적으로 추가해야 합니다.
+          다만, 너비 제어는 Dialog.tsx에서 w-[calc(100vw-2rem)]로 강제하므로
+          여기서는 max-w만 전달.
+      */}
+      <DialogContent className="max-w-full sm:max-w-md md:max-w-lg lg:max-w-4xl h-[75vh] flex flex-col rounded-lg bg-background border border-primary">
+        {" "}
+        {/* ✨ 모든 기본 스타일 재적용 */}
+        {/* DialogHeader에 명시적인 수평 및 수직 패딩 적용 */}
+        <DialogHeader className="px-4 pt-4 pb-4 border-b border-border/50 sm:px-6 sm:pt-6 sm:pb-4">
           <DialogTitle>{t("indicatorHubTitle")}</DialogTitle>
           <DialogDescription>{t("indicatorHubDescription")}</DialogDescription>
         </DialogHeader>
-
         {/* 상단 고정 영역 (검색창, 필터 바) */}
         <div className="flex-shrink-0">
-          <div className="px-6 my-4">
+          <div className="px-4 my-4 sm:px-6">
+            {" "}
+            {/* 각 섹션에 명시적인 수평 패딩 적용 */}
             <Input
               placeholder={t("searchIndicatorPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-background border-input focus-visible:ring-ring"
             />
           </div>
 
           <Tabs defaultValue="All" className="w-full">
-            {/* 👇 3. TabsList를 HorizontalScrollArea로 감싸기 */}
-            <HorizontalScrollArea className="px-6">
-              <TabsList className="w-max">
+            <HorizontalScrollArea className="px-4 sm:px-6">
+              {" "}
+              {/* 각 섹션에 명시적인 수평 패딩 적용 */}
+              <TabsList className="w-max bg-muted/30">
                 {categories.map((cat) => (
                   <TabsTrigger key={cat} value={cat}>
                     {cat}
@@ -72,8 +82,9 @@ export function IndicatorHub({
             </HorizontalScrollArea>
 
             {/* 스크롤 가능한 콘텐츠 영역 */}
-            {/* 👇 4. ScrollArea가 남은 공간을 모두 채우도록 flex-grow 추가 */}
-            <ScrollArea className="flex-grow mt-4 h-[calc(75vh-300px)] px-6">
+            <ScrollArea className="flex-grow mt-4 h-[calc(75vh-300px)] px-4 sm:px-6">
+              {" "}
+              {/* 각 섹션에 명시적인 수평 패딩 적용 */}
               {categories.map((cat) => (
                 <TabsContent key={cat} value={cat} className="pt-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -82,7 +93,7 @@ export function IndicatorHub({
                       .map((indicator) => (
                         <div
                           key={indicator.key}
-                          className="p-3 border rounded-md hover:bg-accent hover:border-primary cursor-pointer transition-colors group"
+                          className="p-3 border rounded-md hover:bg-accent hover:border-primary cursor-pointer transition-colors group bg-card"
                           onClick={() => onSelect(indicator)}
                         >
                           <p className="font-semibold text-foreground group-hover:text-primary transition-colors">

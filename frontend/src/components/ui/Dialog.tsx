@@ -34,8 +34,16 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={clsx(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
+        "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        // ✨ 변경: border-0 제거, border와 shadow를 기본으로 다시 포함
+        "w-[calc(100vw-2rem)] max-w-full sm:max-w-md md:max-w-lg lg:max-w-4xl", // 너비는 그대로 유지
+        "p-0", // 패딩은 여전히 0으로 유지 (IndicatorHub에서 제어)
+        "bg-background", // 배경색 유지
+        // ✨ border 클래스 재추가 (기본 1px border-width를 제공)
+        // ✨ shadow-lg 클래스 재추가 (기본 그림자 제공)
+        // 이후 IndicatorHub.tsx에서 border-primary 등을 추가하여 색상 지정
+        "border shadow-lg",
+        className // 사용자가 전달하는 className은 맨 마지막에 위치하여 우선순위를 가짐
       )}
       {...props}
     >
