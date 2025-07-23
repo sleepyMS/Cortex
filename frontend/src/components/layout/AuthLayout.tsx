@@ -97,8 +97,8 @@ export default function AuthLayout({
         {floatingBlobs}
       </div>
 
-      {/* Main Content Grid - 헤더/푸터와 동일한 max-w-6xl 및 중앙 정렬 */}
-      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-16 max-w-6xl px-4 md:px-8">
+      {/* Main Content Grid - 헤더/푸터와 동일한 max-w-5xl 및 중앙 정렬 */}
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-16 max-w-5xl px-4 md:px-8">
         {/* Left Side: Branding/Quote */}
         <div className="hidden md:flex flex-col gap-4 text-left">
           <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tighter text-foreground">
