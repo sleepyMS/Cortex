@@ -23,15 +23,15 @@ import {
   SignalBlockData,
   Condition,
   ConditionType,
-} from "@/types/strategy"; // strategy.ts에서 타입 정의를 가져옵니다.
+} from "@/types/strategy";
+import clsx from "clsx"; // clsx 유틸리티 임포트
 
 // --- 타입 정의 ---
 interface RuleBlockProps {
-  item: RuleItem; // RuleItem 타입으로 변경
+  item: RuleItem;
   depth: number;
   onAddRule: (parentId: string, as: "AND" | "OR") => void;
   onDelete: (id: string) => void;
-  // onUpdate는 이제 RuleItem을 받도록 변경합니다. SignalBlockData는 RuleItem의 하위 타입이므로 문제 없음.
   onUpdate: (id: string, newSignalData: SignalBlockData) => void;
   onSlotClick: (itemId: string, condition: ConditionType) => void;
 }
@@ -52,10 +52,10 @@ function ConditionSlot({
     return (
       <Button
         variant="outline"
-        className="h-full w-full border-dashed"
+        className="h-full w-full border-dashed transition-colors hover:bg-muted/50 hover:border-primary-foreground/30 flex items-center justify-center text-muted-foreground" // 비어있는 슬롯 스타일 개선
         onClick={onAddClick}
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-4 w-4 mr-1" /> 추가
       </Button>
     );
   }
@@ -66,14 +66,13 @@ function ConditionSlot({
     return (
       <Input
         type="number"
-        className="h-full w-full text-center"
+        className="h-full w-full text-center bg-background border-input focus-visible:ring-ring" // 값 슬롯 스타일 개선
         value={displayValue}
         onChange={(e) => onValueChange(Number(e.target.value))}
       />
     );
   }
 
-  // condition.value가 객체이고, indicatorKey가 있는지 확인합니다.
   if (
     typeof condition.value !== "object" ||
     condition.value === null ||
@@ -87,7 +86,6 @@ function ConditionSlot({
     );
   }
 
-  // indicatorKey가 올바르게 추론되도록 단언합니다.
   const indicatorDef = INDICATOR_REGISTRY[condition.value.indicatorKey];
 
   if (!indicatorDef) {
@@ -98,21 +96,22 @@ function ConditionSlot({
     );
   }
 
-  // condition.value.values가 Record<string, any> 타입임을 확인합니다.
   const currentValues = (condition.value as { values: Record<string, any> })
     .values;
 
   return (
     <ParameterPopover
       parameters={indicatorDef.parameters}
-      values={currentValues} // 올바른 값을 전달
+      values={currentValues}
       onValuesChange={onParamUpdate}
     >
       <Button
         variant="outline"
-        className="h-full w-full justify-start text-left truncate"
+        className="h-full w-full justify-start text-left truncate bg-card hover:bg-secondary/40 border-border hover:border-primary transition-colors group" // 지표 슬롯 스타일 개선
       >
-        <span className="font-bold shrink truncate">{indicatorDef.name}</span>
+        <span className="font-bold shrink truncate text-foreground group-hover:text-primary transition-colors">
+          {indicatorDef.name}
+        </span>
         <span className="text-xs text-muted-foreground ml-1 shrink-0">
           ({Object.values(currentValues).join(",")})
         </span>
@@ -130,15 +129,10 @@ export function RuleBlock({
   onUpdate,
   onSlotClick,
 }: RuleBlockProps) {
-  // item이 SignalBlockData 타입인지 확인하고 캐스팅합니다.
-  // RuleBlock은 SignalBlockData만 렌더링하도록 설계되었기 때문에 이 검사는 중요합니다.
   if (item.type !== "signal") {
-    // 만약 item이 signal 타입이 아니라면 (예: group), null을 반환하거나 다른 처리를 할 수 있습니다.
-    // 현재는 RuleBlock 컴포넌트 자체가 SignalBlockData를 다루도록 되어 있습니다.
     return null;
   }
 
-  // item을 SignalBlockData로 캐스팅하여 직접 접근합니다.
   const signalData: SignalBlockData = item;
 
   const handleOperatorChange = (newOperator: string) => {
@@ -151,7 +145,6 @@ export function RuleBlock({
       | { type: "param"; newValues: Record<string, any> }
       | { type: "value"; newValue: number }
   ) => {
-    // signalData는 이미 item이므로 signalData[conditionType]으로 직접 접근합니다.
     const condition = signalData[conditionType];
     if (!condition) return;
 
@@ -165,7 +158,6 @@ export function RuleBlock({
     ) {
       const indicatorDef = INDICATOR_REGISTRY[condition.value.indicatorKey];
       if (!indicatorDef) return;
-      // parameter.map을 사용하기 위해 indicatorDef.parameters가 존재함을 확인합니다.
       const newName = `${indicatorDef.name}(${indicatorDef.parameters
         .map((p) => change.newValues[p.key])
         .join(",")})`;
@@ -183,13 +175,30 @@ export function RuleBlock({
     } else {
       return;
     }
-    // onUpdate 함수에 변경된 SignalBlockData 객체를 전달합니다.
     onUpdate(item.id, { ...signalData, [conditionType]: updatedCondition });
   };
 
+  // depth에 따른 배경색 및 테두리 색상 변화를 위한 Tailwind CSS 클래스 정의
+  // globals.css에 정의된 변수들을 활용
+  const depthStyles = clsx({
+    "bg-card": depth === 0, // 최상위 depth
+    "bg-background/70 border-l-2 border-primary/20": depth === 1, // 첫 번째 중첩
+    "bg-secondary/20 border-l-2 border-primary/30": depth === 2, // 두 번째 중첩
+    "bg-muted/10 border-l-2 border-primary/40": depth >= 3, // 세 번째 이상 중첩
+  });
+
   return (
-    <div style={{ paddingLeft: `${depth * 2.5}rem` }} className="w-full">
-      <Card className="p-2 bg-background/50">
+    <div
+      style={{ paddingLeft: `${depth * 1.5}rem` }}
+      className="w-full relative group"
+    >
+      {" "}
+      {/* paddingLeft를 줄여 더 간결하게 */}
+      <Card
+        className={clsx("p-3 rounded-lg shadow-sm transition-all", depthStyles)}
+      >
+        {" "}
+        {/* Card 스타일 개선 */}
         <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
           <ConditionSlot
             condition={signalData.conditionA}
@@ -203,17 +212,22 @@ export function RuleBlock({
           />
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" className="px-3 text-base font-medium">
+              <Button
+                variant="ghost"
+                className="px-3 text-base font-medium text-primary hover:bg-primary/10 transition-colors" // 연산자 버튼 색상 강조
+              >
                 {signalData.operator}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-1">
+            <PopoverContent className="w-auto p-1 bg-popover border-border shadow-lg">
+              {" "}
+              {/* Popover 스타일 개선 */}
               <div className="flex flex-col">
                 {[">", "<", "=", "Crosses Above", "Crosses Below"].map((op) => (
                   <Button
                     key={op}
                     variant="ghost"
-                    className="justify-start"
+                    className="justify-start text-foreground hover:bg-accent hover:text-primary"
                     onClick={() => handleOperatorChange(op)}
                   >
                     {op}
@@ -234,29 +248,39 @@ export function RuleBlock({
           />
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              >
+                {" "}
+                {/* 더보기 버튼 스타일 개선 */}
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-1">
+            <PopoverContent className="w-auto p-1 bg-popover border-border shadow-lg">
+              {" "}
+              {/* Popover 스타일 개선 */}
               <div className="flex flex-col">
                 <Button
                   variant="ghost"
-                  className="justify-start text-xs"
+                  className="justify-start text-xs text-foreground hover:bg-accent hover:text-primary"
                   onClick={() => onAddRule(item.id, "OR")}
                 >
-                  <ArrowRight className="h-3 w-3 mr-2" /> OR 조건 추가
+                  <ArrowRight className="h-3 w-3 mr-2 text-primary" /> OR 조건
+                  추가
                 </Button>
                 <Button
                   variant="ghost"
-                  className="justify-start text-xs"
+                  className="justify-start text-xs text-foreground hover:bg-accent hover:text-primary"
                   onClick={() => onAddRule(item.id, "AND")}
                 >
-                  <CornerDownRight className="h-3 w-3 mr-2" /> AND 조건 추가
+                  <CornerDownRight className="h-3 w-3 mr-2 text-primary" /> AND
+                  조건 추가
                 </Button>
                 <Button
                   variant="ghost"
-                  className="text-destructive justify-start text-xs"
+                  className="text-destructive justify-start text-xs hover:bg-destructive/10"
                   onClick={() => onDelete(item.id)}
                 >
                   <Trash2 className="h-3 w-3 mr-2" /> 삭제
@@ -266,6 +290,13 @@ export function RuleBlock({
           </Popover>
         </div>
       </Card>
+      {/* depth가 0이 아니고, AND/OR 버튼이 있는 경우 시각적인 연결선 추가 (선택 사항 - RecursiveRuleRenderer에서 처리하는 것이 더 좋을 수 있음) */}
+      {depth > 0 && (
+        <div className="absolute left-0 top-0 bottom-0 w-4 pointer-events-none">
+          {/* 부모 블록과 연결되는 세로선 */}
+          <div className="absolute left-2.5 top-0 w-0.5 h-full bg-border group-hover:bg-primary/50 transition-colors"></div>
+        </div>
+      )}
     </div>
   );
 }
