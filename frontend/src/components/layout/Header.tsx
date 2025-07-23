@@ -13,7 +13,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Logo } from "@/components/ui/Logo";
 import { Sun, Moon, LayoutDashboard } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
-import { useHasHydrated } from "hooks/useHasHydrated";
+import { useHasHydrated } from "@/hooks/useHasHydrated";
 
 export function Header() {
   const t = useTranslations("Header");

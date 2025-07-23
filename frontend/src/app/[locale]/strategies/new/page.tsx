@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
-import { SignalBlockData } from "@/components/domain/strategy/SignalBlock";
+import { SignalBlockData } from "@/components/domain/strategy/RuleBlock";
 import { IndicatorDefinition } from "@/lib/indicators";
 
 type TargetSlot = {

@@ -5,7 +5,7 @@ import { NextIntlClientProvider, AbstractIntlMessages } from "next-intl";
 import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; // 👈 1. QueryClient 관련 모듈 임포트
 import React from "react";
-import { useReAuth } from "hooks/useReAuth";
+import { useReAuth } from "@/hooks/useReAuth";
 
 export function Providers({
   children,
