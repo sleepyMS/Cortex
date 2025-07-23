@@ -197,12 +197,17 @@ export function RuleBlock({
   });
 
   return (
-    <div className="w-full relative group">
+    <div className="relative group">
       {" "}
-      {/* ✨ 변경: paddingLeft 속성 제거 */}
+      {/* ✨ 변경: w-full 제거 */}
       <Card
-        className={clsx("p-3 rounded-lg shadow-sm transition-all", depthStyles)}
+        className={clsx(
+          "p-3 rounded-lg shadow-sm transition-all min-w-max",
+          depthStyles
+        )}
       >
+        {" "}
+        {/* ✨ 변경: min-w-max 추가 */}
         <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
           <ConditionSlot
             condition={signalData.conditionA}
@@ -296,7 +301,6 @@ export function RuleBlock({
           </Popover>
         </div>
       </Card>
-      {/* 이전에 추가했던 좌측 세로선은 RuleBlock에서 제거. RecursiveRuleRenderer에서 처리 */}
     </div>
   );
 }

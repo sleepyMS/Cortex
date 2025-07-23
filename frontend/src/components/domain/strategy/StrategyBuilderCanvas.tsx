@@ -57,8 +57,8 @@ function RecursiveRuleRenderer({
               item.children &&
               item.children.length > 0 && (
                 <div
-                  // ✨ 기존 pl-8 대신 반응형 클래스 적용: 모바일에서는 pl-6, lg 이상에서는 pl-8
-                  className={clsx("relative mt-2 pl-6 lg:pl-8", {
+                  className={clsx("relative mt-2 pl-8", {
+                    // AND 그룹에만 연결선 적용
                     "border-l-2 border-slate-700 dark:border-slate-500":
                       item.logicOperator === "AND",
                   })}
@@ -117,6 +117,7 @@ export function StrategyBuilderCanvas() {
     itemId: string,
     condition: "conditionA" | "conditionB"
   ) => {
+    // TODO: 현재 활성화된 캔버스(buy/sell)를 감지하는 로직 필요
     const ruleType: RuleType = "buy";
     setCurrentTarget({ ruleType, blockId: itemId, condition });
     setIsHubOpen(true);
@@ -156,10 +157,9 @@ export function StrategyBuilderCanvas() {
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
       />
-      {/* ✨ 모바일에서 좌우 패딩을 줄여 더 많은 공간 확보 (기존 p-4 md:p-6 lg:p-8 유지) */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 p-4 md:p-6 lg:p-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* 매수 조건 영역 */}
-        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50">
+        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50 overflow-x-auto">
           <div className="flex items-center justify-between border-b pb-4 mb-4 border-border/50">
             <h2 className="text-2xl font-bold text-foreground">
               {t("buyConditionsTitle")}
@@ -187,7 +187,7 @@ export function StrategyBuilderCanvas() {
         </div>
 
         {/* 매도 조건 영역 */}
-        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50">
+        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50 overflow-x-auto">
           <div className="flex items-center justify-between border-b pb-4 mb-4 border-border/50">
             <h2 className="text-2xl font-bold text-foreground">
               {t("sellConditionsTitle")}
