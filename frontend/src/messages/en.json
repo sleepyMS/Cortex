@@ -134,7 +134,16 @@
       "momentum": "Momentum",
       "volatility": "Volatility",
       "volume": "Volume"
-    }
+    },
+    "orOperator": "OR",
+    "andOperator": "AND",
+    "buyConditionsTitle": "Buy Conditions",
+    "sellConditionsTitle": "Sell Conditions",
+    "addTopLevelCondition": "Add Top-Level Condition",
+    "noBuyConditionsYet": "No buy conditions added yet. Click the button below to add your first condition.",
+    "addFirstBuyCondition": "Add First Buy Condition",
+    "noSellConditionsYet": "No sell conditions added yet. Click the button below to add your first condition.",
+    "addFirstSellCondition": "Add First Sell Condition"
   },
   "Navigation": {
     "strategies": "Strategies",

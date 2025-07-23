@@ -12,7 +12,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={clsx(
       // Glassmorphism 효과와 디자인
-      "rounded-xl border border-white/20 bg-white/10 p-6 shadow-lg backdrop-blur-lg",
+      "rounded-xl border border-white/20 bg-white/10 p-4 shadow-lg backdrop-blur-lg",
       // 다크 모드 스타일
       "dark:border-black/20 dark:bg-black/10",
       className

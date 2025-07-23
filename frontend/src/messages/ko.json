@@ -124,6 +124,7 @@
         "rulesRequired": "전략 규칙은 필수입니다."
       }
     },
+
     "indicatorHubTitle": "지표 허브",
     "indicatorHubDescription": "전략에 사용할 지표를 검색하고 선택하세요.",
     "searchIndicatorPlaceholder": "지표 이름으로 검색...",
@@ -134,7 +135,16 @@
       "momentum": "모멘텀",
       "volatility": "변동성",
       "volume": "거래량"
-    }
+    },
+    "orOperator": "OR",
+    "andOperator": "AND",
+    "buyConditionsTitle": "매수 조건",
+    "sellConditionsTitle": "매도 조건",
+    "addTopLevelCondition": "최상위 조건 추가",
+    "noBuyConditionsYet": "아직 매수 조건이 없습니다. 아래 버튼을 눌러 첫 조건을 추가하세요.",
+    "addFirstBuyCondition": "첫 매수 조건 추가",
+    "noSellConditionsYet": "아직 매도 조건이 없습니다. 아래 버튼을 눌러 첫 조건을 추가하세요.",
+    "addFirstSellCondition": "첫 매도 조건 추가"
   },
   "Navigation": {
     "strategies": "전략",
