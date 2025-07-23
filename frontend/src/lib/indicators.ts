@@ -22,25 +22,25 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   // =================================
   Close: {
     key: "Close",
-    name: "종가",
+    name: "종가 (Close)",
     category: "Price",
     parameters: [],
   },
   Open: {
     key: "Open",
-    name: "시가",
+    name: "시가 (Open)",
     category: "Price",
     parameters: [],
   },
   High: {
     key: "High",
-    name: "고가",
+    name: "고가 (High)",
     category: "Price",
     parameters: [],
   },
   Low: {
     key: "Low",
-    name: "저가",
+    name: "저가 (Low)",
     category: "Price",
     parameters: [],
   },
@@ -50,7 +50,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   // =================================
   SMA: {
     key: "SMA",
-    name: "단순 이동평균",
+    name: "단순 이동평균 (SMA)",
     category: "Trend",
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
@@ -58,7 +58,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   },
   EMA: {
     key: "EMA",
-    name: "지수 이동평균",
+    name: "지수 이동평균 (EMA)",
     category: "Trend",
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
@@ -66,7 +66,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   },
   MACD: {
     key: "MACD",
-    name: "MACD",
+    name: "이동평균 수렴확산 지수 (MACD)",
     category: "Trend",
     parameters: [
       {
@@ -91,7 +91,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   },
   ParabolicSAR: {
     key: "ParabolicSAR",
-    name: "파라볼릭 SAR",
+    name: "파라볼릭 SAR (Parabolic SAR)",
     category: "Trend",
     parameters: [
       {
@@ -117,7 +117,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   },
   Stoch: {
     key: "Stoch",
-    name: "스토캐스틱",
+    name: "스토캐스틱 (Stochastics)",
     category: "Momentum",
     parameters: [
       { key: "k_period", name: "%K 기간", type: "number", defaultValue: 14 },
@@ -139,7 +139,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   // =================================
   BB: {
     key: "BB",
-    name: "볼린저 밴드",
+    name: "볼린저 밴드 (Bollinger Bands)",
     category: "Volatility",
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
@@ -160,39 +160,14 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
   // =================================
   Volume: {
     key: "Volume",
-    name: "거래량",
+    name: "거래량 (Volume)",
     category: "Volume",
     parameters: [],
   },
   OBV: {
     key: "OBV",
-    name: "On-Balance Volume",
+    name: "잔고량 지표 (OBV)",
     category: "Volume",
     parameters: [],
-  },
-
-  // =================================
-  // 기타 (예시)
-  // =================================
-  Timeframe: {
-    key: "Timeframe",
-    name: "타임프레임",
-    category: "Price", // 가격과 관련이 깊으므로 Price 카테고리에 포함
-    parameters: [
-      {
-        key: "resolution",
-        name: "해상도",
-        type: "select",
-        defaultValue: "1h",
-        options: [
-          { value: "1m", label: "1분" },
-          { value: "5m", label: "5분" },
-          { value: "15m", label: "15분" },
-          { value: "1h", label: "1시간" },
-          { value: "4h", label: "4시간" },
-          { value: "1d", label: "1일" },
-        ],
-      },
-    ],
   },
 };
