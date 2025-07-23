@@ -142,6 +142,7 @@
   },
   "ParameterPopover": {
     "title": "지표 설정",
-    "description": "보조지표의 파라미터를 수정합니다."
+    "description": "보조지표의 파라미터를 수정합니다.",
+    "changeIndicatorButton": "지표 변경"
   }
 }

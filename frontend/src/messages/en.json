@@ -142,6 +142,7 @@
   },
   "ParameterPopover": {
     "title": "Indicator Settings",
-    "description": "Modify the parameters of the indicator."
+    "description": "Modify the parameters of the indicator.",
+    "changeIndicatorButton": "Change Indicator"
   }
 }

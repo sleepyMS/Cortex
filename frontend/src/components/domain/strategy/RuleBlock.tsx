@@ -24,7 +24,7 @@ import {
   Condition,
   ConditionType,
 } from "@/types/strategy";
-import clsx from "clsx"; // clsx 유틸리티 임포트
+import clsx from "clsx";
 
 // --- 타입 정의 ---
 interface RuleBlockProps {
@@ -33,7 +33,7 @@ interface RuleBlockProps {
   onAddRule: (parentId: string, as: "AND" | "OR") => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, newSignalData: SignalBlockData) => void;
-  onSlotClick: (itemId: string, condition: ConditionType) => void;
+  onSlotClick: (itemId: string, condition: ConditionType) => void; // onSlotClick 타입 유지
 }
 
 // --- 내부 컴포넌트: 조건 슬롯 ---
@@ -42,17 +42,22 @@ function ConditionSlot({
   onAddClick,
   onParamUpdate,
   onValueChange,
+  // ✨ 추가: ParameterPopover로 전달할 props
+  indicatorNameForPopover,
+  onIndicatorChangeForPopover,
 }: {
   condition: Condition | null;
   onAddClick: () => void;
   onParamUpdate: (newValues: Record<string, any>) => void;
   onValueChange: (newValue: number) => void;
+  indicatorNameForPopover?: string; // ParameterPopover에 전달할 지표 이름
+  onIndicatorChangeForPopover?: () => void; // ParameterPopover에 전달할 지표 변경 콜백
 }) {
   if (!condition) {
     return (
       <Button
         variant="outline"
-        className="h-full w-full border-dashed transition-colors hover:bg-muted/50 hover:border-primary-foreground/30 flex items-center justify-center text-muted-foreground" // 비어있는 슬롯 스타일 개선
+        className="h-full w-full border-dashed transition-colors hover:bg-muted/50 hover:border-primary-foreground/30 flex items-center justify-center text-muted-foreground"
         onClick={onAddClick}
       >
         <Plus className="h-4 w-4 mr-1" /> 추가
@@ -66,7 +71,7 @@ function ConditionSlot({
     return (
       <Input
         type="number"
-        className="h-full w-full text-center bg-background border-input focus-visible:ring-ring" // 값 슬롯 스타일 개선
+        className="h-full w-full text-center bg-background border-input focus-visible:ring-ring"
         value={displayValue}
         onChange={(e) => onValueChange(Number(e.target.value))}
       />
@@ -101,13 +106,15 @@ function ConditionSlot({
 
   return (
     <ParameterPopover
+      indicatorName={indicatorNameForPopover || indicatorDef.name} // ✨ prop 전달
       parameters={indicatorDef.parameters}
       values={currentValues}
       onValuesChange={onParamUpdate}
+      onIndicatorChange={onIndicatorChangeForPopover || (() => {})} // ✨ prop 전달. 기본값은 빈 함수
     >
       <Button
         variant="outline"
-        className="h-full w-full justify-start text-left truncate bg-card hover:bg-secondary/40 border-border hover:border-primary transition-colors group" // 지표 슬롯 스타일 개선
+        className="h-full w-full justify-start text-left truncate bg-card hover:bg-secondary/40 border-border hover:border-primary transition-colors group"
       >
         <span className="font-bold shrink truncate text-foreground group-hover:text-primary transition-colors">
           {indicatorDef.name}
@@ -127,7 +134,7 @@ export function RuleBlock({
   onAddRule,
   onDelete,
   onUpdate,
-  onSlotClick,
+  onSlotClick, // onSlotClick 그대로 사용
 }: RuleBlockProps) {
   if (item.type !== "signal") {
     return null;
@@ -137,6 +144,14 @@ export function RuleBlock({
 
   const handleOperatorChange = (newOperator: string) => {
     onUpdate(item.id, { ...signalData, operator: newOperator });
+  };
+
+  // ConditionSlot으로 전달할 onIndicatorChange 핸들러
+  const handleIndicatorChangeForSlot = (conditionType: ConditionType) => {
+    // ParameterPopover 내부의 '지표 변경' 버튼 클릭 시,
+    // 현재 RuleBlock의 ID와 변경하려는 conditionType을 가지고 IndicatorHub를 다시 연다.
+    // 이는 결국 RuleBlock의 onSlotClick을 호출하는 것과 동일한 효과를 낸다.
+    onSlotClick(item.id, conditionType);
   };
 
   const handleConditionChange = (
@@ -179,12 +194,11 @@ export function RuleBlock({
   };
 
   // depth에 따른 배경색 및 테두리 색상 변화를 위한 Tailwind CSS 클래스 정의
-  // globals.css에 정의된 변수들을 활용
   const depthStyles = clsx({
-    "bg-card": depth === 0, // 최상위 depth
-    "bg-background/70 border-l-2 border-primary/20": depth === 1, // 첫 번째 중첩
-    "bg-secondary/20 border-l-2 border-primary/30": depth === 2, // 두 번째 중첩
-    "bg-muted/10 border-l-2 border-primary/40": depth >= 3, // 세 번째 이상 중첩
+    "bg-card": depth === 0,
+    "bg-background/70 border-l-2 border-primary/20": depth === 1,
+    "bg-secondary/20 border-l-2 border-primary/30": depth === 2,
+    "bg-muted/10 border-l-2 border-primary/40": depth >= 3,
   });
 
   return (
@@ -192,13 +206,9 @@ export function RuleBlock({
       style={{ paddingLeft: `${depth * 1.5}rem` }}
       className="w-full relative group"
     >
-      {" "}
-      {/* paddingLeft를 줄여 더 간결하게 */}
       <Card
         className={clsx("p-3 rounded-lg shadow-sm transition-all", depthStyles)}
       >
-        {" "}
-        {/* Card 스타일 개선 */}
         <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
           <ConditionSlot
             condition={signalData.conditionA}
@@ -209,19 +219,22 @@ export function RuleBlock({
             onValueChange={(newValue) =>
               handleConditionChange("conditionA", { type: "value", newValue })
             }
+            // ✨ ParameterPopover에 prop 전달
+            indicatorNameForPopover={signalData.conditionA?.name}
+            onIndicatorChangeForPopover={() =>
+              handleIndicatorChangeForSlot("conditionA")
+            }
           />
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className="px-3 text-base font-medium text-primary hover:bg-primary/10 transition-colors" // 연산자 버튼 색상 강조
+                className="px-3 text-base font-medium text-primary hover:bg-primary/10 transition-colors"
               >
                 {signalData.operator}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-1 bg-popover border-border shadow-lg">
-              {" "}
-              {/* Popover 스타일 개선 */}
               <div className="flex flex-col">
                 {[">", "<", "=", "Crosses Above", "Crosses Below"].map((op) => (
                   <Button
@@ -245,6 +258,11 @@ export function RuleBlock({
             onValueChange={(newValue) =>
               handleConditionChange("conditionB", { type: "value", newValue })
             }
+            // ✨ ParameterPopover에 prop 전달
+            indicatorNameForPopover={signalData.conditionB?.name}
+            onIndicatorChangeForPopover={() =>
+              handleIndicatorChangeForSlot("conditionB")
+            }
           />
           <Popover>
             <PopoverTrigger asChild>
@@ -253,14 +271,10 @@ export function RuleBlock({
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
               >
-                {" "}
-                {/* 더보기 버튼 스타일 개선 */}
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-1 bg-popover border-border shadow-lg">
-              {" "}
-              {/* Popover 스타일 개선 */}
               <div className="flex flex-col">
                 <Button
                   variant="ghost"
@@ -290,10 +304,8 @@ export function RuleBlock({
           </Popover>
         </div>
       </Card>
-      {/* depth가 0이 아니고, AND/OR 버튼이 있는 경우 시각적인 연결선 추가 (선택 사항 - RecursiveRuleRenderer에서 처리하는 것이 더 좋을 수 있음) */}
       {depth > 0 && (
         <div className="absolute left-0 top-0 bottom-0 w-4 pointer-events-none">
-          {/* 부모 블록과 연결되는 세로선 */}
           <div className="absolute left-2.5 top-0 w-0.5 h-full bg-border group-hover:bg-primary/50 transition-colors"></div>
         </div>
       )}
