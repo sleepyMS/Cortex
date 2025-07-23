@@ -1,16 +1,21 @@
+// frontend/src/components/domain/strategy/StrategyBuilderCanvas.tsx
+
 "use client";
 
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { useStrategyState } from "@/hooks/useStrategyState";
+// ✨ useStrategyState 훅 임포트 제거 - 이제 page.tsx에서 상태를 관리하고 props로 전달받습니다.
+// import { useStrategyState } from "@/hooks/useStrategyState";
+
 import {
   RuleItem,
   RuleType,
   TargetSlot,
   SignalBlockData,
   LogicOperator,
-} from "@/types/strategy";
+  ConditionType, // ConditionType 임포트 추가
+} from "@/types/strategy"; // 필요한 타입들을 정확히 임포트합니다.
 import { Button } from "@/components/ui/Button";
 import { RuleBlock } from "./RuleBlock";
 import { IndicatorHub } from "./IndicatorHub";
@@ -18,18 +23,56 @@ import { PlusCircle } from "lucide-react";
 import { IndicatorDefinition } from "@/lib/indicators";
 import clsx from "clsx";
 
+// ✨ StrategyBuilderCanvasProps 인터페이스 정의
+interface StrategyBuilderCanvasProps {
+  buyRules: RuleItem[];
+  sellRules: RuleItem[];
+  onAddRule: (
+    ruleType: RuleType,
+    parentId: string | null,
+    as: LogicOperator
+  ) => void;
+  onDeleteRule: (ruleType: RuleType, id: string) => void;
+  onUpdateRuleData: (
+    ruleType: RuleType,
+    id: string,
+    newSignalData: SignalBlockData
+  ) => void;
+  onUpdateBlockCondition: (
+    target: TargetSlot,
+    indicator: IndicatorDefinition
+  ) => void;
+  // onSlotClick은 StrategyBuilderCanvas에서 직접 호출되는 것이 아니라,
+  // page.tsx의 handleSlotClick을 통해 IndicatorHub를 여는 역할만 하므로 RuleBlock에 전달됩니다.
+  // RuleBlock의 onSlotClick은 (blockId: string, condition: ConditionType) 형태이므로 이 형태에 맞춥니다.
+  onSlotClick: (
+    ruleType: RuleType,
+    blockId: string,
+    condition: ConditionType
+  ) => void;
+}
+
 // --- 내부 렌더링 컴포넌트 ---
+// RecursiveRuleRenderer의 props 타입도 명확히 정의합니다.
+interface RecursiveRuleRendererProps {
+  items: RuleItem[];
+  depth?: number;
+  ruleType: RuleType;
+  // stateAndHandlers는 이제 StrategyBuilderCanvas의 props를 직접 전달받는 형태가 됩니다.
+  stateAndHandlers: {
+    onAddRule: (parentId: string, as: "AND" | "OR") => void; // RuleBlock에서 호출될 함수 시그니처
+    onDelete: (id: string) => void; // RuleBlock에서 호출될 함수 시그니처
+    onUpdate: (id: string, newSignalData: SignalBlockData) => void; // RuleBlock에서 호출될 함수 시그니처
+    onSlotClick: (blockId: string, condition: ConditionType) => void; // RuleBlock에서 호출될 함수 시그니처
+  };
+}
+
 function RecursiveRuleRenderer({
   items,
   depth = 0,
   ruleType,
   stateAndHandlers,
-}: {
-  items: RuleItem[];
-  depth?: number;
-  ruleType: RuleType;
-  stateAndHandlers: any;
-}) {
+}: RecursiveRuleRendererProps) {
   const t = useTranslations("StrategyBuilder");
 
   return (
@@ -48,6 +91,7 @@ function RecursiveRuleRenderer({
             <RuleBlock
               item={item}
               depth={depth}
+              // ✨ RuleBlock에 전달되는 props를 stateAndHandlers에서 가져옵니다.
               onAddRule={stateAndHandlers.onAddRule}
               onDelete={stateAndHandlers.onDelete}
               onUpdate={stateAndHandlers.onUpdate}
@@ -99,46 +143,31 @@ function RecursiveRuleRenderer({
 }
 
 // --- 메인 캔버스 컴포넌트 ---
-export function StrategyBuilderCanvas() {
+// ✨ StrategyBuilderCanvasProps 인터페이스를 적용합니다.
+export function StrategyBuilderCanvas({
+  buyRules,
+  sellRules,
+  onAddRule,
+  onDeleteRule,
+  onUpdateRuleData,
+  onUpdateBlockCondition, // 새로운 props 추가
+  onSlotClick, // onSlotClick도 props로 받습니다.
+}: StrategyBuilderCanvasProps) {
+  // ✨ 인터페이스 적용
   const t = useTranslations("StrategyBuilder");
-  const {
-    buyRules,
-    sellRules,
-    addRule,
-    deleteRule,
-    updateRuleData,
-    updateBlockCondition,
-  } = useStrategyState();
-
-  const [isHubOpen, setIsHubOpen] = useState(false);
-  const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
-
-  const openHubWithTarget = (
-    itemId: string,
-    condition: "conditionA" | "conditionB"
-  ) => {
-    // TODO: 현재 활성화된 캔버스(buy/sell)를 감지하는 로직 필요
-    const ruleType: RuleType = "buy";
-    setCurrentTarget({ ruleType, blockId: itemId, condition });
-    setIsHubOpen(true);
-  };
-
-  const handleIndicatorSelect = (indicator: IndicatorDefinition) => {
-    if (currentTarget) {
-      updateBlockCondition(currentTarget, indicator);
-    }
-    setIsHubOpen(false);
-    setCurrentTarget(null);
-  };
 
   const renderRuleList = (rules: RuleItem[], ruleType: RuleType) => {
+    // ✨ stateAndHandlers 객체는 이제 StrategyBuilderCanvas의 props를 사용하여 구성합니다.
     const stateAndHandlers = {
       onAddRule: (parentId: string, as: "AND" | "OR") =>
-        addRule(ruleType, parentId, as),
-      onDelete: (id: string) => deleteRule(ruleType, id),
+        onAddRule(ruleType, parentId, as), // prop으로 받은 onAddRule 호출
+      onDelete: (id: string) => onDeleteRule(ruleType, id), // prop으로 받은 onDeleteRule 호출
       onUpdate: (id: string, newSignalData: SignalBlockData) =>
-        updateRuleData(ruleType, id, newSignalData),
-      onSlotClick: openHubWithTarget,
+        onUpdateRuleData(ruleType, id, newSignalData), // prop으로 받은 onUpdateRuleData 호출
+      // onSlotClick은 RuleBlock에서 호출될 때 RuleBlock의 ID와 conditionType만 전달합니다.
+      // RuleBlock의 onSlotClick prop은 (blockId: string, condition: ConditionType) 형태여야 합니다.
+      onSlotClick: (blockId: string, condition: ConditionType) =>
+        onSlotClick(ruleType, blockId, condition), // prop으로 받은 onSlotClick 호출
     };
 
     return (
@@ -152,12 +181,13 @@ export function StrategyBuilderCanvas() {
 
   return (
     <>
-      <IndicatorHub
+      {/* IndicatorHub 관련 UI는 page.tsx로 이동했으므로 여기서는 제거합니다. */}
+      {/* <IndicatorHub
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
-      />
-      <div className="grid grid-cols-1 gap-8">
+      /> */}
+      <div className="grid grid-cols-1 gap-8 p-4 md:p-6 lg:p-8">
         {/* 매수 조건 영역 */}
         <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50 overflow-x-auto">
           <div className="flex items-center justify-between border-b pb-4 mb-4 border-border/50">
@@ -167,9 +197,11 @@ export function StrategyBuilderCanvas() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => addRule("buy")}
+              onClick={() => onAddRule("buy", null, "OR")}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
+              {" "}
+              {/* ✨ onClick 핸들러 변경 */}
               <PlusCircle className="mr-2 h-4 w-4 text-primary" />
               {t("addTopLevelCondition")}
             </Button>
@@ -177,7 +209,12 @@ export function StrategyBuilderCanvas() {
           {buyRules.length === 0 && (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
               <p className="mb-2">{t("noBuyConditionsYet")}</p>
-              <Button onClick={() => addRule("buy")} variant="secondary">
+              <Button
+                onClick={() => onAddRule("buy", null, "OR")}
+                variant="secondary"
+              >
+                {" "}
+                {/* ✨ onClick 핸들러 변경 */}
                 <PlusCircle className="mr-2 h-4 w-4" />{" "}
                 {t("addFirstBuyCondition")}
               </Button>
@@ -195,9 +232,11 @@ export function StrategyBuilderCanvas() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => addRule("sell")}
+              onClick={() => onAddRule("sell", null, "OR")}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
+              {" "}
+              {/* ✨ onClick 핸들러 변경 */}
               <PlusCircle className="mr-2 h-4 w-4 text-primary" />
               {t("addTopLevelCondition")}
             </Button>
@@ -205,7 +244,12 @@ export function StrategyBuilderCanvas() {
           {sellRules.length === 0 && (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
               <p className="mb-2">{t("noSellConditionsYet")}</p>
-              <Button onClick={() => addRule("sell")} variant="secondary">
+              <Button
+                onClick={() => onAddRule("sell", null, "OR")}
+                variant="secondary"
+              >
+                {" "}
+                {/* ✨ onClick 핸들러 변경 */}
                 <PlusCircle className="mr-2 h-4 w-4" />{" "}
                 {t("addFirstSellCondition")}
               </Button>
