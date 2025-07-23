@@ -122,7 +122,7 @@ const HeroSection = () => {
       </div>
 
       <motion.div
-        className="container relative mx-auto flex min-h-[calc(100vh-80px)] max-w-4xl flex-col items-center justify-center gap-6 px-4 py-20 text-center"
+        className="container relative mx-auto flex min-h-[calc(100vh-80px)] max-w-6xl flex-col items-center justify-center gap-6 px-4 py-20 text-center"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
