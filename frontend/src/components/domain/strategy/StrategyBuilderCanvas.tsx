@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations } from "next-intl"; // useTranslations 임포트 유지
+import { useTranslations } from "next-intl";
 
 import { useStrategyState } from "@/hooks/useStrategyState";
 import {
@@ -30,23 +30,20 @@ function RecursiveRuleRenderer({
   ruleType: RuleType;
   stateAndHandlers: any;
 }) {
-  const t = useTranslations("StrategyBuilder"); // ✨ useTranslations 훅 추가
+  const t = useTranslations("StrategyBuilder");
 
   return (
     <div className="relative space-y-2">
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           {/* OR 조건 사이에 시각적 구분선 추가 */}
-          {index > 0 &&
-            item.logicOperator === "OR" && ( // depth === 0 조건 제거. 중첩된 OR에도 적용 가능하도록.
-              <div className="flex items-center justify-center my-4">
-                <span className="bg-background text-muted-foreground px-3 py-1 rounded-full text-xs font-semibold border border-dashed border-border shadow-inner">
-                  {" "}
-                  {/* shadow-inner 추가 */}
-                  {t("orOperator")} {/* ✨ 언어팩 사용 */}
-                </span>
-              </div>
-            )}
+          {index > 0 && item.logicOperator === "OR" && (
+            <div className="flex items-center justify-center my-4">
+              <span className="bg-background text-muted-foreground px-3 py-1 rounded-full text-xs font-semibold border border-dashed border-border shadow-inner">
+                {t("orOperator")}
+              </span>
+            </div>
+          )}
           <div className="relative">
             <RuleBlock
               item={item}
@@ -60,7 +57,8 @@ function RecursiveRuleRenderer({
               item.children &&
               item.children.length > 0 && (
                 <div
-                  className={clsx("relative mt-2 pl-8", {
+                  // ✨ 기존 pl-8 대신 반응형 클래스 적용: 모바일에서는 pl-6, lg 이상에서는 pl-8
+                  className={clsx("relative mt-2 pl-6 lg:pl-8", {
                     "border-l-2 border-slate-700 dark:border-slate-500":
                       item.logicOperator === "AND",
                   })}
@@ -68,14 +66,12 @@ function RecursiveRuleRenderer({
                   {/* AND 연산자 라벨 */}
                   {item.logicOperator === "AND" && (
                     <div className="absolute -left-3 top-1/2 -translate-y-1/2 z-10">
-                      {" "}
-                      {/* z-10 추가하여 다른 요소 위로 오게 */}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 rounded-full px-2 text-xs bg-primary text-primary-foreground border-primary hover:bg-primary-foreground hover:text-primary transition-colors whitespace-nowrap" // whitespace-nowrap 추가
+                        className="h-6 rounded-full px-2 text-xs bg-primary text-primary-foreground border-primary hover:bg-primary-foreground hover:text-primary transition-colors whitespace-nowrap"
                       >
-                        {t("andOperator")} {/* ✨ 언어팩 사용 */}
+                        {t("andOperator")}
                       </Button>
                     </div>
                   )}
@@ -104,7 +100,7 @@ function RecursiveRuleRenderer({
 
 // --- 메인 캔버스 컴포넌트 ---
 export function StrategyBuilderCanvas() {
-  const t = useTranslations("StrategyBuilder"); // ✨ useTranslations 훅 사용
+  const t = useTranslations("StrategyBuilder");
   const {
     buyRules,
     sellRules,
@@ -121,10 +117,7 @@ export function StrategyBuilderCanvas() {
     itemId: string,
     condition: "conditionA" | "conditionB"
   ) => {
-    // TODO: 현재 활성화된 캔버스(buy/sell)를 감지하는 로직 필요
-    // 이 부분은 Context API 등을 사용하여 현재 매수/매도 캔버스 상태를 추적하는 것이 이상적입니다.
-    // 현재는 'buy'로 가정하고 진행합니다.
-    const ruleType: RuleType = "buy"; // 예시: 현재 'buy'로 고정되어 있음. 실제 구현 시 동적으로 결정 필요.
+    const ruleType: RuleType = "buy";
     setCurrentTarget({ ruleType, blockId: itemId, condition });
     setIsHubOpen(true);
   };
@@ -163,18 +156,13 @@ export function StrategyBuilderCanvas() {
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
       />
+      {/* ✨ 모바일에서 좌우 패딩을 줄여 더 많은 공간 확보 (기존 p-4 md:p-6 lg:p-8 유지) */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 p-4 md:p-6 lg:p-8">
-        {" "}
-        {/* ✨ 전체 컨테이너 패딩 추가 */}
         {/* 매수 조건 영역 */}
-        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-6 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50">
-          {" "}
-          {/* ✨ 스타일 개선 */}
+        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50">
           <div className="flex items-center justify-between border-b pb-4 mb-4 border-border/50">
-            {" "}
-            {/* ✨ 하단 border 추가 */}
             <h2 className="text-2xl font-bold text-foreground">
-              {t("buyConditionsTitle")} {/* ✨ 언어팩 사용 */}
+              {t("buyConditionsTitle")}
             </h2>
             <Button
               variant="ghost"
@@ -182,33 +170,27 @@ export function StrategyBuilderCanvas() {
               onClick={() => addRule("buy")}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              {" "}
-              {/* ✨ 버튼 색상 조정 */}
               <PlusCircle className="mr-2 h-4 w-4 text-primary" />
-              {t("addTopLevelCondition")} {/* ✨ 언어팩 사용 */}
+              {t("addTopLevelCondition")}
             </Button>
           </div>
           {buyRules.length === 0 && (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
-              <p className="mb-2">{t("noBuyConditionsYet")}</p>{" "}
-              {/* ✨ 언어팩 사용 */}
+              <p className="mb-2">{t("noBuyConditionsYet")}</p>
               <Button onClick={() => addRule("buy")} variant="secondary">
                 <PlusCircle className="mr-2 h-4 w-4" />{" "}
-                {t("addFirstBuyCondition")} {/* ✨ 언어팩 사용 */}
+                {t("addFirstBuyCondition")}
               </Button>
             </div>
           )}
           {renderRuleList(buyRules, "buy")}
         </div>
+
         {/* 매도 조건 영역 */}
-        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-6 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50">
-          {" "}
-          {/* ✨ 스타일 개선 */}
+        <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50">
           <div className="flex items-center justify-between border-b pb-4 mb-4 border-border/50">
-            {" "}
-            {/* ✨ 하단 border 추가 */}
             <h2 className="text-2xl font-bold text-foreground">
-              {t("sellConditionsTitle")} {/* ✨ 언어팩 사용 */}
+              {t("sellConditionsTitle")}
             </h2>
             <Button
               variant="ghost"
@@ -216,19 +198,16 @@ export function StrategyBuilderCanvas() {
               onClick={() => addRule("sell")}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              {" "}
-              {/* ✨ 버튼 색상 조정 */}
               <PlusCircle className="mr-2 h-4 w-4 text-primary" />
-              {t("addTopLevelCondition")} {/* ✨ 언어팩 사용 */}
+              {t("addTopLevelCondition")}
             </Button>
           </div>
           {sellRules.length === 0 && (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
-              <p className="mb-2">{t("noSellConditionsYet")}</p>{" "}
-              {/* ✨ 언어팩 사용 */}
+              <p className="mb-2">{t("noSellConditionsYet")}</p>
               <Button onClick={() => addRule("sell")} variant="secondary">
                 <PlusCircle className="mr-2 h-4 w-4" />{" "}
-                {t("addFirstSellCondition")} {/* ✨ 언어팩 사용 */}
+                {t("addFirstSellCondition")}
               </Button>
             </div>
           )}

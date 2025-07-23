@@ -1,3 +1,5 @@
+// frontend/src/app/[locale]/layout.tsx
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 // useMessages를 layout에서 사용합니다.
