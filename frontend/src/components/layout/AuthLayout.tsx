@@ -111,7 +111,7 @@ export default function AuthLayout({
 
         {/* Right Side: Form (children) */}
         <div className="flex justify-center md:justify-start">
-          <div className="w-full max-w-sm rounded-xl border border-border/40 bg-background/80 p-6 sm:p-8 shadow-2xl backdrop-blur-lg">
+          <div className="w-full max-w-sm rounded-xl border border-border/40 bg-background/80 p-6 sm:p-7 shadow-2xl backdrop-blur-lg">
             {children}
           </div>
         </div>
