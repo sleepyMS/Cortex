@@ -1,3 +1,5 @@
+// file: frontend/src/hooks/useStrategyState.ts
+
 "use client";
 
 import { useState, useCallback } from "react";

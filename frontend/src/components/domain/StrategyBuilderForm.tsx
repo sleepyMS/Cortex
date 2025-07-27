@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "@/i18n/navigation";
-import { useTranslations } from "next-intl"; // 👈 1. useTranslations 임포트
+import { useTranslations } from "next-intl";
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Spinner } from "@/components/ui/Spinner";
 
 export function StrategyBuilderForm() {
-  const t = useTranslations("StrategyBuilder.form"); // 👈 2. 번역 함수 초기화 (form 하위 객체 사용)
+  const t = useTranslations("StrategyBuilder.form");
   const router = useRouter();
 
   // Zod 스키마 정의 시 t 함수를 사용하여 오류 메시지를 가져옵니다.

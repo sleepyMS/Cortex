@@ -1,3 +1,5 @@
+// frontend/src/types/strategy.ts
+
 // --- 기본 타입 ---
 export type LogicOperator = "AND" | "OR";
 export type RuleType = "buy" | "sell";

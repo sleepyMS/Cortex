@@ -1,4 +1,4 @@
-// file: frontend/src/components/ui/Spinner.tsx (예시 코드)
+// file: frontend/src/components/ui/Spinner.tsx
 
 import React from "react";
 

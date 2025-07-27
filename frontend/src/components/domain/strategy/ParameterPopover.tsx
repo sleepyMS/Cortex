@@ -1,3 +1,5 @@
+// frontend/src/components/domain/strategy/ParameterPopover.tsx
+
 import { useTranslations } from "next-intl";
 import {
   Popover,
@@ -18,20 +20,20 @@ import { IndicatorParameter } from "@/lib/indicators";
 import { RefreshCcw } from "lucide-react"; // RefreshCcw 아이콘 임포트
 
 interface ParameterPopoverProps {
-  indicatorName: string; // ✨ 추가: 현재 지표의 이름을 표시하기 위한 prop
+  indicatorName: string; // 현재 지표의 이름을 표시하기 위한 prop
   parameters: IndicatorParameter[];
   values: Record<string, any>; // 현재 설정된 파라미터 값들 (e.g., { period: 20 })
   onValuesChange: (newValues: Record<string, any>) => void;
-  onIndicatorChange: () => void; // ✨ 추가: 지표 변경을 위한 콜백 함수
+  onIndicatorChange: () => void; // 지표 변경을 위한 콜백 함수
   children: React.ReactNode;
 }
 
 export function ParameterPopover({
-  indicatorName, // ✨ prop 추가
+  indicatorName,
   parameters,
   values,
   onValuesChange,
-  onIndicatorChange, // ✨ prop 추가
+  onIndicatorChange,
   children,
 }: ParameterPopoverProps) {
   const t = useTranslations("ParameterPopover");
@@ -54,7 +56,6 @@ export function ParameterPopover({
                 {" "}
                 {t("title")}
               </span>{" "}
-              {/* ✨ 지표 이름 표시 */}
             </h4>
             <p className="text-sm text-muted-foreground">{t("description")}</p>
           </div>
@@ -105,7 +106,6 @@ export function ParameterPopover({
               </div>
             ))}
           </div>
-          {/* ✨ 지표 변경 버튼 추가 */}
           <Button
             variant="outline"
             className="w-full mt-4 bg-secondary/30 text-secondary-foreground hover:bg-secondary/50 transition-colors"

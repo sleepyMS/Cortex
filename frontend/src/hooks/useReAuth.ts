@@ -14,7 +14,7 @@ export function useReAuth() {
     }
 
     const attemptReAuth = async () => {
-      // 👇 1. 토큰이 존재하면, API 호출 전에 즉시 헤더를 설정합니다.
+      // 1. 토큰이 존재하면, API 호출 전에 즉시 헤더를 설정합니다.
       if (accessToken) {
         apiClient.defaults.headers.common[
           "Authorization"

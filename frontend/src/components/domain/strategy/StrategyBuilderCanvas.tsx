@@ -5,25 +5,21 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 
-// ✨ useStrategyState 훅 임포트 제거 - 이제 page.tsx에서 상태를 관리하고 props로 전달받습니다.
-// import { useStrategyState } from "@/hooks/useStrategyState";
-
 import {
   RuleItem,
   RuleType,
   TargetSlot,
   SignalBlockData,
   LogicOperator,
-  ConditionType, // ConditionType 임포트 추가
-} from "@/types/strategy"; // 필요한 타입들을 정확히 임포트합니다.
+  ConditionType,
+} from "@/types/strategy";
 import { Button } from "@/components/ui/Button";
 import { RuleBlock } from "./RuleBlock";
-import { IndicatorHub } from "./IndicatorHub";
 import { PlusCircle } from "lucide-react";
 import { IndicatorDefinition } from "@/lib/indicators";
 import clsx from "clsx";
 
-// ✨ StrategyBuilderCanvasProps 인터페이스 정의
+// StrategyBuilderCanvasProps 인터페이스 정의
 interface StrategyBuilderCanvasProps {
   buyRules: RuleItem[];
   sellRules: RuleItem[];
@@ -91,7 +87,6 @@ function RecursiveRuleRenderer({
             <RuleBlock
               item={item}
               depth={depth}
-              // ✨ RuleBlock에 전달되는 props를 stateAndHandlers에서 가져옵니다.
               onAddRule={stateAndHandlers.onAddRule}
               onDelete={stateAndHandlers.onDelete}
               onUpdate={stateAndHandlers.onUpdate}
@@ -181,12 +176,6 @@ export function StrategyBuilderCanvas({
 
   return (
     <>
-      {/* IndicatorHub 관련 UI는 page.tsx로 이동했으므로 여기서는 제거합니다. */}
-      {/* <IndicatorHub
-        isOpen={isHubOpen}
-        onOpenChange={setIsHubOpen}
-        onSelect={handleIndicatorSelect}
-      /> */}
       <div className="grid grid-cols-1 gap-8 p-4 md:p-6 lg:p-8">
         {/* 매수 조건 영역 */}
         <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50 overflow-x-auto">

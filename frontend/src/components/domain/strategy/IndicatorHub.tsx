@@ -1,3 +1,5 @@
+// frontend/src/components/domain/strategy/IndicatorHub.tsx
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -42,15 +44,8 @@ export function IndicatorHub({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* DialogContent는 이제 Dialog.tsx에서 기본 스타일(패딩, 보더 등)을 제거했으므로,
-          여기서 필요한 모든 스타일을 다시 명시적으로 추가해야 합니다.
-          다만, 너비 제어는 Dialog.tsx에서 w-[calc(100vw-2rem)]로 강제하므로
-          여기서는 max-w만 전달.
-      */}
       <DialogContent className="max-w-full sm:max-w-md md:max-w-lg lg:max-w-4xl h-[75vh] flex flex-col rounded-lg bg-background border border-primary">
         {" "}
-        {/* ✨ 모든 기본 스타일 재적용 */}
-        {/* DialogHeader에 명시적인 수평 및 수직 패딩 적용 */}
         <DialogHeader className="px-4 pt-4 pb-4 border-b border-border/50 sm:px-6 sm:pt-6 sm:pb-4">
           <DialogTitle>{t("indicatorHubTitle")}</DialogTitle>
           <DialogDescription>{t("indicatorHubDescription")}</DialogDescription>

@@ -1,3 +1,5 @@
+// frontend/src/lib/indicators.ts
+
 // 1. 지표 파라미터의 타입을 정의합니다.
 export type IndicatorParameter = {
   key: string; // 데이터 객체에서 사용할 키 (e.g., 'period')

@@ -1,3 +1,5 @@
+// frontend/src/components/ui/Dialog.tsx
+
 "use client";
 
 import * as React from "react";

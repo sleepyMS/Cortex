@@ -1,3 +1,5 @@
+// frontend/src/components/domain/strategy/RuleBlock.tsx
+
 "use client";
 
 import React from "react";
@@ -199,7 +201,6 @@ export function RuleBlock({
   return (
     <div className="relative group">
       {" "}
-      {/* ✨ 변경: w-full 제거 */}
       <Card
         className={clsx(
           "p-3 rounded-lg shadow-sm transition-all min-w-max",
@@ -207,7 +208,6 @@ export function RuleBlock({
         )}
       >
         {" "}
-        {/* ✨ 변경: min-w-max 추가 */}
         <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
           <ConditionSlot
             condition={signalData.conditionA}
