@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useUserStore } from "@/store/userStore"; // 👈 1. userStore를 임포트합니다.
+import { useUserStore } from "@/store/userStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 

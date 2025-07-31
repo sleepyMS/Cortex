@@ -38,28 +38,33 @@ interface StrategyBuilderCanvasProps {
     target: TargetSlot,
     indicator: IndicatorDefinition
   ) => void;
-  // onSlotClick은 StrategyBuilderCanvas에서 직접 호출되는 것이 아니라,
-  // page.tsx의 handleSlotClick을 통해 IndicatorHub를 여는 역할만 하므로 RuleBlock에 전달됩니다.
-  // RuleBlock의 onSlotClick은 (blockId: string, condition: ConditionType) 형태이므로 이 형태에 맞춥니다.
   onSlotClick: (
     ruleType: RuleType,
     blockId: string,
     condition: ConditionType
   ) => void;
+  // 👈 onTimeframeChange의 시그니처는 page.tsx에서 받는 그대로 유지
+  onTimeframeChange: (target: TargetSlot, newTimeframe: string) => void;
 }
 
 // --- 내부 렌더링 컴포넌트 ---
-// RecursiveRuleRenderer의 props 타입도 명확히 정의합니다.
 interface RecursiveRuleRendererProps {
   items: RuleItem[];
   depth?: number;
   ruleType: RuleType;
-  // stateAndHandlers는 이제 StrategyBuilderCanvas의 props를 직접 전달받는 형태가 됩니다.
+  // 👈 stateAndHandlers.onTimeframeChange 시그니처를 RuleBlock이 기대하는 3개 인자로 변경
   stateAndHandlers: {
-    onAddRule: (parentId: string, as: "AND" | "OR") => void; // RuleBlock에서 호출될 함수 시그니처
-    onDelete: (id: string) => void; // RuleBlock에서 호출될 함수 시그니처
-    onUpdate: (id: string, newSignalData: SignalBlockData) => void; // RuleBlock에서 호출될 함수 시그니처
-    onSlotClick: (blockId: string, condition: ConditionType) => void; // RuleBlock에서 호출될 함수 시그니처
+    onAddRule: (parentId: string, as: "AND" | "OR") => void;
+    onDelete: (id: string) => void;
+    onUpdate: (id: string, newSignalData: SignalBlockData) => void;
+    onSlotClick: (blockId: string, condition: ConditionType) => void;
+    onTimeframeChange: (
+      // 👈 여기 시그니처 변경
+      ruleType: RuleType,
+      blockId: string,
+      conditionType: ConditionType,
+      newTimeframe: string
+    ) => void;
   };
 }
 
@@ -91,6 +96,8 @@ function RecursiveRuleRenderer({
               onDelete={stateAndHandlers.onDelete}
               onUpdate={stateAndHandlers.onUpdate}
               onSlotClick={stateAndHandlers.onSlotClick}
+              onTimeframeChange={stateAndHandlers.onTimeframeChange} // 👈 변경된 시그니처의 함수 전달
+              ruleType={ruleType} // 👈 ruleType prop 전달
             />
             {item.type === "signal" &&
               item.children &&
@@ -138,31 +145,39 @@ function RecursiveRuleRenderer({
 }
 
 // --- 메인 캔버스 컴포넌트 ---
-// ✨ StrategyBuilderCanvasProps 인터페이스를 적용합니다.
 export function StrategyBuilderCanvas({
   buyRules,
   sellRules,
   onAddRule,
   onDeleteRule,
   onUpdateRuleData,
-  onUpdateBlockCondition, // 새로운 props 추가
-  onSlotClick, // onSlotClick도 props로 받습니다.
+  onUpdateBlockCondition,
+  onSlotClick,
+  onTimeframeChange, // 👈 새로운 props 받기
 }: StrategyBuilderCanvasProps) {
-  // ✨ 인터페이스 적용
   const t = useTranslations("StrategyBuilder");
 
   const renderRuleList = (rules: RuleItem[], ruleType: RuleType) => {
-    // ✨ stateAndHandlers 객체는 이제 StrategyBuilderCanvas의 props를 사용하여 구성합니다.
     const stateAndHandlers = {
       onAddRule: (parentId: string, as: "AND" | "OR") =>
-        onAddRule(ruleType, parentId, as), // prop으로 받은 onAddRule 호출
-      onDelete: (id: string) => onDeleteRule(ruleType, id), // prop으로 받은 onDeleteRule 호출
+        onAddRule(ruleType, parentId, as),
+      onDelete: (id: string) => onDeleteRule(ruleType, id),
       onUpdate: (id: string, newSignalData: SignalBlockData) =>
-        onUpdateRuleData(ruleType, id, newSignalData), // prop으로 받은 onUpdateRuleData 호출
-      // onSlotClick은 RuleBlock에서 호출될 때 RuleBlock의 ID와 conditionType만 전달합니다.
-      // RuleBlock의 onSlotClick prop은 (blockId: string, condition: ConditionType) 형태여야 합니다.
+        onUpdateRuleData(ruleType, id, newSignalData),
       onSlotClick: (blockId: string, condition: ConditionType) =>
-        onSlotClick(ruleType, blockId, condition), // prop으로 받은 onSlotClick 호출
+        onSlotClick(ruleType, blockId, condition),
+      // 👈 RuleBlock으로 전달될 onTimeframeChange 함수:
+      // 이 함수는 3개 인자를 받아, StrategyBuilderCanvasProps의 onTimeframeChange (2개 인자)를 호출
+      onTimeframeChange: (
+        targetRuleType: RuleType,
+        blockId: string,
+        conditionType: ConditionType,
+        newTimeframe: string
+      ) =>
+        onTimeframeChange(
+          { ruleType: targetRuleType, blockId, condition: conditionType },
+          newTimeframe
+        ),
     };
 
     return (
@@ -189,8 +204,6 @@ export function StrategyBuilderCanvas({
               onClick={() => onAddRule("buy", null, "OR")}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              {" "}
-              {/* ✨ onClick 핸들러 변경 */}
               <PlusCircle className="mr-2 h-4 w-4 text-primary" />
               {t("addTopLevelCondition")}
             </Button>
@@ -202,9 +215,7 @@ export function StrategyBuilderCanvas({
                 onClick={() => onAddRule("buy", null, "OR")}
                 variant="secondary"
               >
-                {" "}
-                {/* ✨ onClick 핸들러 변경 */}
-                <PlusCircle className="mr-2 h-4 w-4" />{" "}
+                <PlusCircle className="mr-2 h-4 w-4" />
                 {t("addFirstBuyCondition")}
               </Button>
             </div>
@@ -224,8 +235,6 @@ export function StrategyBuilderCanvas({
               onClick={() => onAddRule("sell", null, "OR")}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              {" "}
-              {/* ✨ onClick 핸들러 변경 */}
               <PlusCircle className="mr-2 h-4 w-4 text-primary" />
               {t("addTopLevelCondition")}
             </Button>
@@ -237,9 +246,7 @@ export function StrategyBuilderCanvas({
                 onClick={() => onAddRule("sell", null, "OR")}
                 variant="secondary"
               >
-                {" "}
-                {/* ✨ onClick 핸들러 변경 */}
-                <PlusCircle className="mr-2 h-4 w-4" />{" "}
+                <PlusCircle className="mr-2 h-4 w-4" />
                 {t("addFirstSellCondition")}
               </Button>
             </div>

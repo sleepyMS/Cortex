@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 // useMessages를 layout에서 사용합니다.
 import { useMessages } from "next-intl";
-import { Providers } from "@/components/providers/Providers";
+import { Providers } from "@/providers/Providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { PageWrapper } from "@/components/layout/PageWrapper";

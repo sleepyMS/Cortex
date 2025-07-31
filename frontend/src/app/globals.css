@@ -12,8 +12,8 @@
     --card: 240 10% 100%;
     --card-foreground: 240 10% 3.9%;
 
-    --popover: 240 10% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 240 10% 100%; /* Light mode popover background */
+    --popover-foreground: 240 10% 3.9%; /* Light mode popover text */
 
     --primary: 259 92% 66%; /* Violet */
     --primary-foreground: 259 92% 98%; /* Light text for on-violet buttons */
@@ -46,8 +46,8 @@
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%; /* Dark mode popover background */
+    --popover-foreground: 0 0% 98%; /* Dark mode popover text */
 
     --primary: 259 92% 66%;
     --primary-foreground: 259 92% 98%;
@@ -79,6 +79,66 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* 👈 여기에 누락된 Tailwind CSS 변수 규칙을 추가합니다 */
+  /* Shadcn UI에서 사용하는 표준 방식 */
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+  .bg-popover {
+    /* 👈 이 부분이 핵심입니다! */
+    background-color: hsl(var(--popover));
+  }
+  .text-popover-foreground {
+    color: hsl(var(--popover-foreground));
+  }
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+  .bg-secondary {
+    background-color: hsl(var(--secondary));
+  }
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+  .border-input {
+    border-color: hsl(var(--input));
+  }
+  .focus-visible\:ring-ring:focus-visible {
+    --tw-ring-color: hsl(var(--ring));
+  }
 }
 
 /* @keyframes float 애니메이션 정의 - globals.css로 이동 */
@@ -88,13 +148,13 @@
   }
   25% {
     transform: translate(-20px, 30px) scale(1.05);
-  } /* 움직임 범위 및 크기 변화 증가 */
+  }
   50% {
     transform: translate(20px, -30px) scale(0.95);
-  } /* 움직임 범위 및 크기 변화 증가 */
+  }
   75% {
     transform: translate(-10px, 20px) scale(1.03);
-  } /* 움직임 범위 및 크기 변화 증가 */
+  }
   100% {
     transform: translate(0, 0) scale(1);
   }

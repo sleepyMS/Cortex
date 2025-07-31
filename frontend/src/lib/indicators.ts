@@ -15,6 +15,8 @@ export type IndicatorDefinition = {
   name: string; // UI 표시 이름 (e.g., '단순 이동평균')
   category: "Trend" | "Momentum" | "Volatility" | "Volume" | "Price"; // 카테고리 추가
   parameters: IndicatorParameter[];
+  defaultTimeframe: string; // 지표의 기본 타임프레임
+  supportedTimeframes: string[]; // 지표가 지원하는 타임프레임 목록
 };
 
 // 3. 모든 지표의 정의를 담은 레지스트리 (여기에만 추가하면 됨)
@@ -27,24 +29,72 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     name: "종가 (Close)",
     category: "Price",
     parameters: [],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   Open: {
     key: "Open",
     name: "시가 (Open)",
     category: "Price",
     parameters: [],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   High: {
     key: "High",
     name: "고가 (High)",
     category: "Price",
     parameters: [],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   Low: {
     key: "Low",
     name: "저가 (Low)",
     category: "Price",
     parameters: [],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
 
   // =================================
@@ -57,6 +107,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
     ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   EMA: {
     key: "EMA",
@@ -64,6 +126,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     category: "Trend",
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
+    ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
     ],
   },
   MACD: {
@@ -90,6 +164,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
         defaultValue: 9,
       },
     ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   ParabolicSAR: {
     key: "ParabolicSAR",
@@ -104,6 +190,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
       },
       { key: "maximum", name: "최대 변수", type: "number", defaultValue: 0.2 },
     ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
 
   // =================================
@@ -116,6 +214,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 14 },
     ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   Stoch: {
     key: "Stoch",
@@ -126,6 +236,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
       { key: "d_period", name: "%D 기간", type: "number", defaultValue: 3 },
       { key: "slowing", name: "Slowing", type: "number", defaultValue: 3 },
     ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   CCI: {
     key: "CCI",
@@ -133,6 +255,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     category: "Momentum",
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
+    ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
     ],
   },
 
@@ -147,6 +281,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
       { key: "period", name: "기간", type: "number", defaultValue: 20 },
       { key: "stdDev", name: "표준편차", type: "number", defaultValue: 2 },
     ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   ATR: {
     key: "ATR",
@@ -154,6 +300,18 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     category: "Volatility",
     parameters: [
       { key: "period", name: "기간", type: "number", defaultValue: 14 },
+    ],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
     ],
   },
 
@@ -165,11 +323,35 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDefinition> = {
     name: "거래량 (Volume)",
     category: "Volume",
     parameters: [],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
   OBV: {
     key: "OBV",
     name: "잔고량 지표 (OBV)",
     category: "Volume",
     parameters: [],
+    defaultTimeframe: "1h",
+    supportedTimeframes: [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "4h",
+      "1d",
+      "1w",
+      "1M",
+    ],
   },
 };

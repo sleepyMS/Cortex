@@ -8,8 +8,12 @@ export type ConditionType = "conditionA" | "conditionB";
 // --- 데이터 구조 타입 ---
 export interface Condition {
   type: "indicator" | "value";
-  name: string;
-  value: { indicatorKey: string; values: Record<string, any> } | number;
+  name: string; // UI에 표시될 이름 (예: "SMA(20)", "Close", "50")
+  // 지표 타입일 경우 { indicatorKey: string; values: Record<string, any>; timeframe: string; }
+  // 값 타입일 경우 number
+  value:
+    | { indicatorKey: string; values: Record<string, any>; timeframe: string }
+    | number;
 }
 
 export interface SignalBlockData {

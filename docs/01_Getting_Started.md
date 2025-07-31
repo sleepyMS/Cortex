@@ -51,8 +51,8 @@ SECRET_KEY="<[https://random-string-generator.com/](https://random-string-genera
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 
-# 4. FastAPI 웹 서버 실행
-uvicorn main:app --reload
+# 4. FastAPI 웹 서버 실행 (Cortex 루트 경로에서)
+uvicorn backend.main:app --reload
 ```
 
 - **확인:** 브라우저에서 `http://127.0.0.1:8000` 접속 시 "Hello World" 또는 API 문서가 보이면 성공입니다.
@@ -61,14 +61,15 @@ uvicorn main:app --reload
 
 ```bash
 # 1. 백엔드 폴더로 이동 및 가상환경 활성화 (이미 했다면 생략)
-cd backend
 .\venv\Scripts\activate # Windows
 # source venv/bin/activate # macOS/Linux
 
-# 2. Celery 워커 실행
-# (main.py가 아닌, celery 인스턴스가 있는 파일 경로를 지정해야 합니다. 예: worker.py)
-celery -A app.worker worker -l info
-# celery -A app.worker:celery_app worker -l info -P solo # 병렬 처리 성능은 떨어지지만, Windows 환경과의 호환성이 가장 뛰어나 개발 및 테스트 목적
+# 2. eventlet 설치
+pip install eventlet
+
+# 3. Celery 워커 실행
+# (main.py가 아닌, celery 인스턴스가 있는 파일 경로를 지정해야 합니다. 예: celery_app.py)
+celery -A backend.app.celery_app worker -l info --pool=eventlet
 ```
 
 - **확인:** 터미널에 Celery 로고와 함께 `[tasks]` 목록이 보이고 `ready` 상태가 되면 성공입니다. 이 터미널은 계속 실행 상태로 두어야 합니다.

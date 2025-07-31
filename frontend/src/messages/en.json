@@ -91,21 +91,63 @@
   },
   "Dashboard": {
     "loadingDashboard": "Loading your dashboard...",
-    "authRequired": "Login required to access this page.",
     "fetchError": "Failed to load dashboard data: {errorDetail}. Please try again.",
     "errorTitle": "An Error Occurred",
-    "loginAgain": "Login Again",
-    "welcomeMessage": "Welcome, {email}!",
-    "dashboardOverview": "Here's a quick overview of your Cortex activity. Manage your strategies and monitor performance.",
+    "tryAgainLater": "Please try again later.",
+    "accessDeniedTitle": "Access Denied",
+    "accessDeniedMessage": "You do not have permission to view this page. Administrator privileges are required.",
+    "goToHomepage": "Go to Homepage",
+    "noDataAvailable": "No dashboard data available.",
+
+    "welcomeAdminMessage": "Welcome, Administrator {email}!",
+    "adminDashboardOverview": "Here's an overview of your Cortex application's performance and user base. Manage your system effectively.",
+    "totalUsers": "Total Users",
+    "activeUsers": "Active Users",
+    "totalStrategies": "Total Strategies",
+    "publicStrategies": "Public Strategies",
+    "totalBacktestsRun": "Total Backtests Run",
+    "totalSuccessfulBacktests": "Successful Backtests",
+    "totalLiveBots": "Total Live Bots",
+    "activeLiveBots": "Active Live Bots",
+    "overallPnl": "Overall P&L",
+    "latestSignups": "Latest Signups",
+
+    "welcomeMessage": "Welcome back, {email}!",
+    "userDashboardOverview": "Here's a personalized overview of your investment activities. Stay on top of your strategies and bots.",
     "yourInfo": "Your Information",
-    "idLabel": "ID",
     "emailLabel": "Email",
-    "roleLabel": "Role",
-    "roleNotSet": "Not Set",
-    "portfolioOverviewTitle": "Portfolio Overview",
-    "portfolioOverviewDescription": "View your current asset allocation and performance.",
-    "activeBotsTitle": "Active Trading Bots",
-    "activeBotsDescription": "Monitor your running automated strategies."
+    "usernameLabel": "Username",
+    "unverified": "Unverified",
+    "memberSince": "Member Since",
+    "subscriptionInfo": "Subscription Info",
+    "currentPlan": "Current Plan",
+    "free": "Free",
+    "active": "Active",
+    "inactive": "Inactive",
+    "subscriptionStatus": "Status",
+    "subscriptionEndDate": "End Date",
+    "backtestLimit": "Backtest Limit",
+    "timesPerDay": "times/day",
+    "concurrentBotsLimit": "Concurrent Bots Limit",
+    "bots": "bots",
+    "allowedTimeframes": "Allowed Timeframes",
+    "manageSubscription": "Manage Subscription",
+    "totalBacktests": "Total Backtests",
+    "successfulBacktests": "Successful Backtests",
+    "latestBacktests": "Latest Backtests",
+    "latestLiveBots": "Latest Live Bots",
+    "unknownStrategy": "Unknown Strategy",
+    "unknownExchange": "Unknown Exchange",
+    "viewAllBacktests": "View All Backtests",
+    "viewAllLiveBots": "View All Live Bots",
+    "quickLinks": "Quick Links",
+    "manageApiKeys": "Manage API Keys",
+    "createNewStrategy": "Create New Strategy",
+    "authRequiredTitle": "Login Required",
+    "authRequiredMessage": "Please log in to access your dashboard.",
+    "loginButton": "Log In",
+    "unknownRoleTitle": "Access Denied: Unknown Role",
+    "unknownRoleMessage": "Your user role is not recognized. Please contact support."
   },
   "StrategyBuilder": {
     "title": "Create New Strategy",
@@ -150,8 +192,236 @@
     "community": "Community"
   },
   "ParameterPopover": {
-    "title": "Indicator Settings",
-    "description": "Modify the parameters of the indicator.",
+    "title": "Parameters",
+    "description": "Adjust the parameters for this indicator.",
+    "timeframeLabel": "Timeframe",
+    "upgradePlanForTimeframe": "Upgrade Plan",
     "changeIndicatorButton": "Change Indicator"
+  },
+  "RuleBlock": {
+    "addCondition": "Add Condition",
+    "invalidIndicator": "Invalid Indicator",
+    "unknownIndicator": "Unknown Indicator",
+    "crossesAbove": "Crosses Above",
+    "crossesBelow": "Crosses Below",
+    "orOperator": "OR",
+    "andOperator": "AND",
+    "addOrCondition": "Add OR Condition",
+    "addAndCondition": "Add AND Condition",
+    "delete": "Delete",
+    "buyConditionsTitle": "Buy Conditions",
+    "sellConditionsTitle": "Sell Conditions",
+    "addTopLevelCondition": "Add Top-Level Condition",
+    "noBuyConditionsYet": "No buy conditions added yet.",
+    "addFirstBuyCondition": "Add First Buy Condition",
+    "noSellConditionsYet": "No sell conditions added yet.",
+    "addFirstSellCondition": "Add First Sell Condition"
+  },
+  "BacktestSetupForm": {
+    "title": "Set Up Your Backtest",
+    "description": "Configure the parameters to simulate your trading strategy's performance.",
+    "strategyLabel": "Strategy",
+    "selectStrategyPlaceholder": "Select a strategy",
+    "loadingStrategies": "Loading strategies...",
+    "tickerLabel": "Trading Pair",
+    "startDateLabel": "Start Date",
+    "endDateLabel": "End Date",
+    "pickADate": "Pick a date",
+    "initialCapitalLabel": "Initial Capital",
+    "commissionRateLabel": "Commission Rate",
+    "runBacktestButton": "Run Backtest",
+    "startingBacktest": "Starting backtest...",
+    "backtestStartedSuccess": "Backtest started successfully! Check the list below for status updates.",
+    "backtestStartedError": "Failed to start backtest: {error}",
+    "endDateBeforeStartDateError": "End date cannot be before start date."
+  },
+  "BacktestList": {
+    "title": "Your Backtest History",
+    "description": "View the status and results of your past backtest simulations.",
+    "statusPending": "Pending",
+    "statusRunning": "Running",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusCanceled": "Canceled",
+    "loadingBacktests": "Loading backtests...",
+    "fetchError": "Failed to load backtest history: {errorDetail}",
+    "retryLoad": "Retry",
+    "noBacktestsYet": "You haven't run any backtests yet.",
+    "runFirstBacktestHint": "Set up a backtest above to see your history here!",
+    "unknownStrategy": "Unknown Strategy",
+    "startedAt": "Started At",
+    "totalReturn": "Total Return",
+    "cancelBacktest": "Cancel"
+  },
+  "BacktesterPage": {
+    "title": "Strategy Backtester"
+  },
+  "BacktestResultSummary": {
+    "title": "Backtest Performance Summary",
+    "totalReturn": "Total Return",
+    "mdd": "Max Drawdown (MDD)",
+    "sharpeRatio": "Sharpe Ratio",
+    "winRate": "Win Rate",
+    "noResultsAvailable": "No results available yet. Backtest may still be running or has failed."
+  },
+  "EquityChart": {
+    "title": "Equity Curve",
+    "notEnoughData": "Not enough data to display the chart (at least 2 data points required).",
+    "chartDataError": "Error loading chart data: {errorDetail}",
+    "checkBacktestResults": "Please check your backtest results. Data might be incomplete or malformed."
+  },
+  "TradeLogTable": {
+    "title": "Trade Log",
+    "header": {
+      "timestamp": "Timestamp",
+      "side": "Side",
+      "price": "Price",
+      "quantity": "Quantity",
+      "fee": "Fee",
+      "pnl": "P&L",
+      "currentBalance": "Balance"
+    },
+    "side": {
+      "buy": "BUY",
+      "sell": "SELL"
+    },
+    "noTradeLogsAvailable": "No trade logs available for this backtest. It might still be running or has no trades.",
+    "noResults": "No results.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "BacktestDetailPage": {
+    "title": "Backtest Results for '{strategyName}'",
+    "subtitle": "Details for Backtest ID: {backtestId}",
+    "loadingResults": "Loading backtest results...",
+    "backtestNotFoundTitle": "Backtest Not Found",
+    "backtestNotFoundMessage": "The backtest record you are looking for does not exist or you do not have permission to view it.",
+    "backToBacktestList": "Back to Backtest List",
+    "errorLoadingResultsTitle": "Error Loading Results",
+    "fetchError": "Failed to load backtest data: {errorDetail}. Please try again.",
+    "retryLoad": "Retry",
+    "unknownStrategy": "Unknown Strategy"
+  },
+  "BacktestList": {
+    "title": "Your Backtest History",
+    "description": "View the status and results of your past backtest simulations.",
+    "statusPending": "Pending",
+    "statusRunning": "Running",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusCanceled": "Canceled",
+    "loadingBacktests": "Loading backtests...",
+    "fetchError": "Failed to load backtest history: {errorDetail}",
+    "retryLoad": "Retry",
+    "noBacktestsYet": "You haven't run any backtests yet.",
+    "runFirstBacktestHint": "Set up a backtest above to see your history here!",
+    "unknownStrategy": "Unknown Strategy",
+    "startedAt": "Started At",
+    "totalReturn": "Total Return",
+    "cancelBacktest": "Cancel"
+  },
+  "BacktestResultSummary": {
+    "title": "Backtest Performance Summary",
+    "totalReturn": "Total Return",
+    "mdd": "Max Drawdown (MDD)",
+    "sharpeRatio": "Sharpe Ratio",
+    "winRate": "Win Rate",
+    "noResultsAvailable": "No results available yet. Backtest may still be running or has failed."
+  },
+  "EquityChart": {
+    "title": "Equity Curve",
+    "notEnoughData": "Not enough data to display the chart (at least 2 data points required).",
+    "chartDataError": "Error loading chart data: {errorDetail}",
+    "checkBacktestResults": "Please check your backtest results. Data might be incomplete or malformed."
+  },
+  "TradeLogTable": {
+    "title": "Trade Log",
+    "header": {
+      "timestamp": "Timestamp",
+      "side": "Side",
+      "price": "Price",
+      "quantity": "Quantity",
+      "fee": "Fee",
+      "pnl": "P&L",
+      "currentBalance": "Balance"
+    },
+    "side": {
+      "buy": "BUY",
+      "sell": "SELL"
+    },
+    "noTradeLogsAvailable": "No trade logs available for this backtest. It might still be running or has no trades.",
+    "noResults": "No results.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "BacktestDetailPage": {
+    "title": "Backtest Results for '{strategyName}'",
+    "subtitle": "Details for Backtest ID: {backtestId}",
+    "loadingResults": "Loading backtest results...",
+    "backtestNotFoundTitle": "Backtest Not Found",
+    "backtestNotFoundMessage": "The backtest record you are looking for does not exist or you do not have permission to view it.",
+    "backToBacktestList": "Back to Backtest List",
+    "errorLoadingResultsTitle": "Error Loading Results",
+    "fetchError": "Failed to load backtest data: {errorDetail}. Please try again.",
+    "retryLoad": "Retry",
+    "unknownStrategy": "Unknown Strategy"
+  },
+  "BacktestList": {
+    "title": "Your Backtest History",
+    "description": "View the status and results of your past backtest simulations.",
+    "statusPending": "Pending",
+    "statusRunning": "Running",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusCanceled": "Canceled",
+    "loadingBacktests": "Loading backtests...",
+    "fetchError": "Failed to load backtest history: {errorDetail}",
+    "retryLoad": "Retry",
+    "noBacktestsYet": "You haven't run any backtests yet.",
+    "runFirstBacktestHint": "Set up a backtest above to see your history here!",
+    "unknownStrategy": "Unknown Strategy",
+    "startedAt": "Started At",
+    "totalReturn": "Total Return",
+    "cancelBacktest": "Cancel"
+  },
+  "BacktestResultSummary": {
+    "title": "Backtest Performance Summary",
+    "totalReturn": "Total Return",
+    "mdd": "Max Drawdown (MDD)",
+    "sharpeRatio": "Sharpe Ratio",
+    "winRate": "Win Rate",
+    "noResultsAvailable": "No results available yet. Backtest may still be running or has failed."
+  },
+  "EquityChart": {
+    "title": "Equity Curve",
+    "notEnoughData": "Not enough data to display the chart (at least 2 data points required).",
+    "chartDataError": "Error loading chart data: {errorDetail}",
+    "checkBacktestResults": "Please check your backtest results. Data might be incomplete or malformed."
+  },
+  "TradeLogTable": {
+    "title": "Trade Log",
+    "header": {
+      "timestamp": "Timestamp",
+      "side": "Side",
+      "price": "Price",
+      "quantity": "Quantity",
+      "fee": "Fee",
+      "pnl": "P&L",
+      "currentBalance": "Balance"
+    },
+    "side": {
+      "buy": "BUY",
+      "sell": "SELL"
+    },
+    "noTradeLogsAvailable": "No trade logs available for this backtest. It might still be running or has no trades.",
+    "noResults": "No results.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    }
   }
 }

@@ -11,9 +11,9 @@ import {
   Condition,
   RuleType,
   TargetSlot,
-  LogicOperator, // LogicOperator import 추가
-} from "@/types/strategy"; // strategy.ts 파일에서 타입 정의를 가져옵니다.
-import { IndicatorDefinition } from "@/lib/indicators";
+  LogicOperator,
+} from "@/types/strategy";
+import { INDICATOR_REGISTRY, IndicatorDefinition } from "@/lib/indicators"; // INDICATOR_REGISTRY import 추가
 
 // --- 헬퍼 함수 ---
 
@@ -31,7 +31,7 @@ const updateItemRecursive = (
     if (item.type === "signal" && item.children && item.children.length > 0) {
       const newChildren = updateItemRecursive(item.children, id, updater);
       if (newChildren !== item.children) {
-        return { ...item, children: newChildren } as SignalBlockData; // 타입 단언 추가
+        return { ...item, children: newChildren } as SignalBlockData;
       }
     }
     return item;
@@ -68,7 +68,7 @@ export function useStrategyState() {
     (
       ruleType: RuleType,
       parentId: string | null = null,
-      as: LogicOperator = "OR" // 'as' 파라미터의 타입을 LogicOperator로 명시
+      as: LogicOperator = "OR"
     ) => {
       const newSignal: SignalBlockData = {
         type: "signal",
@@ -76,10 +76,9 @@ export function useStrategyState() {
         conditionA: null,
         operator: ">",
         conditionB: null,
-        children: [], // SignalBlockData에 children 추가
-        logicOperator: "AND", // SignalBlockData에 logicOperator 추가
+        children: [],
+        logicOperator: "AND",
       };
-      // RuleItem이 이미 SignalBlockData 타입이므로 newSignal을 직접 할당
       const newRule: RuleItem = newSignal;
 
       const setter = getSetter(ruleType);
@@ -94,22 +93,18 @@ export function useStrategyState() {
             const item = items[i];
             if (item.id === parentId) {
               const newItems = [...items];
-              // item.type이 "signal"일 때 children 속성에 접근
               if (item.type === "signal") {
                 if (as === "AND") {
-                  // 기존 children에 새로운 규칙 추가
                   newItems[i] = {
                     ...item,
                     children: [...item.children, newRule],
-                  } as SignalBlockData; // 타입 단언
+                  } as SignalBlockData;
                 } else {
-                  // OR 조건으로 새로운 규칙을 현재 규칙 다음에 삽입
                   newItems.splice(i + 1, 0, newRule);
                 }
               }
               return newItems;
             }
-            // item.type이 "signal"일 때 children 속성에 접근
             if (
               item.type === "signal" &&
               item.children &&
@@ -121,7 +116,7 @@ export function useStrategyState() {
                 newItems[i] = {
                   ...item,
                   children: newChildren,
-                } as SignalBlockData; // 타입 단언
+                } as SignalBlockData;
                 return newItems;
               }
             }
@@ -146,13 +141,12 @@ export function useStrategyState() {
     (ruleType: RuleType, id: string, newSignalData: SignalBlockData) => {
       getSetter(ruleType)((prev) =>
         updateItemRecursive(prev, id, (item) => {
-          if (item.type !== "signal") return item; // item이 SignalBlockData가 아닐 경우 반환
+          if (item.type !== "signal") return item;
 
-          // item 자체가 SignalBlockData이므로 data 속성에 접근하지 않고 직접 업데이트
           return {
             ...item,
-            ...newSignalData, // newSignalData의 모든 속성을 직접 복사하여 업데이트
-          } as SignalBlockData; // 타입 단언 추가
+            ...newSignalData,
+          } as SignalBlockData;
         })
       );
     },
@@ -167,7 +161,7 @@ export function useStrategyState() {
       const setter = getSetter(ruleType);
       setter((prev) =>
         updateItemRecursive(prev, blockId, (item) => {
-          if (item.type !== "signal") return item; // item이 SignalBlockData가 아닐 경우 반환
+          if (item.type !== "signal") return item;
 
           const newConditionData: Condition = {
             type: "indicator",
@@ -180,14 +174,66 @@ export function useStrategyState() {
                 acc[param.key] = param.defaultValue;
                 return acc;
               }, {} as Record<string, any>),
+              timeframe: indicator.defaultTimeframe, // 지표의 기본 타임프레임 할당
             },
           };
-          // item 자체가 SignalBlockData이므로 [condition] 키를 사용하여 직접 업데이트
           const updatedSignalItem: SignalBlockData = {
             ...item,
             [condition]: newConditionData,
           };
-          return updatedSignalItem; // 업데이트된 SignalBlockData 반환
+          return updatedSignalItem;
+        })
+      );
+    },
+    [getSetter]
+  );
+
+  const updateBlockTimeframe = useCallback(
+    (target: TargetSlot, newTimeframe: string) => {
+      if (!target) return;
+      const { ruleType, blockId, condition } = target;
+
+      const setter = getSetter(ruleType);
+      setter((prev) =>
+        updateItemRecursive(prev, blockId, (item) => {
+          if (item.type !== "signal") return item;
+
+          const currentCondition = item[condition];
+          if (!currentCondition || currentCondition.type !== "indicator") {
+            return item; // 지표 타입이 아니거나 조건이 없으면 변경하지 않음
+          }
+
+          // currentCondition.value가 객체이며 indicatorKey 속성을 가지고 있는지 확인
+          if (
+            typeof currentCondition.value !== "object" ||
+            currentCondition.value === null ||
+            !("indicatorKey" in currentCondition.value)
+          ) {
+            return item;
+          }
+
+          // currentCondition.value를 명시적으로 타입 단언
+          const updatedValue = {
+            ...(currentCondition.value as {
+              indicatorKey: string;
+              values: Record<string, any>;
+              timeframe: string;
+            }),
+            timeframe: newTimeframe,
+          };
+
+          const updatedCondition: Condition = {
+            ...currentCondition,
+            value: updatedValue,
+            // 이름도 업데이트하여 타임프레임이 반영되도록 할 수 있지만, 여기서는 UI에서 처리하는 것이 더 유연함
+            // name: `${currentCondition.name.split('(')[0]}(${Object.values(updatedValue.values).join(',')}, ${newTimeframe})`,
+          };
+
+          const updatedSignalItem: SignalBlockData = {
+            ...item,
+            [condition]: updatedCondition,
+          };
+          return updatedSignalItem;
         })
       );
     },
@@ -201,5 +247,6 @@ export function useStrategyState() {
     deleteRule,
     updateRuleData,
     updateBlockCondition,
+    updateBlockTimeframe, // 새로운 훅 반환
   };
 }
