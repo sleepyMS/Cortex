@@ -235,75 +235,9 @@
     "backtestStartedError": "Failed to start backtest: {error}",
     "endDateBeforeStartDateError": "End date cannot be before start date."
   },
-  "BacktestList": {
-    "title": "Your Backtest History",
-    "description": "View the status and results of your past backtest simulations.",
-    "statusPending": "Pending",
-    "statusRunning": "Running",
-    "statusCompleted": "Completed",
-    "statusFailed": "Failed",
-    "statusCanceled": "Canceled",
-    "loadingBacktests": "Loading backtests...",
-    "fetchError": "Failed to load backtest history: {errorDetail}",
-    "retryLoad": "Retry",
-    "noBacktestsYet": "You haven't run any backtests yet.",
-    "runFirstBacktestHint": "Set up a backtest above to see your history here!",
-    "unknownStrategy": "Unknown Strategy",
-    "startedAt": "Started At",
-    "totalReturn": "Total Return",
-    "cancelBacktest": "Cancel"
-  },
   "BacktesterPage": {
     "title": "Strategy Backtester"
   },
-  "BacktestResultSummary": {
-    "title": "Backtest Performance Summary",
-    "totalReturn": "Total Return",
-    "mdd": "Max Drawdown (MDD)",
-    "sharpeRatio": "Sharpe Ratio",
-    "winRate": "Win Rate",
-    "noResultsAvailable": "No results available yet. Backtest may still be running or has failed."
-  },
-  "EquityChart": {
-    "title": "Equity Curve",
-    "notEnoughData": "Not enough data to display the chart (at least 2 data points required).",
-    "chartDataError": "Error loading chart data: {errorDetail}",
-    "checkBacktestResults": "Please check your backtest results. Data might be incomplete or malformed."
-  },
-  "TradeLogTable": {
-    "title": "Trade Log",
-    "header": {
-      "timestamp": "Timestamp",
-      "side": "Side",
-      "price": "Price",
-      "quantity": "Quantity",
-      "fee": "Fee",
-      "pnl": "P&L",
-      "currentBalance": "Balance"
-    },
-    "side": {
-      "buy": "BUY",
-      "sell": "SELL"
-    },
-    "noTradeLogsAvailable": "No trade logs available for this backtest. It might still be running or has no trades.",
-    "noResults": "No results.",
-    "pagination": {
-      "previous": "Previous",
-      "next": "Next"
-    }
-  },
-  "BacktestDetailPage": {
-    "title": "Backtest Results for '{strategyName}'",
-    "subtitle": "Details for Backtest ID: {backtestId}",
-    "loadingResults": "Loading backtest results...",
-    "backtestNotFoundTitle": "Backtest Not Found",
-    "backtestNotFoundMessage": "The backtest record you are looking for does not exist or you do not have permission to view it.",
-    "backToBacktestList": "Back to Backtest List",
-    "errorLoadingResultsTitle": "Error Loading Results",
-    "fetchError": "Failed to load backtest data: {errorDetail}. Please try again.",
-    "retryLoad": "Retry",
-    "unknownStrategy": "Unknown Strategy"
-  },
   "BacktestList": {
     "title": "Your Backtest History",
     "description": "View the status and results of your past backtest simulations.",
@@ -369,59 +303,5 @@
     "fetchError": "Failed to load backtest data: {errorDetail}. Please try again.",
     "retryLoad": "Retry",
     "unknownStrategy": "Unknown Strategy"
-  },
-  "BacktestList": {
-    "title": "Your Backtest History",
-    "description": "View the status and results of your past backtest simulations.",
-    "statusPending": "Pending",
-    "statusRunning": "Running",
-    "statusCompleted": "Completed",
-    "statusFailed": "Failed",
-    "statusCanceled": "Canceled",
-    "loadingBacktests": "Loading backtests...",
-    "fetchError": "Failed to load backtest history: {errorDetail}",
-    "retryLoad": "Retry",
-    "noBacktestsYet": "You haven't run any backtests yet.",
-    "runFirstBacktestHint": "Set up a backtest above to see your history here!",
-    "unknownStrategy": "Unknown Strategy",
-    "startedAt": "Started At",
-    "totalReturn": "Total Return",
-    "cancelBacktest": "Cancel"
-  },
-  "BacktestResultSummary": {
-    "title": "Backtest Performance Summary",
-    "totalReturn": "Total Return",
-    "mdd": "Max Drawdown (MDD)",
-    "sharpeRatio": "Sharpe Ratio",
-    "winRate": "Win Rate",
-    "noResultsAvailable": "No results available yet. Backtest may still be running or has failed."
-  },
-  "EquityChart": {
-    "title": "Equity Curve",
-    "notEnoughData": "Not enough data to display the chart (at least 2 data points required).",
-    "chartDataError": "Error loading chart data: {errorDetail}",
-    "checkBacktestResults": "Please check your backtest results. Data might be incomplete or malformed."
-  },
-  "TradeLogTable": {
-    "title": "Trade Log",
-    "header": {
-      "timestamp": "Timestamp",
-      "side": "Side",
-      "price": "Price",
-      "quantity": "Quantity",
-      "fee": "Fee",
-      "pnl": "P&L",
-      "currentBalance": "Balance"
-    },
-    "side": {
-      "buy": "BUY",
-      "sell": "SELL"
-    },
-    "noTradeLogsAvailable": "No trade logs available for this backtest. It might still be running or has no trades.",
-    "noResults": "No results.",
-    "pagination": {
-      "previous": "Previous",
-      "next": "Next"
-    }
   }
 }
