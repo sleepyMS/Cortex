@@ -153,19 +153,17 @@
     "title": "Create New Strategy",
     "form": {
       "nameLabel": "Strategy Name",
+      "namePlaceholder": "e.g., My Trend Following Strategy",
       "descriptionLabel": "Description",
-      "rulesLabel": "Rules (JSON Format)",
-      "rulesPlaceholder": "{ \"buy\": [...], \"sell\": [...] }",
+      "descriptionPlaceholder": "Briefly describe your strategy.",
       "saveButton": "Save Strategy",
-      "successMessage": "Strategy saved successfully!",
-      "genericErrorMessage": "Failed to save strategy.",
-      "jsonErrorMessage": "Rules are not in a valid JSON format.",
-      "errorPrefix": "Error",
-      "errors": {
-        "nameRequired": "Strategy name is required.",
-        "rulesRequired": "Strategy rules are required."
-      }
+      "savingStrategy": "Saving strategy...",
+      "saveSuccess": "Strategy '{strategyName}' saved successfully!",
+      "saveError": "Failed to save strategy: {error}",
+      "rulesRequired": "Strategy rules (Buy or Sell) are required.",
+      "goBackButton": "Go Back"
     },
+    "rulesTitle": "Strategy Rules Builder",
     "indicatorHubTitle": "Indicator Hub",
     "indicatorHubDescription": "Search and select an indicator for your strategy.",
     "searchIndicatorPlaceholder": "Search by indicator name...",
@@ -303,5 +301,47 @@
     "fetchError": "Failed to load backtest data: {errorDetail}. Please try again.",
     "retryLoad": "Retry",
     "unknownStrategy": "Unknown Strategy"
+  },
+  "StrategiesPage": {
+    "title": "My Strategies",
+    "loadingStrategies": "Loading your strategies...",
+    "errorLoadingTitle": "Error Loading Strategies",
+    "fetchError": "Failed to load strategies: {errorDetail}. Please try again.",
+    "retryLoad": "Retry",
+    "createNewStrategy": "Create New Strategy",
+    "searchPlaceholder": "Search strategies...",
+    "filterPlaceholder": "Filter by status",
+    "filterAll": "All",
+    "filterPublic": "Public",
+    "filterPrivate": "Private",
+    "sortByPlaceholder": "Sort by",
+    "sortByNewest": "Newest",
+    "sortByLastUpdated": "Last Updated",
+    "sortByNameAsc": "Name (A-Z)",
+    "noStrategiesAvailable": "You haven't created any strategies yet.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "StrategyCard": {
+    "noDescription": "No description provided.",
+    "statusPublic": "Public",
+    "statusPrivate": "Private",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "actions": "Actions",
+    "editStrategy": "Edit Strategy",
+    "runBacktest": "Run Backtest",
+    "deployLiveBot": "Deploy Live Bot",
+    "makePublic": "Make Public",
+    "makePrivate": "Make Private",
+    "deleteStrategy": "Delete Strategy",
+    "confirmDelete": "Are you sure you want to delete strategy '{strategyName}'? This action cannot be undone.",
+    "deleteSuccess": "Strategy deleted successfully!",
+    "deleteError": "Failed to delete strategy: {error}",
+    "togglePublicSuccess": "Strategy visibility set to public!",
+    "togglePrivateSuccess": "Strategy visibility set to private!",
+    "togglePublicError": "Failed to change strategy visibility: {error}"
   }
 }

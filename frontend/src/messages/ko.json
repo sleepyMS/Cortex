@@ -153,19 +153,17 @@
     "title": "새 전략 만들기",
     "form": {
       "nameLabel": "전략 이름",
+      "namePlaceholder": "예: 나의 추세 추종 전략",
       "descriptionLabel": "설명",
-      "rulesLabel": "규칙 (JSON 형식)",
-      "rulesPlaceholder": "{ \"buy\": [...], \"sell\": [...] }",
+      "descriptionPlaceholder": "전략에 대해 간략히 설명해주세요.",
       "saveButton": "전략 저장",
-      "successMessage": "전략이 성공적으로 저장되었습니다!",
-      "genericErrorMessage": "전략 저장에 실패했습니다.",
-      "jsonErrorMessage": "규칙(Rules)이 유효한 JSON 형식이 아닙니다.",
-      "errorPrefix": "오류",
-      "errors": {
-        "nameRequired": "전략 이름은 필수입니다.",
-        "rulesRequired": "전략 규칙은 필수입니다."
-      }
+      "savingStrategy": "전략 저장 중...",
+      "saveSuccess": "'{strategyName}' 전략이 성공적으로 저장되었습니다!",
+      "saveError": "전략 저장 실패: {error}",
+      "rulesRequired": "전략 규칙(매수 또는 매도)은 필수입니다.",
+      "goBackButton": "뒤로 가기"
     },
+    "rulesTitle": "전략 규칙 빌더",
     "indicatorHubTitle": "지표 허브",
     "indicatorHubDescription": "전략에 사용할 지표를 검색하고 선택하세요.",
     "searchIndicatorPlaceholder": "지표 이름으로 검색...",
@@ -303,5 +301,47 @@
       "previous": "이전",
       "next": "다음"
     }
+  },
+  "StrategiesPage": {
+    "title": "나의 전략",
+    "loadingStrategies": "전략을 불러오는 중...",
+    "errorLoadingTitle": "전략 로딩 오류",
+    "fetchError": "전략을 불러오지 못했습니다: {errorDetail}. 다시 시도해주세요.",
+    "retryLoad": "다시 시도",
+    "createNewStrategy": "새 전략 만들기",
+    "searchPlaceholder": "전략 검색...",
+    "filterPlaceholder": "상태별 필터",
+    "filterAll": "전체",
+    "filterPublic": "공개",
+    "filterPrivate": "비공개",
+    "sortByPlaceholder": "정렬 기준",
+    "sortByNewest": "최신순",
+    "sortByLastUpdated": "최근 수정일순",
+    "sortByNameAsc": "이름 (가나다순)",
+    "noStrategiesAvailable": "아직 생성된 전략이 없습니다.",
+    "pagination": {
+      "previous": "이전",
+      "next": "다음"
+    }
+  },
+  "StrategyCard": {
+    "noDescription": "설명 없음.",
+    "statusPublic": "공개",
+    "statusPrivate": "비공개",
+    "createdAt": "생성일",
+    "updatedAt": "수정일",
+    "actions": "작업",
+    "editStrategy": "전략 편집",
+    "runBacktest": "백테스트 실행",
+    "deployLiveBot": "라이브 봇 배포",
+    "makePublic": "공개로 전환",
+    "makePrivate": "비공개로 전환",
+    "deleteStrategy": "전략 삭제",
+    "confirmDelete": "'{strategyName}' 전략을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "deleteSuccess": "전략이 성공적으로 삭제되었습니다!",
+    "deleteError": "전략 삭제 실패: {error}",
+    "togglePublicSuccess": "전략이 공개로 전환되었습니다!",
+    "togglePrivateSuccess": "전략이 비공개로 전환되었습니다!",
+    "togglePublicError": "전략 공개 설정 변경 실패: {error}"
   }
 }

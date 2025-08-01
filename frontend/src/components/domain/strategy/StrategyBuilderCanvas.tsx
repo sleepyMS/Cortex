@@ -113,6 +113,7 @@ function RecursiveRuleRenderer({
                   {item.logicOperator === "AND" && (
                     <div className="absolute -left-3 top-1/2 -translate-y-1/2 z-10">
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         className="h-6 rounded-full px-2 text-xs bg-primary text-primary-foreground border-primary hover:bg-primary-foreground hover:text-primary transition-colors whitespace-nowrap"
@@ -191,7 +192,7 @@ export function StrategyBuilderCanvas({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-8 p-4 md:p-6 lg:p-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* 매수 조건 영역 */}
         <div className="min-h-[300px] space-y-4 rounded-xl bg-secondary/30 p-4 shadow-xl border border-border transition-all hover:shadow-2xl hover:border-primary/50 overflow-x-auto">
           <div className="flex items-center justify-between border-b pb-4 mb-4 border-border/50">
@@ -199,6 +200,7 @@ export function StrategyBuilderCanvas({
               {t("buyConditionsTitle")}
             </h2>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => onAddRule("buy", null, "OR")}
@@ -212,6 +214,7 @@ export function StrategyBuilderCanvas({
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
               <p className="mb-2">{t("noBuyConditionsYet")}</p>
               <Button
+                type="button"
                 onClick={() => onAddRule("buy", null, "OR")}
                 variant="secondary"
               >
@@ -230,6 +233,7 @@ export function StrategyBuilderCanvas({
               {t("sellConditionsTitle")}
             </h2>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => onAddRule("sell", null, "OR")}
@@ -243,6 +247,7 @@ export function StrategyBuilderCanvas({
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
               <p className="mb-2">{t("noSellConditionsYet")}</p>
               <Button
+                type="button"
                 onClick={() => onAddRule("sell", null, "OR")}
                 variant="secondary"
               >

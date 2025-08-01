@@ -1,7 +1,7 @@
 // file: frontend/src/middleware.ts
 
 import createMiddleware from "next-intl/middleware";
-import { locales, defaultLocale, pathnames } from "./i18n/i18n";
+import { locales, defaultLocale, pathnames } from "../i18n";
 
 export default createMiddleware({
   locales,
@@ -11,8 +11,7 @@ export default createMiddleware({
 });
 
 export const config = {
-  // ✅ 더 효율적이고 안전한 matcher로 개선
-  // 1. /api, /_next 경로 전체를 제외
-  // 2. .(점)이 포함된 모든 경로(모든 정적 파일)를 제외
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  // 매처는 라우팅을 처리할 경로를 정의합니다.
+  // 이전에 논의했던 복잡한 매처를 사용합니다.
+  matcher: ["/((?!api|_next|.*\\..*).*)"], // /api, /_next, 정적 파일 등을 제외
 };

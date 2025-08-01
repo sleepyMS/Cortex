@@ -155,7 +155,7 @@ export function DatePickerCustom({
                 value={getMonth(currentMonth).toString()}
                 onValueChange={handleMonthChange}
               >
-                <SelectTrigger className="w-[125px] h-8 text-sm">
+                <SelectTrigger className="w-[120px] h-8 text-sm">
                   {" "}
                   {/* 👈 너비 고정 */}
                   <SelectValue>{format(currentMonth, "M월")}</SelectValue>

@@ -52,16 +52,19 @@ async def get_strategies(
     limit: int = Query(100, ge=1, le=1000),
     search_query: Optional[str] = Query(None, description="Search by strategy name"),
     sort_by: Optional[str] = Query(None, description="Sort order (e.g., 'created_at_desc', 'name_asc')"),
-    # is_public: Optional[bool] = Query(None, description="Filter by public status (Admin only or for personal list)")
+    is_public_filter: Optional[str] = Query(None, description="Filter by public status ('true' or 'false')") # 👈 Optional[str]로 변경
 ):
     """
     현재 로그인된 사용자의 저장된 전략 목록을 조회합니다.
     페이지네이션, 검색, 정렬 기능을 지원합니다.
     """
-    # is_public 필터는 본인 전략 목록에서 사용할 수도 있고, 전체 공개 전략 조회 시에도 사용.
-    # 전체 공개 전략 조회는 /community/strategies 등으로 분리하는 것이 더 RESTful.
-    # 여기서는 사용자 본인의 전략만 다루므로 is_public 필터는 사용하지 않거나,
-    # 사용자가 자신의 공개/비공개 전략을 필터링하는 용도로만 사용.
+    # 👈 is_public_filter를 문자열로 받아 Python bool로 수동 변환
+    is_public_filter_bool: Optional[bool] = None
+    if is_public_filter == "true":
+        is_public_filter_bool = True
+    elif is_public_filter == "false":
+        is_public_filter_bool = False
+
     strategies = strategy_service.get_strategies(
         db,
         user_id=current_user.id,
@@ -69,7 +72,7 @@ async def get_strategies(
         limit=limit,
         search_query=search_query,
         sort_by=sort_by,
-        # is_public=is_public # 현재는 사용자 본인 전략만 다루므로 제거 또는 주석 처리
+        is_public_filter=is_public_filter_bool # 👈 변환된 불리언 값 전달
     )
     logger.info(f"User {current_user.email} fetched {len(strategies)} strategies.")
     return strategies

@@ -76,6 +76,7 @@ function ConditionSlot({
   if (!condition) {
     return (
       <Button
+        type="button"
         variant="outline"
         className="h-full w-full border-dashed transition-colors hover:bg-muted/50 hover:border-primary-foreground/30 flex items-center justify-center text-muted-foreground"
         onClick={onAddClick}
@@ -106,7 +107,7 @@ function ConditionSlot({
     typeof condition.value.indicatorKey !== "string"
   ) {
     return (
-      <Button variant="destructive" className="h-full w-full">
+      <Button type="button" variant="destructive" className="h-full w-full">
         {t("invalidIndicator")}
       </Button>
     );
@@ -116,7 +117,7 @@ function ConditionSlot({
 
   if (!indicatorDef) {
     return (
-      <Button variant="destructive" className="h-full w-full">
+      <Button type="button" variant="destructive" className="h-full w-full">
         {t("unknownIndicator")}
       </Button>
     );
@@ -141,6 +142,7 @@ function ConditionSlot({
       onIndicatorChange={onIndicatorChangeForPopover || (() => {})}
     >
       <Button
+        type="button"
         variant="outline"
         className="h-full w-full justify-start text-left truncate bg-card hover:bg-secondary/40 border-border hover:border-primary transition-colors group"
       >
@@ -284,6 +286,7 @@ export function RuleBlock({
           <Popover>
             <PopoverTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 className="px-3 text-base font-medium text-primary hover:bg-primary/10 transition-colors"
               >
@@ -295,6 +298,7 @@ export function RuleBlock({
                 {[">", "<", "=", t("crossesAbove"), t("crossesBelow")].map(
                   (op) => (
                     <Button
+                      type="button"
                       key={op}
                       variant="ghost"
                       className="justify-start text-foreground hover:bg-accent hover:text-primary"
@@ -341,6 +345,7 @@ export function RuleBlock({
           <Popover>
             <PopoverTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -351,6 +356,7 @@ export function RuleBlock({
             <PopoverContent className="w-auto p-1 bg-popover border-border shadow-lg">
               <div className="flex flex-col">
                 <Button
+                  type="button"
                   variant="ghost"
                   className="justify-start text-xs text-foreground hover:bg-accent hover:text-primary"
                   onClick={() => onAddRule(item.id, "OR")}
@@ -359,6 +365,7 @@ export function RuleBlock({
                   {t("addOrCondition")}
                 </Button>
                 <Button
+                  type="button"
                   variant="ghost"
                   className="justify-start text-xs text-foreground hover:bg-accent hover:text-primary"
                   onClick={() => onAddRule(item.id, "AND")}
@@ -367,6 +374,7 @@ export function RuleBlock({
                   {t("addAndCondition")}
                 </Button>
                 <Button
+                  type="button"
                   variant="ghost"
                   className="text-destructive justify-start text-xs hover:bg-destructive/10"
                   onClick={() => onDelete(item.id)}

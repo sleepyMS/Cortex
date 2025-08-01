@@ -107,12 +107,12 @@ function CalendarNav({
           onValueChange={handleYearChange}
         >
           <SelectTrigger className="w-[100px] h-8 text-sm">
-            <SelectValue>{displayMonth.getFullYear()}년</SelectValue>
+            <SelectValue>{displayMonth.getFullYear()}</SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-[200px] overflow-y-auto">
             {years.map((year) => (
               <SelectItem key={year} value={year.toString()}>
-                {year}년
+                {year}
               </SelectItem>
             ))}
           </SelectContent>

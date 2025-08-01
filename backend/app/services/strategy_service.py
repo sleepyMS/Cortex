@@ -1,11 +1,13 @@
-# file: backend/app/services/strategy_service.py
+# file: backend/app/services/strategy_service.py (수정)
 
-from sqlalchemy.orm import Session
+import json
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func # func 임포트 추가 (nullslast 사용)
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Literal
 
 from .. import models, schemas
-from .plan_service import plan_service # 👈 PlanService 임포트
+from .plan_service import plan_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,26 +19,40 @@ class StrategyService:
     def __init__(self):
         self.plan_service = plan_service
 
-    # _verify_strategy_rules_against_plan -> verify_strategy_rules_against_plan (Public으로 변경)
-    def verify_strategy_rules_against_plan( # 👈 함수명 변경 및 public 노출
+    def _load_rules_from_json_data(
+        self,
+        rules_json_data: Dict[str, Any]
+    ) -> Dict[Literal["buy", "sell"], List[schemas.SignalBlockData]]:
+        loaded_rules: Dict[Literal["buy", "sell"], List[schemas.SignalBlockData]] = {
+            "buy": [],
+            "sell": []
+        }
+        for rule_type in ["buy", "sell"]:
+            if rule_type in rules_json_data and isinstance(rules_json_data[rule_type], list):
+                for rule_data in rules_json_data[rule_type]:
+                    try:
+                        loaded_rules[rule_type].append(
+                            schemas.SignalBlockData.model_validate(rule_data)
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to validate SignalBlockData from DB JSON for type {rule_type}: {e} (Data: {rule_data})", exc_info=True)
+                        pass
+        return loaded_rules
+
+
+    def verify_strategy_rules_against_plan(
         self,
         user: models.User,
         rules: Dict[Literal["buy", "sell"], List[schemas.SignalBlockData]],
         db: Session
     ) -> None:
-        """
-        전략 규칙 내의 지표 타임프레임이 사용자의 구독 플랜에 허용되는지 검증합니다.
-        허용되지 않는 경우 HTTPException을 발생시킵니다.
-        """
         allowed_timeframes = self.plan_service.get_user_allowed_timeframes(user, db)
         
-        # 재귀적으로 모든 지표 조건을 순회하며 타임프레임 검증
         def _check_conditions_recursive(signal_blocks: List[schemas.SignalBlockData]):
             for block in signal_blocks:
                 for condition_key in ["conditionA", "conditionB"]:
                     condition = getattr(block, condition_key)
                     if condition and condition.type == "indicator":
-                        # IndicatorValue 타입이어야 timeframe 속성에 접근 가능
                         if isinstance(condition.value, schemas.IndicatorValue):
                             indicator_timeframe = condition.value.timeframe
                             if indicator_timeframe not in allowed_timeframes:
@@ -46,13 +62,12 @@ class StrategyService:
                                     detail=f"선택한 타임프레임 '{indicator_timeframe}'은 현재 플랜에서 지원되지 않습니다. 플랜을 업그레이드해주세요."
                                 )
                         else:
-                            # 이 경우는 Pydantic 스키마 유효성 검사에서 이미 걸러져야 하지만, 방어적 코딩
                             logger.error(f"Strategy rule has indicator type but value is not IndicatorValue schema: {condition.value}")
                             raise HTTPException(
                                 status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="전략 규칙의 지표 형식이 올바르지 않습니다."
                             )
-                _check_conditions_recursive(block.children) # 재귀 호출
+                _check_conditions_recursive(block.children) 
 
         _check_conditions_recursive(rules.get("buy", []))
         _check_conditions_recursive(rules.get("sell", []))
@@ -65,21 +80,36 @@ class StrategyService:
         user: models.User,
         strategy_create: schemas.StrategyCreate
     ) -> models.Strategy:
-        """새로운 투자 전략을 생성합니다."""
-        # 1. 플랜 기반 유효성 검사: 지표 타임프레임 (public 함수 호출)
-        self.verify_strategy_rules_against_plan(user, strategy_create.rules, db) # 👈 public 함수 호출
+        try:
+            self.verify_strategy_rules_against_plan(user, strategy_create.rules, db)
+        except HTTPException as e:
+            logger.error(f"Strategy rule validation failed during creation for user {user.email}: {e.detail}")
+            raise
+        except Exception as e:
+            logger.error(f"An unexpected error occurred during rule validation for user {user.email}: {e}", exc_info=True)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 규칙 유효성 검사 중 예상치 못한 오류가 발생했습니다.")
 
-        # 2. 전략 생성
+        serialized_rules = {
+            "buy": [rule.model_dump(mode='json') for rule in strategy_create.rules.get("buy", [])],
+            "sell": [rule.model.dump(mode='json') for rule in strategy_create.rules.get("sell", [])]
+        }
+        
         db_strategy = models.Strategy(
             author_id=user.id,
             name=strategy_create.name,
             description=strategy_create.description,
-            rules=strategy_create.rules.model_dump(mode='json'), # Pydantic 모델을 JSON 직렬화
+            rules=json.dumps(serialized_rules),
             is_public=strategy_create.is_public
         )
         db.add(db_strategy)
-        db.flush() # ID를 얻기 위해 flush
+        db.flush()
         db.refresh(db_strategy)
+
+        if db_strategy.rules and isinstance(db_strategy.rules, dict):
+            db_strategy.rules = self._load_rules_from_json_data(db_strategy.rules)
+        else:
+            db_strategy.rules = {"buy": [], "sell": []}
+            
         logger.info(f"User {user.email} (ID: {user.id}) created new strategy: {db_strategy.name} (ID: {db_strategy.id}).")
         return db_strategy
 
@@ -90,18 +120,19 @@ class StrategyService:
         skip: int = 0,
         limit: int = 100,
         search_query: Optional[str] = None,
-        sort_by: Optional[str] = None, # 'created_at_desc', 'name_asc'
-        is_public: Optional[bool] = None # 관리자용 또는 공개 전략 필터링
+        sort_by: Optional[str] = None,
+        is_public_filter: Optional[bool] = None
     ) -> List[models.Strategy]:
         """
         사용자 본인의 전략 목록 또는 공개 전략 목록을 조회합니다.
         """
         query = db.query(models.Strategy).filter(models.Strategy.author_id == user_id)
 
-        if is_public is not None:
-             # is_public 필터는 사용자 본인의 전략에도 적용 가능 (본인이 공개한 것만 보거나)
-             # 또는 관리자가 is_public=True인 모든 전략을 볼 때도 사용 가능
-            query = query.filter(models.Strategy.is_public == is_public)
+        # 👈 is_public_filter 값 로깅 (디버깅용)
+        logger.info(f"get_strategies received is_public_filter: {is_public_filter} (type: {type(is_public_filter)})")
+
+        if is_public_filter is not None:
+            query = query.filter(models.Strategy.is_public == is_public_filter)
 
         if search_query:
             query = query.filter(models.Strategy.name.ilike(f"%{search_query}%"))
@@ -113,28 +144,42 @@ class StrategyService:
             query = query.order_by(models.Strategy.created_at.asc())
         elif sort_by == "name_asc":
             query = query.order_by(models.Strategy.name.asc())
-        # ... 기타 정렬 옵션 ...
+        elif sort_by == "updated_at_desc":
+            # 👈 updated_at이 NULL인 경우를 마지막으로 정렬
+            query = query.order_by(models.Strategy.updated_at.desc().nullslast())
         else: # 기본 정렬
             query = query.order_by(models.Strategy.created_at.desc())
 
         strategies = query.offset(skip).limit(limit).all()
+        
+        for strategy in strategies:
+            if strategy.rules and isinstance(strategy.rules, dict):
+                strategy.rules = self._load_rules_from_json_data(strategy.rules)
+            else:
+                strategy.rules = {"buy": [], "sell": []}
+
         logger.info(f"User ID {user_id} fetched {len(strategies)} strategies.")
         return strategies
 
     def get_strategy_by_id(self, db: Session, strategy_id: int) -> models.Strategy | None:
-        """ID로 단일 전략을 조회합니다."""
-        return db.query(models.Strategy).filter(models.Strategy.id == strategy_id).first()
+        strategy = db.query(models.Strategy).options(
+            joinedload(models.Strategy.author)
+        ).filter(models.Strategy.id == strategy_id).first()
+
+        if strategy and strategy.rules and isinstance(strategy.rules, dict):
+            strategy.rules = self._load_rules_from_json_data(strategy.rules)
+        elif strategy:
+            strategy.rules = {"buy": [], "sell": []}
+            
+        return strategy
 
     def update_strategy(
         self,
         db: Session,
         strategy_id: int,
-        user: models.User, # 현재 로그인된 사용자 (소유권 확인용)
+        user: models.User,
         strategy_update: schemas.StrategyUpdate
     ) -> models.Strategy:
-        """
-        기존 투자 전략을 업데이트합니다. (소유권 검증 포함)
-        """
         db_strategy = self.get_strategy_by_id(db, strategy_id)
         if not db_strategy:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="전략을 찾을 수 없습니다.")
@@ -145,9 +190,20 @@ class StrategyService:
         update_data = strategy_update.model_dump(exclude_unset=True)
 
         if "rules" in update_data and update_data["rules"]:
-            # 1. 플랜 기반 유효성 검사: 지표 타임프레임 (규칙이 변경된 경우에만)
-            self.verify_strategy_rules_against_plan(user, update_data["rules"], db) # 👈 public 함수 호출
-            db_strategy.rules = update_data["rules"] # Pydantic 모델을 JSON 직렬화
+            try:
+                self.verify_strategy_rules_against_plan(user, update_data["rules"], db)
+            except HTTPException as e:
+                logger.error(f"Strategy rule validation failed during update for user {user.email}: {e.detail}")
+                raise
+            except Exception as e:
+                logger.error(f"An unexpected error occurred during rule validation for user {user.email} on update: {e}", exc_info=True)
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 규칙 유효성 검사 중 예상치 못한 오류가 발생했습니다.")
+            
+            serialized_rules = {
+                "buy": [rule.model_dump(mode='json') for rule in update_data["rules"].get("buy", [])],
+                "sell": [rule.model_dump(mode='json') for rule in update_data["rules"].get("sell", [])]
+            }
+            db_strategy.rules = json.dumps(serialized_rules)
 
         if "name" in update_data and update_data["name"]:
             db_strategy.name = update_data["name"]
@@ -156,29 +212,29 @@ class StrategyService:
         if "is_public" in update_data and update_data["is_public"] is not None:
             db_strategy.is_public = update_data["is_public"]
         
-        # updated_at은 모델에서 onupdate=func.now()로 자동 처리됨
-
         db.add(db_strategy)
         db.commit()
         db.refresh(db_strategy)
+
+        if db_strategy.rules and isinstance(db_strategy.rules, dict):
+            db_strategy.rules = self._load_rules_from_json_data(db_strategy.rules)
+        else:
+            db_strategy.rules = {"buy": [], "sell": []}
+            
         logger.info(f"User {user.email} (ID: {user.id}) updated strategy: {db_strategy.name} (ID: {db_strategy.id}).")
         return db_strategy
 
     def delete_strategy(self, db: Session, strategy_id: int, user: models.User) -> bool:
-        """
-        투자 전략을 삭제합니다. (소유권 검증 포함)
-        """
         db_strategy = self.get_strategy_by_id(db, strategy_id)
         if not db_strategy:
-            return False # 삭제할 전략이 없음
+            return False
         if db_strategy.author_id != user.id:
             logger.warning(f"User {user.email} (ID: {user.id}) attempted to delete strategy {strategy_id} not owned by them.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략을 삭제할 권한이 없습니다.")
 
-        # 이 전략을 사용하는 활성 LiveBot이 있는지 확인
         active_bots_using_strategy = db.query(models.LiveBot).filter(
             models.LiveBot.strategy_id == strategy_id,
-            models.LiveBot.status.in_(['active', 'paused', 'initializing']) # 활성 상태 봇
+            models.LiveBot.status.in_(['active', 'paused', 'initializing'])
         ).first()
         if active_bots_using_strategy:
             logger.warning(f"User {user.email} (ID: {user.id}) attempted to delete strategy {strategy_id} which is used by active bot {active_bots_using_strategy.id}.")
