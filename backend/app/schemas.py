@@ -1,6 +1,6 @@
 # file: backend/app/schemas.py
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict # 👈 ConfigDict 임포트
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
 
@@ -13,14 +13,14 @@ class UserCreate(BaseModel):
     password: str
     username: str | None = None
 
-class UserUpdateProfile(BaseModel):
+class UserUpdateProfile(BaseModel): # 👈 사용자 프로필 업데이트 (일반 사용자용)
     username: Optional[str] = Field(None, min_length=2, max_length=100)
 
-class UserUpdatePassword(BaseModel):
+class UserUpdatePassword(BaseModel): # 👈 사용자 비밀번호 업데이트 (일반 사용자용)
     old_password: str = Field(..., min_length=8, max_length=255)
     new_password: str = Field(..., min_length=8, max_length=255)
 
-class UserAdminUpdate(BaseModel):
+class UserAdminUpdate(BaseModel): # 👈 관리자용 사용자 정보 업데이트
     username: Optional[str] = Field(None, min_length=2, max_length=100)
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
@@ -34,13 +34,12 @@ class User(BaseModel): # 응답용 스키마 (GET /users/me 등)
     email: EmailStr
     username: str | None
     is_active: bool
-    is_email_verified: bool
+    is_email_verified: bool # 👈 응답 스키마에 이메일 인증 여부 필드 추가
     role: str
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True) # Pydantic v2
 
 class Token(BaseModel):
     access_token: str
@@ -77,8 +76,7 @@ class DashboardSummary(BaseModel): # 👈 관리자 대시보드 스키마
     overall_pnl: float = 0.0
     latest_signups: List[User] = Field(default_factory=list) # User 스키마 사용
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SocialCallbackRequest(BaseModel):
     code: str
@@ -99,7 +97,15 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=255)
 
 
-# --- Strategy Schemas ---
+# --- Strategy Schemas (Dependency for Backtest/LiveBot) ---
+# 👈 순서 변경: LiveBot과 Backtest에서 참조되므로 이들 위에 정의
+class StrategyBase(BaseModel):
+    name: str = Field(..., min_length=3, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    is_public: bool = False
+
+    model_config = ConfigDict(from_attributes=True) # 👈 StrategyBase에도 추가
+
 class IndicatorValue(BaseModel):
     indicatorKey: str
     values: Dict[str, Any]
@@ -119,12 +125,9 @@ class SignalBlockData(BaseModel):
     children: List["SignalBlockData"] = Field(default_factory=list)
     logicOperator: Literal["AND", "OR"]
 
-SignalBlockData.update_forward_refs()
+    model_config = ConfigDict(from_attributes=True) # 👈 SignalBlockData에도 추가
 
-class StrategyBase(BaseModel):
-    name: str = Field(..., min_length=3, max_length=100)
-    description: str | None = Field(None, max_length=500)
-    is_public: bool = False
+SignalBlockData.update_forward_refs() # 재귀적 참조 해결 (SignalBlockData 내부에 자신을 참조)
 
 class StrategyCreate(StrategyBase):
     rules: Dict[Literal["buy", "sell"], List[SignalBlockData]] = Field(
@@ -145,11 +148,32 @@ class Strategy(StrategyBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- API Key Schemas (Dependency for LiveBot) ---
+# 👈 순서 변경: LiveBot 위에 배치하여 참조 문제 해결
+class ApiKeyCreate(BaseModel):
+    exchange: str = Field(..., min_length=2, max_length=50)
+    api_key: str = Field(..., min_length=10)
+    secret_key: str = Field(..., min_length=10)
+    memo: Optional[str] = Field(None, max_length=255)
+    is_active: bool = True
+
+class ApiKeyResponse(BaseModel):
+    id: int
+    user_id: int
+    exchange: str
+    memo: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Backtesting Schemas ---
+# Backtest는 Strategy를 참조하므로 Strategy 정의 이후에 위치
 class BacktestCreate(BaseModel):
     strategy_id: int
     ticker: str = Field(..., description="Trading pair ticker, e.g., 'BTC/USDT'")
@@ -167,20 +191,18 @@ class TradeLogEntry(BaseModel):
     pnl: Optional[float] = None
     current_balance: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BacktestResultSummary(BaseModel):
     total_return_pct: Optional[float] = None
     mdd_pct: Optional[float] = None
     sharpe_ratio: Optional[float] = None
     win_rate_pct: Optional[float] = None
-    pnl_curve_json: Optional[Dict[str, Any]] = None
+    pnl_curve_json: Optional[List[Dict[str, Any]]] = None # 👈 Dict 대신 List[Dict]로 수정
     trade_summary_json: Optional[Dict[str, Any]] = None
     executed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Backtest(BaseModel):
     id: int
@@ -193,14 +215,13 @@ class Backtest(BaseModel):
     completed_at: Optional[datetime] = None
     
     result: Optional[BacktestResultSummary] = None
-    # Backtest 응답 시 Strategy 정보 포함 (latest_backtests 등에서 사용)
-    strategy: Optional[StrategyBase] = None # strategy_id만 있으면 안 되므로 StrategyBase 포함
+    strategy: Optional["Strategy"] = None # 👈 StrategyBase 대신 Strategy로 수정
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Live Bot Schemas ---
+# LiveBot은 Strategy와 ApiKeyResponse를 참조하므로 이들 정의 이후에 위치
 class LiveBotCreate(BaseModel):
     strategy_id: int
     api_key_id: int
@@ -220,35 +241,12 @@ class LiveBot(BaseModel):
     stopped_at: Optional[datetime] = None
     last_run_at: Optional[datetime] = None
     initial_capital: Optional[float] = None
-    # LiveBot 응답 시 Strategy 및 ApiKey 정보 포함 (latest_live_bots 등에서 사용)
-    strategy: Optional[StrategyBase] = None
-    api_key: Optional["ApiKeyResponse"] = None # ApiKeyResponse를 문자열로 참조
+    strategy: Optional["Strategy"] = None # 👈 StrategyBase 대신 Strategy로 수정
+    api_key: Optional["ApiKeyResponse"] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# LiveBot.update_forward_refs() # 필요한 경우 재귀적 참조 해결 (ApiKEyResponse가 문자열 참조라)
-
-
-# --- API Key Schemas ---
-class ApiKeyCreate(BaseModel):
-    exchange: str = Field(..., min_length=2, max_length=50)
-    api_key: str = Field(..., min_length=10)
-    secret_key: str = Field(..., min_length=10)
-    memo: Optional[str] = Field(None, max_length=255)
-    is_active: bool = True
-
-class ApiKeyResponse(BaseModel):
-    id: int
-    user_id: int
-    exchange: str
-    memo: Optional[str] = None
-    is_active: bool
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+LiveBot.update_forward_refs() # 재귀적 참조 해결 (ApiKeyResponse가 문자열 참조라)
 
 
 # --- Subscription & Plan Schemas ---
@@ -258,8 +256,7 @@ class Plan(BaseModel):
     price: float
     features: Dict[str, Any]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Subscription(BaseModel):
     id: int
@@ -273,8 +270,7 @@ class Subscription(BaseModel):
 
     plan: Plan
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CheckoutRequest(BaseModel):
     plan_id: int
@@ -306,8 +302,7 @@ class CommunityPostResponse(BaseModel):
     likes_count: int = 0
     comments_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CommentCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=500)
@@ -320,8 +315,7 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LikeCreate(BaseModel):
     pass
@@ -331,39 +325,32 @@ class LikeResponse(BaseModel):
     post_id: int
     status: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# --- 👇 일반 사용자 대시보드 요약 스키마 추가 👇 ---
+
+# --- 일반 사용자 대시보드 요약 스키마 ---
 class UserDashboardSummary(BaseModel):
-    # 사용자 정보 요약
     email: EmailStr
     username: Optional[str] = None
     user_id: int
     created_at: datetime
-    is_email_verified: bool # 👈 이메일 인증 여부
+    is_email_verified: bool
 
-    # 구독 정보
     current_plan_name: str
     current_plan_price: float
     subscription_end_date: Optional[datetime] = None
-    subscription_is_active: bool # 👈 구독 활성 여부
+    subscription_is_active: bool
     max_backtests_per_day: int
     concurrent_bots_limit: int
     allowed_timeframes: List[str]
 
-    # 백테스트 통계
     total_backtests_run_by_user: int
     successful_backtests_by_user: int
 
-    # 라이브 봇 통계
     total_live_bots_by_user: int
     active_live_bots_by_user: int
 
-    # 최근 활동
-    # Backtest와 LiveBot 스키마에 필요한 정보가 포함되도록 수정 (strategy, api_key)
     latest_backtests: List[Backtest] = Field(default_factory=list)
     latest_live_bots: List[LiveBot] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
