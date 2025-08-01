@@ -149,42 +149,6 @@
     "unknownRoleTitle": "Access Denied: Unknown Role",
     "unknownRoleMessage": "Your user role is not recognized. Please contact support."
   },
-  "StrategyBuilder": {
-    "title": "Create New Strategy",
-    "form": {
-      "nameLabel": "Strategy Name",
-      "namePlaceholder": "e.g., My Trend Following Strategy",
-      "descriptionLabel": "Description",
-      "descriptionPlaceholder": "Briefly describe your strategy.",
-      "saveButton": "Save Strategy",
-      "savingStrategy": "Saving strategy...",
-      "saveSuccess": "Strategy '{strategyName}' saved successfully!",
-      "saveError": "Failed to save strategy: {error}",
-      "rulesRequired": "Strategy rules (Buy or Sell) are required.",
-      "goBackButton": "Go Back"
-    },
-    "rulesTitle": "Strategy Rules Builder",
-    "indicatorHubTitle": "Indicator Hub",
-    "indicatorHubDescription": "Search and select an indicator for your strategy.",
-    "searchIndicatorPlaceholder": "Search by indicator name...",
-    "indicatorCategories": {
-      "all": "All",
-      "price": "Price",
-      "trend": "Trend",
-      "momentum": "Momentum",
-      "volatility": "Volatility",
-      "volume": "Volume"
-    },
-    "orOperator": "OR",
-    "andOperator": "AND",
-    "buyConditionsTitle": "Buy Conditions",
-    "sellConditionsTitle": "Sell Conditions",
-    "addTopLevelCondition": "Add Top-Level Condition",
-    "noBuyConditionsYet": "No buy conditions added yet. Click the button below to add your first condition.",
-    "addFirstBuyCondition": "Add First Buy Condition",
-    "noSellConditionsYet": "No sell conditions added yet. Click the button below to add your first condition.",
-    "addFirstSellCondition": "Add First Sell Condition"
-  },
   "Navigation": {
     "strategies": "Strategies",
     "community": "Community"
@@ -291,7 +255,7 @@
     }
   },
   "BacktestDetailPage": {
-    "title": "Backtest Results for '{strategyName}'",
+    "title": "Backtest Results for",
     "subtitle": "Details for Backtest ID: {backtestId}",
     "loadingResults": "Loading backtest results...",
     "backtestNotFoundTitle": "Backtest Not Found",
@@ -305,8 +269,6 @@
   "StrategiesPage": {
     "title": "My Strategies",
     "loadingStrategies": "Loading your strategies...",
-    "errorLoadingTitle": "Error Loading Strategies",
-    "fetchError": "Failed to load strategies: {errorDetail}. Please try again.",
     "retryLoad": "Retry",
     "createNewStrategy": "Create New Strategy",
     "searchPlaceholder": "Search strategies...",
@@ -337,11 +299,70 @@
     "makePublic": "Make Public",
     "makePrivate": "Make Private",
     "deleteStrategy": "Delete Strategy",
-    "confirmDelete": "Are you sure you want to delete strategy '{strategyName}'? This action cannot be undone.",
+    "confirmDelete": "Are you sure you want to delete strategy? This action cannot be undone.",
     "deleteSuccess": "Strategy deleted successfully!",
     "deleteError": "Failed to delete strategy: {error}",
     "togglePublicSuccess": "Strategy visibility set to public!",
     "togglePrivateSuccess": "Strategy visibility set to private!",
     "togglePublicError": "Failed to change strategy visibility: {error}"
+  },
+  "StrategyBuilder": {
+    "title": "Create New Strategy",
+    "form": {
+      "nameLabel": "Strategy Name",
+      "namePlaceholder": "e.g., My Trend Following Strategy",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe your strategy.",
+      "saveButton": "Save Strategy",
+      "savingStrategy": "Saving strategy...",
+      "saveSuccess": "Strategy saved successfully!",
+      "saveError": "Failed to save strategy: {error}",
+      "rulesRequired": "Strategy rules (Buy or Sell) are required.",
+      "goBackButton": "Go Back",
+      "updateSuccess": "Strategy updated successfully!",
+      "updateError": "Failed to update strategy: {error}",
+      "saveFailedGeneric": "An unexpected error occurred. Please try again.",
+      "validationErrorPrefix": "Validation Error"
+    },
+    "rulesTitle": "Strategy Rules Builder",
+    "indicatorHubTitle": "Indicator Hub",
+    "indicatorHubDescription": "Search and select an indicator for your strategy.",
+    "searchIndicatorPlaceholder": "Search by indicator name...",
+    "indicatorCategories": {
+      "all": "All",
+      "price": "Price",
+      "trend": "Trend",
+      "momentum": "Momentum",
+      "volatility": "Volatility",
+      "volume": "Volume"
+    },
+    "orOperator": "OR",
+    "andOperator": "AND",
+    "buyConditionsTitle": "Buy Conditions",
+    "sellConditionsTitle": "Sell Conditions",
+    "addTopLevelCondition": "Add Top-Level Condition",
+    "noBuyConditionsYet": "No buy conditions added yet. Click the button below to add your first condition.",
+    "addFirstBuyCondition": "Add First Buy Condition",
+    "noSellConditionsYet": "No sell conditions added yet. Click the button below to add your first condition.",
+    "addFirstSellCondition": "Add First Sell Condition",
+    "editTitle": "Edit Strategy",
+    "loadingStrategy": "Loading strategy details...",
+    "relatedBacktestsTitle": "Related Backtests for This Strategy",
+    "errorLoadingTitle": "Error Loading Strategies",
+    "fetchError": "Failed to load strategies: {errorDetail}. Please try again.",
+    "backToStrategyList": "Back to Strategy List"
+  },
+  "StrategyBacktestHistory": {
+    "title": "Recent Backtests for This Strategy",
+    "loadingBacktests": "Loading backtest history...",
+    "fetchError": "Failed to load backtest history: {errorDetail}",
+    "retryLoad": "Retry",
+    "noBacktestsForStrategy": "No backtests have been run for this strategy yet.",
+    "runNewBacktest": "Run a New Backtest",
+    "backtestRun": "Backtest Run",
+    "parameters": "Parameters",
+    "capital": "Capital",
+    "commission": "Commission",
+    "totalReturnShort": "Return"
   }
 }

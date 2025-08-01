@@ -1,4 +1,4 @@
-// frontend/src/app/[locale]/strategies/new/page.tsx
+// frontend/src/app/[locale]/strategies/new/page.tsx (수정)
 
 "use client";
 
@@ -34,35 +34,33 @@ import { Loader2, Save, ArrowLeft } from "lucide-react";
 // --- 폼 스키마 정의 (Zod) ---
 // 백엔드 schemas.StrategyCreate와 일치하도록 정의합니다.
 const formSchema = z.object({
+  // 👈 min(3) 추가
   name: z
     .string()
-    .min(1, { message: "전략 이름을 입력해주세요." })
+    .min(3, { message: "전략 이름은 최소 3글자 이상이어야 합니다." })
     .max(100, { message: "전략 이름은 100자 이내여야 합니다." }),
   description: z
     .string()
     .max(500, { message: "설명은 500자 이내여야 합니다." })
     .optional(),
-  // rules는 useStrategyState에서 관리되므로 폼 스키마에 직접 포함하지 않음
-  // 폼 제출 시 rules는 useStrategyState의 상태로부터 가져와서 페이로드에 추가할 것입니다.
 });
 
 type StrategyFormValues = z.infer<typeof formSchema>;
 
-// 백엔드 schemas.StrategyCreate와 schemas.Strategy 응답 타입 (API 명세서 참조)
 interface StrategyCreatePayload extends StrategyFormValues {
-  rules: any; // SignalBlockData 형식의 규칙
-  is_public: boolean; // 기본값 false로 설정
+  rules: any;
+  is_public: boolean;
 }
 
 interface StrategyResponse {
   id: number;
+  author_id: number;
   name: string;
-  description?: string;
+  description?: string | null;
   rules: any;
   is_public: boolean;
-  author_id: number;
   created_at: string;
-  updated_at?: string;
+  updated_at?: string | null;
 }
 
 export default function NewStrategyPage() {
@@ -70,7 +68,6 @@ export default function NewStrategyPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // useStrategyState 훅을 사용하여 전략 규칙 상태 및 핸들러를 가져옵니다.
   const {
     buyRules,
     sellRules,
@@ -84,7 +81,6 @@ export default function NewStrategyPage() {
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
 
-  // --- 폼 관리 (react-hook-form) ---
   const form = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -93,44 +89,68 @@ export default function NewStrategyPage() {
     },
   });
 
-  // --- 전략 저장 뮤테이션 (POST /api/strategies) ---
   const createStrategyMutation = useMutation<
     StrategyResponse,
     Error,
     StrategyFormValues
   >({
     mutationFn: async (values) => {
-      // 폼 데이터와 useStrategyState의 규칙을 결합하여 페이로드 생성
       const payload: StrategyCreatePayload = {
         name: values.name,
         description: values.description,
         rules: {
-          // 백엔드의 Dict[Literal["buy", "sell"], List[SignalBlockData]] 형식에 맞춤
           buy: buyRules,
           sell: sellRules,
         },
-        is_public: false, // 기본값은 비공개
+        is_public: false,
       };
       const { data } = await apiClient.post("/strategies", payload);
       return data;
     },
     onSuccess: (data) => {
       toast.success(t("form.saveSuccess", { strategyName: data.name }));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] }); // 전략 목록 갱신
-      form.reset(); // 폼 초기화 (defaultValues로 돌아감)
+      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
+      form.reset();
       router.push("/strategies");
     },
     onError: (error) => {
-      const apiErrorDetail = (error as any)?.response?.data?.detail;
-      const errorMessage = apiErrorDetail || error.message;
-      toast.error(t("form.saveError", { error: errorMessage }));
-      console.error("Strategy save failed:", errorMessage, error);
+      // 👈 에러 메시지 파싱 로직 개선
+      let displayMessage = t("form.saveFailedGeneric"); // 기본 일반 오류 메시지
+      const apiError = error as any;
+
+      if (
+        apiError.response &&
+        apiError.response.data &&
+        apiError.response.data.detail
+      ) {
+        // Pydantic ValidationError (422) 처리
+        if (Array.isArray(apiError.response.data.detail)) {
+          const validationErrors = apiError.response.data.detail
+            .map((err: any) => {
+              // 'loc'에 필드명, 'msg'에 오류 메시지
+              const field =
+                err.loc && err.loc.length > 1 ? err.loc[1] : "unknown field";
+              return `${field}: ${err.msg}`;
+            })
+            .join(", ");
+          displayMessage = `${t(
+            "form.validationErrorPrefix"
+          )}: ${validationErrors}`;
+        } else if (typeof apiError.response.data.detail === "string") {
+          // 백엔드에서 직접 문자열 에러 메시지를 보낸 경우
+          displayMessage = apiError.response.data.detail;
+        }
+      } else {
+        // 네트워크 오류 등 기타 오류
+        displayMessage = error.message;
+      }
+
+      toast.error(t("form.saveError", { error: displayMessage })); // 에러 키와 파싱된 메시지 사용
+      console.error("Strategy save failed:", displayMessage, error);
     },
   });
 
-  // 전체 폼 제출 핸들러
   const onSubmit = (values: StrategyFormValues) => {
-    // 규칙이 비어있는지 확인하는 유효성 검사 (필요하다면)
     if (buyRules.length === 0 && sellRules.length === 0) {
       toast.error(t("form.rulesRequired"));
       return;
@@ -138,7 +158,6 @@ export default function NewStrategyPage() {
     createStrategyMutation.mutate(values);
   };
 
-  // --- 지표 허브 및 규칙 빌더 관련 핸들러 ---
   const handleSlotClick = (
     ruleType: "buy" | "sell",
     blockId: string,
@@ -170,27 +189,22 @@ export default function NewStrategyPage() {
         onSelect={handleIndicatorSelect}
       />
       <div className="container mx-auto max-w-3xl p-8">
-        {" "}
-        {/* 최대 너비 및 padding 추가 */}
         <div className="mb-6 flex items-center justify-between">
-          {" "}
-          {/* 뒤로가기, 제목 flex 레이아웃 */}
           <Button
             variant="outline"
-            onClick={() => router.back()} // 이전 페이지로 이동
+            onClick={() => router.back()}
             className="h-10"
             disabled={createStrategyMutation.isPending}
           >
             <ArrowLeft className="mr-2 h-4 w-4" /> {t("form.goBackButton")}
           </Button>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <div className="w-10"></div>{" "}
-          {/* 제목 우측 빈 공간 확보 (뒤로가기 버튼과 대칭) */}
+          <div className="w-10"></div>
         </div>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {" "}
-            {/* space-y 축소 */}
+            {/* 전략 이름 입력 */}
             <FormField
               control={form.control}
               name="name"
@@ -203,14 +217,15 @@ export default function NewStrategyPage() {
                     <Input
                       placeholder={t("form.namePlaceholder")}
                       {...field}
-                      className="h-10 rounded-md" // 입력 필드 스타일 조정
+                      className="h-10 rounded-md"
                       disabled={createStrategyMutation.isPending}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage /> {/* 👈 프론트엔드 유효성 검사 메시지 표시 */}
                 </FormItem>
               )}
             />
+            {/* 전략 설명 입력 */}
             <FormField
               control={form.control}
               name="description"
@@ -223,7 +238,7 @@ export default function NewStrategyPage() {
                     <Input
                       placeholder={t("form.descriptionPlaceholder")}
                       {...field}
-                      className="h-10 rounded-md" // 입력 필드 스타일 조정
+                      className="h-10 rounded-md"
                       disabled={createStrategyMutation.isPending}
                     />
                   </FormControl>
@@ -231,10 +246,9 @@ export default function NewStrategyPage() {
                 </FormItem>
               )}
             />
+
             {/* 전략 빌더 캔버스 (규칙 시각화 및 편집) */}
             <div className="mt-6">
-              {" "}
-              {/* 상단 마진 조정 */}
               <h3 className="mb-2 text-lg font-semibold text-foreground">
                 {t("rulesTitle")}
               </h3>
@@ -249,10 +263,11 @@ export default function NewStrategyPage() {
                 onTimeframeChange={handleTimeframeChange}
               />
             </div>
+
             {/* 저장 버튼 */}
             <Button
               type="submit"
-              className="w-fit h-10 px-6 rounded-md" // 버튼 스타일 및 너비 조정, px-6 추가
+              className="w-fit h-10 px-6 rounded-md"
               disabled={createStrategyMutation.isPending}
             >
               {createStrategyMutation.isPending ? (

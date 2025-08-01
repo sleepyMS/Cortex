@@ -18,8 +18,7 @@ import {
   EyeOff,
   Code,
   Loader2,
-} from "lucide-react"; // 아이콘 임포트
-
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -30,15 +29,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/DropdownMenu"; // 드롭다운 메뉴 임포트
-import { toast } from "sonner"; // 토스트 알림
-import apiClient from "@/lib/apiClient"; // API 클라이언트
-import { useMutation, useQueryClient } from "@tanstack/react-query"; // 뮤테이션, 쿼리 클라이언트
-import { useRouter } from "next/navigation"; // Next.js 라우터
+} from "@/components/ui/DropdownMenu";
+import { toast } from "sonner";
+import apiClient from "@/lib/apiClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
-import { cn } from "@/lib/utils"; // cn 유틸리티
+import { cn } from "@/lib/utils";
 
-// 백엔드 schemas.Strategy와 일치하는 타입 정의
 interface StrategyResponse {
   id: number;
   author_id: number;
@@ -98,122 +96,146 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
     },
   });
 
-  const handleDelete = () => {
+  // 👈 handleDelete 함수 수정: 이벤트 전파 중단
+  const handleDelete = (event: React.MouseEvent) => {
+    // 이벤트 객체를 받도록 수정
+    event.stopPropagation(); // 👈 이벤트 버블링 중단
+    event.preventDefault(); // 👈 기본 동작(링크 이동 등) 방지
     if (confirm(t("confirmDelete", { strategyName: strategy.name }))) {
       deleteStrategyMutation.mutate(strategy.id);
     }
   };
 
-  const handleTogglePublic = () => {
+  // 👈 handleTogglePublic 함수 수정: 이벤트 전파 중단
+  const handleTogglePublic = (event: React.MouseEvent) => {
+    // 이벤트 객체를 받도록 수정
+    event.stopPropagation(); // 👈 이벤트 버블링 중단
+    event.preventDefault(); // 👈 기본 동작 방지
     togglePublicMutation.mutate(strategy.id);
   };
 
   return (
-    <Card className="flex flex-col justify-between p-6 h-full transition-shadow hover:shadow-lg">
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-bold text-foreground">{strategy.name}</h3>
-          <Badge
-            variant={strategy.is_public ? "default" : "outline"}
-            className={
-              strategy.is_public
-                ? "bg-green-500 text-white"
-                : "border-muted-foreground"
-            }
-          >
-            {strategy.is_public ? t("statusPublic") : t("statusPrivate")}
-          </Badge>
+    <Link href={`/strategies/${strategy.id}/edit`} passHref>
+      <Card className="flex flex-col justify-between p-6 h-full cursor-pointer transition-all duration-200 ease-in-out border border-border hover:border-primary hover:shadow-lg">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xl font-bold text-foreground">
+              {strategy.name}
+            </h3>
+            <Badge
+              variant={strategy.is_public ? "default" : "outline"}
+              className={cn(
+                strategy.is_public
+                  ? "bg-green-500 text-white"
+                  : "border-muted-foreground",
+                "px-2 py-1 rounded-full"
+              )}
+            >
+              {strategy.is_public ? t("statusPublic") : t("statusPrivate")}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+            {strategy.description || t("noDescription")}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-          {strategy.description || t("noDescription")}
-        </p>
-      </div>
 
-      <div className="mt-auto space-y-3">
-        {" "}
-        {/* 버튼들 간 간격 및 하단 정렬 */}
-        <div className="flex items-center text-xs text-muted-foreground">
-          <Code className="h-3 w-3 mr-1" />
-          <span>
-            {t("createdAt")}:{" "}
-            {format(new Date(strategy.created_at), "yyyy-MM-dd")}
-          </span>
-          {strategy.updated_at && (
-            <span className="ml-3">
-              {t("updatedAt")}:{" "}
-              {format(new Date(strategy.updated_at), "yyyy-MM-dd")}
+        <div className="mt-auto space-y-3">
+          <div className="flex items-center text-xs text-muted-foreground">
+            <Code className="h-3 w-3 mr-1" />
+            <span>
+              {t("createdAt")}:{" "}
+              {format(new Date(strategy.created_at), "yyyy-MM-dd")}
             </span>
-          )}
-        </div>
-        {/* 액션 버튼 그룹 */}
-        <div className="flex items-center justify-end gap-2">
-          {/* 더보기 메뉴 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {/* 편집 */}
-              <Link href={`/strategies/${strategy.id}/edit`} passHref>
-                <DropdownMenuItem className="cursor-pointer">
+            {strategy.updated_at && (
+              <span className="ml-3">
+                {t("updatedAt")}:{" "}
+                {format(new Date(strategy.updated_at), "yyyy-MM-dd")}
+              </span>
+            )}
+          </div>
+
+          {/* 액션 버튼 그룹 */}
+          <div className="flex items-center justify-end gap-2">
+            {/* 더보기 메뉴 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {" "}
+                  {/* 👈 여기도 추가: 드롭다운 메뉴 트리거 클릭 시 Link 버블링 방지 */}
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {/* 편집 */}
+                <DropdownMenuItem
+                  onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+                  className="cursor-pointer"
+                >
                   <Edit className="mr-2 h-4 w-4" /> {t("editStrategy")}
                 </DropdownMenuItem>
-              </Link>
-              {/* 백테스트 실행 */}
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/backtester?strategyId=${strategy.id}`)
-                }
-                className="cursor-pointer"
-              >
-                <BarChart2 className="mr-2 h-4 w-4" /> {t("runBacktest")}
-              </DropdownMenuItem>
-              {/* 라이브 봇 배포 */}
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/live-bots/new?strategyId=${strategy.id}`)
-                } // TODO: 라이브 봇 배포 페이지 경로
-                className="cursor-pointer"
-              >
-                <Bot className="mr-2 h-4 w-4" /> {t("deployLiveBot")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {/* 공개/비공개 토글 */}
-              <DropdownMenuItem
-                onClick={handleTogglePublic}
-                className="cursor-pointer"
-              >
-                {togglePublicMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : strategy.is_public ? (
-                  <EyeOff className="mr-2 h-4 w-4" />
-                ) : (
-                  <Eye className="mr-2 h-4 w-4" />
-                )}
-                {strategy.is_public ? t("makePrivate") : t("makePublic")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {/* 삭제 */}
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive cursor-pointer"
-                disabled={deleteStrategyMutation.isPending}
-              >
-                {deleteStrategyMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}{" "}
-                {t("deleteStrategy")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {/* 백테스트 실행 */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    // 👈 이벤트 버블링 중단 추가
+                    e.stopPropagation();
+                    router.push(`/backtester?strategyId=${strategy.id}`);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <BarChart2 className="mr-2 h-4 w-4" /> {t("runBacktest")}
+                </DropdownMenuItem>
+                {/* 라이브 봇 배포 */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    // 👈 이벤트 버블링 중단 추가
+                    e.stopPropagation();
+                    router.push(`/live-bots/new?strategyId=${strategy.id}`);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Bot className="mr-2 h-4 w-4" /> {t("deployLiveBot")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {/* 공개/비공개 토글 */}
+                <DropdownMenuItem
+                  onClick={handleTogglePublic} // 👈 수정된 handleTogglePublic 호출
+                  className="cursor-pointer"
+                >
+                  {togglePublicMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : strategy.is_public ? (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {strategy.is_public ? t("makePrivate") : t("makePublic")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {/* 삭제 */}
+                <DropdownMenuItem
+                  onClick={handleDelete} // 👈 수정된 handleDelete 호출
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                  disabled={deleteStrategyMutation.isPending}
+                >
+                  {deleteStrategyMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}{" "}
+                  {t("deleteStrategy")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }

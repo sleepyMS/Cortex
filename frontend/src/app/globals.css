@@ -136,8 +136,20 @@
   .border-input {
     border-color: hsl(var(--input));
   }
+  .border-primary {
+    border-color: hsl(var(--primary));
+  }
   .focus-visible\:ring-ring:focus-visible {
     --tw-ring-color: hsl(var(--ring));
+  }
+  .ring-offset-background {
+    --tw-ring-offset-color: hsl(var(--background));
+  }
+  .ring-ring {
+    --tw-ring-color: hsl(var(--ring));
+  }
+  .border-primary {
+    border-color: hsl(var(--primary));
   }
 }
 

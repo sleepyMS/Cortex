@@ -91,7 +91,7 @@ class StrategyService:
 
         serialized_rules = {
             "buy": [rule.model_dump(mode='json') for rule in strategy_create.rules.get("buy", [])],
-            "sell": [rule.model.dump(mode='json') for rule in strategy_create.rules.get("sell", [])]
+            "sell": [rule.model_dump(mode='json') for rule in strategy_create.rules.get("sell", [])]
         }
         
         db_strategy = models.Strategy(

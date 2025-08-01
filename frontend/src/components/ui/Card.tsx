@@ -1,21 +1,23 @@
 // file: frontend/src/components/ui/Card.tsx
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils"; // cn 유틸리티 임포트 (clsx와 tailwind-merge 포함)
 
-// Card: 전체 카드를 감싸는 컨테이너. Glassmorphism 스타일 적용
+// Card: 전체 카드를 감싸는 컨테이너
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={clsx(
-      // Glassmorphism 효과와 디자인
-      "rounded-xl border border-white/20 bg-white/10 p-4 shadow-lg backdrop-blur-lg",
-      // 다크 모드 스타일
-      "dark:border-black/20 dark:bg-black/10",
-      className
+    // 👈 Shadcn UI 표준 Card 스타일링으로 변경
+    // - border: 기본 테두리
+    // - bg-card: --card 변수를 따르는 배경색 (테마에 따라 자동 변경)
+    // - text-card-foreground: --card-foreground 변수를 따르는 텍스트 색상
+    // - shadow-sm: 기본 그림자
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm", // 👈 변경된 라인
+      className // 👈 사용자가 전달하는 className은 마지막에 병합 (우선순위 높음)
     )}
     {...props}
   />
@@ -29,7 +31,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={clsx("flex flex-col space-y-1.5", className)}
+    className={cn("flex flex-col space-y-1.5 p-6", className)} // 👈 기본 패딩 추가
     {...props}
   />
 ));
@@ -42,10 +44,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={clsx(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
+    className={cn("font-semibold leading-none tracking-tight", className)}
     {...props}
   />
 ));
@@ -58,7 +57,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={clsx("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));
@@ -69,7 +68,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={clsx("pt-4", className)} {...props} />
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} /> // 👈 기본 패딩 조정 (헤더와 내용 사이)
 ));
 CardContent.displayName = "CardContent";
 
@@ -80,7 +79,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={clsx("flex items-center pt-4", className)}
+    className={cn("flex items-center p-6 pt-0", className)} // 👈 기본 패딩 조정
     {...props}
   />
 ));
