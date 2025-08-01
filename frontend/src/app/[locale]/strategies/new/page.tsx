@@ -188,7 +188,8 @@ export default function NewStrategyPage() {
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
       />
-      <div className="container mx-auto max-w-3xl p-8">
+      <div className="p-4"></div>
+      <div className="container mx-auto max-w-3xl p-4">
         <div className="mb-6 flex items-center justify-between">
           <Button
             variant="outline"
