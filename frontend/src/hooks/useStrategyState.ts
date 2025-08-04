@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { nanoid } from "nanoid";
+import { nanoid } from "nanoid"; // nanoid는 RuleItem의 ID 생성에 사용
 
 import {
   RuleItem,
@@ -27,7 +27,6 @@ const updateItemRecursive = (
     if (item.id === id) {
       return updater(item);
     }
-    // SignalBlockData의 children 속성을 확인하여 재귀적으로 업데이트
     if (item.type === "signal" && item.children && item.children.length > 0) {
       const newChildren = updateItemRecursive(item.children, id, updater);
       if (newChildren !== item.children) {
@@ -43,7 +42,6 @@ const removeItemRecursive = (items: RuleItem[], id: string): RuleItem[] => {
   return items
     .filter((item) => item.id !== id)
     .map((item) => {
-      // SignalBlockData의 children 속성을 확인하여 재귀적으로 제거
       if (item.type === "signal" && item.children && item.children.length > 0) {
         return {
           ...item,
@@ -54,7 +52,7 @@ const removeItemRecursive = (items: RuleItem[], id: string): RuleItem[] => {
     });
 };
 
-// --- 메인 훅 ---
+// --- useStrategyState 훅 ---
 export function useStrategyState() {
   const [buyRules, setBuyRules] = useState<RuleItem[]>([]);
   const [sellRules, setSellRules] = useState<RuleItem[]>([]);
@@ -64,6 +62,12 @@ export function useStrategyState() {
     []
   );
 
+  // 👈 setRules 함수 추가: 외부에서 전체 규칙을 설정할 수 있도록
+  const setRules = useCallback((buy: RuleItem[], sell: RuleItem[]) => {
+    setBuyRules(buy);
+    setSellRules(sell);
+  }, []); // 의존성 배열 비어있음: 한 번만 생성되도록
+
   const addRule = useCallback(
     (
       ruleType: RuleType,
@@ -72,7 +76,7 @@ export function useStrategyState() {
     ) => {
       const newSignal: SignalBlockData = {
         type: "signal",
-        id: nanoid(),
+        id: nanoid(), // nanoid 사용
         conditionA: null,
         operator: ">",
         conditionB: null,
@@ -174,7 +178,7 @@ export function useStrategyState() {
                 acc[param.key] = param.defaultValue;
                 return acc;
               }, {} as Record<string, any>),
-              timeframe: indicator.defaultTimeframe, // 지표의 기본 타임프레임 할당
+              timeframe: indicator.defaultTimeframe,
             },
           };
           const updatedSignalItem: SignalBlockData = {
@@ -200,10 +204,9 @@ export function useStrategyState() {
 
           const currentCondition = item[condition];
           if (!currentCondition || currentCondition.type !== "indicator") {
-            return item; // 지표 타입이 아니거나 조건이 없으면 변경하지 않음
+            return item;
           }
 
-          // currentCondition.value가 객체이며 indicatorKey 속성을 가지고 있는지 확인
           if (
             typeof currentCondition.value !== "object" ||
             currentCondition.value === null ||
@@ -212,7 +215,6 @@ export function useStrategyState() {
             return item;
           }
 
-          // currentCondition.value를 명시적으로 타입 단언
           const updatedValue = {
             ...(currentCondition.value as {
               indicatorKey: string;
@@ -225,8 +227,6 @@ export function useStrategyState() {
           const updatedCondition: Condition = {
             ...currentCondition,
             value: updatedValue,
-            // 이름도 업데이트하여 타임프레임이 반영되도록 할 수 있지만, 여기서는 UI에서 처리하는 것이 더 유연함
-            // name: `${currentCondition.name.split('(')[0]}(${Object.values(updatedValue.values).join(',')}, ${newTimeframe})`,
           };
 
           const updatedSignalItem: SignalBlockData = {
@@ -247,6 +247,7 @@ export function useStrategyState() {
     deleteRule,
     updateRuleData,
     updateBlockCondition,
-    updateBlockTimeframe, // 새로운 훅 반환
+    updateBlockTimeframe,
+    setRules, // 👈 반환 객체에 추가
   };
 }

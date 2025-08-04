@@ -4,6 +4,66 @@
 
 ---
 
+### 2025-08-05
+
+- **주제:** 백엔드 Pydantic 유효성 검사 오류 해결 및 스키마 정렬
+- **내용:**
+  - **문제:** `/api/users/me/dashboard_summary` API 호출 시 `pydantic_core.ValidationError` 발생. `Backtest.rules.pnl_curve_json`이 `List`인데 `Dict`로 선언되거나, `Backtest.strategy`가 `StrategyBase` 타입이어야 하는데 `models.Strategy` 객체가 들어오는 등의 타입 불일치 문제 발생. `PydanticUndefinedAnnotation` 오류는 스키마 정의 순서 문제로 발생.
+  - **원인 분석:** `backend/app/schemas.py` 파일의 타입 정의가 실제 데이터 흐름과 일치하지 않았고, Pydantic v2 `Config` 대신 `ConfigDict`를 사용해야 하는 문제, 그리고 스키마 정의 순서가 잘못되었기 때문.
+  - **해결:**
+    - `schemas.py` 파일을 Pydantic v2에 맞춰 `Config`를 `model_config = ConfigDict(...)`로 일괄 변경하고 `from_attributes=True`를 적용함.
+    - `BacktestResultSummary.pnl_curve_json`의 타입을 `Optional[List[Dict[str, Any]]]`로 수정하여 실제 데이터 형식과 일치시킴.
+    - `Backtest.strategy`와 `LiveBot.strategy`의 타입을 `Optional["Strategy"]`로 수정하여 `models.Strategy` 객체를 올바르게 변환하도록 함.
+    - `Strategy` 및 `ApiKeyResponse` 스키마가 `Backtest`와 `LiveBot`보다 먼저 정의되도록 파일 내 스키마들의 순서를 재조정하여 `PydanticUndefinedAnnotation` 오류를 해결함.
+
+---
+
+### 2025-08-04
+
+- **주제:** 전략 목록/편집 페이지 UI/UX 개선 및 버그 수정
+- **내용:**
+  - **문제 1:** `StrategiesPage`에서 검색창 입력 시 화면 깜빡임 및 포커스 이탈 문제 발생.
+  - **해결 1:** 검색 로직을 `Input` 필드의 상태(`inputSearchTerm`)와 실제 API 호출 상태(`actualSearchTerm`)로 분리함. 검색 버튼 클릭 또는 엔터 키 입력 시에만 `actualSearchTerm`이 업데이트되도록 하여 불필요한 API 호출 및 리렌더링을 방지함.
+  - **문제 2:** `StrategyCard`가 다크 모드에서 `hover:border-primary` 효과가 보이지 않음.
+  - **원인 2:** `Card.tsx` 컴포넌트 내부에 `dark:border-black/20`와 같이 하드코딩된 테두리 클래스가 `hover:border-primary`를 덮어쓰고 있었음.
+  - **해결 2:** `Card.tsx`를 `Shadcn UI` 표준에 맞춰 `border bg-card` 등 CSS 변수를 따르도록 리팩토링하여 테마에 맞는 호버 효과가 정상적으로 작동하도록 함.
+  - **문제 3:** `StrategiesPage`의 "최근 수정일순" 정렬 시 `updated_at`이 `NULL`인 항목들이 먼저 옴.
+  - **해결 3:** `strategy_service.py`의 정렬 쿼리에 `.nullslast()`를 적용하여 `NULL` 값이 항상 마지막에 오도록 수정함.
+
+---
+
+### 2025-08-03
+
+- **주제:** 전략 편집 페이지 (`/strategies/:id/edit`) 구현 및 데이터 로딩
+- **내용:**
+  - `strategies/[id]/edit/page.tsx`를 새로 구현. URL `params.id`에서 전략 ID를 가져옴.
+  - `useQuery`로 `GET /api/strategies/{id}` 엔드포인트를 호출하여 기존 전략 데이터를 불러옴.
+  - `react-hook-form`의 `reset`과 `useStrategyState`의 `setRules`를 사용하여 폼 필드와 전략 규칙 빌더(`StrategyBuilderCanvas`)를 초기 데이터로 초기화하는 로직 구현.
+  - `useMutation`으로 `PUT /api/strategies/{id}` 엔드포인트에 전략 업데이트 로직을 구현함.
+  - `StrategyBacktestHistory.tsx` 컴포넌트를 통합하여 해당 전략으로 실행된 백테스트 기록을 표시함.
+
+---
+
+### 2025-08-02
+
+- **주제:** 프론트엔드 컴포넌트의 타입 및 런타임 오류 해결
+- **내용:**
+  - `useUserSubscription.ts`의 `cacheTime`을 `@tanstack/react-query` v5의 API에 맞춰 `gcTime`으로 변경. `currentPlan` 변수 타입을 명시적으로 지정하여 `any` 타입 오류 해결.
+  - `BacktestSetupForm.tsx`에서 `react-hook-form`과 `zod`의 버전 호환성 문제로 발생한 타입 오류를 해결하기 위해 `package.json`의 라이브러리 버전을 `date-fns: ^3.6.0`, `react-hook-form: ^7.51.5` 등으로 재조정. `as any` 캐스팅을 제거하고 클린한 코드로 재작성.
+  - `DatePickerCustom.tsx`에서 `react-day-picker`의 타입 정의 불일치 문제(예: `IconLeft`, `captionLayout` 오류)를 해결하기 위해 `useDayPicker`의 반환 값에 대한 타입 추론을 강제하고 `any`로 캐스팅하는 최종 우회책을 적용.
+  - `TradeLogTable.tsx`에서 `date-fns`의 `format` 함수를 올바르게 임포트하도록 수정.
+
+---
+
+### 2025-08-01
+
+- **주제:** 백엔드 Celery/`eventlet` 충돌 해결
+- **내용:**
+  - `AttributeError: '_thread._local' object has no attribute 'current_cancel_scope'` 오류를 해결하기 위해 `backend/app/celery_app.py` 파일을 수정.
+  - `eventlet.monkey_patch()`가 `if 'celery' in sys.argv and 'worker' in sys.argv:` 조건문 안에서만 실행되도록 수정. 이로써 FastAPI 서버(`uvicorn`) 프로세스가 `eventlet`에 의해 패치되는 것을 방지하고, Celery 워커만 `eventlet` 환경에서 안정적으로 작동하도록 함.
+
+---
+
 ### 2025-07-24
 
 - **주제:** 전략 빌더 페이지 레이아웃 및 스크롤 처리 개선

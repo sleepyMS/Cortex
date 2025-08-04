@@ -1,8 +1,8 @@
-// frontend/src/app/[locale]/strategies/[strategyId]/edit/page.tsx
+// frontend/src/app/[locale]/strategies/[id]/edit/page.tsx
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation"; // useParams, useRouter 임포트
 import { useTranslations } from "next-intl";
 import { AuthGuard } from "@/components/auth/AuthGuard";
@@ -29,16 +29,16 @@ import {
 } from "@/components/ui/Form";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Loader2, Save, ArrowLeft, RefreshCw } from "lucide-react"; // RefreshCw 아이콘 추가
-import { Separator } from "@/components/ui/Separator"; // 구분선 임포트
-import { StrategyBacktestHistory } from "@/components/domain/strategy/StrategyBacktestHistory"; // 👈 백테스트 기록 컴포넌트 임포트
+import { Loader2, Save, ArrowLeft, RefreshCw } from "lucide-react";
+import { Separator } from "@/components/ui/Separator";
+import { StrategyBacktestHistory } from "@/components/domain/strategy/StrategyBacktestHistory";
 import { Spinner } from "@/components/ui/Spinner";
 
 // --- 폼 스키마 정의 (Zod) ---
 const formSchema = z.object({
   name: z
     .string()
-    .min(1, { message: "전략 이름을 입력해주세요." })
+    .min(3, { message: "전략 이름은 최소 3글자 이상이어야 합니다." })
     .max(100, { message: "전략 이름은 100자 이내여야 합니다." }),
   description: z
     .string()
@@ -48,13 +48,11 @@ const formSchema = z.object({
 
 type StrategyFormValues = z.infer<typeof formSchema>;
 
-// 백엔드 schemas.StrategyCreatePayload (PUT 요청에 사용)
 interface StrategyUpdatePayload extends StrategyFormValues {
-  rules?: any; // rules는 optional
-  is_public?: boolean; // is_public도 optional
+  rules?: any;
+  is_public?: boolean;
 }
 
-// 백엔드 schemas.Strategy 응답 타입
 interface StrategyResponse {
   id: number;
   author_id: number;
@@ -66,27 +64,34 @@ interface StrategyResponse {
   updated_at?: string | null;
 }
 
-// 백엔드 schemas.Backtest (related backtest records)
 interface BacktestResponse {
   id: number;
   user_id: number;
   strategy_id: number;
-  status: string; // "pending" | "running" | "completed" | "failed" | "canceled" | "error" | "failed_dispatch" | "initializing";
+  status: string;
   parameters: Record<string, any>;
   created_at: string;
   updated_at?: string;
   completed_at?: string;
-  result?: { total_return_pct?: number }; // 간략화된 결과
-  strategy?: { id: number; name: string }; // StrategyBase
+  result?: { total_return_pct?: number };
+  strategy?: { id: number; name: string };
 }
 
-export default function EditStrategyPage() {
-  // 👈 컴포넌트 이름 변경
+// Next.js 라우터 파라미터를 위한 Props 타입 정의
+interface EditStrategyPageProps {
+  params: {
+    // 👈 'id' 대신 'strategyId'로 변경
+    strategyId: string;
+  };
+}
+
+export default function EditStrategyPage({ params }: EditStrategyPageProps) {
   const t = useTranslations("StrategyBuilder");
   const router = useRouter();
   const queryClient = useQueryClient();
-  const params = useParams(); // URL 파라미터 가져오기
-  const strategyId = params.strategyId as string; // 전략 ID
+
+  // 👈 params.strategyId로 전략 ID 추출
+  const strategyId = params.strategyId;
 
   // useStrategyState 훅을 사용하여 전략 규칙 상태 및 핸들러를 가져옵니다.
   const {
@@ -97,6 +102,7 @@ export default function EditStrategyPage() {
     updateRuleData,
     updateBlockCondition,
     updateBlockTimeframe,
+    setRules, // setRules 함수 가져오기
   } = useStrategyState();
 
   const [isHubOpen, setIsHubOpen] = useState(false);
@@ -110,41 +116,27 @@ export default function EditStrategyPage() {
     error: errorStrategy,
     refetch: refetchStrategy,
   } = useQuery<StrategyResponse, Error>({
-    queryKey: ["strategyDetails", strategyId],
+    queryKey: ["strategyDetails", strategyId], // 쿼리 키에 ID 포함
     queryFn: async () => {
       const { data } = await apiClient.get(`/strategies/${strategyId}`);
+      console.log("Fetched strategy data:", data);
       return data;
     },
     enabled: !!strategyId, // strategyId가 있을 때만 쿼리 실행
-    staleTime: 1000 * 60, // 1분 동안 fresh 상태 유지
+    staleTime: 1000 * 60,
     onSuccess: (data) => {
-      // 폼과 useStrategyState에 기존 데이터 설정
       form.reset({
+        // 폼 필드 초기화
         name: data.name,
         description: data.description || "",
       });
-      updateRuleData("buy", "", { ...data.rules.buy }); // useStrategyState의 규칙 업데이트 함수
-      updateRuleData("sell", "", { ...data.rules.sell }); // TODO: useStrategyState에 초기 규칙 설정 함수 필요
-      // 현재는 updateRuleData가 특정 블록ID를 받으므로,
-      // 모든 규칙을 통째로 설정하는 함수를 useStrategyState에 추가하는 것이 좋습니다.
-      // 임시 방편으로 아래 코드를 사용했습니다.
-      if (data.rules.buy && data.rules.buy.length > 0) {
-        // buyRules를 통째로 교체하는 로직
-        (form as any)._formValues.buyRules = data.rules.buy;
-        // updateRuleData 대신 직접 setBuyRules/setSellRules 호출 (안전하지 않음)
-        // useStrategyState 훅에 setAllRules(buyRules, sellRules) 같은 함수 추가 필요
-      }
-      if (data.rules.sell && data.rules.sell.length > 0) {
-        // sellRules를 통째로 교체하는 로직
-        (form as any)._formValues.sellRules = data.rules.sell;
-      }
+      // setRules 함수를 사용하여 규칙 빌더 초기화
+      setRules(data.rules.buy || [], data.rules.sell || []);
     },
-    onError: (error) => {
-      const apiErrorDetail = (error as any)?.response?.data?.detail;
-      const errorMessage = apiErrorDetail || error.message;
-      toast.error(t("loadStrategyError", { error: errorMessage }));
-      console.error("Failed to load strategy:", errorMessage, error);
-      router.push("/strategies"); // 로드 실패 시 목록으로 돌아가기
+    onError: (err) => {
+      toast.error(t("form.loadError", { error: err.message }));
+      console.error("Failed to load strategy:", err);
+      router.push("/strategies");
     },
   });
 
@@ -167,7 +159,6 @@ export default function EditStrategyPage() {
     staleTime: 1000 * 60,
   });
 
-  // --- 폼 관리 (react-hook-form) ---
   const form = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -176,13 +167,13 @@ export default function EditStrategyPage() {
     },
   });
 
-  // --- 전략 업데이트 뮤테이션 (PUT /api/strategies/{strategyId}) ---
   const updateStrategyMutation = useMutation<
     StrategyResponse,
     Error,
     StrategyFormValues
   >({
     mutationFn: async (values) => {
+      if (!existingStrategy) throw new Error("Strategy data not loaded.");
       const payload: StrategyUpdatePayload = {
         name: values.name,
         description: values.description,
@@ -190,7 +181,7 @@ export default function EditStrategyPage() {
           buy: buyRules,
           sell: sellRules,
         },
-        // is_public은 별도 토글 버튼으로 관리되므로 여기서 업데이트하지 않거나, 폼에 추가
+        is_public: existingStrategy.is_public, // 기존 is_public 값 유지
       };
       const { data } = await apiClient.put(
         `/strategies/${strategyId}`,
@@ -200,21 +191,42 @@ export default function EditStrategyPage() {
     },
     onSuccess: (data) => {
       toast.success(t("form.updateSuccess", { strategyName: data.name }));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] }); // 전략 목록 갱신
+      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
       queryClient.invalidateQueries({
         queryKey: ["strategyDetails", strategyId],
-      }); // 상세 전략 데이터 갱신
-      // router.push("/strategies"); // 업데이트 후 목록으로 이동
+      });
     },
     onError: (error) => {
-      const apiErrorDetail = (error as any)?.response?.data?.detail;
-      const errorMessage = apiErrorDetail || error.message;
-      toast.error(t("form.updateError", { error: errorMessage }));
-      console.error("Strategy update failed:", errorMessage, error);
+      let displayMessage = t("form.saveFailedGeneric");
+      const apiError = error as any;
+
+      if (
+        apiError.response &&
+        apiError.response.data &&
+        apiError.response.data.detail
+      ) {
+        if (Array.isArray(apiError.response.data.detail)) {
+          const validationErrors = apiError.response.data.detail
+            .map((err: any) => {
+              const field =
+                err.loc && err.loc.length > 1 ? err.loc[1] : "unknown field";
+              return `${field}: ${err.msg}`;
+            })
+            .join(", ");
+          displayMessage = `${t(
+            "form.validationErrorPrefix"
+          )}: ${validationErrors}`;
+        } else if (typeof apiError.response.data.detail === "string") {
+          displayMessage = apiError.response.data.detail;
+        }
+      } else {
+        displayMessage = error.message;
+      }
+      toast.error(t("form.updateError", { error: displayMessage }));
+      console.error("Strategy update failed:", displayMessage, error);
     },
   });
 
-  // 전체 폼 제출 핸들러
   const onSubmit = (values: StrategyFormValues) => {
     if (buyRules.length === 0 && sellRules.length === 0) {
       toast.error(t("form.rulesRequired"));
@@ -223,7 +235,6 @@ export default function EditStrategyPage() {
     updateStrategyMutation.mutate(values);
   };
 
-  // --- 지표 허브 및 규칙 빌더 관련 핸들러 (기존과 동일) ---
   const handleSlotClick = (
     ruleType: "buy" | "sell",
     blockId: string,
@@ -247,7 +258,7 @@ export default function EditStrategyPage() {
     }
   };
 
-  // --- 로딩 및 에러 상태 UI ---
+  // 로딩 중이거나 에러 발생 시 로딩 스피너 또는 에러 메시지 표시
   if (isLoadingStrategy) {
     return (
       <AuthGuard>
@@ -259,7 +270,8 @@ export default function EditStrategyPage() {
     );
   }
 
-  if (isErrorStrategy) {
+  // 데이터 로딩 실패 시 (isError는 useQuery의 onError에서 처리되므로, 여기서는 기본적으로 strategy가 없으면 에러로 간주)
+  if (isErrorStrategy || !existingStrategy) {
     return (
       <AuthGuard>
         <div className="container mx-auto max-w-3xl p-8 text-destructive-foreground text-center">
@@ -281,7 +293,6 @@ export default function EditStrategyPage() {
     );
   }
 
-  // --- 메인 렌더링 ---
   return (
     <AuthGuard>
       <IndicatorHub
@@ -307,7 +318,7 @@ export default function EditStrategyPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => refetchStrategy()} // 전략 데이터 새로고침 버튼
+            onClick={() => refetchStrategy()}
             disabled={updateStrategyMutation.isPending}
           >
             <RefreshCw className="h-4 w-4" />
@@ -376,7 +387,7 @@ export default function EditStrategyPage() {
               />
             </div>
 
-            {/* 저장 버튼 */}
+            {/* 저장 버튼 (업데이트 버튼으로 변경) */}
             <Button
               type="submit"
               className="w-fit h-10 px-6 rounded-md"
@@ -385,12 +396,12 @@ export default function EditStrategyPage() {
               {updateStrategyMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("form.savingStrategy")}
+                  {t("form.updatingStrategy")}
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  {t("form.saveButton")}
+                  {t("form.updateButton")}
                 </>
               )}
             </Button>

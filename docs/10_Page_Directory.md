@@ -46,6 +46,8 @@
 - **개발 단계:** `[Phase 2]`
 - **역할:** 로그인 후 사용자가 가장 먼저 마주하는 개인화된 허브입니다.
 - **주요 기능 및 컴포넌트:**
+  - `AdminDashboardClient` (관리자용): 시스템 전체 통계 요약
+  - `UserDashboardClient` (일반 사용자용): 개인 포트폴리오, 봇 현황, 최근 활동 요약
   - `PortfolioOverview`: 자산 현황 요약
   - `ActiveBotCard`: 실행 중인 봇 목록
   - 최근 백테스팅 결과 바로가기
@@ -56,9 +58,11 @@
 - **역할:** 사용자가 투자 전략의 과거 성과를 시뮬레이션하는 핵심 기능 페이지입니다.
 - **주요 기능 및 컴포넌트:**
   - `BacktestSetupForm`: 백테스팅 조건 설정
-  - `BacktestResultSummary`: 성과 지표 요약
-  - `EquityChart`: 누적 수익률 곡선 차트
-  - `TradeLogTable`: 상세 거래 내역
+  - `BacktestList`: 실행 중인 백테스트 목록과 상태
+- **상세 결과 페이지 (`/backtester/:id`)**
+  - `BacktestResultSummary`: 성과 지표 요약 (재사용)
+  - `EquityChart`: 누적 수익률 곡선 차트 (재사용)
+  - `TradeLogTable`: 상세 거래 내역 테이블 (재사용)
 
 ### **나의 전략 목록 페이지 (`/strategies`)**
 
@@ -67,13 +71,17 @@
 - **주요 기능 및 컴포넌트:**
   - `StrategyCard`: 저장된 전략 목록
   - 새 전략 만들기 버튼
+  - 검색, 필터링, 정렬 컨트롤
 
 ### **전략 빌더 페이지 (`/strategies/new` 또는 `/strategies/:id/edit`)**
 
 - **개발 단계:** `[Phase 3+]`
 - **역할:** 사용자가 코딩 없이 전략을 생성하고 수정하는 비주얼 편집기입니다.
 - **주요 기능 및 컴포넌트:**
-  - `StrategyBuilder`
+  - `StrategyBuilderCanvas`: 전략 규칙 편집기
+  - `IndicatorHub`: 지표 선택 모달
+  - `ParameterPopover`: 지표 파라미터 설정
+  - **수정 페이지 기능**: 기존 전략 데이터 로딩 및 폼 채우기, `StrategyBacktestHistory` 컴포넌트 통합
 
 ---
 
@@ -136,7 +144,7 @@
 - **개발 단계:** `[Phase 2]`
 - **역할:** 서비스 운영의 핵심 지표를 모니터링합니다.
 - **주요 기능 및 컴포넌트:**
-  - `AdminStatCard`: KPI 요약 카드
+  - `AdminDashboardClient`에서 사용되는 `AdminStatCard`
   - 가입자 추이 차트
 
 ### **사용자 관리 페이지 (`/admin/users`)**

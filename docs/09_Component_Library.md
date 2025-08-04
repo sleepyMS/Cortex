@@ -16,16 +16,28 @@
 
 > 프로젝트의 디자인 시스템 역할을 하는 가장 기본적인 UI 요소들입니다.
 
-- **`Button.tsx`**: 클릭 가능한 모든 버튼 요소. (variant: primary, secondary, danger, ghost 등)
-- **`Input.tsx`**: 텍스트, 이메일, 비밀번호 등 모든 종류의 입력 필드.
-- **`Card.tsx`**: 콘텐츠를 감싸는 기본 카드 레이아웃. (그림자, 둥근 모서리, 패딩 등)
-- **`Modal.tsx`**: 사용자에게 추가 정보를 제공하거나 확인을 요구하는 팝업 대화상자.
-- **`Spinner.tsx`**: 데이터 로딩 중임을 나타내는 스피너 또는 스켈레톤 UI.
-- **`Tooltip.tsx`**: UI 요소 위에 마우스를 올렸을 때 추가 정보를 보여주는 말풍선.
-- **`Badge.tsx`**: 'Pro', 'Active', 'New' 등 작은 상태 정보를 표시하는 뱃지.
-- **`Select.tsx`**: 드롭다운 형태의 선택 메뉴.
-- **`DatePicker.tsx`**: 날짜 및 기간 선택을 위한 캘린더 컴포넌트. (`react-day-picker` 라이브러리의 래퍼)
-- **`Table.tsx`**: `<table>`, `<thead>`, `<tbody>` 등 테이블 관련 태그에 일관된 스타일을 적용한 컴포넌트 세트.
+- **`Badge.tsx`**: 상태를 나타내는 라벨용 뱃지 (e.g., `New`, `Beta`).
+- **`Button.tsx`**: 클릭 가능한 버튼. 다양한 `variant` 및 `size` 지원.
+- **`Calendar.tsx`**: 날짜 선택용 달력 UI. `react-day-picker` 기반.
+- **`Card.tsx`**: 내용 블록을 감싸는 기본 카드 컴포넌트.
+- **`Checkbox.tsx`**: 이진 입력용 체크박스.
+- **`DatePickerCustom.tsx`**: 날짜 범위 선택을 위한 커스텀 날짜 선택기.
+- **`Dialog.tsx`**: 모달 대화상자. 확인/취소 인터페이스로 활용.
+- **`DropdownMenu.tsx`**: Radix 기반의 드롭다운 메뉴 컴포넌트 세트.
+- **`Form.tsx`**: `react-hook-form` 래퍼로, 폼 상태 관리와 유효성 검사를 담당.
+- **`HorizontalScrollArea.tsx`**: 수평 스크롤 전용 레이아웃 컨테이너.
+- **`IconButton.tsx`**: 아이콘 전용 버튼. 접근성 대응 (`aria-label` 필수).
+- **`Input.tsx`**: 단일 입력 필드 컴포넌트.
+- **`Label.tsx`**: 폼 요소에 대한 텍스트 라벨.
+- **`Logo.tsx`**: 프로젝트 로고를 렌더링하는 컴포넌트.
+- **`Popover.tsx`**: 클릭 트리거로 떠오르는 팝오버 UI.
+- **`ScrollArea.tsx`**: 커스텀 스크롤바 영역을 제공하는 컴포넌트.
+- **`Select.tsx`**: 사용자 정의 옵션을 선택할 수 있는 셀렉트 박스.
+- **`Separator.tsx`**: 수평/수직 시각적 구분선.
+- **`Spinner.tsx`**: 비동기 작업 중 로딩 상태를 나타내는 인디케이터.
+- **`Table.tsx`**: 정형 데이터 출력용 테이블 UI.
+- **`Tabs.tsx`**: 콘텐츠를 탭으로 나누어 렌더링.
+- **`Textarea.tsx`**: 다중 줄 텍스트 입력 필드.
 
 ---
 
@@ -33,46 +45,94 @@
 
 > 애플리케이션의 전체적인 페이지 구조를 정의합니다.
 
-- **`Header.tsx`**: 모든 페이지 상단에 위치하는 헤더. (로고, 네비게이션 메뉴, 사용자 프로필 드롭다운 포함)
-- **`Footer.tsx`**: 모든 페이지 하단에 위치하는 푸터. (서비스 정보, 관련 링크 등)
-- **`Sidebar.tsx`**: 인증 후 사용되는 핵심 페이지들의 좌측 또는 우측 네비게이션 바.
-- **`PageWrapper.tsx`**: 메인 콘텐츠 영역을 감싸며 일관된 여백과 최대 너비를 적용하는 컨테이너.
+- **`Header.tsx`**: 상단 고정 헤더. 로고, 메뉴, 사용자 드롭다운 포함.
+- **`Footer.tsx`**: 페이지 하단 정보 영역.
+- **`Sidebar.tsx`**: 인증 후 사용 가능한 사이드 네비게이션 바.
+- **`PageWrapper.tsx`**: 최대 너비, 여백 등을 담당하는 콘텐츠 컨테이너.
 
 ---
 
 ## 4. `components/domain` (도메인 특화 컴포넌트)
 
-> 특정 기능이나 페이지를 위해 `ui` 및 `layout` 컴포넌트들을 조합하여 만든 기능 단위 컴포넌트들입니다.
+> 기능 단위로 구성된 고수준 컴포넌트입니다.
 
-#### 4.1. 인증 (Authentication)
+### 4.1. 인증 (Authentication)
 
-- **`SignupForm.tsx`**: 회원가입 페이지에서 사용될 이메일, 비밀번호 입력 및 제출 로직을 포함한 폼.
-- **`LoginForm.tsx`**: 로그인 페이지에서 사용될 이메일, 비밀번호 입력 및 제출 로직을 포함한 폼.
+- **`SignupForm.tsx`**: 회원가입 폼.
+- **`LoginForm.tsx`**: 로그인 폼.
 
-#### 4.2. 백테스팅 (Backtesting)
+### 4.2. 백테스팅 (Backtesting)
 
-- **`BacktestSetupForm.tsx`**: 백테스팅 조건(기간, 코인, 전략 파라미터 등)을 설정하는 전체 폼 컴포넌트.
-- **`BacktestResultSummary.tsx`**: 백테스팅 완료 후 수익률, MDD, 샤프 지수 등 핵심 지표를 요약하여 보여주는 섹션.
-- **`EquityChart.tsx`**: 자산 변화 곡선을 그리는 `lightweight-charts`를 활용한 차트 컴포넌트.
-- **`TradeLogTable.tsx`**: 모든 거래 내역을 보여주는 `TanStack Table`을 활용한 상세 테이블.
+- **`BacktestSetupForm.tsx`**, **`BacktestResultSummary.tsx`**
+- **`EquityChart.tsx`**, **`TradeLogTable.tsx`**, **`BacktestList.tsx`**
+- **`DateRangePicker.tsx`**, **`TickerSelector.tsx`**
 
-#### 4.3. 전략 (Strategy)
+### 4.3. 전략 (Strategy)
 
-- **`StrategyBuilder.tsx`**: 조건과 지표를 조합해 사용자가 직접 전략을 만드는 비주얼 편집기 인터페이스.
-- **`StrategyCard.tsx`**: '나의 전략 목록' 페이지에서 저장된 개별 전략의 요약 정보를 보여주는 카드.
+- **`StrategyBuilderCanvas.tsx`**, **`IndicatorHub.tsx`**
+- **`ParameterPopover.tsx`**, **`RuleBlock.tsx`**
+- **`StrategyCard.tsx`**, **`StrategyBacktestHistory.tsx`**
 
-#### 4.4. 커뮤니티 (Community)
+### 4.4. 커뮤니티 (Community)
 
-- **`SharedResultCard.tsx`**: 커뮤니티 피드에 표시될 공유된 백테스팅 결과 요약 카드.
-- **`CommentSection.tsx`**: 댓글 목록과 새 댓글 입력 폼을 포함하는 전체 댓글 영역.
+- **`SharedResultCard.tsx`**, **`CommentSection.tsx`**
 
-#### 4.5. 구독 및 설정 (Subscription & Settings)
+### 4.5. 구독 및 설정 (Subscription & Settings)
 
-- **`PricingTable.tsx`**: 가격 정책 페이지의 플랜별 기능 비교 테이블.
-- **`ApiKeyManager.tsx`**: 거래소 API 키 목록을 보여주고 추가/삭제하는 기능이 포함된 컴포넌트.
-- **`SubscriptionStatus.tsx`**: 사용자의 현재 구독 상태와 결제 정보를 관리하는 컴포넌트.
+- **`PricingTable.tsx`**, **`ApiKeyManager.tsx`**, **`SubscriptionStatus.tsx`**
 
-#### 4.6. 관리자 (Admin)
+### 4.6. 관리자 (Admin)
 
-- **`AdminStatCard.tsx`**: 관리자 대시보드의 핵심 지표(e.g., 총 가입자 수)를 보여주는 요약 카드.
-- **`AdminUserTable.tsx`**: 사용자 검색, 필터링, 역할 변경 등의 기능이 포함된 사용자 관리 테이블.
+- **`AdminStatCard.tsx`**, **`AdminUserTable.tsx`**
+
+---
+
+## 5. `components/providers` (Provider 계층)
+
+> 앱 전체에서 전역 상태나 설정을 주입합니다.
+
+- **`Providers.tsx`**  
+  다음 세 가지 핵심 기능을 래핑합니다:
+  - `ThemeProvider` (다크/라이트 모드)
+  - `QueryClientProvider` (`react-query`)
+  - `NextIntlClientProvider` (다국어/타임존 지원)  
+    내부에서 `useReAuth()`를 호출하여 인증 토큰 만료 시 자동 재인증을 시도합니다.
+
+---
+
+## 6. `hooks/` (사용자 정의 훅)
+
+> 글로벌 상태, API 연동, SSR 대응 등을 위한 재사용 훅.
+
+- **`useHasHydrated.ts`**  
+  클라이언트가 hydration 완료됐는지를 판단하여 CSR 조건부 렌더링에 활용.
+
+- **`useReAuth.ts`**  
+  액세스 토큰 만료 시 자동으로 갱신하거나 리프레시하는 인증 유지 훅. `Providers.tsx`에서 초기 진입 시 실행됩니다.
+
+- **`useStrategyState.ts`**  
+  전략 편집기(StrategyBuilder)에서 사용되는 상태를 전역적으로 관리.
+
+- **`useUserSubscription.ts`**  
+  유저의 구독 상태 및 플랜 정보를 가져오고 캐싱합니다. 요금제 변경 로직에도 연동 가능.
+
+---
+
+## 7. `lib/apiClient.ts` (API 클라이언트)
+
+> Axios 인스턴스를 구성하고, JWT 토큰 기반 인증 및 응답 에러 처리를 포함합니다.  
+> 주요 기능:
+
+- baseURL: "http://127.0.0.1:8000/api"
+- 인증 토큰 자동 첨부 (Interceptor)
+- 401 응답 시 리프레시 또는 로그아웃 처리
+- 공통 에러 핸들링 (e.g., alert, toast)
+
+---
+
+## ✅ 요약
+
+- UI 컴포넌트는 작게, 재사용 가능하게.
+- 도메인 컴포넌트는 기능 단위로 명확하게.
+- Provider와 Hook은 앱 전역에서 사용하는 핵심 인프라 코드로 분리.
+- 모든 요소는 디자인 시스템과 상태 관리 일관성을 기준으로 설계됨.

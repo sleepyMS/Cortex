@@ -82,7 +82,7 @@ Cortex/
 │  ├── routers/ # API 엔드포인트 라우터
 │  ├── services/ # 비즈니스 로직
 │  ├── models/ # DB 테이블 모델
-│  └── schemas/ # Pydantic 데이터 스키마
+│  └── schemas.py # Pydantic 데이터 스키마
 │
 └── frontend/ # Next.js 프론트엔드 프로젝트 루트
 ├── .next/ # Next.js 빌드 결과물
@@ -99,14 +99,21 @@ Cortex/
 │ │ ├── layout/ # 헤더, 푸터 등 레이아웃
 │ │ └── domain/ # 특정 기능(e.g., 백테스팅)을 위한 복합 컴포넌트
 │ ├── i18n/ # next-intl 설정 폴더
-│ │ ├── navigation.ts
-│ │ ├── request.ts
-│ │ └── routing.ts
+│ │ └── navigation.ts
 │ ├── lib/ # API 클라이언트, 유틸리티 함수
+│ │ ├── apiClient.ts
+│ │ ├── indicators.ts
+│ │ └── utils.ts
+│ ├── hooks/ # 사용자 정의 훅
+│ │ ├── useHasHydrated.ts
+│ │ ├── useReAuth.ts
+│ │ ├── useStrategyState.ts
+│ │ └── useUserSubscription.ts
 │ ├── messages/ # 다국어 지원 텍스트 (en.json, ko.json)
 │ ├── store/ # Zustand 전역 상태 관리
 │ └── middleware.ts # next-intl 라우팅 미들웨어
 │
+├── i18n.ts
 ├── .env.local # 프론트엔드 환경 변수
 ├── next.config.ts # Next.js 메인 설정
 └── tsconfig.json # TypeScript 설정

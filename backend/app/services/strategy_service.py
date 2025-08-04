@@ -2,7 +2,7 @@
 
 import json
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func # func 임포트 추가 (nullslast 사용)
+from sqlalchemy import func
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Literal
 
@@ -19,6 +19,9 @@ class StrategyService:
     def __init__(self):
         self.plan_service = plan_service
 
+    # _load_rules_from_json_data 함수는 더 이상 필요하지 않습니다.
+    # FastAPI의 response_model=schemas.Strategy가 자동으로 처리합니다.
+    # 이 함수는 제거하거나, 필요한 경우 다른 용도로 재정의해야 합니다.
     def _load_rules_from_json_data(
         self,
         rules_json_data: Dict[str, Any]
@@ -98,18 +101,16 @@ class StrategyService:
             author_id=user.id,
             name=strategy_create.name,
             description=strategy_create.description,
-            rules=json.dumps(serialized_rules),
+            rules=serialized_rules, # 👈 json.dumps() 제거
             is_public=strategy_create.is_public
         )
         db.add(db_strategy)
         db.flush()
-        db.refresh(db_strategy)
+        # db.refresh(db_strategy) # 이 refresh는 필요 없습니다.
 
-        if db_strategy.rules and isinstance(db_strategy.rules, dict):
-            db_strategy.rules = self._load_rules_from_json_data(db_strategy.rules)
-        else:
-            db_strategy.rules = {"buy": [], "sell": []}
-            
+        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
+        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
+        
         logger.info(f"User {user.email} (ID: {user.id}) created new strategy: {db_strategy.name} (ID: {db_strategy.id}).")
         return db_strategy
 
@@ -128,7 +129,6 @@ class StrategyService:
         """
         query = db.query(models.Strategy).filter(models.Strategy.author_id == user_id)
 
-        # 👈 is_public_filter 값 로깅 (디버깅용)
         logger.info(f"get_strategies received is_public_filter: {is_public_filter} (type: {type(is_public_filter)})")
 
         if is_public_filter is not None:
@@ -145,18 +145,14 @@ class StrategyService:
         elif sort_by == "name_asc":
             query = query.order_by(models.Strategy.name.asc())
         elif sort_by == "updated_at_desc":
-            # 👈 updated_at이 NULL인 경우를 마지막으로 정렬
             query = query.order_by(models.Strategy.updated_at.desc().nullslast())
         else: # 기본 정렬
             query = query.order_by(models.Strategy.created_at.desc())
 
         strategies = query.offset(skip).limit(limit).all()
         
-        for strategy in strategies:
-            if strategy.rules and isinstance(strategy.rules, dict):
-                strategy.rules = self._load_rules_from_json_data(strategy.rules)
-            else:
-                strategy.rules = {"buy": [], "sell": []}
+        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
+        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
 
         logger.info(f"User ID {user_id} fetched {len(strategies)} strategies.")
         return strategies
@@ -165,11 +161,9 @@ class StrategyService:
         strategy = db.query(models.Strategy).options(
             joinedload(models.Strategy.author)
         ).filter(models.Strategy.id == strategy_id).first()
-
-        if strategy and strategy.rules and isinstance(strategy.rules, dict):
-            strategy.rules = self._load_rules_from_json_data(strategy.rules)
-        elif strategy:
-            strategy.rules = {"buy": [], "sell": []}
+        
+        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
+        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
             
         return strategy
 
@@ -203,7 +197,7 @@ class StrategyService:
                 "buy": [rule.model_dump(mode='json') for rule in update_data["rules"].get("buy", [])],
                 "sell": [rule.model_dump(mode='json') for rule in update_data["rules"].get("sell", [])]
             }
-            db_strategy.rules = json.dumps(serialized_rules)
+            db_strategy.rules = serialized_rules # 👈 json.dumps() 제거
 
         if "name" in update_data and update_data["name"]:
             db_strategy.name = update_data["name"]
@@ -216,10 +210,8 @@ class StrategyService:
         db.commit()
         db.refresh(db_strategy)
 
-        if db_strategy.rules and isinstance(db_strategy.rules, dict):
-            db_strategy.rules = self._load_rules_from_json_data(db_strategy.rules)
-        else:
-            db_strategy.rules = {"buy": [], "sell": []}
+        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
+        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
             
         logger.info(f"User {user.email} (ID: {user.id}) updated strategy: {db_strategy.name} (ID: {db_strategy.id}).")
         return db_strategy
