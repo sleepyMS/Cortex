@@ -67,7 +67,10 @@ uvicorn backend.main:app --reload
 # 2. eventlet 설치
 pip install eventlet
 
-# 3. Celery 워커 실행
+# 3. 도커 실행
+docker-compose up -d
+
+# 4. Celery 워커 실행
 # (main.py가 아닌, celery 인스턴스가 있는 파일 경로를 지정해야 합니다. 예: celery_app.py)
 celery -A backend.app.celery_app worker -l info --pool=eventlet
 ```
