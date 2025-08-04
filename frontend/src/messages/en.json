@@ -319,6 +319,7 @@
       "saveError": "Failed to save strategy: {error}",
       "rulesRequired": "Strategy rules (Buy or Sell) are required.",
       "goBackButton": "Go Back",
+      "updateButton": "Update Strategy",
       "updateSuccess": "Strategy updated successfully!",
       "updateError": "Failed to update strategy: {error}",
       "saveFailedGeneric": "An unexpected error occurred. Please try again.",

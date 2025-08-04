@@ -180,12 +180,13 @@ class StrategyService:
         if db_strategy.author_id != user.id:
             logger.warning(f"User {user.email} (ID: {user.id}) attempted to update strategy {strategy_id} not owned by them.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략을 수정할 권한이 없습니다.")
-
-        update_data = strategy_update.model_dump(exclude_unset=True)
-
-        if "rules" in update_data and update_data["rules"]:
+            
+        # 👈 update_data 변수 선언 위치 변경
+        # 먼저 유효성 검증을 위해 원본 Pydantic 모델을 사용합니다.
+        if strategy_update.rules:
             try:
-                self.verify_strategy_rules_against_plan(user, update_data["rules"], db)
+                # 👈 model_dump() 대신 원본 Pydantic 객체인 strategy_update.rules 사용
+                self.verify_strategy_rules_against_plan(user, strategy_update.rules, db)
             except HTTPException as e:
                 logger.error(f"Strategy rule validation failed during update for user {user.email}: {e.detail}")
                 raise
@@ -193,12 +194,16 @@ class StrategyService:
                 logger.error(f"An unexpected error occurred during rule validation for user {user.email} on update: {e}", exc_info=True)
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 규칙 유효성 검사 중 예상치 못한 오류가 발생했습니다.")
             
+            # 검증 통과 후, 데이터베이스 저장을 위해 딕셔너리로 직렬화합니다.
             serialized_rules = {
-                "buy": [rule.model_dump(mode='json') for rule in update_data["rules"].get("buy", [])],
-                "sell": [rule.model_dump(mode='json') for rule in update_data["rules"].get("sell", [])]
+                "buy": [rule.model_dump(mode='json') for rule in strategy_update.rules.get("buy", [])],
+                "sell": [rule.model_dump(mode='json') for rule in strategy_update.rules.get("sell", [])]
             }
-            db_strategy.rules = serialized_rules # 👈 json.dumps() 제거
+            db_strategy.rules = serialized_rules # json.dumps() 제거
 
+        # 👈 strategy_update.model_dump(exclude_unset=True)는 이 시점에서 호출합니다.
+        update_data = strategy_update.model_dump(exclude_unset=True)
+        
         if "name" in update_data and update_data["name"]:
             db_strategy.name = update_data["name"]
         if "description" in update_data and update_data["description"]:
@@ -209,9 +214,6 @@ class StrategyService:
         db.add(db_strategy)
         db.commit()
         db.refresh(db_strategy)
-
-        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
-        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
             
         logger.info(f"User {user.email} (ID: {user.id}) updated strategy: {db_strategy.name} (ID: {db_strategy.id}).")
         return db_strategy

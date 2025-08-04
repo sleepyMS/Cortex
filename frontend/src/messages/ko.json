@@ -321,6 +321,7 @@
       "saveError": "전략 저장 실패: {error}",
       "rulesRequired": "전략 규칙(매수 또는 매도)은 필수입니다.",
       "goBackButton": "뒤로 가기",
+      "updateButton": "전략 업데이트",
       "updateSuccess": "전략이 성공적으로 업데이트되었습니다!",
       "updateError": "전략 업데이트 실패: {error}",
       "saveFailedGeneric": "예상치 못한 오류가 발생했습니다. 다시 시도해주세요.",

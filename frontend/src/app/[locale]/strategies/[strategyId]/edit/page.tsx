@@ -1,9 +1,10 @@
 // frontend/src/app/[locale]/strategies/[id]/edit/page.tsx
+// 수정된 파일 전체 내용
 
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation"; // useParams, useRouter 임포트
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
@@ -11,14 +12,12 @@ import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuil
 import { IndicatorDefinition } from "@/lib/indicators";
 import { useStrategyState } from "@/hooks/useStrategyState";
 import { TargetSlot } from "@/types/strategy";
-
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
-
 import {
   Form,
   FormControl,
@@ -77,10 +76,8 @@ interface BacktestResponse {
   strategy?: { id: number; name: string };
 }
 
-// Next.js 라우터 파라미터를 위한 Props 타입 정의
 interface EditStrategyPageProps {
   params: {
-    // 👈 'id' 대신 'strategyId'로 변경
     strategyId: string;
   };
 }
@@ -90,10 +87,8 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // 👈 params.strategyId로 전략 ID 추출
   const strategyId = params.strategyId;
 
-  // useStrategyState 훅을 사용하여 전략 규칙 상태 및 핸들러를 가져옵니다.
   const {
     buyRules,
     sellRules,
@@ -102,13 +97,21 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     updateRuleData,
     updateBlockCondition,
     updateBlockTimeframe,
-    setRules, // setRules 함수 가져오기
+    setRules,
   } = useStrategyState();
+
+  // 👈 form 변수 선언 위치를 컴포넌트 상단으로 이동
+  const form: UseFormReturn<StrategyFormValues> = useForm<StrategyFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
 
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
 
-  // --- 기존 전략 데이터 가져오기 ---
   const {
     data: existingStrategy,
     isLoading: isLoadingStrategy,
@@ -116,23 +119,15 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     error: errorStrategy,
     refetch: refetchStrategy,
   } = useQuery<StrategyResponse, Error>({
-    queryKey: ["strategyDetails", strategyId], // 쿼리 키에 ID 포함
+    queryKey: ["strategyDetails", strategyId],
     queryFn: async () => {
-      const { data } = await apiClient.get(`/strategies/${strategyId}`);
-      console.log("Fetched strategy data:", data);
+      const { data } = await apiClient.get<StrategyResponse>(
+        `/strategies/${strategyId}`
+      );
       return data;
     },
-    enabled: !!strategyId, // strategyId가 있을 때만 쿼리 실행
+    enabled: !!strategyId,
     staleTime: 1000 * 60,
-    onSuccess: (data) => {
-      form.reset({
-        // 폼 필드 초기화
-        name: data.name,
-        description: data.description || "",
-      });
-      // setRules 함수를 사용하여 규칙 빌더 초기화
-      setRules(data.rules.buy || [], data.rules.sell || []);
-    },
     onError: (err) => {
       toast.error(t("form.loadError", { error: err.message }));
       console.error("Failed to load strategy:", err);
@@ -140,7 +135,20 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     },
   });
 
-  // --- 관련 백테스트 기록 가져오기 ---
+  // 👈 useEffect를 사용하여 데이터 로딩 후 폼 및 상태 초기화
+  useEffect(() => {
+    if (existingStrategy) {
+      form.reset({
+        name: existingStrategy.name,
+        description: existingStrategy.description || "",
+      });
+      setRules(
+        existingStrategy.rules.buy || [],
+        existingStrategy.rules.sell || []
+      );
+    }
+  }, [existingStrategy, form, setRules]);
+
   const {
     data: relatedBacktests,
     isLoading: isLoadingBacktests,
@@ -150,21 +158,13 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
   } = useQuery<BacktestResponse[], Error>({
     queryKey: ["strategyBacktests", strategyId],
     queryFn: async () => {
-      const { data } = await apiClient.get(
+      const { data } = await apiClient.get<BacktestResponse[]>(
         `/backtests?strategy_id_filter=${strategyId}`
       );
       return data;
     },
-    enabled: !!strategyId && !isLoadingStrategy && !isErrorStrategy, // 전략 로드 성공 시에만 실행
+    enabled: !!strategyId && !isLoadingStrategy && !isErrorStrategy,
     staleTime: 1000 * 60,
-  });
-
-  const form = useForm<StrategyFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-    },
   });
 
   const updateStrategyMutation = useMutation<
@@ -181,9 +181,9 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
           buy: buyRules,
           sell: sellRules,
         },
-        is_public: existingStrategy.is_public, // 기존 is_public 값 유지
+        is_public: existingStrategy.is_public,
       };
-      const { data } = await apiClient.put(
+      const { data } = await apiClient.put<StrategyResponse>(
         `/strategies/${strategyId}`,
         payload
       );
@@ -258,7 +258,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     }
   };
 
-  // 로딩 중이거나 에러 발생 시 로딩 스피너 또는 에러 메시지 표시
   if (isLoadingStrategy) {
     return (
       <AuthGuard>
@@ -270,7 +269,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     );
   }
 
-  // 데이터 로딩 실패 시 (isError는 useQuery의 onError에서 처리되므로, 여기서는 기본적으로 strategy가 없으면 에러로 간주)
   if (isErrorStrategy || !existingStrategy) {
     return (
       <AuthGuard>
@@ -327,7 +325,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* 전략 이름 입력 */}
             <FormField
               control={form.control}
               name="name"
@@ -348,7 +345,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
                 </FormItem>
               )}
             />
-            {/* 전략 설명 입력 */}
             <FormField
               control={form.control}
               name="description"
@@ -370,7 +366,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
               )}
             />
 
-            {/* 전략 빌더 캔버스 (규칙 시각화 및 편집) */}
             <div className="mt-6">
               <h3 className="mb-2 text-lg font-semibold text-foreground">
                 {t("rulesTitle")}
@@ -387,7 +382,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
               />
             </div>
 
-            {/* 저장 버튼 (업데이트 버튼으로 변경) */}
             <Button
               type="submit"
               className="w-fit h-10 px-6 rounded-md"
@@ -410,7 +404,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
 
         <Separator className="my-8" />
 
-        {/* 해당 전략으로 실행된 백테스트 기록 */}
         <div className="mt-6">
           <h3 className="mb-4 text-xl font-bold text-foreground">
             {t("relatedBacktestsTitle")}
