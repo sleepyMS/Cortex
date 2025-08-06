@@ -30,7 +30,7 @@ export function useUserSubscription() {
     error,
     refetch,
   } = useQuery<UserSubscription, Error>({
-    // 👈 error 타입을 Error로 명시 (AxiosError는 여기서 필요 없음)
+    // error 타입을 Error로 명시
     queryKey: ["currentUser"],
     queryFn: async () => {
       // 06_API_Specification.md에 따라 /users/me 엔드포인트 호출
@@ -38,17 +38,17 @@ export function useUserSubscription() {
       return response.data;
     },
     staleTime: 1000 * 60 * 5, // 5분 동안 fresh 상태 유지
-    gcTime: 1000 * 60 * 30, // 👈 cacheTime 대신 gcTime으로 이름 변경
+    gcTime: 1000 * 60 * 30,
     retry: 1,
   });
 
   // 사용자의 현재 플랜 이름을 반환 (구독 정보 없으면 기본 플랜으로 간주)
-  // 👈 currentPlan의 타입을 명시적으로 PlanName으로 지정
+  // currentPlan의 타입을 명시적으로 PlanName으로 지정
   const currentPlan: PlanName = user?.subscription?.plan_name || "basic";
 
   // 각 플랜이 허용하는 타임프레임 목록 (백엔드 plans.features에 정의될 내용)
   const allowedTimeframesByPlan: Record<PlanName, string[]> = {
-    // 👈 Record<PlanName, string[]>으로 명시
+    // Record<PlanName, string[]>으로 명시
     basic: ["1h"],
     trader: ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
     pro: ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
@@ -56,7 +56,7 @@ export function useUserSubscription() {
 
   // 플랜별 일일 백테스팅 횟수 제한 (예시)
   const maxBacktestsPerDayByPlan: Record<PlanName, number> = {
-    // 👈 Record<PlanName, number>로 명시
+    // Record<PlanName, number>로 명시
     basic: 5,
     trader: 50,
     pro: 9999,

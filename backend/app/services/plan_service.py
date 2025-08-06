@@ -1,77 +1,139 @@
-# file: backend/app/services/plan_service.py (UPDATED)
+# file: backend/app/services/plan_service.py
 
-from sqlalchemy.orm import Session
 import logging
-from typing import List, Dict, Any
-
+from typing import List, Dict, Any, Literal
+from sqlalchemy.orm import Session, joinedload
+from fastapi import HTTPException
 from .. import models, schemas
+from ..models import PlanType
 
 logger = logging.getLogger(__name__)
-
-# 기본 플랜의 허용 타임프레임 (하드코딩 또는 DB에서 관리 가능)
-DEFAULT_ALLOWED_TIMEFRAMES = ["1h"]
 
 class PlanService:
     """
     사용자 구독 플랜과 관련된 정보 (허용 타임프레임, 백테스트 제한, 동시 봇 제한 등)를 제공하는 서비스.
     """
-    def get_user_allowed_timeframes(self, user: models.User, db: Session) -> List[str]:
+
+    def _seed_initial_plans(self, db: Session):
         """
-        주어진 사용자의 현재 구독 플랜에 따라 허용되는 타임프레임 목록을 반환합니다.
+        초기 구독 플랜을 데이터베이스에 생성합니다. (서버 시작 시 한 번만 실행)
+        """
+        plans_to_seed = {
+            PlanType.BASIC: {
+                "name": "Basic Plan",
+                "price": 0.0,
+                "features": {
+                    "max_strategies": 3,
+                    "max_coins_per_backtest": 1,
+                    "live_bots_limit": 0,
+                    "daily_backtest_count": 10,
+                    "max_backtest_duration_years": 1,
+                    "supported_timeframes": "1h",
+                    "community_access": False,
+                    "telegram_alerts": False,
+                    "advanced_features_access": False,
+                    "portfolio_backtest_access": False
+                }
+            },
+            PlanType.TRADER: {
+                "name": "Trader Plan",
+                "price": 49.99,
+                "features": {
+                    "max_strategies": 20,
+                    "max_coins_per_backtest": 5,
+                    "live_bots_limit": 3,
+                    "daily_backtest_count": 100,
+                    "max_backtest_duration_years": 3,
+                    "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
+                    "community_access": True,
+                    "telegram_alerts": True,
+                    "advanced_features_access": False,
+                    "portfolio_backtest_access": False
+                }
+            },
+            PlanType.PRO: {
+                "name": "Pro Plan",
+                "price": 129.99,
+                "features": {
+                    "max_strategies": 100,
+                    "max_coins_per_backtest": 10,
+                    "live_bots_limit": 10,
+                    "daily_backtest_count": 9999,
+                    "max_backtest_duration_years": None,
+                    "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
+                    "community_access": True,
+                    "telegram_alerts": True,
+                    "advanced_features_access": True,
+                    "portfolio_backtest_access": True
+                }
+            }
+        }
+
+        for plan_type, data in plans_to_seed.items():
+            db_plan = db.query(models.Plan).filter(models.Plan.name == data['name']).first()
+            if not db_plan:
+                db_plan = models.Plan(
+                    name=data['name'],
+                    price=data['price'],
+                    # 👈 'plan_type' 속성 제거
+                )
+                db.add(db_plan)
+                db.flush()
+                
+                db_features = models.PlanFeature(
+                    plan_id=db_plan.id,
+                    max_strategies=data['features']['max_strategies'],
+                    max_coins_per_backtest=data['features']['max_coins_per_backtest'],
+                    live_bots_limit=data['features']['live_bots_limit'],
+                    daily_backtest_count=data['features']['daily_backtest_count'],
+                    max_backtest_duration_years=data['features']['max_backtest_duration_years'],
+                    supported_timeframes=data['features']['supported_timeframes'],
+                    community_access=data['features']['community_access'],
+                    telegram_alerts=data['features']['telegram_alerts'],
+                    advanced_features_access=data['features']['advanced_features_access'],
+                    portfolio_backtest_access=data['features']['portfolio_backtest_access']
+                )
+                db.add(db_features)
+                logger.info(f"Seeded '{db_plan.name}' plan.")
+        
+        db.commit()
+
+
+    def get_user_plan_level(self, user: models.User, db: Session) -> str:
+        """
+        사용자의 현재 플랜 등급(예: 'basic', 'trader')을 반환합니다.
         """
         subscription = user.subscription
-        
-        if not subscription or subscription.plan.name == "basic":
-            return DEFAULT_ALLOWED_TIMEFRAMES
-
-        plan_features: Dict[str, Any] = subscription.plan.features
-        allowed_timeframes = plan_features.get("allowed_timeframes", DEFAULT_ALLOWED_TIMEFRAMES)
-        
-        logger.info(f"User {user.email} (Plan: {subscription.plan.name}) allowed timeframes: {allowed_timeframes}")
-        return allowed_timeframes
-
-    def get_user_max_backtests_per_day(self, user: models.User, db: Session) -> int:
-        """
-        주어진 사용자의 현재 구독 플랜에 따라 허용되는 일일 백테스팅 횟수를 반환합니다.
-        """
-        subscription = user.subscription
-        
         if not subscription:
-            # 기본 플랜의 max_backtests_per_day를 반환 (models.Plan의 features를 바로 참조)
-            # 이 값은 실제 DB에 Plan이 없을 경우를 대비한 안전 장치.
-            # 실제 플랜 데이터는 DB 마이그레이션 시 초기값으로 삽입될 것임.
-            return models.Plan(name="basic", price=0.0, features={"max_backtests_per_day": 5}).features.get("max_backtests_per_day", 5)
-        
-        plan_features: Dict[str, Any] = subscription.plan.features
-        max_backtests = plan_features.get("max_backtests_per_day", 5)
+            return PlanType.BASIC.value
+        return subscription.plan.plan_type.value
 
-        logger.info(f"User {user.email} (Plan: {subscription.plan.name}) max backtests per day: {max_backtests}")
-        return max_backtests
-
-    def get_user_concurrent_bots_limit(self, user: models.User, db: Session) -> int: # 👈 새로운 함수 추가
+    def get_user_plan_features(self, user: models.User, db: Session) -> schemas.PlanFeatureSchema:
         """
-        주어진 사용자의 현재 구독 플랜에 따라 허용되는 동시 실행 봇의 최대 개수를 반환합니다.
+        사용자의 플랜에 해당하는 모든 기능 제한 정보를 반환합니다.
         """
         subscription = user.subscription
+        if not subscription or not subscription.plan.features:
+            basic_features = db.query(models.PlanFeature).join(models.Plan).filter(models.Plan.name == 'Basic Plan').options(joinedload(models.PlanFeature.plan)).first()
+            if not basic_features:
+                raise HTTPException(status_code=500, detail="Default 'Basic' plan features not found.")
+            return schemas.PlanFeatureSchema.model_validate(basic_features)
 
-        if not subscription:
-            # 기본 플랜의 concurrent_bots_limit을 반환
-            return models.Plan(name="basic", price=0.0, features={"concurrent_bots_limit": 0}).features.get("concurrent_bots_limit", 0) # 기본 플랜은 0개로 가정
-        
-        plan_features: Dict[str, Any] = subscription.plan.features
-        concurrent_limit = plan_features.get("concurrent_bots_limit", 0) # 기본값 0개
+        return schemas.PlanFeatureSchema.model_validate(subscription.plan.features)
 
-        logger.info(f"User {user.email} (Plan: {subscription.plan.name}) concurrent bots limit: {concurrent_limit}")
-        return concurrent_limit
-
-
-    def get_all_plans(self, db: Session) -> List[models.Plan]:
+    def get_timeframe_level(self, timeframe: str) -> Literal["basic", "trader", "pro"]:
         """
-        데이터베이스에 저장된 모든 구독 플랜 목록을 조회합니다.
+        주어진 타임프레임이 요구하는 최소 플랜 등급을 결정합니다.
         """
-        plans = db.query(models.Plan).order_by(models.Plan.price.asc()).all()
-        logger.info(f"Fetched {len(plans)} subscription plans.")
-        return plans
+        if timeframe in ["1m", "5m", "15m", "30m", "4h", "1d", "1w", "1M"]:
+            return "trader"
+        elif timeframe == "1h":
+            return "basic"
+        return "basic"
 
-# 서비스 인스턴스 생성
+    def get_plan_by_id(self, db: Session, plan_id: int) -> models.Plan | None:
+        """ID로 단일 플랜을 조회합니다."""
+        return db.query(models.Plan).filter(models.Plan.id == plan_id).options(joinedload(models.Plan.features)).first()
+
+
 plan_service = PlanService()

@@ -1,9 +1,8 @@
 // frontend/src/app/[locale]/strategies/[id]/edit/page.tsx
-// 수정된 파일 전체 내용
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // useCallback import 추가
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AuthGuard } from "@/components/auth/AuthGuard";
@@ -86,7 +85,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
   const t = useTranslations("StrategyBuilder");
   const router = useRouter();
   const queryClient = useQueryClient();
-
   const strategyId = params.strategyId;
 
   const {
@@ -100,7 +98,6 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     setRules,
   } = useStrategyState();
 
-  // 👈 form 변수 선언 위치를 컴포넌트 상단으로 이동
   const form: UseFormReturn<StrategyFormValues> = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -112,6 +109,7 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
 
+  // --- 기존 전략 데이터 가져오기 ---
   const {
     data: existingStrategy,
     isLoading: isLoadingStrategy,
@@ -135,20 +133,7 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     },
   });
 
-  // 👈 useEffect를 사용하여 데이터 로딩 후 폼 및 상태 초기화
-  useEffect(() => {
-    if (existingStrategy) {
-      form.reset({
-        name: existingStrategy.name,
-        description: existingStrategy.description || "",
-      });
-      setRules(
-        existingStrategy.rules.buy || [],
-        existingStrategy.rules.sell || []
-      );
-    }
-  }, [existingStrategy, form, setRules]);
-
+  // --- 관련 백테스트 기록 가져오기 ---
   const {
     data: relatedBacktests,
     isLoading: isLoadingBacktests,
@@ -167,6 +152,21 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     staleTime: 1000 * 60,
   });
 
+  // --- 데이터 로딩 후 폼 및 상태 초기화 ---
+  useEffect(() => {
+    if (existingStrategy) {
+      form.reset({
+        name: existingStrategy.name,
+        description: existingStrategy.description || "",
+      });
+      setRules(
+        existingStrategy.rules.buy || [],
+        existingStrategy.rules.sell || []
+      );
+    }
+  }, [existingStrategy, form, setRules]);
+
+  // --- 데이터 업데이트 로직 ---
   const updateStrategyMutation = useMutation<
     StrategyResponse,
     Error,
@@ -258,7 +258,13 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     }
   };
 
-  if (isLoadingStrategy) {
+  const handleRefresh = useCallback(() => {
+    refetchStrategy();
+    refetchBacktests();
+  }, [refetchStrategy, refetchBacktests]);
+
+  // --- 통합 로딩 상태 및 오류 핸들링 ---
+  if (isLoadingStrategy || isLoadingBacktests) {
     return (
       <AuthGuard>
         <div className="container mx-auto max-w-3xl p-8 flex h-full min-h-[400px] items-center justify-center">
@@ -269,7 +275,8 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
     );
   }
 
-  if (isErrorStrategy || !existingStrategy) {
+  const combinedError = errorStrategy || errorBacktests;
+  if (isErrorStrategy || isErrorBacktests || !existingStrategy) {
     return (
       <AuthGuard>
         <div className="container mx-auto max-w-3xl p-8 text-destructive-foreground text-center">
@@ -277,7 +284,7 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
             {t("errorLoadingTitle")}
           </h1>
           <p className="mb-2">
-            {t("fetchError", { errorDetail: errorStrategy?.message })}
+            {t("fetchError", { errorDetail: combinedError?.message })}
           </p>
           <Button
             onClick={() => router.push("/strategies")}
@@ -290,6 +297,7 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
       </AuthGuard>
     );
   }
+  // --- 통합 로딩 상태 및 오류 핸들링 끝 ---
 
   return (
     <AuthGuard>
@@ -310,13 +318,13 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
           </Button>
           <h1 className="text-2xl font-bold text-foreground">
             {t("editTitle", {
-              strategyName: existingStrategy?.name || t("unknownStrategy"),
+              strategyName: existingStrategy.name || t("unknownStrategy"),
             })}
           </h1>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => refetchStrategy()}
+            onClick={handleRefresh}
             disabled={updateStrategyMutation.isPending}
           >
             <RefreshCw className="h-4 w-4" />
@@ -410,9 +418,9 @@ export default function EditStrategyPage({ params }: EditStrategyPageProps) {
           </h3>
           <StrategyBacktestHistory
             backtests={relatedBacktests}
-            isLoading={isLoadingBacktests}
-            isError={isErrorBacktests}
-            error={errorBacktests}
+            isLoading={false} // 통합 로딩 상태로 처리
+            isError={false} // 통합 오류 상태로 처리
+            error={null}
             refetch={refetchBacktests}
           />
         </div>

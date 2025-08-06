@@ -6,11 +6,11 @@ from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime, timezone
 
 from .. import models, schemas
-from ..services.plan_service import plan_service # 👈 플랜 서비스 임포트
-from ..services.strategy_service import strategy_service # 👈 전략 서비스 임포트
-from ..services.api_key_service import api_key_service # 👈 API 키 서비스 임포트 (복호화용)
-from ..celery_app import celery_app # 👈 Celery 앱 인스턴스 임포트
-from ..tasks import run_live_bot_task # 👈 Celery 라이브 봇 태스크 임포트
+from ..services.plan_service import plan_service
+from ..services.strategy_service import strategy_service
+from ..services.api_key_service import api_key_service
+from ..celery_app import celery_app
+from ..tasks import run_live_bot_task
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,12 @@ class LiveBotService:
         새로운 라이브 자동매매 봇을 생성하고 Celery 큐에 시작 태스크를 추가합니다.
         """
         # 1. 플랜 기반 동시 실행 봇 개수 제한 검사
-        concurrent_limit = self.plan_service.get_user_concurrent_bots_limit(user, db)
+        # 👈 plan_service.get_user_plan_features를 사용하도록 수정
+        user_features = self.plan_service.get_user_plan_features(user=user, db=db)
+        concurrent_limit = user_features.live_bots_limit
         active_bots_count = db.query(models.LiveBot).filter(
             models.LiveBot.user_id == user.id,
-            models.LiveBot.status.in_(['active', 'paused', 'initializing']) # 현재 활성 상태로 간주되는 봇
+            models.LiveBot.status.in_(['active', 'paused', 'initializing'])
         ).count()
 
         if active_bots_count >= concurrent_limit:
@@ -68,26 +70,21 @@ class LiveBotService:
             user_id=user.id,
             strategy_id=live_bot_create.strategy_id,
             api_key_id=live_bot_create.api_key_id,
-            status='initializing', # 초기화 중 상태
+            status='initializing',
             initial_capital=live_bot_create.initial_capital,
-            # ticker 등 추가 필드가 있다면 여기에 추가
         )
         db.add(db_live_bot)
-        db.flush() # ID를 얻기 위해
+        db.flush()
         db.refresh(db_live_bot)
         logger.info(f"LiveBot record created for user {user.email}, Strategy ID: {db_live_bot.strategy_id}, API Key ID: {db_live_bot.api_key_id} (Bot ID: {db_live_bot.id}).")
 
         # 4. Celery 태스크 전송 (봇 실행 시작)
         try:
-            # run_live_bot_task.delay()는 Celery 큐에 작업을 비동기로 추가합니다.
             task_result = run_live_bot_task.delay(db_live_bot.id)
-            # TODO: LiveBot 모델에 celery_task_id 필드를 추가하여 task_result.id를 저장하는 것이 좋습니다.
             logger.info(f"Celery task dispatched for LiveBot ID: {db_live_bot.id}. Celery Task ID: {task_result.id}")
-            # db_live_bot.celery_task_id = task_result.id # 모델 필드가 있다면 여기에 저장
         except Exception as e:
             logger.error(f"Failed to dispatch Celery task for LiveBot ID {db_live_bot.id}: {e}", exc_info=True)
-            # 태스크 전송 실패 시, 봇 레코드도 실패 상태로 변경하거나 롤백 고려
-            db_live_bot.status = 'error' # models.py에 'error' 상태가 정의되어 있다고 가정
+            db_live_bot.status = 'error'
             db_live_bot.stopped_at = datetime.now(timezone.utc)
             db.add(db_live_bot)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="라이브 봇 시작에 실패했습니다.")
@@ -113,7 +110,6 @@ class LiveBotService:
         if strategy_id_filter:
             query = query.filter(models.LiveBot.strategy_id == strategy_id_filter)
 
-        # 전략, API 키 정보도 함께 로드하여 N+1 쿼리 방지
         query = query.options(
             joinedload(models.LiveBot.strategy),
             joinedload(models.LiveBot.api_key)
@@ -148,38 +144,27 @@ class LiveBotService:
             logger.warning(f"User {user_id} attempted to update status of bot {bot_id} not owned by them.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 봇을 제어할 권한이 없습니다.")
         
-        # 이미 동일한 상태인 경우
         if db_live_bot.status == new_status:
             logger.info(f"LiveBot ID {bot_id} already in status '{new_status}'. No action taken.")
             return db_live_bot
         
-        # 상태 전환 로직 검증 (예: stopped -> active는 불가능, stopped는 최종 상태)
         if db_live_bot.status == 'stopped' or db_live_bot.status == 'error':
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"'{db_live_bot.status}' 상태의 봇은 제어할 수 없습니다. (재배포 필요)")
 
-        # Celery 태스크에 명령 보내기 (실제 봇 로직이 이 명령에 반응해야 함)
-        # 봇 태스크 ID는 db_live_bot.id와 동일하다고 가정 (LiveBot 모델에 celery_task_id 필드 추가 권장)
         try:
-            # Celery AsyncResult를 통해 태스크를 찾고 명령 보냄
             task_control = celery_app.control
             if new_status == "stopped":
-                task_control.revoke(str(db_live_bot.id), terminate=True) # 강제 종료 (SIGTERM)
+                task_control.revoke(str(db_live_bot.id), terminate=True)
                 db_live_bot.stopped_at = datetime.now(timezone.utc)
                 logger.info(f"LiveBot ID {bot_id} received 'stop' command. Task revoked.")
             elif new_status == "paused":
-                # Celery 태스크에게 'paused' 상태를 알리는 사용자 정의 시그널 or DB 상태 업데이트를 통해 봇 내부에서 감지
-                # task_control.send_task('custom_signals.pause_bot', args=[db_live_bot.id])
-                # OR (봇 내부에서 db.refresh()로 상태 감지)
                 logger.info(f"LiveBot ID {bot_id} status set to 'paused'.")
             elif new_status == "active":
-                # paused 상태에서 active로 전환 시 별도 Celery 명령 (resume) 또는 DB 상태 변경 후 봇 내부에서 감지
-                # task_control.send_task('custom_signals.resume_bot', args=[db_live_bot.id])
                 logger.info(f"LiveBot ID {bot_id} status set to 'active'.")
             
             db_live_bot.status = new_status
             db_live_bot.updated_at = datetime.now(timezone.utc)
             db.add(db_live_bot)
-            # db.commit()는 라우터에서 처리
             logger.info(f"LiveBot ID {bot_id} status updated to '{new_status}'.")
             return db_live_bot
         except Exception as e:
@@ -193,17 +178,15 @@ class LiveBotService:
         """
         db_live_bot = self.get_live_bot_by_id(db, bot_id)
         if not db_live_bot:
-            return False # 삭제할 봇 없음
+            return False
         if db_live_bot.user_id != user_id:
             logger.warning(f"User {user_id} attempted to delete bot {bot_id} not owned by them.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 봇을 삭제할 권한이 없습니다.")
         
-        # 봇이 활성 상태인 경우 먼저 중지
         if db_live_bot.status in ['active', 'paused', 'initializing']:
             logger.info(f"LiveBot ID {bot_id} is active. Attempting to stop before deletion.")
             try:
-                self.update_live_bot_status(db, bot_id, user_id, "stopped") # 중지 명령
-                # update_live_bot_status는 이미 db.add를 호출하고 있으므로 여기서는 추가하지 않음
+                self.update_live_bot_status(db, bot_id, user_id, "stopped")
             except Exception as e:
                 logger.error(f"Failed to stop LiveBot {bot_id} before deletion: {e}", exc_info=True)
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="봇 삭제 전 중지 실패. 먼저 수동으로 봇을 중지해주세요.")
@@ -213,5 +196,4 @@ class LiveBotService:
         logger.info(f"User {user_id} deleted LiveBot: {db_live_bot.id} (Strategy: {db_live_bot.strategy_id}).")
         return True
 
-# 서비스 인스턴스 생성
 live_bot_service = LiveBotService()

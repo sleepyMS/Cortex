@@ -1,8 +1,10 @@
 # file: backend/app/models.py
-
+import enum
+from typing import List, Optional
+from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Float, JSON,
-    ForeignKey, UniqueConstraint, CheckConstraint
+    ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -12,8 +14,18 @@ from .database import Base
 # 1. 사용자, 인증, 구독 관련 모델
 # ==============================================================================
 
+class PlanType(str, enum.Enum):
+    BASIC = "basic"
+    TRADER = "trader"
+    PRO = "pro"
+
+class SubscriptionStatus(str, enum.Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    PENDING = "pending"
+    CANCELED = "canceled"
+
 class User(Base):
-    """사용자 계정 모델"""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -61,9 +73,28 @@ class Plan(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
     price = Column(Float, nullable=False)
-    features = Column(JSON, nullable=False)
-
+    features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
+
+class PlanFeature(Base):
+    """플랜별 기능 제한 모델 (명세서 v5 반영)"""
+    __tablename__ = "plan_features"
+    id = Column(Integer, primary_key=True, index=True)
+    plan_id = Column(Integer, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, unique=True)
+    
+    max_strategies = Column(Integer, nullable=False)
+    max_coins_per_backtest = Column(Integer, nullable=False)
+    live_bots_limit = Column(Integer, nullable=False)
+    daily_backtest_count = Column(Integer, nullable=False)
+    max_backtest_duration_years = Column(Integer, nullable=True)
+    supported_timeframes = Column(String, nullable=False)
+    
+    community_access = Column(Boolean, default=False, nullable=False)
+    telegram_alerts = Column(Boolean, default=False, nullable=False)
+    advanced_features_access = Column(Boolean, default=False, nullable=False)
+    portfolio_backtest_access = Column(Boolean, default=False, nullable=False)
+
+    plan = relationship("Plan", back_populates="features")
 
 class Subscription(Base):
     """사용자 구독 정보 모델"""
@@ -73,7 +104,7 @@ class Subscription(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
     status = Column(String(50), nullable=False, default='active')
-    current_period_end = Column(DateTime(timezone=True), nullable=False)
+    current_period_end = Column(DateTime(timezone=True), nullable=True)
     payment_gateway_sub_id = Column(String(255), unique=True, nullable=True)
     refresh_token = Column(String(512), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -95,15 +126,23 @@ class Strategy(Base):
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(String, nullable=True)
-    rules = Column(JSON, nullable=False)
+    
+    long_entry_rules = Column(JSON, nullable=True)
+    long_exit_rules = Column(JSON, nullable=True)
+    short_entry_rules = Column(JSON, nullable=True)
+    short_exit_rules = Column(JSON, nullable=True)
+    tpsl_logic = Column(JSON, nullable=True)
+    
+    target_coins = Column(JSON, nullable=False, default=[])
+
     is_public = Column(Boolean, default=False, nullable=False)
+    paid_feature_level = Column(String(50), default="basic", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     author = relationship("User", back_populates="strategies")
     backtests = relationship("Backtest", back_populates="strategy", cascade="all, delete-orphan")
     live_bots = relationship("LiveBot", back_populates="strategy", cascade="all, delete-orphan")
-
 
 class Backtest(Base):
     """백테스팅 실행 기록 모델"""
@@ -197,7 +236,8 @@ class LiveBot(Base):
     stopped_at = Column(DateTime(timezone=True), nullable=True)
     last_run_at = Column(DateTime(timezone=True), nullable=True)
     initial_capital = Column(Float, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False) # 👈 created_at 필드 추가
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     user = relationship("User", back_populates="live_bots")
     strategy = relationship("Strategy", back_populates="live_bots")

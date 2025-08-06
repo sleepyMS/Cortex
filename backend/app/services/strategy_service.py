@@ -1,4 +1,4 @@
-# file: backend/app/services/strategy_service.py (수정)
+# file: backend/app/services/strategy_service.py
 
 import json
 from sqlalchemy.orm import Session, joinedload
@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Literal
 
 from .. import models, schemas
-from .plan_service import plan_service
+from ..services.plan_service import plan_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,63 +19,92 @@ class StrategyService:
     def __init__(self):
         self.plan_service = plan_service
 
-    # _load_rules_from_json_data 함수는 더 이상 필요하지 않습니다.
-    # FastAPI의 response_model=schemas.Strategy가 자동으로 처리합니다.
-    # 이 함수는 제거하거나, 필요한 경우 다른 용도로 재정의해야 합니다.
-    def _load_rules_from_json_data(
-        self,
-        rules_json_data: Dict[str, Any]
-    ) -> Dict[Literal["buy", "sell"], List[schemas.SignalBlockData]]:
-        loaded_rules: Dict[Literal["buy", "sell"], List[schemas.SignalBlockData]] = {
-            "buy": [],
-            "sell": []
-        }
-        for rule_type in ["buy", "sell"]:
-            if rule_type in rules_json_data and isinstance(rules_json_data[rule_type], list):
-                for rule_data in rules_json_data[rule_type]:
-                    try:
-                        loaded_rules[rule_type].append(
-                            schemas.SignalBlockData.model_validate(rule_data)
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to validate SignalBlockData from DB JSON for type {rule_type}: {e} (Data: {rule_data})", exc_info=True)
-                        pass
-        return loaded_rules
-
-
-    def verify_strategy_rules_against_plan(
-        self,
-        user: models.User,
-        rules: Dict[Literal["buy", "sell"], List[schemas.SignalBlockData]],
-        db: Session
-    ) -> None:
-        allowed_timeframes = self.plan_service.get_user_allowed_timeframes(user, db)
+    def _get_required_plan_level(self, strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate) -> Literal["basic", "trader", "pro"]:
+        """
+        전략 데이터에 포함된 기능들을 분석하여 필요한 최소 플랜 등급을 계산합니다.
+        """
+        required_level: Literal["basic", "trader", "pro"] = "basic"
         
-        def _check_conditions_recursive(signal_blocks: List[schemas.SignalBlockData]):
-            for block in signal_blocks:
-                for condition_key in ["conditionA", "conditionB"]:
-                    condition = getattr(block, condition_key)
-                    if condition and condition.type == "indicator":
-                        if isinstance(condition.value, schemas.IndicatorValue):
-                            indicator_timeframe = condition.value.timeframe
-                            if indicator_timeframe not in allowed_timeframes:
-                                logger.warning(f"User {user.email} attempted to use disallowed timeframe '{indicator_timeframe}' for strategy rules.")
-                                raise HTTPException(
-                                    status_code=status.HTTP_403_FORBIDDEN,
-                                    detail=f"선택한 타임프레임 '{indicator_timeframe}'은 현재 플랜에서 지원되지 않습니다. 플랜을 업그레이드해주세요."
-                                )
-                        else:
-                            logger.error(f"Strategy rule has indicator type but value is not IndicatorValue schema: {condition.value}")
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="전략 규칙의 지표 형식이 올바르지 않습니다."
-                            )
-                _check_conditions_recursive(block.children) 
+        # Helper function to get level from a new level
+        def update_level(current, new):
+            if new == "pro": return "pro"
+            if new == "trader" and current == "basic": return "trader"
+            return current
 
-        _check_conditions_recursive(rules.get("buy", []))
-        _check_conditions_recursive(rules.get("sell", []))
-        logger.info(f"User {user.email} strategy rules successfully verified against plan timeframes.")
+        # 1. Target Coins 개수 검사 (명세서 v5 반영)
+        target_coins = strategy_data.target_coins
+        if target_coins:
+            if len(target_coins) > 1:
+                required_level = update_level(required_level, "trader")
+            if len(target_coins) > 5: # 명세서에 따르면 Pro 플랜은 10개까지
+                required_level = update_level(required_level, "pro")
+        
+        # 2. TP/SL 로직 검사 (명세서 v5 반영)
+        tpsl_logic = strategy_data.tpsl_logic
+        if tpsl_logic:
+            if tpsl_logic.atr_stop_loss_multiplier or tpsl_logic.atr_take_profit_multiplier:
+                required_level = update_level(required_level, "trader")
 
+        # 3. Rules의 타임프레임 및 로직 검사
+        def check_rules_recursive(blocks: List[schemas.LogicBlock]):
+            nonlocal required_level
+            for block in blocks:
+                if "indicator" in block:
+                    indicator_value = block.indicator if isinstance(block, schemas.StateLogic) or isinstance(block, schemas.TrendSignalLogic) or isinstance(block, schemas.ChannelLogic) or isinstance(block, schemas.DivergenceLogic) else None
+                    if isinstance(block, schemas.ComparisonLogic):
+                        indicator_value = block.operand_a if isinstance(block.operand_a, schemas.IndicatorValue) else (block.operand_b if isinstance(block.operand_b, schemas.IndicatorValue) else None)
+                    if isinstance(block, schemas.CrossoverLogic):
+                        indicator_value = block.main_line
+                    if indicator_value:
+                        level_from_timeframe = self.plan_service.get_timeframe_level(indicator_value.timeframe)
+                        required_level = update_level(required_level, level_from_timeframe)
+                
+                # 재귀적으로 자식 블록 검사
+                if isinstance(block, schemas.PositionRules) and block.blocks:
+                    check_rules_recursive(block.blocks)
+
+        if strategy_data.long_entry_rules:
+            check_rules_recursive(strategy_data.long_entry_rules.blocks)
+        if strategy_data.long_exit_rules:
+            check_rules_recursive(strategy_data.long_exit_rules.blocks)
+        if strategy_data.short_entry_rules:
+            check_rules_recursive(strategy_data.short_entry_rules.blocks)
+        if strategy_data.short_exit_rules:
+            check_rules_recursive(strategy_data.short_exit_rules.blocks)
+
+        # 고급 기능 접근 여부 검사 (v5 명세서 반영)
+        user_plan = self.plan_service.get_user_plan_level(user) # user객체는 이 함수내부에서 받아올 수 없으므로, _verify에서 처리
+        if user_plan == "pro" and (
+            strategy_data.long_entry_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.long_entry_rules.blocks) or
+            strategy_data.long_exit_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.long_exit_rules.blocks) or
+            strategy_data.short_entry_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.short_entry_rules.blocks) or
+            strategy_data.short_exit_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.short_exit_rules.blocks)
+        ):
+            required_level = update_level(required_level, "pro")
+
+
+        return required_level
+
+    def _verify_rules_against_plan(self, user: models.User, strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate, db: Session) -> Literal["basic", "trader", "pro"]:
+        """
+        전략 규칙이 사용자의 플랜에 맞는지 검증하고, 필요한 플랜 등급을 반환합니다.
+        """
+        required_level = self._get_required_plan_level(strategy_data)
+        
+        user_plan_level = self.plan_service.get_user_plan_level(user, db)
+        allowed_level_map = {"basic": 0, "trader": 1, "pro": 2}
+        
+        user_level_value = allowed_level_map.get(user_plan_level, 0)
+        required_level_value = allowed_level_map.get(required_level, 0)
+        
+        if user_level_value < required_level_value:
+            logger.warning(f"User {user.email} attempted to use features requiring '{required_level}' plan with '{user_plan_level}' plan.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"선택한 기능은 '{required_level}' 플랜 이상에서 지원됩니다. 플랜을 업그레이드해주세요."
+            )
+        
+        return required_level
 
     def create_strategy(
         self,
@@ -84,35 +113,38 @@ class StrategyService:
         strategy_create: schemas.StrategyCreate
     ) -> models.Strategy:
         try:
-            self.verify_strategy_rules_against_plan(user, strategy_create.rules, db)
+            required_level = self._verify_rules_against_plan(user, strategy_create, db)
+            
+            serialized_data = strategy_create.model_dump(mode='json', exclude_unset=True)
+            
+            db_strategy = models.Strategy(
+                author_id=user.id,
+                name=serialized_data.get("name"),
+                description=serialized_data.get("description"),
+                is_public=serialized_data.get("is_public", False),
+                long_entry_rules=serialized_data.get("long_entry_rules"),
+                long_exit_rules=serialized_data.get("long_exit_rules"),
+                short_entry_rules=serialized_data.get("short_entry_rules"),
+                short_exit_rules=serialized_data.get("short_exit_rules"),
+                tpsl_logic=serialized_data.get("tpsl_logic"),
+                target_coins=serialized_data.get("target_coins"),
+                paid_feature_level=required_level,
+            )
+            
+            db.add(db_strategy)
+            db.flush()
+            db.refresh(db_strategy)
+            
+            logger.info(f"User {user.email} (ID: {user.id}) created new strategy: {db_strategy.name} (ID: {db_strategy.id}).")
+            return db_strategy
         except HTTPException as e:
-            logger.error(f"Strategy rule validation failed during creation for user {user.email}: {e.detail}")
-            raise
+            db.rollback()
+            raise e
         except Exception as e:
-            logger.error(f"An unexpected error occurred during rule validation for user {user.email}: {e}", exc_info=True)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 규칙 유효성 검사 중 예상치 못한 오류가 발생했습니다.")
+            db.rollback()
+            logger.error(f"An unexpected error occurred while creating strategy for user {user.email}: {e}", exc_info=True)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 생성 중 서버 오류가 발생했습니다.")
 
-        serialized_rules = {
-            "buy": [rule.model_dump(mode='json') for rule in strategy_create.rules.get("buy", [])],
-            "sell": [rule.model_dump(mode='json') for rule in strategy_create.rules.get("sell", [])]
-        }
-        
-        db_strategy = models.Strategy(
-            author_id=user.id,
-            name=strategy_create.name,
-            description=strategy_create.description,
-            rules=serialized_rules, # 👈 json.dumps() 제거
-            is_public=strategy_create.is_public
-        )
-        db.add(db_strategy)
-        db.flush()
-        # db.refresh(db_strategy) # 이 refresh는 필요 없습니다.
-
-        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
-        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
-        
-        logger.info(f"User {user.email} (ID: {user.id}) created new strategy: {db_strategy.name} (ID: {db_strategy.id}).")
-        return db_strategy
 
     def get_strategies(
         self,
@@ -124,36 +156,22 @@ class StrategyService:
         sort_by: Optional[str] = None,
         is_public_filter: Optional[bool] = None
     ) -> List[models.Strategy]:
-        """
-        사용자 본인의 전략 목록 또는 공개 전략 목록을 조회합니다.
-        """
         query = db.query(models.Strategy).filter(models.Strategy.author_id == user_id)
-
-        logger.info(f"get_strategies received is_public_filter: {is_public_filter} (type: {type(is_public_filter)})")
 
         if is_public_filter is not None:
             query = query.filter(models.Strategy.is_public == is_public_filter)
-
         if search_query:
             query = query.filter(models.Strategy.name.ilike(f"%{search_query}%"))
-
-        # 정렬 로직
+        
         if sort_by == "created_at_desc":
             query = query.order_by(models.Strategy.created_at.desc())
-        elif sort_by == "created_at_asc":
-            query = query.order_by(models.Strategy.created_at.asc())
-        elif sort_by == "name_asc":
-            query = query.order_by(models.Strategy.name.asc())
         elif sort_by == "updated_at_desc":
             query = query.order_by(models.Strategy.updated_at.desc().nullslast())
-        else: # 기본 정렬
+        else:
             query = query.order_by(models.Strategy.created_at.desc())
-
+        
         strategies = query.offset(skip).limit(limit).all()
         
-        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
-        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
-
         logger.info(f"User ID {user_id} fetched {len(strategies)} strategies.")
         return strategies
 
@@ -161,9 +179,6 @@ class StrategyService:
         strategy = db.query(models.Strategy).options(
             joinedload(models.Strategy.author)
         ).filter(models.Strategy.id == strategy_id).first()
-        
-        # 👈 rules 필드를 Pydantic 모델로 변환하는 로직을 제거
-        # 라우터의 response_model=schemas.Strategy가 이 역할을 수행합니다.
             
         return strategy
 
@@ -180,43 +195,49 @@ class StrategyService:
         if db_strategy.author_id != user.id:
             logger.warning(f"User {user.email} (ID: {user.id}) attempted to update strategy {strategy_id} not owned by them.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략을 수정할 권한이 없습니다.")
-            
-        # 👈 update_data 변수 선언 위치 변경
-        # 먼저 유효성 검증을 위해 원본 Pydantic 모델을 사용합니다.
-        if strategy_update.rules:
-            try:
-                # 👈 model_dump() 대신 원본 Pydantic 객체인 strategy_update.rules 사용
-                self.verify_strategy_rules_against_plan(user, strategy_update.rules, db)
-            except HTTPException as e:
-                logger.error(f"Strategy rule validation failed during update for user {user.email}: {e.detail}")
-                raise
-            except Exception as e:
-                logger.error(f"An unexpected error occurred during rule validation for user {user.email} on update: {e}", exc_info=True)
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 규칙 유효성 검사 중 예상치 못한 오류가 발생했습니다.")
-            
-            # 검증 통과 후, 데이터베이스 저장을 위해 딕셔너리로 직렬화합니다.
-            serialized_rules = {
-                "buy": [rule.model_dump(mode='json') for rule in strategy_update.rules.get("buy", [])],
-                "sell": [rule.model_dump(mode='json') for rule in strategy_update.rules.get("sell", [])]
-            }
-            db_strategy.rules = serialized_rules # json.dumps() 제거
 
-        # 👈 strategy_update.model_dump(exclude_unset=True)는 이 시점에서 호출합니다.
-        update_data = strategy_update.model_dump(exclude_unset=True)
-        
-        if "name" in update_data and update_data["name"]:
-            db_strategy.name = update_data["name"]
-        if "description" in update_data and update_data["description"]:
-            db_strategy.description = update_data["description"]
-        if "is_public" in update_data and update_data["is_public"] is not None:
-            db_strategy.is_public = update_data["is_public"]
-        
-        db.add(db_strategy)
-        db.commit()
-        db.refresh(db_strategy)
+        try:
+            required_level = self._verify_rules_against_plan(user, strategy_update, db)
             
-        logger.info(f"User {user.email} (ID: {user.id}) updated strategy: {db_strategy.name} (ID: {db_strategy.id}).")
-        return db_strategy
+            update_data = strategy_update.model_dump(mode='json', exclude_unset=True)
+
+            if "name" in update_data:
+                db_strategy.name = update_data["name"]
+            if "description" in update_data:
+                db_strategy.description = update_data["description"]
+            if "is_public" in update_data:
+                db_strategy.is_public = update_data["is_public"]
+            if "long_entry_rules" in update_data:
+                db_strategy.long_entry_rules = update_data["long_entry_rules"]
+            if "long_exit_rules" in update_data:
+                db_strategy.long_exit_rules = update_data["long_exit_rules"]
+            if "short_entry_rules" in update_data:
+                db_strategy.short_entry_rules = update_data["short_entry_rules"]
+            if "short_exit_rules" in update_data:
+                db_strategy.short_exit_rules = update_data["short_exit_rules"]
+            if "tpsl_logic" in update_data:
+                db_strategy.tpsl_logic = update_data["tpsl_logic"]
+            if "target_coins" in update_data:
+                db_strategy.target_coins = update_data["target_coins"]
+            
+            db_strategy.paid_feature_level = required_level
+            
+            db.add(db_strategy)
+            db.commit()
+            db.refresh(db_strategy)
+            
+            logger.info(f"User {user.email} (ID: {user.id}) updated strategy: {db_strategy.name} (ID: {db_strategy.id}).")
+            return db_strategy
+        except HTTPException as e:
+            db.rollback()
+            raise e
+        except Exception as e:
+            db.rollback()
+            logger.error(f"An unexpected error occurred while updating strategy {strategy_id} for user {user.email}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="전략 업데이트 중 서버 오류가 발생했습니다."
+            )
 
     def delete_strategy(self, db: Session, strategy_id: int, user: models.User) -> bool:
         db_strategy = self.get_strategy_by_id(db, strategy_id)
@@ -239,5 +260,4 @@ class StrategyService:
         logger.info(f"User {user.email} (ID: {user.id}) deleted strategy: {db_strategy.name} (ID: {db_strategy.id}).")
         return True
 
-# 서비스 인스턴스 생성
 strategy_service = StrategyService()

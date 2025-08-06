@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 5a0622ae4794
+Revision ID: 0d8986d6f49f
 Revises: 
-Create Date: 2025-07-31 21:22:06.394468
+Create Date: 2025-08-07 06:37:32.315627
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '5a0622ae4794'
+revision: str = '0d8986d6f49f'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,7 +25,6 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=50), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
-    sa.Column('features', sa.JSON(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -88,6 +87,24 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_password_reset_tokens_id'), 'password_reset_tokens', ['id'], unique=False)
     op.create_index(op.f('ix_password_reset_tokens_jti'), 'password_reset_tokens', ['jti'], unique=True)
+    op.create_table('plan_features',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('plan_id', sa.Integer(), nullable=False),
+    sa.Column('max_strategies', sa.Integer(), nullable=False),
+    sa.Column('max_coins_per_backtest', sa.Integer(), nullable=False),
+    sa.Column('live_bots_limit', sa.Integer(), nullable=False),
+    sa.Column('daily_backtest_count', sa.Integer(), nullable=False),
+    sa.Column('max_backtest_duration_years', sa.Integer(), nullable=True),
+    sa.Column('supported_timeframes', sa.String(), nullable=False),
+    sa.Column('community_access', sa.Boolean(), nullable=False),
+    sa.Column('telegram_alerts', sa.Boolean(), nullable=False),
+    sa.Column('advanced_features_access', sa.Boolean(), nullable=False),
+    sa.Column('portfolio_backtest_access', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['plan_id'], ['plans.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('plan_id')
+    )
+    op.create_index(op.f('ix_plan_features_id'), 'plan_features', ['id'], unique=False)
     op.create_table('refresh_tokens',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -121,8 +138,14 @@ def upgrade() -> None:
     sa.Column('author_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('rules', sa.JSON(), nullable=False),
+    sa.Column('long_entry_rules', sa.JSON(), nullable=True),
+    sa.Column('long_exit_rules', sa.JSON(), nullable=True),
+    sa.Column('short_entry_rules', sa.JSON(), nullable=True),
+    sa.Column('short_exit_rules', sa.JSON(), nullable=True),
+    sa.Column('tpsl_logic', sa.JSON(), nullable=True),
+    sa.Column('target_coins', sa.JSON(), nullable=False),
     sa.Column('is_public', sa.Boolean(), nullable=False),
+    sa.Column('paid_feature_level', sa.String(length=50), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
@@ -134,7 +157,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('plan_id', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=50), nullable=False),
-    sa.Column('current_period_end', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('current_period_end', sa.DateTime(timezone=True), nullable=True),
     sa.Column('payment_gateway_sub_id', sa.String(length=255), nullable=True),
     sa.Column('refresh_token', sa.String(length=512), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -171,6 +194,7 @@ def upgrade() -> None:
     sa.Column('last_run_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('initial_capital', sa.Float(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['api_key_id'], ['api_keys.id'], ),
     sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
@@ -280,6 +304,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_refresh_tokens_jti'), table_name='refresh_tokens')
     op.drop_index(op.f('ix_refresh_tokens_id'), table_name='refresh_tokens')
     op.drop_table('refresh_tokens')
+    op.drop_index(op.f('ix_plan_features_id'), table_name='plan_features')
+    op.drop_table('plan_features')
     op.drop_index(op.f('ix_password_reset_tokens_jti'), table_name='password_reset_tokens')
     op.drop_index(op.f('ix_password_reset_tokens_id'), table_name='password_reset_tokens')
     op.drop_table('password_reset_tokens')

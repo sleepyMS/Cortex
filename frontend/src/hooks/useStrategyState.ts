@@ -3,251 +3,234 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { nanoid } from "nanoid"; // nanoid는 RuleItem의 ID 생성에 사용
-
+import { nanoid } from "nanoid";
 import {
-  RuleItem,
-  SignalBlockData,
-  Condition,
-  RuleType,
-  TargetSlot,
-  LogicOperator,
+  LogicBlock,
+  PositionRules,
+  TpslLogic,
+  TargetCoin,
+  StrategyType,
 } from "@/types/strategy";
-import { INDICATOR_REGISTRY, IndicatorDefinition } from "@/lib/indicators"; // INDICATOR_REGISTRY import 추가
 
 // --- 헬퍼 함수 ---
-
-// 재귀적으로 아이템을 업데이트하는 함수
-const updateItemRecursive = (
-  items: RuleItem[],
+// 재귀적으로 로직 블록을 업데이트하는 함수
+const updateBlockRecursive = (
+  blocks: LogicBlock[],
   id: string,
-  updater: (item: RuleItem) => RuleItem
-): RuleItem[] => {
-  return items.map((item) => {
-    if (item.id === id) {
-      return updater(item);
+  updater: (block: LogicBlock) => LogicBlock
+): LogicBlock[] => {
+  return blocks.map((block) => {
+    if (block.id === id) {
+      return updater(block);
     }
-    if (item.type === "signal" && item.children && item.children.length > 0) {
-      const newChildren = updateItemRecursive(item.children, id, updater);
-      if (newChildren !== item.children) {
-        return { ...item, children: newChildren } as SignalBlockData;
+    if (block.children && block.children.length > 0) {
+      const newChildren = updateBlockRecursive(block.children, id, updater);
+      if (newChildren !== block.children) {
+        return { ...block, children: newChildren };
       }
     }
-    return item;
+    return block;
   });
 };
 
-// 재귀적으로 아이템을 제거하는 함수
-const removeItemRecursive = (items: RuleItem[], id: string): RuleItem[] => {
-  return items
-    .filter((item) => item.id !== id)
-    .map((item) => {
-      if (item.type === "signal" && item.children && item.children.length > 0) {
-        return {
-          ...item,
-          children: removeItemRecursive(item.children, id),
-        } as SignalBlockData;
+// 재귀적으로 로직 블록을 제거하는 함수
+const removeBlockRecursive = (
+  blocks: LogicBlock[],
+  id: string
+): LogicBlock[] => {
+  return blocks
+    .filter((block) => block.id !== id)
+    .map((block) => {
+      if (block.children && block.children.length > 0) {
+        const newChildren = removeBlockRecursive(block.children, id);
+        if (newChildren !== block.children) {
+          return { ...block, children: newChildren };
+        }
       }
-      return item;
+      return block;
     });
+};
+
+const updateRuleLogicRecursive = (
+  blocks: LogicBlock[],
+  blockId: string,
+  slotKey: string,
+  newValue: any
+): LogicBlock[] => {
+  return blocks.map((block) => {
+    if (block.id === blockId) {
+      return { ...block, [slotKey]: newValue };
+    }
+    if (block.children) {
+      const newChildren = updateRuleLogicRecursive(
+        block.children,
+        blockId,
+        slotKey,
+        newValue
+      );
+      if (newChildren !== block.children) {
+        return { ...block, children: newChildren };
+      }
+    }
+    return block;
+  });
 };
 
 // --- useStrategyState 훅 ---
 export function useStrategyState() {
-  const [buyRules, setBuyRules] = useState<RuleItem[]>([]);
-  const [sellRules, setSellRules] = useState<RuleItem[]>([]);
+  const [strategyState, setStrategyState] = useState({
+    longEntryRules: null as PositionRules | null,
+    longExitRules: null as PositionRules | null,
+    shortEntryRules: null as PositionRules | null,
+    shortExitRules: null as PositionRules | null,
+    tpslLogic: null as TpslLogic | null,
+    targetCoins: [] as TargetCoin[],
+  });
 
-  const getSetter = useCallback(
-    (ruleType: RuleType) => (ruleType === "buy" ? setBuyRules : setSellRules),
-    []
-  );
-
-  // 👈 setRules 함수 추가: 외부에서 전체 규칙을 설정할 수 있도록
-  const setRules = useCallback((buy: RuleItem[], sell: RuleItem[]) => {
-    setBuyRules(buy);
-    setSellRules(sell);
-  }, []); // 의존성 배열 비어있음: 한 번만 생성되도록
+  const setStrategy = useCallback((newState: Partial<typeof strategyState>) => {
+    setStrategyState((prev) => ({ ...prev, ...newState }));
+  }, []);
 
   const addRule = useCallback(
     (
-      ruleType: RuleType,
+      ruleType: StrategyType,
+      newBlock: LogicBlock,
       parentId: string | null = null,
-      as: LogicOperator = "OR"
+      as: "AND" | "OR" = "OR"
     ) => {
-      const newSignal: SignalBlockData = {
-        type: "signal",
-        id: nanoid(), // nanoid 사용
-        conditionA: null,
-        operator: ">",
-        conditionB: null,
-        children: [],
-        logicOperator: "AND",
-      };
-      const newRule: RuleItem = newSignal;
+      setStrategyState((prev) => {
+        const rulesetKey = `${ruleType}Rules` as keyof typeof prev;
+        let currentRuleset = prev[rulesetKey] as PositionRules | null;
 
-      const setter = getSetter(ruleType);
-
-      setter((prev) => {
-        if (parentId === null) {
-          return [...prev, newRule];
-        }
-
-        const addRecursive = (items: RuleItem[]): RuleItem[] => {
-          for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item.id === parentId) {
-              const newItems = [...items];
-              if (item.type === "signal") {
-                if (as === "AND") {
-                  newItems[i] = {
-                    ...item,
-                    children: [...item.children, newRule],
-                  } as SignalBlockData;
-                } else {
-                  newItems.splice(i + 1, 0, newRule);
+        if (!currentRuleset) {
+          currentRuleset = { logic_operator: "OR", blocks: [newBlock] };
+        } else if (parentId === null) {
+          currentRuleset = {
+            ...currentRuleset,
+            blocks: [...currentRuleset.blocks, newBlock],
+          };
+        } else {
+          // 부모 블록을 찾아 새로운 블록을 자식으로 추가
+          const addRecursive = (blocks: LogicBlock[]): LogicBlock[] => {
+            return blocks.map((block) => {
+              if (block.id === parentId) {
+                // 부모 블록의 logic_operator를 업데이트하고 children에 추가
+                return {
+                  ...block,
+                  children: [...(block.children || []), newBlock],
+                  logic_operator: as,
+                } as LogicBlock;
+              }
+              if (block.children) {
+                const newChildren = addRecursive(block.children);
+                if (newChildren !== block.children) {
+                  return { ...block, children: newChildren };
                 }
               }
-              return newItems;
-            }
-            if (
-              item.type === "signal" &&
-              item.children &&
-              item.children.length > 0
-            ) {
-              const newChildren = addRecursive(item.children);
-              if (newChildren !== item.children) {
-                const newItems = [...items];
-                newItems[i] = {
-                  ...item,
-                  children: newChildren,
-                } as SignalBlockData;
-                return newItems;
-              }
-            }
-          }
-          return items;
-        };
-
-        return addRecursive(prev);
+              return block;
+            });
+          };
+          currentRuleset = {
+            ...currentRuleset,
+            blocks: addRecursive(currentRuleset.blocks),
+          };
+        }
+        return { ...prev, [rulesetKey]: currentRuleset };
       });
     },
-    [getSetter]
+    []
   );
 
-  const deleteRule = useCallback(
-    (ruleType: RuleType, id: string) => {
-      getSetter(ruleType)((prev) => removeItemRecursive(prev, id));
-    },
-    [getSetter]
-  );
+  const deleteRule = useCallback((ruleType: StrategyType, id: string) => {
+    setStrategyState((prev) => {
+      const rulesetKey = `${ruleType}Rules` as keyof typeof prev;
+      const currentRuleset = prev[rulesetKey] as PositionRules | null;
 
-  const updateRuleData = useCallback(
-    (ruleType: RuleType, id: string, newSignalData: SignalBlockData) => {
-      getSetter(ruleType)((prev) =>
-        updateItemRecursive(prev, id, (item) => {
-          if (item.type !== "signal") return item;
+      if (!currentRuleset) return prev;
 
-          return {
-            ...item,
-            ...newSignalData,
-          } as SignalBlockData;
-        })
-      );
-    },
-    [getSetter]
-  );
+      const newBlocks = removeBlockRecursive(currentRuleset.blocks, id);
 
-  const updateBlockCondition = useCallback(
-    (target: TargetSlot, indicator: IndicatorDefinition) => {
-      if (!target) return;
-      const { ruleType, blockId, condition } = target;
+      if (newBlocks.length === 0) {
+        return { ...prev, [rulesetKey]: null };
+      }
 
-      const setter = getSetter(ruleType);
-      setter((prev) =>
-        updateItemRecursive(prev, blockId, (item) => {
-          if (item.type !== "signal") return item;
+      return {
+        ...prev,
+        [rulesetKey]: { ...currentRuleset, blocks: newBlocks },
+      };
+    });
+  }, []);
 
-          const newConditionData: Condition = {
-            type: "indicator",
-            name: `${indicator.name}(${indicator.parameters
-              .map((p) => p.defaultValue)
-              .join(",")})`,
-            value: {
-              indicatorKey: indicator.key,
-              values: indicator.parameters.reduce((acc, param) => {
-                acc[param.key] = param.defaultValue;
-                return acc;
-              }, {} as Record<string, any>),
-              timeframe: indicator.defaultTimeframe,
-            },
-          };
-          const updatedSignalItem: SignalBlockData = {
-            ...item,
-            [condition]: newConditionData,
-          };
-          return updatedSignalItem;
-        })
-      );
-    },
-    [getSetter]
-  );
+  const updateRule = useCallback(
+    (ruleType: StrategyType, id: string, newBlock: LogicBlock) => {
+      setStrategyState((prev) => {
+        const rulesetKey = `${ruleType}Rules` as keyof typeof prev;
+        const currentRuleset = prev[rulesetKey] as PositionRules | null;
 
-  const updateBlockTimeframe = useCallback(
-    (target: TargetSlot, newTimeframe: string) => {
-      if (!target) return;
-      const { ruleType, blockId, condition } = target;
+        if (!currentRuleset) return prev;
 
-      const setter = getSetter(ruleType);
-      setter((prev) =>
-        updateItemRecursive(prev, blockId, (item) => {
-          if (item.type !== "signal") return item;
-
-          const currentCondition = item[condition];
-          if (!currentCondition || currentCondition.type !== "indicator") {
-            return item;
+        const newBlocks = updateBlockRecursive(
+          currentRuleset.blocks,
+          id,
+          (block) => {
+            return newBlock;
           }
+        );
 
-          if (
-            typeof currentCondition.value !== "object" ||
-            currentCondition.value === null ||
-            !("indicatorKey" in currentCondition.value)
-          ) {
-            return item;
-          }
-
-          const updatedValue = {
-            ...(currentCondition.value as {
-              indicatorKey: string;
-              values: Record<string, any>;
-              timeframe: string;
-            }),
-            timeframe: newTimeframe,
-          };
-
-          const updatedCondition: Condition = {
-            ...currentCondition,
-            value: updatedValue,
-          };
-
-          const updatedSignalItem: SignalBlockData = {
-            ...item,
-            [condition]: updatedCondition,
-          };
-          return updatedSignalItem;
-        })
-      );
+        return {
+          ...prev,
+          [rulesetKey]: { ...currentRuleset, blocks: newBlocks },
+        };
+      });
     },
-    [getSetter]
+    []
   );
+
+  const updateRuleLogic = useCallback(
+    (
+      ruleType: StrategyType,
+      blockId: string,
+      slotKey: string,
+      newValue: any
+    ) => {
+      setStrategyState((prev) => {
+        const rulesetKey = `${ruleType}Rules` as keyof typeof prev;
+        const currentRuleset = prev[rulesetKey] as PositionRules | null;
+
+        if (!currentRuleset) return prev;
+
+        const newBlocks = updateRuleLogicRecursive(
+          currentRuleset.blocks,
+          blockId,
+          slotKey,
+          newValue
+        );
+
+        return {
+          ...prev,
+          [rulesetKey]: { ...currentRuleset, blocks: newBlocks },
+        };
+      });
+    },
+    []
+  );
+
+  const setTpslLogic = useCallback((logic: TpslLogic | null) => {
+    setStrategyState((prev) => ({ ...prev, tpslLogic: logic }));
+  }, []);
+
+  const setTargetCoins = useCallback((coins: TargetCoin[]) => {
+    setStrategyState((prev) => ({ ...prev, targetCoins: coins }));
+  }, []);
 
   return {
-    buyRules,
-    sellRules,
+    ...strategyState,
+    setStrategy,
     addRule,
     deleteRule,
-    updateRuleData,
-    updateBlockCondition,
-    updateBlockTimeframe,
-    setRules, // 👈 반환 객체에 추가
+    updateRule,
+    updateRuleLogic,
+    setTpslLogic,
+    setTargetCoins,
   };
 }

@@ -1,45 +1,37 @@
 # file: backend/app/schemas.py
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict # 👈 ConfigDict 임포트
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
+import enum
 
-# --- User Schemas ---
+# ==============================================================================
+# 1. 사용자, 인증, 구독 관련 스키마
+# ==============================================================================
+
 class UserBase(BaseModel):
     email: EmailStr
+    username: str | None = None
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
     username: str | None = None
 
-class UserUpdateProfile(BaseModel): # 👈 사용자 프로필 업데이트 (일반 사용자용)
+class UserUpdateProfile(BaseModel):
     username: Optional[str] = Field(None, min_length=2, max_length=100)
 
-class UserUpdatePassword(BaseModel): # 👈 사용자 비밀번호 업데이트 (일반 사용자용)
+class UserUpdatePassword(BaseModel):
     old_password: str = Field(..., min_length=8, max_length=255)
     new_password: str = Field(..., min_length=8, max_length=255)
 
-class UserAdminUpdate(BaseModel): # 👈 관리자용 사용자 정보 업데이트
+class UserAdminUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=2, max_length=100)
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
     is_email_verified: Optional[bool] = None
-    role: Optional[Literal["user", "admin", "pro"]] = None
+    role: Optional[Literal["user", "admin", "pro", "trader"]] = None
     new_password: Optional[str] = Field(None, min_length=8, max_length=255)
-
-
-class User(BaseModel): # 응답용 스키마 (GET /users/me 등)
-    id: int
-    email: EmailStr
-    username: str | None
-    is_active: bool
-    is_email_verified: bool # 👈 응답 스키마에 이메일 인증 여부 필드 추가
-    role: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True) # Pydantic v2
 
 class Token(BaseModel):
     access_token: str
@@ -64,7 +56,7 @@ class SocialUserProfile(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
-class DashboardSummary(BaseModel): # 👈 관리자 대시보드 스키마
+class DashboardSummary(BaseModel):
     total_users: int = 0
     active_users: int = 0
     total_strategies: int = 0
@@ -74,7 +66,7 @@ class DashboardSummary(BaseModel): # 👈 관리자 대시보드 스키마
     total_live_bots: int = 0
     active_live_bots: int = 0
     overall_pnl: float = 0.0
-    latest_signups: List[User] = Field(default_factory=list) # User 스키마 사용
+    latest_signups: List[Any] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -82,7 +74,6 @@ class SocialCallbackRequest(BaseModel):
     code: str
     state: str | None = None
 
-# --- Email Verification & Password Reset Schemas ---
 class EmailVerificationRequest(BaseModel):
     email: EmailStr = Field(..., description="Email address to send verification link")
 
@@ -96,63 +87,198 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=32, description="Reset token received via email")
     new_password: str = Field(..., min_length=8, max_length=255)
 
+class PlanType(str, enum.Enum):
+    BASIC = "basic"
+    TRADER = "trader"
+    PRO = "pro"
 
-# --- Strategy Schemas (Dependency for Backtest/LiveBot) ---
-# 👈 순서 변경: LiveBot과 Backtest에서 참조되므로 이들 위에 정의
+class PlanFeatureSchema(BaseModel):
+    max_coins_per_backtest: int
+    max_strategies: int
+    live_bots_limit: int
+    daily_backtest_count: int
+    max_backtest_duration_years: Optional[int]
+    supported_timeframes: str
+    community_access: bool
+    telegram_alerts: bool
+    advanced_features_access: bool
+    portfolio_backtest_access: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PlanSchema(BaseModel):
+    id: int
+    name: str
+    price: float
+    features: PlanFeatureSchema
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SubscriptionSchema(BaseModel):
+    id: int
+    user_id: int
+    plan_id: int
+    status: str
+    current_period_end: Optional[datetime]
+    plan: PlanSchema
+
+    model_config = ConfigDict(from_attributes=True)
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    is_email_verified: bool
+    role: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    subscription: Optional[SubscriptionSchema] = None
+
+    model_config = ConfigDict(from_attributes=True)
+    
+class UserDashboardSummary(BaseModel):
+    email: EmailStr
+    username: str | None
+    user_id: int
+    created_at: datetime
+    is_email_verified: bool
+    current_plan_name: str
+    current_plan_price: float
+    subscription_end_date: Optional[datetime]
+    subscription_is_active: bool
+    max_backtests_per_day: int
+    concurrent_bots_limit: int
+    allowed_timeframes: List[str]
+    total_backtests_run_by_user: int
+    successful_backtests_by_user: int
+    total_live_bots_by_user: int
+    active_live_bots_by_user: int
+    latest_backtests: List[Any] = Field(default_factory=list)
+    latest_live_bots: List[Any] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CheckoutRequest(BaseModel):
+    plan_id: int
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
+
+# ==============================================================================
+# 2. 전략, 백테스팅, 자동매매 관련 스키마
+# ==============================================================================
+
+class IndicatorValue(BaseModel):
+    indicatorKey: str
+    outputs: List[str]
+    values: Dict[str, Any]
+    timeframe: str
+
+class ComparisonLogic(BaseModel):
+    id: str
+    type: Literal["comparison"]
+    operand_a: Union[IndicatorValue, float]
+    operator: str
+    operand_b: Union[IndicatorValue, float]
+
+class CrossoverLogic(BaseModel):
+    id: str
+    type: Literal["crossover"]
+    main_line: IndicatorValue
+    signal_line: Union[IndicatorValue, float]
+    cross_direction: Literal["above", "below"]
+
+class StateLogic(BaseModel):
+    id: str
+    type: Literal["state"]
+    indicator: IndicatorValue
+    lower_bound: Optional[float] = None
+    upper_bound: Optional[float] = None
+    state_action: Literal["enter", "exit", "within"]
+
+class TrendSignalLogic(BaseModel):
+    id: str
+    type: Literal["trend_signal"]
+    indicator: IndicatorValue
+    signal: Literal["buy", "sell", "none"]
+
+class ChannelLogic(BaseModel):
+    id: str
+    type: Literal["channel"]
+    indicator: IndicatorValue
+    channel_zone: Literal["upper", "middle", "lower", "kumo"]
+    action: Literal["enter", "exit", "within"]
+
+class DivergenceLogic(BaseModel):
+    id: str
+    type: Literal["divergence"]
+    indicator: IndicatorValue
+    divergence_type: Literal["bullish", "bearish", "hidden_bullish", "hidden_bearish"]
+    
+class PatternLogic(BaseModel):
+    id: str
+    type: Literal["pattern"]
+    pattern_key: str
+    direction: Literal["bullish", "bearish", "any"]
+
+LogicBlock = Union[ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, ChannelLogic, DivergenceLogic, PatternLogic]
+
+class PositionRules(BaseModel):
+    logic_operator: Literal["AND", "OR"] = "OR"
+    blocks: List[LogicBlock] = Field(default_factory=list)
+
+class TpslLogic(BaseModel):
+    take_profit_pct: Optional[float] = None
+    stop_loss_pct: Optional[float] = None
+    atr_stop_loss_multiplier: Optional[float] = None
+    atr_take_profit_multiplier: Optional[float] = None
+    atr_period: Optional[int] = None
+
+class TargetCoin(BaseModel):
+    ticker: str
+    allocation_pct: float = Field(100.0, ge=0, le=100)
+
 class StrategyBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=100)
     description: str | None = Field(None, max_length=500)
     is_public: bool = False
-
-    model_config = ConfigDict(from_attributes=True) # 👈 StrategyBase에도 추가
-
-class IndicatorValue(BaseModel):
-    indicatorKey: str
-    values: Dict[str, Any]
-    timeframe: str
-
-class Condition(BaseModel):
-    type: Literal["indicator", "value"]
-    name: str
-    value: Union[IndicatorValue, float]
-
-class SignalBlockData(BaseModel):
-    id: str
-    type: Literal["signal"]
-    conditionA: Optional[Condition] = None
-    operator: str
-    conditionB: Optional[Condition] = None
-    children: List["SignalBlockData"] = Field(default_factory=list)
-    logicOperator: Literal["AND", "OR"]
-
-    model_config = ConfigDict(from_attributes=True) # 👈 SignalBlockData에도 추가
-
-SignalBlockData.update_forward_refs() # 재귀적 참조 해결 (SignalBlockData 내부에 자신을 참조)
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class StrategyCreate(StrategyBase):
-    rules: Dict[Literal["buy", "sell"], List[SignalBlockData]] = Field(
-        ...,
-        description="Buy and sell rules defined as a dictionary of signal blocks."
-    )
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    target_coins: List[TargetCoin] = Field(default_factory=list)
 
 class StrategyUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
-    rules: Optional[Dict[Literal["buy", "sell"], List[SignalBlockData]]] = None
     is_public: Optional[bool] = None
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    target_coins: Optional[List[TargetCoin]] = None
 
-class Strategy(StrategyBase):
+class Strategy(BaseModel):
     id: int
     author_id: int
-    rules: Dict[Literal["buy", "sell"], List[SignalBlockData]]
+    name: str
+    description: Optional[str] = None
+    is_public: bool
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    target_coins: List[TargetCoin]
     created_at: datetime
     updated_at: Optional[datetime] = None
+    paid_feature_level: Literal["basic", "trader", "pro"] = "basic"
 
-    model_config = ConfigDict(from_attributes=True)
-
-
-# --- API Key Schemas (Dependency for LiveBot) ---
-# 👈 순서 변경: LiveBot 위에 배치하여 참조 문제 해결
 class ApiKeyCreate(BaseModel):
     exchange: str = Field(..., min_length=2, max_length=50)
     api_key: str = Field(..., min_length=10)
@@ -171,9 +297,6 @@ class ApiKeyResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# --- Backtesting Schemas ---
-# Backtest는 Strategy를 참조하므로 Strategy 정의 이후에 위치
 class BacktestCreate(BaseModel):
     strategy_id: int
     ticker: str = Field(..., description="Trading pair ticker, e.g., 'BTC/USDT'")
@@ -198,7 +321,7 @@ class BacktestResultSummary(BaseModel):
     mdd_pct: Optional[float] = None
     sharpe_ratio: Optional[float] = None
     win_rate_pct: Optional[float] = None
-    pnl_curve_json: Optional[List[Dict[str, Any]]] = None # 👈 Dict 대신 List[Dict]로 수정
+    pnl_curve_json: Optional[List[Dict[str, Any]]] = None
     trade_summary_json: Optional[Dict[str, Any]] = None
     executed_at: Optional[datetime] = None
 
@@ -215,13 +338,10 @@ class Backtest(BaseModel):
     completed_at: Optional[datetime] = None
     
     result: Optional[BacktestResultSummary] = None
-    strategy: Optional["Strategy"] = None # 👈 StrategyBase 대신 Strategy로 수정
+    strategy: Optional[Strategy] = None
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# --- Live Bot Schemas ---
-# LiveBot은 Strategy와 ApiKeyResponse를 참조하므로 이들 정의 이후에 위치
 class LiveBotCreate(BaseModel):
     strategy_id: int
     api_key_id: int
@@ -241,45 +361,15 @@ class LiveBot(BaseModel):
     stopped_at: Optional[datetime] = None
     last_run_at: Optional[datetime] = None
     initial_capital: Optional[float] = None
-    strategy: Optional["Strategy"] = None # 👈 StrategyBase 대신 Strategy로 수정
-    api_key: Optional["ApiKeyResponse"] = None
+    strategy: Optional[Strategy] = None
+    api_key: Optional[ApiKeyResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
-LiveBot.update_forward_refs() # 재귀적 참조 해결 (ApiKeyResponse가 문자열 참조라)
+# ==============================================================================
+# 3. 커뮤니티 관련 스키마
+# ==============================================================================
 
-
-# --- Subscription & Plan Schemas ---
-class Plan(BaseModel):
-    id: int
-    name: str
-    price: float
-    features: Dict[str, Any]
-
-    model_config = ConfigDict(from_attributes=True)
-
-class Subscription(BaseModel):
-    id: int
-    user_id: int
-    plan_id: int
-    status: str
-    current_period_end: datetime
-    payment_gateway_sub_id: Optional[str] = None
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    plan: Plan
-
-    model_config = ConfigDict(from_attributes=True)
-
-class CheckoutRequest(BaseModel):
-    plan_id: int
-
-class CheckoutResponse(BaseModel):
-    checkout_url: str
-
-
-# --- Community Schemas ---
 class CommunityPostCreate(BaseModel):
     title: str = Field(..., min_length=5, max_length=255)
     content: str = Field(..., min_length=10)
@@ -324,33 +414,5 @@ class LikeResponse(BaseModel):
     user_id: int
     post_id: int
     status: bool = True
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# --- 일반 사용자 대시보드 요약 스키마 ---
-class UserDashboardSummary(BaseModel):
-    email: EmailStr
-    username: Optional[str] = None
-    user_id: int
-    created_at: datetime
-    is_email_verified: bool
-
-    current_plan_name: str
-    current_plan_price: float
-    subscription_end_date: Optional[datetime] = None
-    subscription_is_active: bool
-    max_backtests_per_day: int
-    concurrent_bots_limit: int
-    allowed_timeframes: List[str]
-
-    total_backtests_run_by_user: int
-    successful_backtests_by_user: int
-
-    total_live_bots_by_user: int
-    active_live_bots_by_user: int
-
-    latest_backtests: List[Backtest] = Field(default_factory=list)
-    latest_live_bots: List[LiveBot] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

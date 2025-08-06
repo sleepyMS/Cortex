@@ -155,3 +155,4 @@ async def get_current_admin_user(current_user: models.User = Depends(get_current
             detail="관리자 권한이 필요합니다."
         )
     return current_user
+

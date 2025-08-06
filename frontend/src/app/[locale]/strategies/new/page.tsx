@@ -1,4 +1,4 @@
-// frontend/src/app/[locale]/strategies/new/page.tsx (수정)
+// file: frontend/src/app/[locale]/strategies/new/page.tsx
 
 "use client";
 
@@ -7,9 +7,25 @@ import { useTranslations } from "next-intl";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
-import { IndicatorDefinition } from "@/lib/indicators";
+import { IndicatorMetadata, INDICATOR_METADATA } from "@/lib/indicators";
 import { useStrategyState } from "@/hooks/useStrategyState";
-import { TargetSlot } from "@/types/strategy";
+import {
+  StrategyType,
+  LogicBlock,
+  ComparisonLogic,
+  CrossoverLogic,
+  StateLogic,
+  TrendSignalLogic,
+  ChannelLogic,
+  DivergenceLogic,
+  PatternLogic,
+  TpslLogic,
+  TargetCoin,
+  PositionRules,
+  TargetSlot,
+  IndicatorValue,
+} from "@/types/strategy";
+import { nanoid } from "nanoid";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,11 +46,12 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { Separator } from "@/components/ui/Separator";
+import { TpslForm } from "@/components/domain/strategy/TpslForm";
+import { TargetCoinForm } from "@/components/domain/strategy/TargetCoinForm";
 
 // --- 폼 스키마 정의 (Zod) ---
-// 백엔드 schemas.StrategyCreate와 일치하도록 정의합니다.
 const formSchema = z.object({
-  // 👈 min(3) 추가
   name: z
     .string()
     .min(3, { message: "전략 이름은 최소 3글자 이상이어야 합니다." })
@@ -48,7 +65,12 @@ const formSchema = z.object({
 type StrategyFormValues = z.infer<typeof formSchema>;
 
 interface StrategyCreatePayload extends StrategyFormValues {
-  rules: any;
+  long_entry_rules?: PositionRules;
+  long_exit_rules?: PositionRules;
+  short_entry_rules?: PositionRules;
+  short_exit_rules?: PositionRules;
+  tpsl_logic?: TpslLogic;
+  target_coins?: TargetCoin[];
   is_public: boolean;
 }
 
@@ -57,11 +79,94 @@ interface StrategyResponse {
   author_id: number;
   name: string;
   description?: string | null;
-  rules: any;
+  long_entry_rules?: PositionRules;
+  long_exit_rules?: PositionRules;
+  short_entry_rules?: PositionRules;
+  short_exit_rules?: PositionRules;
+  tpsl_logic?: TpslLogic;
+  target_coins?: TargetCoin[];
   is_public: boolean;
+  paid_feature_level: "basic" | "trader" | "pro";
   created_at: string;
   updated_at?: string | null;
 }
+
+// --- 새로운 LogicBlock을 생성하는 헬퍼 함수 ---
+const createLogicBlock = (
+  indicator: IndicatorMetadata,
+  logicType: string
+): LogicBlock => {
+  const baseIndicatorValue: IndicatorValue = {
+    indicatorKey: indicator.key,
+    outputs: indicator.outputs.map((o) => o.key),
+    values: indicator.parameters.reduce((acc, param) => {
+      acc[param.key] = param.default;
+      return acc;
+    }, {} as Record<string, any>),
+    timeframe: indicator.supportedTimeframes[0],
+  };
+
+  const newBlockId = nanoid();
+
+  switch (logicType) {
+    case "comparison":
+      return {
+        id: newBlockId,
+        type: "comparison",
+        operand_a: baseIndicatorValue,
+        operator: "==",
+        operand_b: 0,
+      } as ComparisonLogic;
+    case "crossover":
+      return {
+        id: newBlockId,
+        type: "crossover",
+        main_line: baseIndicatorValue,
+        cross_direction: "above",
+        signal_line: baseIndicatorValue, // 초기값으로 지표A와 동일하게 설정
+      } as CrossoverLogic;
+    case "state":
+      return {
+        id: newBlockId,
+        type: "state",
+        indicator: baseIndicatorValue,
+        lower_bound: 30, // 예시 초기값
+        upper_bound: 70, // 예시 초기값
+        state_action: "within",
+      } as StateLogic;
+    case "trend_signal":
+      return {
+        id: newBlockId,
+        type: "trend_signal",
+        indicator: baseIndicatorValue,
+        signal: "buy",
+      } as TrendSignalLogic;
+    case "channel":
+      return {
+        id: newBlockId,
+        type: "channel",
+        indicator: baseIndicatorValue,
+        channel_zone: "upper",
+        action: "enter",
+      } as ChannelLogic;
+    case "divergence":
+      return {
+        id: newBlockId,
+        type: "divergence",
+        indicator: baseIndicatorValue,
+        divergence_type: "bullish",
+      } as DivergenceLogic;
+    case "pattern":
+      return {
+        id: newBlockId,
+        type: "pattern",
+        pattern_key: "doji",
+        direction: "bullish",
+      } as PatternLogic;
+    default:
+      throw new Error(`Unsupported logic type: ${logicType}`);
+  }
+};
 
 export default function NewStrategyPage() {
   const t = useTranslations("StrategyBuilder");
@@ -69,13 +174,18 @@ export default function NewStrategyPage() {
   const queryClient = useQueryClient();
 
   const {
-    buyRules,
-    sellRules,
+    longEntryRules,
+    longExitRules,
+    shortEntryRules,
+    shortExitRules,
+    tpslLogic,
+    targetCoins,
     addRule,
     deleteRule,
-    updateRuleData,
-    updateBlockCondition,
-    updateBlockTimeframe,
+    updateRule,
+    updateRuleLogic,
+    setTpslLogic,
+    setTargetCoins,
   } = useStrategyState();
 
   const [isHubOpen, setIsHubOpen] = useState(false);
@@ -89,6 +199,49 @@ export default function NewStrategyPage() {
     },
   });
 
+  const handleAddTopLevelRuleClick = (ruleType: StrategyType) => {
+    setCurrentTarget({
+      ruleType,
+      blockId: nanoid(),
+      logicType: "comparison",
+      slotKey: "top-level",
+    });
+    setIsHubOpen(true);
+  };
+
+  const handleSlotClick = (
+    ruleType: StrategyType,
+    blockId: string,
+    logicType: LogicBlock["type"],
+    slotKey: string
+  ) => {
+    setCurrentTarget({ ruleType, blockId, logicType, slotKey });
+    setIsHubOpen(true);
+  };
+
+  const handleIndicatorSelect = (
+    indicator: IndicatorMetadata,
+    logicType: string
+  ) => {
+    if (!currentTarget) return;
+
+    const newBlock = createLogicBlock(indicator, logicType);
+
+    if (currentTarget.slotKey === "top-level") {
+      addRule(currentTarget.ruleType, newBlock, null, "OR");
+    } else {
+      updateRuleLogic(
+        currentTarget.ruleType,
+        currentTarget.blockId,
+        currentTarget.slotKey,
+        newBlock
+      );
+    }
+
+    setIsHubOpen(false);
+    setCurrentTarget(null);
+  };
+
   const createStrategyMutation = useMutation<
     StrategyResponse,
     Error,
@@ -98,10 +251,12 @@ export default function NewStrategyPage() {
       const payload: StrategyCreatePayload = {
         name: values.name,
         description: values.description,
-        rules: {
-          buy: buyRules,
-          sell: sellRules,
-        },
+        long_entry_rules: longEntryRules || undefined,
+        long_exit_rules: longExitRules || undefined,
+        short_entry_rules: shortEntryRules || undefined,
+        short_exit_rules: shortExitRules || undefined,
+        tpsl_logic: tpslLogic || undefined,
+        target_coins: targetCoins || undefined,
         is_public: false,
       };
       const { data } = await apiClient.post("/strategies", payload);
@@ -114,8 +269,7 @@ export default function NewStrategyPage() {
       router.push("/strategies");
     },
     onError: (error) => {
-      // 👈 에러 메시지 파싱 로직 개선
-      let displayMessage = t("form.saveFailedGeneric"); // 기본 일반 오류 메시지
+      let displayMessage = t("form.saveFailedGeneric");
       const apiError = error as any;
 
       if (
@@ -123,11 +277,9 @@ export default function NewStrategyPage() {
         apiError.response.data &&
         apiError.response.data.detail
       ) {
-        // Pydantic ValidationError (422) 처리
         if (Array.isArray(apiError.response.data.detail)) {
           const validationErrors = apiError.response.data.detail
             .map((err: any) => {
-              // 'loc'에 필드명, 'msg'에 오류 메시지
               const field =
                 err.loc && err.loc.length > 1 ? err.loc[1] : "unknown field";
               return `${field}: ${err.msg}`;
@@ -137,48 +289,28 @@ export default function NewStrategyPage() {
             "form.validationErrorPrefix"
           )}: ${validationErrors}`;
         } else if (typeof apiError.response.data.detail === "string") {
-          // 백엔드에서 직접 문자열 에러 메시지를 보낸 경우
-          displayMessage = apiError.response.data.detail;
+          displayMessage = apiMessage(apiError.response.data.detail);
         }
       } else {
-        // 네트워크 오류 등 기타 오류
         displayMessage = error.message;
       }
 
-      toast.error(t("form.saveError", { error: displayMessage })); // 에러 키와 파싱된 메시지 사용
+      toast.error(t("form.saveError", { error: displayMessage }));
       console.error("Strategy save failed:", displayMessage, error);
     },
   });
 
   const onSubmit = (values: StrategyFormValues) => {
-    if (buyRules.length === 0 && sellRules.length === 0) {
+    if (
+      !longEntryRules &&
+      !longExitRules &&
+      !shortEntryRules &&
+      !shortExitRules
+    ) {
       toast.error(t("form.rulesRequired"));
       return;
     }
     createStrategyMutation.mutate(values);
-  };
-
-  const handleSlotClick = (
-    ruleType: "buy" | "sell",
-    blockId: string,
-    condition: "conditionA" | "conditionB"
-  ) => {
-    setCurrentTarget({ ruleType, blockId, condition });
-    setIsHubOpen(true);
-  };
-
-  const handleIndicatorSelect = (indicator: IndicatorDefinition) => {
-    if (currentTarget) {
-      updateBlockCondition(currentTarget, indicator);
-    }
-    setIsHubOpen(false);
-    setCurrentTarget(null);
-  };
-
-  const handleTimeframeChange = (target: TargetSlot, newTimeframe: string) => {
-    if (target) {
-      updateBlockTimeframe(target, newTimeframe);
-    }
   };
 
   return (
@@ -222,7 +354,7 @@ export default function NewStrategyPage() {
                       disabled={createStrategyMutation.isPending}
                     />
                   </FormControl>
-                  <FormMessage /> {/* 👈 프론트엔드 유효성 검사 메시지 표시 */}
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -254,16 +386,31 @@ export default function NewStrategyPage() {
                 {t("rulesTitle")}
               </h3>
               <StrategyBuilderCanvas
-                buyRules={buyRules}
-                sellRules={sellRules}
+                longEntryRules={longEntryRules}
+                longExitRules={longExitRules}
+                shortEntryRules={shortEntryRules}
+                shortExitRules={shortExitRules}
                 onAddRule={addRule}
                 onDeleteRule={deleteRule}
-                onUpdateRuleData={updateRuleData}
-                onUpdateBlockCondition={updateBlockCondition}
+                onUpdateRule={updateRule}
+                onUpdateRuleLogic={updateRuleLogic}
                 onSlotClick={handleSlotClick}
-                onTimeframeChange={handleTimeframeChange}
+                onAddTopLevelRuleClick={handleAddTopLevelRuleClick}
               />
             </div>
+
+            <Separator className="my-8" />
+
+            {/* TP/SL 설정 폼 */}
+            <TpslForm tpslLogic={tpslLogic} setTpslLogic={setTpslLogic} />
+
+            <Separator className="my-8" />
+
+            {/* 타겟 코인 설정 폼 */}
+            <TargetCoinForm
+              targetCoins={targetCoins}
+              setTargetCoins={setTargetCoins}
+            />
 
             {/* 저장 버튼 */}
             <Button
@@ -288,4 +435,11 @@ export default function NewStrategyPage() {
       </div>
     </AuthGuard>
   );
+}
+
+function apiMessage(message: string): string {
+  if (message.includes("Strategy with this name already exists")) {
+    return "이미 같은 이름의 전략이 존재합니다. 다른 이름을 사용해주세요.";
+  }
+  return message;
 }
