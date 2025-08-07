@@ -1,5 +1,3 @@
-// file: frontend/src/components/domain/strategy/IndicatorHub.tsx
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -16,6 +14,8 @@ import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { HorizontalScrollArea } from "@/components/ui/HorizontalScrollArea";
+import { Button } from "@/components/ui/Button";
+import { ArrowLeft } from "lucide-react";
 
 type SelectedIndicatorState = {
   indicator: IndicatorMetadata;
@@ -26,12 +26,14 @@ interface IndicatorHubProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSelect: (indicator: IndicatorMetadata, logicType: string) => void;
+  selectionMode?: "full" | "indicatorOnly";
 }
 
 export function IndicatorHub({
   isOpen,
   onOpenChange,
   onSelect,
+  selectionMode = "full",
 }: IndicatorHubProps) {
   const t = useTranslations("StrategyBuilder");
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,7 +62,7 @@ export function IndicatorHub({
     );
   }, [searchTerm]);
 
-  const logicTypeTranslations = {
+  const logicTypeTranslations: { [key: string]: string } = {
     comparison: t("logic.comparison"),
     crossover: t("logic.crossover"),
     state: t("logic.state"),
@@ -71,11 +73,14 @@ export function IndicatorHub({
   };
 
   const handleIndicatorClick = (indicator: IndicatorMetadata) => {
-    if (indicator.supported_logics.length === 1) {
+    if (selectionMode === "indicatorOnly") {
       onSelect(indicator, indicator.supported_logics[0]);
-      onOpenChange(false);
     } else {
-      setSelectedIndicator({ indicator });
+      if (indicator.supported_logics.length === 1) {
+        onSelect(indicator, indicator.supported_logics[0]);
+      } else {
+        setSelectedIndicator({ indicator });
+      }
     }
   };
 
@@ -83,47 +88,64 @@ export function IndicatorHub({
     if (selectedIndicator) {
       onSelect(selectedIndicator.indicator, logicType);
       setSelectedIndicator(null);
-      onOpenChange(false);
     }
   };
 
   const handleClose = (open: boolean) => {
     if (!open) {
       setSelectedIndicator(null);
+      setSearchTerm("");
     }
     onOpenChange(open);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-full sm:max-w-md md:max-w-lg lg:max-w-4xl h-[75vh] flex flex-col rounded-lg bg-background border border-primary">
-        <DialogHeader className="px-4 pt-4 pb-4 border-b border-border/50 sm:px-6 sm:pt-6 sm:pb-4">
-          <DialogTitle>
-            {selectedIndicator
-              ? `${selectedIndicator.indicator.label} ${t("logicHubTitle")}`
-              : t("indicatorHubTitle")}
-          </DialogTitle>
-          <DialogDescription>
-            {selectedIndicator
-              ? t("logicHubDescription")
-              : t("indicatorHubDescription")}
-          </DialogDescription>
+      <DialogContent className="max-w-full sm:max-w-md md:max-w-lg lg:max-w-4xl h-[75vh] flex flex-col p-0 rounded-lg bg-background border border-primary">
+        <DialogHeader className="flex-row gap-4 px-6 pt-6 pb-4 border-b flex-shrink-0">
+          {selectedIndicator && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0"
+              onClick={() => setSelectedIndicator(null)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span className="sr-only">Back</span>
+            </Button>
+          )}
+          <div className="flex-grow">
+            <DialogTitle>
+              {selectedIndicator
+                ? `${selectedIndicator.indicator.label} ${t("logicHubTitle")}`
+                : t("indicatorHubTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedIndicator
+                ? t("logicHubDescription")
+                : t("indicatorHubDescription")}
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         <div className="flex-shrink-0">
-          <div className="px-4 my-4 sm:px-6">
-            <Input
-              placeholder={t("searchIndicatorPlaceholder")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-background border-input focus-visible:ring-ring"
-            />
-          </div>
+          {!selectedIndicator && (
+            <div className="px-6 my-4">
+              <Input
+                placeholder={t("searchIndicatorPlaceholder")}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
 
+        <div className="flex-grow min-h-0">
           {!selectedIndicator ? (
-            <Tabs defaultValue="All" className="w-full">
-              <HorizontalScrollArea className="px-4 sm:px-6">
-                <TabsList className="w-max bg-muted/30">
+            <Tabs defaultValue="All" className="flex flex-col h-full">
+              <HorizontalScrollArea className="px-6 flex-shrink-0">
+                <TabsList>
                   {categories.map((cat) => (
                     <TabsTrigger key={cat} value={cat}>
                       {cat}
@@ -131,8 +153,7 @@ export function IndicatorHub({
                   ))}
                 </TabsList>
               </HorizontalScrollArea>
-
-              <ScrollArea className="flex-grow mt-4 h-[calc(75vh-300px)] px-4 sm:px-6">
+              <ScrollArea className="flex-grow mt-4 px-6 pb-6">
                 {categories.map((cat) => (
                   <TabsContent key={cat} value={cat} className="pt-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -158,7 +179,7 @@ export function IndicatorHub({
               </ScrollArea>
             </Tabs>
           ) : (
-            <div className="px-4 py-2 sm:px-6">
+            <div className="px-6 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {selectedIndicator.indicator.supported_logics.map((logic) => (
                   <div
@@ -167,11 +188,7 @@ export function IndicatorHub({
                     onClick={() => handleLogicClick(logic)}
                   >
                     <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {
-                        logicTypeTranslations[
-                          logic as keyof typeof logicTypeTranslations
-                        ]
-                      }
+                      {logicTypeTranslations[logic] || logic}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t(`logicDescription.${logic}`)}

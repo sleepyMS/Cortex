@@ -1,5 +1,3 @@
-// 파일 경로: frontend/src/app/[locale]/strategies/new/page.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -20,17 +18,10 @@ import { IndicatorMetadata } from "@/lib/indicators";
 import {
   StrategyType,
   LogicBlock,
-  ComparisonLogic,
-  CrossoverLogic,
-  StateLogic,
-  TrendSignalLogic,
-  ChannelLogic,
-  DivergenceLogic,
-  PatternLogic,
   TpslLogic,
   TargetCoin,
   PositionRules,
-  TargetSlot, // 👈 수정된 타입
+  TargetSlot,
   IndicatorValue,
   LogicOperator,
 } from "@/types/strategy";
@@ -94,7 +85,6 @@ const createLogicBlock = (
   logicType: string,
   allowedTimeframes: string[]
 ): LogicBlock => {
-  // ... (이전 답변과 동일한 함수 내용)
   const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
     allowedTimeframes.includes(tf)
   );
@@ -134,6 +124,35 @@ const createLogicBlock = (
         upper_bound: 70,
         state_action: "within",
       };
+    case "trend_signal":
+      return {
+        id: newBlockId,
+        type: "trend_signal",
+        indicator: baseIndicatorValue,
+        signal: "buy",
+      };
+    case "channel":
+      return {
+        id: newBlockId,
+        type: "channel",
+        indicator: baseIndicatorValue,
+        channel_zone: "upper",
+        action: "enter",
+      };
+    case "divergence":
+      return {
+        id: newBlockId,
+        type: "divergence",
+        indicator: baseIndicatorValue,
+        divergence_type: "bullish",
+      };
+    case "pattern":
+      return {
+        id: newBlockId,
+        type: "pattern",
+        pattern_key: "doji",
+        direction: "any",
+      };
     default:
       return {
         id: newBlockId,
@@ -155,6 +174,9 @@ export default function NewStrategyPage() {
   const { allowedTimeframes } = useUserSubscription();
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot>(null);
+  const [hubSelectionMode, setHubSelectionMode] = useState<
+    "full" | "indicatorOnly"
+  >("full");
 
   const form = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
@@ -164,6 +186,7 @@ export default function NewStrategyPage() {
   // --- 이벤트 핸들러 ---
   const handleAddTopLevelRule = (ruleType: StrategyType) => {
     setCurrentTarget({ type: "top-level", ruleType });
+    setHubSelectionMode("full");
     setIsHubOpen(true);
   };
 
@@ -173,6 +196,7 @@ export default function NewStrategyPage() {
     as: LogicOperator
   ) => {
     setCurrentTarget({ type: "nested-add", ruleType, parentId, as });
+    setHubSelectionMode("full");
     setIsHubOpen(true);
   };
 
@@ -182,6 +206,7 @@ export default function NewStrategyPage() {
     operandKey: string
   ) => {
     setCurrentTarget({ type: "operand", ruleType, blockId, operandKey });
+    setHubSelectionMode("indicatorOnly");
     setIsHubOpen(true);
   };
 
@@ -190,30 +215,43 @@ export default function NewStrategyPage() {
     logicType: string
   ) => {
     if (!currentTarget) return;
-    const newBlock = createLogicBlock(indicator, logicType, allowedTimeframes);
 
-    switch (currentTarget.type) {
-      case "top-level":
+    if (currentTarget.type === "operand") {
+      const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
+        allowedTimeframes.includes(tf)
+      );
+      const newIndicatorValue: IndicatorValue = {
+        indicatorKey: indicator.key,
+        outputs: [indicator.outputs[0].key],
+        values: indicator.parameters.reduce(
+          (acc, param) => ({ ...acc, [param.key]: param.default }),
+          {}
+        ),
+        timeframe:
+          availableTimeframes.length > 0 ? availableTimeframes[0] : "1h",
+      };
+      strategyState.updateRuleLogic(
+        currentTarget.ruleType,
+        currentTarget.blockId,
+        currentTarget.operandKey,
+        newIndicatorValue
+      );
+    } else {
+      const newBlock = createLogicBlock(
+        indicator,
+        logicType,
+        allowedTimeframes
+      );
+      if (currentTarget.type === "top-level") {
         strategyState.addRule(currentTarget.ruleType, newBlock, null);
-        break;
-      case "nested-add":
+      } else if (currentTarget.type === "nested-add") {
         strategyState.addRule(
           currentTarget.ruleType,
           newBlock,
           currentTarget.parentId,
           currentTarget.as
         );
-        break;
-      case "operand":
-        const newIndicatorValue =
-          (newBlock as any).operand_a || (newBlock as any).indicator;
-        strategyState.updateRuleLogic(
-          currentTarget.ruleType,
-          currentTarget.blockId,
-          currentTarget.operandKey,
-          newIndicatorValue
-        );
-        break;
+      }
     }
     setIsHubOpen(false);
     setCurrentTarget(null);
@@ -262,6 +300,7 @@ export default function NewStrategyPage() {
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
+        selectionMode={hubSelectionMode}
       />
       <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
         <Form {...form}>

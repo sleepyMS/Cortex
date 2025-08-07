@@ -4,7 +4,6 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import {
   LogicBlock,
-  StrategyType,
   LogicOperator,
   ComparisonLogic,
   CrossoverLogic,
@@ -83,16 +82,21 @@ export function RuleBlock({
   const CurrentLogicIcon =
     LOGIC_TYPE_METADATA[item.type]?.icon || GitCompareArrows;
 
-  const handleUpdateField = (field: keyof LogicBlock, value: any) => {
+  const handleUpdateField = (
+    field: keyof LogicBlock | keyof typeof item,
+    value: any
+  ) => {
     onUpdate(item.id, { ...item, [field]: value });
   };
 
   const handleLogicTypeChange = (newType: LogicBlock["type"]) => {
     let oldIndicator: IndicatorValue | null = null;
-    if ("indicator" in item) oldIndicator = item.indicator as IndicatorValue;
-    if ("operand_a" in item && typeof item.operand_a === "object")
+    if ("indicator" in item && typeof (item as any).indicator === "object")
+      oldIndicator = (item as any).indicator;
+    else if ("operand_a" in item && typeof item.operand_a === "object")
       oldIndicator = item.operand_a;
-    if ("main_line" in item) oldIndicator = item.main_line as IndicatorValue;
+    else if ("main_line" in item && typeof (item as any).main_line === "object")
+      oldIndicator = (item as any).main_line;
 
     let newBlock: LogicBlock;
     const baseProps = { id: item.id };
@@ -126,6 +130,39 @@ export function RuleBlock({
           state_action: "within",
         };
         break;
+      case "trend_signal":
+        newBlock = {
+          ...baseProps,
+          type: "trend_signal",
+          indicator: oldIndicator,
+          signal: "buy",
+        };
+        break;
+      case "channel":
+        newBlock = {
+          ...baseProps,
+          type: "channel",
+          indicator: oldIndicator,
+          channel_zone: "upper",
+          action: "enter",
+        };
+        break;
+      case "divergence":
+        newBlock = {
+          ...baseProps,
+          type: "divergence",
+          indicator: oldIndicator,
+          divergence_type: "bullish",
+        };
+        break;
+      case "pattern":
+        newBlock = {
+          ...baseProps,
+          type: "pattern",
+          pattern_key: "doji",
+          direction: "any",
+        };
+        break;
       default:
         newBlock = {
           ...baseProps,
@@ -156,10 +193,10 @@ export function RuleBlock({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value=">">&gt; (크다)</SelectItem>
-          <SelectItem value="<">&lt; (작다)</SelectItem>
-          <SelectItem value="==">= (같다)</SelectItem>
-          <SelectItem value="!=">≠ (다르다)</SelectItem>
+          <SelectItem value=">">&gt;</SelectItem>
+          <SelectItem value="<">&lt;</SelectItem>
+          <SelectItem value="==">=</SelectItem>
+          <SelectItem value="!=">≠</SelectItem>
         </SelectContent>
       </Select>
       <OperandSlot
@@ -208,9 +245,7 @@ export function RuleBlock({
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
-        onConvertToValue={() => {
-          /* State 로직은 값을 가질 수 없으므로 비워둠 */
-        }}
+        onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
         onValueChange={() => {}}
       />
@@ -260,8 +295,127 @@ export function RuleBlock({
     </div>
   );
 
-  // ... 다른 로직 렌더링 함수들 ...
-  // Pattern, TrendSignal, Channel, Divergence 등도 위와 같은 방식으로 상세히 구현
+  const renderTrendSignalLogic = (logic: TrendSignalLogic) => (
+    <div className="grid grid-cols-[2fr_1fr] items-center gap-2">
+      <OperandSlot
+        value={logic.indicator}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onConvertToValue={() => {}}
+        onConvertToIndicator={() => {}}
+        onValueChange={() => {}}
+      />
+      <Select
+        value={logic.signal}
+        onValueChange={(val) => handleUpdateField("signal", val)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={t("selectSignal")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="buy">{t("buySignal")}</SelectItem>
+          <SelectItem value="sell">{t("sellSignal")}</SelectItem>
+          <SelectItem value="none">{t("noneSignal")}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const renderChannelLogic = (logic: ChannelLogic) => (
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+      <OperandSlot
+        value={logic.indicator}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onConvertToValue={() => {}}
+        onConvertToIndicator={() => {}}
+        onValueChange={() => {}}
+      />
+      <Select
+        value={logic.channel_zone}
+        onValueChange={(val) => handleUpdateField("channel_zone", val)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={t("selectChannelZone")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="upper">{t("upperChannel")}</SelectItem>
+          <SelectItem value="middle">{t("middleChannel")}</SelectItem>
+          <SelectItem value="lower">{t("lowerChannel")}</SelectItem>
+          <SelectItem value="kumo">{t("kumoCloud")}</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select
+        value={logic.action}
+        onValueChange={(val) => handleUpdateField("action", val)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={t("selectAction")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="enter">{t("enterChannel")}</SelectItem>
+          <SelectItem value="exit">{t("exitChannel")}</SelectItem>
+          <SelectItem value="within">{t("withinChannel")}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const renderDivergenceLogic = (logic: DivergenceLogic) => (
+    <div className="grid grid-cols-[1fr_1fr] items-center gap-2">
+      <OperandSlot
+        value={logic.indicator}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onConvertToValue={() => {}}
+        onConvertToIndicator={() => {}}
+        onValueChange={() => {}}
+      />
+      <Select
+        value={logic.divergence_type}
+        onValueChange={(val) => handleUpdateField("divergence_type", val)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={t("selectDivergenceType")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="bullish">{t("bullishDivergence")}</SelectItem>
+          <SelectItem value="bearish">{t("bearishDivergence")}</SelectItem>
+          <SelectItem value="hidden_bullish">{t("hiddenBullish")}</SelectItem>
+          <SelectItem value="hidden_bearish">{t("hiddenBearish")}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const renderPatternLogic = (logic: PatternLogic) => (
+    <div className="grid grid-cols-[2fr_1fr] items-center gap-2">
+      <Select
+        value={logic.pattern_key}
+        onValueChange={(val) => handleUpdateField("pattern_key", val)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={t("selectPattern")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="doji">도지 (Doji)</SelectItem>
+          <SelectItem value="engulfing">장악형 (Engulfing)</SelectItem>
+          <SelectItem value="hammer">망치형 (Hammer)</SelectItem>
+          <SelectItem value="harami">잉태형 (Harami)</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select
+        value={logic.direction}
+        onValueChange={(val) => handleUpdateField("direction", val)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={t("direction")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="bullish">{t("bullish")}</SelectItem>
+          <SelectItem value="bearish">{t("bearish")}</SelectItem>
+          <SelectItem value="any">{t("any")}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
 
   const renderLogic = (logic: LogicBlock) => {
     switch (logic.type) {
@@ -271,9 +425,20 @@ export function RuleBlock({
         return renderCrossoverLogic(logic);
       case "state":
         return renderStateLogic(logic);
-      // ... 다른 케이스들
+      case "trend_signal":
+        return renderTrendSignalLogic(logic);
+      case "channel":
+        return renderChannelLogic(logic);
+      case "divergence":
+        return renderDivergenceLogic(logic);
+      case "pattern":
+        return renderPatternLogic(logic);
       default:
-        return <div>{t("unknownLogicType")}</div>;
+        return (
+          <div className="text-sm text-destructive">
+            {t("unknownLogicType")}
+          </div>
+        );
     }
   };
 
