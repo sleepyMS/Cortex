@@ -12,7 +12,7 @@ export interface UserSubscription {
   email: string;
   role: string;
   subscription?: {
-    // 구독 정보는 선택적일 수 있습니다 (e.g., Free 플랜 사용자)
+    // 구독 정보는 선택적일 수 있습니다 (e.g., basic 플랜 사용자)
     plan_id: number;
     status: string; // e.g., "active", "canceled", "past_due"
     plan_name: "basic" | "trader" | "pro"; // plans 테이블의 name 필드와 매핑

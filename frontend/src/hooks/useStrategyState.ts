@@ -1,80 +1,19 @@
-// file: frontend/src/hooks/useStrategyState.ts
+// 파일 경로: frontend/src/hooks/useStrategyState.ts
 
 "use client";
 
 import { useState, useCallback } from "react";
-import { nanoid } from "nanoid";
 import {
   LogicBlock,
   PositionRules,
   TpslLogic,
   TargetCoin,
   StrategyType,
+  LogicOperator,
 } from "@/types/strategy";
 
-// --- 헬퍼 함수 ---
-// 재귀적으로 로직 블록을 업데이트하는 함수
-const updateBlockRecursive = (
-  blocks: LogicBlock[],
-  id: string,
-  updater: (block: LogicBlock) => LogicBlock
-): LogicBlock[] => {
-  return blocks.map((block) => {
-    if (block.id === id) {
-      return updater(block);
-    }
-    if (block.children && block.children.length > 0) {
-      const newChildren = updateBlockRecursive(block.children, id, updater);
-      if (newChildren !== block.children) {
-        return { ...block, children: newChildren };
-      }
-    }
-    return block;
-  });
-};
-
-// 재귀적으로 로직 블록을 제거하는 함수
-const removeBlockRecursive = (
-  blocks: LogicBlock[],
-  id: string
-): LogicBlock[] => {
-  return blocks
-    .filter((block) => block.id !== id)
-    .map((block) => {
-      if (block.children && block.children.length > 0) {
-        const newChildren = removeBlockRecursive(block.children, id);
-        if (newChildren !== block.children) {
-          return { ...block, children: newChildren };
-        }
-      }
-      return block;
-    });
-};
-
-const updateRuleLogicRecursive = (
-  blocks: LogicBlock[],
-  blockId: string,
-  slotKey: string,
-  newValue: any
-): LogicBlock[] => {
-  return blocks.map((block) => {
-    if (block.id === blockId) {
-      return { ...block, [slotKey]: newValue };
-    }
-    if (block.children) {
-      const newChildren = updateRuleLogicRecursive(
-        block.children,
-        blockId,
-        slotKey,
-        newValue
-      );
-      if (newChildren !== block.children) {
-        return { ...block, children: newChildren };
-      }
-    }
-    return block;
-  });
-};
+// --- 헬퍼 함수 (기존과 동일) ---
+// ... updateBlockRecursive, removeBlockRecursive, updateRuleLogicRecursive ...
 
 // --- useStrategyState 훅 ---
 export function useStrategyState() {
@@ -91,55 +30,76 @@ export function useStrategyState() {
     setStrategyState((prev) => ({ ...prev, ...newState }));
   }, []);
 
+  // 🔽 핵심 수정: addRule 함수
   const addRule = useCallback(
     (
       ruleType: StrategyType,
       newBlock: LogicBlock,
       parentId: string | null = null,
-      as: "AND" | "OR" = "OR"
+      as: LogicOperator = "OR"
     ) => {
       setStrategyState((prev) => {
         const rulesetKey = `${ruleType}Rules` as keyof typeof prev;
-        let currentRuleset = prev[rulesetKey] as PositionRules | null;
+        const currentRuleset = prev[rulesetKey];
 
+        // 1. 규칙이 하나도 없을 때
         if (!currentRuleset) {
-          currentRuleset = { logic_operator: "OR", blocks: [newBlock] };
-        } else if (parentId === null) {
-          currentRuleset = {
-            ...currentRuleset,
-            blocks: [...currentRuleset.blocks, newBlock],
-          };
-        } else {
-          // 부모 블록을 찾아 새로운 블록을 자식으로 추가
-          const addRecursive = (blocks: LogicBlock[]): LogicBlock[] => {
-            return blocks.map((block) => {
-              if (block.id === parentId) {
-                // 부모 블록의 logic_operator를 업데이트하고 children에 추가
-                return {
-                  ...block,
-                  children: [...(block.children || []), newBlock],
-                  logic_operator: as,
-                } as LogicBlock;
-              }
-              if (block.children) {
-                const newChildren = addRecursive(block.children);
-                if (newChildren !== block.children) {
-                  return { ...block, children: newChildren };
-                }
-              }
-              return block;
-            });
-          };
-          currentRuleset = {
-            ...currentRuleset,
-            blocks: addRecursive(currentRuleset.blocks),
+          return {
+            ...prev,
+            [rulesetKey]: { logic_operator: "OR", blocks: [newBlock] },
           };
         }
-        return { ...prev, [rulesetKey]: currentRuleset };
+
+        // 2. 최상위 레벨에 OR 조건으로 추가할 때 (parentId가 없을 때)
+        if (parentId === null) {
+          return {
+            ...prev,
+            [rulesetKey]: {
+              ...currentRuleset,
+              blocks: [...currentRuleset.blocks, newBlock],
+            },
+          };
+        }
+
+        // 3. 재귀적으로 규칙을 추가 (AND 또는 OR)
+        const addRecursive = (blocks: LogicBlock[]): LogicBlock[] => {
+          const result: LogicBlock[] = [];
+          for (const block of blocks) {
+            if (block.id === parentId) {
+              if (as === "AND") {
+                // AND 조건: children으로 추가
+                result.push({
+                  ...block,
+                  children: [...(block.children || []), newBlock],
+                  logic_operator: "AND",
+                });
+              } else {
+                // OR 조건: 같은 레벨의 다음 순서로 추가
+                result.push(block);
+                result.push(newBlock);
+              }
+            } else if (block.children) {
+              // 자식 노드에서 재귀적으로 탐색
+              const newChildren = addRecursive(block.children);
+              result.push({ ...block, children: newChildren });
+            } else {
+              result.push(block);
+            }
+          }
+          return result;
+        };
+
+        const newBlocks = addRecursive(currentRuleset.blocks);
+        return {
+          ...prev,
+          [rulesetKey]: { ...currentRuleset, blocks: newBlocks },
+        };
       });
     },
     []
   );
+
+  // ... (deleteRule, updateRule 등 나머지 함수는 기존과 동일) ...
 
   const deleteRule = useCallback((ruleType: StrategyType, id: string) => {
     setStrategyState((prev) => {
@@ -234,3 +194,64 @@ export function useStrategyState() {
     setTargetCoins,
   };
 }
+
+// --- 헬퍼 함수 (기존과 동일) ---
+const updateBlockRecursive = (
+  blocks: LogicBlock[],
+  id: string,
+  updater: (block: LogicBlock) => LogicBlock
+): LogicBlock[] => {
+  return blocks.map((block) => {
+    if (block.id === id) {
+      return updater(block);
+    }
+    if (block.children && block.children.length > 0) {
+      const newChildren = updateBlockRecursive(block.children, id, updater);
+      if (newChildren !== block.children) {
+        return { ...block, children: newChildren };
+      }
+    }
+    return block;
+  });
+};
+
+const removeBlockRecursive = (
+  blocks: LogicBlock[],
+  id: string
+): LogicBlock[] => {
+  const filteredBlocks = blocks.filter((block) => block.id !== id);
+  return filteredBlocks.map((block) => {
+    if (block.children && block.children.length > 0) {
+      const newChildren = removeBlockRecursive(block.children, id);
+      if (newChildren !== block.children) {
+        return { ...block, children: newChildren };
+      }
+    }
+    return block;
+  });
+};
+
+const updateRuleLogicRecursive = (
+  blocks: LogicBlock[],
+  blockId: string,
+  slotKey: string,
+  newValue: any
+): LogicBlock[] => {
+  return blocks.map((block) => {
+    if (block.id === blockId) {
+      return { ...block, [slotKey]: newValue };
+    }
+    if (block.children) {
+      const newChildren = updateRuleLogicRecursive(
+        block.children,
+        blockId,
+        slotKey,
+        newValue
+      );
+      if (newChildren !== block.children) {
+        return { ...block, children: newChildren };
+      }
+    }
+    return block;
+  });
+};

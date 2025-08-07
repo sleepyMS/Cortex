@@ -321,6 +321,29 @@
       "divergence": "Captures divergence between price and an indicator.",
       "pattern": "Captures occurrences of specific candlestick patterns."
     },
+    "tpslForm": {
+      "title": "Take Profit / Stop Loss (TP/SL) Settings",
+      "takeProfitPctLabel": "Fixed Take Profit %",
+      "stopLossPctLabel": "Fixed Stop Loss %",
+      "atrEnabledLabel": "Use Volatility (ATR) based TP/SL",
+      "atrStopLossLabel": "ATR Stop Loss Multiplier",
+      "atrTakeProfitLabel": "ATR Take Profit Multiplier",
+      "atrPeriodLabel": "ATR Period",
+      "saveButton": "Save"
+    },
+    "targetCoinForm": {
+      "title": "Target Coins Settings",
+      "description": "Set the coins for the strategy and their capital allocation.",
+      "allocationNote": "Adjust allocation to total 100%.",
+      "tickerLabel": "Coin",
+      "allocationLabel": "Allocation",
+      "noTickerError": "Please enter a coin ticker.",
+      "duplicateTickerError": "This coin is already added.",
+      "maxCoinsError": "You can only select a maximum of {max} coins.",
+      "addCoinPlaceholder": "Coin Symbol (e.g., BTC/USDT)",
+      "addButton": "Add Coin",
+      "targetCoinFormSingleCoinMessage": "Basic Plan supports only a single coin."
+    },
     "form": {
       "nameLabel": "Strategy Name",
       "namePlaceholder": "e.g., RSI-based Swing Trading",

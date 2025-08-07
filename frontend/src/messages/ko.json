@@ -321,6 +321,29 @@
       "divergence": "가격과 지표의 다이버전스를 포착합니다.",
       "pattern": "특정 캔들스틱 패턴이 발생할 때를 포착합니다."
     },
+    "tpslForm": {
+      "title": "손익절(TP/SL) 설정",
+      "takeProfitPctLabel": "고정 익절 비율",
+      "stopLossPctLabel": "고정 손절 비율",
+      "atrEnabledLabel": "변동성(ATR) 기반 TP/SL 사용",
+      "atrStopLossLabel": "ATR 손절 배수",
+      "atrTakeProfitLabel": "ATR 익절 배수",
+      "atrPeriodLabel": "ATR 기간",
+      "saveButton": "저장"
+    },
+    "targetCoinForm": {
+      "title": "타겟 코인 설정",
+      "description": "전략을 실행할 코인과 자금 배분율을 설정하세요.",
+      "allocationNote": "총 할당량이 100%가 되도록 조정하세요.",
+      "tickerLabel": "코인",
+      "allocationLabel": "배분율",
+      "noTickerError": "코인 이름을 입력하세요.",
+      "duplicateTickerError": "이미 추가된 코인입니다.",
+      "maxCoinsError": "최대 {max}개의 코인만 선택할 수 있습니다.",
+      "addCoinPlaceholder": "코인 심볼 (예: BTC/USDT)",
+      "addButton": "코인 추가",
+      "singleCoinMessage": "Basic 플랜은 단일 코인만 지원합니다."
+    },
     "form": {
       "nameLabel": "전략 이름",
       "namePlaceholder": "예: RSI를 활용한 스윙 매매",
@@ -387,7 +410,7 @@
     "selectOutputPlaceholder": "출력값 선택...",
     "timeframeLabel": "타임프레임",
     "selectTimeframePlaceholder": "타임프레임 선택...",
-    "upgradePlanForTimeframe": "플랜 업그레이드하기",
+    "upgradePlanForTimeframe": "플랜 업그레이드 필요",
     "changeIndicatorButton": "지표 변경"
   },
   "StrategyBacktestHistory": {
