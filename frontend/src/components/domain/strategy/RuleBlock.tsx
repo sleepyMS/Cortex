@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   LogicBlock,
@@ -14,6 +14,7 @@ import {
   PatternLogic,
   IndicatorValue,
 } from "@/types/strategy";
+import { INDICATOR_METADATA } from "@/lib/indicators";
 import {
   ArrowRight,
   MoreVertical,
@@ -69,6 +70,29 @@ const LOGIC_TYPE_METADATA: {
   pattern: { icon: CandlestickChart, labelKey: "pattern" },
 };
 
+// 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출
+const getCurrentIndicator = (block: LogicBlock): IndicatorValue | null => {
+  if (
+    "indicator" in block &&
+    typeof (block as any).indicator === "object" &&
+    (block as any).indicator !== null
+  )
+    return (block as any).indicator;
+  if (
+    "operand_a" in block &&
+    typeof block.operand_a === "object" &&
+    block.operand_a !== null
+  )
+    return block.operand_a;
+  if (
+    "main_line" in block &&
+    typeof (block as any).main_line === "object" &&
+    (block as any).main_line !== null
+  )
+    return (block as any).main_line;
+  return null;
+};
+
 export function RuleBlock({
   item,
   onUpdate,
@@ -82,6 +106,26 @@ export function RuleBlock({
   const CurrentLogicIcon =
     LOGIC_TYPE_METADATA[item.type]?.icon || GitCompareArrows;
 
+  // 현재 규칙 블록에서 사용 중인 지표 정보를 바탕으로 지원되는 로직 목록을 계산
+  const supportedLogics = useMemo(() => {
+    const currentIndicator = getCurrentIndicator(item);
+    // 'pattern' 로직은 지표가 없으므로 항상 선택 가능하도록 예외 처리
+    if (item.type === "pattern") {
+      const patternMeta = Object.keys(LOGIC_TYPE_METADATA).find(
+        (k) => k === "pattern"
+      );
+      return patternMeta ? [patternMeta] : [];
+    }
+    if (!currentIndicator) {
+      // 지표가 아직 설정되지 않았다면 모든 로직을 보여줌
+      return Object.keys(LOGIC_TYPE_METADATA);
+    }
+    const metadata = INDICATOR_METADATA.find(
+      (ind) => ind.key === currentIndicator.indicatorKey
+    );
+    return metadata ? metadata.supported_logics : [];
+  }, [item]);
+
   const handleUpdateField = (
     field: keyof LogicBlock | keyof typeof item,
     value: any
@@ -90,13 +134,7 @@ export function RuleBlock({
   };
 
   const handleLogicTypeChange = (newType: LogicBlock["type"]) => {
-    let oldIndicator: IndicatorValue | null = null;
-    if ("indicator" in item && typeof (item as any).indicator === "object")
-      oldIndicator = (item as any).indicator;
-    else if ("operand_a" in item && typeof item.operand_a === "object")
-      oldIndicator = item.operand_a;
-    else if ("main_line" in item && typeof (item as any).main_line === "object")
-      oldIndicator = (item as any).main_line;
+    let oldIndicator: IndicatorValue | null = getCurrentIndicator(item);
 
     let newBlock: LogicBlock;
     const baseProps = { id: item.id };
@@ -395,10 +433,10 @@ export function RuleBlock({
           <SelectValue placeholder={t("selectPattern")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="doji">도지 (Doji)</SelectItem>
-          <SelectItem value="engulfing">장악형 (Engulfing)</SelectItem>
-          <SelectItem value="hammer">망치형 (Hammer)</SelectItem>
-          <SelectItem value="harami">잉태형 (Harami)</SelectItem>
+          <SelectItem value="doji">Doji</SelectItem>
+          <SelectItem value="engulfing">Engulfing</SelectItem>
+          <SelectItem value="hammer">Hammer</SelectItem>
+          <SelectItem value="harami">Harami</SelectItem>
         </SelectContent>
       </Select>
       <Select
@@ -450,14 +488,18 @@ export function RuleBlock({
             <Button
               variant="ghost"
               className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
+              disabled={item.type === "pattern"}
             >
               <CurrentLogicIcon className="h-4 w-4 text-primary" />
               {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {Object.entries(LOGIC_TYPE_METADATA).map(
-              ([type, { icon: Icon, labelKey }]) => (
+            {Object.entries(LOGIC_TYPE_METADATA)
+              .filter(([type]) =>
+                supportedLogics.includes(type as LogicBlock["type"])
+              )
+              .map(([type, { icon: Icon, labelKey }]) => (
                 <DropdownMenuItem
                   key={type}
                   onClick={() =>
@@ -467,8 +509,7 @@ export function RuleBlock({
                   <Icon className="mr-2 h-4 w-4" />
                   <span>{tLogic(labelKey as any)}</span>
                 </DropdownMenuItem>
-              )
-            )}
+              ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
