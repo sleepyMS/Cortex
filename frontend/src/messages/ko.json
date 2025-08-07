@@ -410,7 +410,7 @@
     "selectOutputPlaceholder": "출력값 선택...",
     "timeframeLabel": "타임프레임",
     "selectTimeframePlaceholder": "타임프레임 선택...",
-    "upgradePlanForTimeframe": "플랜 업그레이드 필요",
+    "upgradePlanForTimeframe": "플랜 업그레이드 하기",
     "changeIndicatorButton": "지표 변경"
   },
   "StrategyBacktestHistory": {
