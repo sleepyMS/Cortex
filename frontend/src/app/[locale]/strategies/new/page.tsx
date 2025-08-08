@@ -396,6 +396,7 @@ export default function NewStrategyPage() {
                   setTargetCoins={strategyState.setTargetCoins}
                 />
                 <TpslForm
+                  form={form}
                   tpslLogic={strategyState.tpslLogic}
                   setTpslLogic={strategyState.setTpslLogic}
                 />

@@ -12,11 +12,10 @@ export interface UserSubscription {
   email: string;
   role: string;
   subscription?: {
-    // 구독 정보는 선택적일 수 있습니다 (e.g., basic 플랜 사용자)
-    plan_id: number;
-    status: string; // e.g., "active", "canceled", "past_due"
-    plan_name: "basic" | "trader" | "pro"; // plans 테이블의 name 필드와 매핑
-    current_period_end: string; // ISO 8601 형식의 날짜 문자열
+    planId: number;
+    status: string;
+    planName: "basic" | "trader" | "pro";
+    currentPeriodEnd: string;
   };
 }
 
@@ -44,7 +43,7 @@ export function useUserSubscription() {
 
   // 사용자의 현재 플랜 이름을 반환 (구독 정보 없으면 기본 플랜으로 간주)
   // currentPlan의 타입을 명시적으로 PlanName으로 지정
-  const currentPlan: PlanName = user?.subscription?.plan_name || "basic";
+  const currentPlan: PlanName = user?.subscription?.planName || "basic";
 
   // 각 플랜이 허용하는 타임프레임 목록 (백엔드 plans.features에 정의될 내용)
   const allowedTimeframesByPlan: Record<PlanName, string[]> = {

@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
+import { useDebounce } from "use-debounce";
 
 import apiClient from "@/lib/apiClient";
 import { AuthGuard } from "@/components/auth/AuthGuard";
@@ -18,135 +20,184 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
-import { Card } from "@/components/ui/Card";
-import { Separator } from "@/components/ui/Separator";
 import { StrategyCard } from "@/components/domain/strategy/StrategyCard";
-import { PlusCircle, Search as SearchIcon } from "lucide-react";
-import { Strategy } from "@/types/strategy"; // 👈 완성된 Strategy 타입을 직접 임포트
+import {
+  PlusCircle,
+  Search as SearchIcon,
+  List,
+  LayoutGrid,
+} from "lucide-react";
+import { Strategy } from "@/types/strategy";
+import { Skeleton } from "@/components/ui/Skeleton";
 
+// --- Helper Components ---
+const LoadingSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) =>
+  viewMode === "grid" ? (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="space-y-3 p-6 border rounded-lg">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <div className="flex justify-between items-center pt-4">
+            <Skeleton className="h-5 w-1/4" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-20 w-full" />
+      ))}
+    </div>
+  );
+
+const EmptyState = () => {
+  const t = useTranslations("StrategiesPage");
+  return (
+    <div className="text-center py-16 border border-dashed rounded-lg">
+      <h2 className="text-xl font-semibold">{t("empty.title")}</h2>
+      <p className="text-muted-foreground mt-2 mb-6">
+        {t("empty.description")}
+      </p>
+      <div className="flex justify-center gap-4">
+        <Link href="/strategies/new">
+          <Button>{t("empty.createButton")}</Button>
+        </Link>
+        <Button variant="outline">{t("empty.templateButton")}</Button>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Page Component ---
 export default function StrategiesPage() {
   const t = useTranslations("StrategiesPage");
-
-  const [inputSearchTerm, setInputSearchTerm] = useState("");
-  const [actualSearchTerm, setActualSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "public" | "private"
   >("all");
-  const [sortBy, setSortBy] = useState<
-    "created_at_desc" | "updated_at_desc" | "name_asc"
-  >("created_at_desc");
-  const [page, setPage] = useState(0);
-  const limit = 12;
+  const [sortBy, setSortBy] = useState<string>("created_at_desc");
+  const { ref, inView } = useInView();
 
   const {
-    data: strategies,
-    isLoading,
+    data,
+    isLoading, // 👈 첫 페이지 로딩 상태
     isError,
-    error,
-    refetch,
-  } = useQuery<Strategy[], Error>({
-    // 👈 API 응답 타입을 완성된 Strategy 타입으로 변경
-    queryKey: ["userStrategies", actualSearchTerm, filterStatus, sortBy, page],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.append("skip", (page * limit).toString());
-      params.append("limit", limit.toString());
-      if (actualSearchTerm) params.append("search_query", actualSearchTerm);
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage, // 👈 다음 페이지 로딩 상태
+  } = useInfiniteQuery({
+    queryKey: ["userStrategies", debouncedSearchTerm, filterStatus, sortBy],
+    queryFn: async ({ pageParam = 0 }) => {
+      const limit = 12;
+      const params = new URLSearchParams({
+        skip: (pageParam * limit).toString(),
+        limit: limit.toString(),
+        sort_by: sortBy,
+      });
+      if (debouncedSearchTerm) params.set("search_query", debouncedSearchTerm);
+      if (filterStatus !== "all")
+        params.set("is_public_filter", (filterStatus === "public").toString());
 
-      if (filterStatus === "public") {
-        params.append("is_public_filter", "true");
-      } else if (filterStatus === "private") {
-        params.append("is_public_filter", "false");
-      }
-
-      params.append("sort_by", sortBy);
-
-      const { data } = await apiClient.get(`/strategies?${params.toString()}`);
-      return data;
+      const res = await apiClient.get(`/strategies?${params.toString()}`);
+      return res.data;
     },
-    staleTime: 1000 * 60,
-    keepPreviousData: true,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length > 0 ? allPages.length : undefined,
+    initialPageParam: 0,
   });
 
-  const handleSearch = () => {
-    setActualSearchTerm(inputSearchTerm);
-    setPage(0);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const strategies = data?.pages.flat() ?? [];
+
+  // 렌더링할 콘텐츠를 결정하는 함수
+  const renderContent = () => {
+    // 1. 첫 페이지 로딩: isLoading 상태를 사용하여 스켈레톤 UI만 표시
+    if (isLoading) {
+      return <LoadingSkeleton viewMode={viewMode} />;
+    }
+    // 2. 에러 발생 시
+    if (isError) {
+      return (
+        <div className="text-center text-destructive">{t("fetchError")}</div>
+      );
+    }
+    // 3. 데이터가 없을 때
+    if (strategies.length === 0) {
+      return <EmptyState />;
+    }
+    // 4. 데이터가 있을 때
+    return (
+      <div
+        className={
+          viewMode === "grid"
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            : "flex flex-col gap-3"
+        }
+      >
+        {strategies.map((strategy: Strategy) => (
+          <StrategyCard
+            key={strategy.id}
+            strategy={strategy}
+            viewMode={viewMode}
+          />
+        ))}
+      </div>
+    );
   };
-
-  if (isLoading) {
-    return (
-      <AuthGuard>
-        <div className="container mx-auto max-w-5xl px-4 py-8 flex h-full min-h-[400px] items-center justify-center">
-          <Spinner size="lg" />
-          <p className="ml-4 text-muted-foreground">{t("loadingStrategies")}</p>
-        </div>
-      </AuthGuard>
-    );
-  }
-
-  if (isError) {
-    return (
-      <AuthGuard>
-        <div className="container mx-auto max-w-5xl px-4 py-8 text-destructive-foreground text-center">
-          <h1 className="text-3xl font-bold text-destructive mb-4">
-            {t("errorLoadingTitle")}
-          </h1>
-          <p className="mb-2">
-            {t("fetchError", { errorDetail: error.message })}
-          </p>
-          <Button onClick={() => refetch()} variant="outline" className="mt-4">
-            {t("retryLoad")}
-          </Button>
-        </div>
-      </AuthGuard>
-    );
-  }
 
   return (
     <AuthGuard>
-      <div className="container mx-auto max-w-5xl px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
           <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
-          <Link href="/strategies/new" passHref>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> {t("createNewStrategy")}
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-md border bg-card p-1">
+              <Button
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+            <Link href="/strategies/new">
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t("createNewStrategy")}
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <div className="relative col-span-1 md:col-span-2 flex items-center">
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={inputSearchTerm}
-              onChange={(e) => setInputSearchTerm(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="pl-3 pr-10"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSearch}
-              className="absolute right-0 h-full rounded-r-md hover:bg-primary/10 hover:text-primary"
-            >
-              <SearchIcon className="h-4 w-4" />
-            </Button>
-          </div>
-
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Input
+            placeholder={t("searchPlaceholder")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
           <Select
             value={filterStatus}
-            onValueChange={(value: "all" | "public" | "private") => {
-              setFilterStatus(value);
-              setPage(0);
-            }}
+            onValueChange={(v: any) => setFilterStatus(v)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger>
               <SelectValue placeholder={t("filterPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
@@ -155,17 +206,8 @@ export default function StrategiesPage() {
               <SelectItem value="private">{t("filterPrivate")}</SelectItem>
             </SelectContent>
           </Select>
-
-          <Select
-            value={sortBy}
-            onValueChange={(
-              value: "created_at_desc" | "updated_at_desc" | "name_asc"
-            ) => {
-              setSortBy(value);
-              setPage(0);
-            }}
-          >
-            <SelectTrigger className="w-full">
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger>
               <SelectValue placeholder={t("sortByPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
@@ -180,43 +222,17 @@ export default function StrategiesPage() {
           </Select>
         </div>
 
-        <Separator className="my-8" />
+        {renderContent()}
 
-        {!strategies || strategies.length === 0 ? (
-          <Card className="p-6 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[200px]">
-            <p className="mb-4">{t("noStrategiesAvailable")}</p>
-            <Link href="/strategies/new" passHref>
-              <Button variant="secondary">
-                <PlusCircle className="mr-2 h-4 w-4" /> {t("createNewStrategy")}
-              </Button>
-            </Link>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {strategies.map((strategy) => (
-              <StrategyCard key={strategy.id} strategy={strategy} />
-            ))}
-          </div>
-        )}
-
-        {strategies && strategies.length > 0 && (
-          <div className="flex justify-center mt-8 space-x-4">
-            <Button
-              onClick={() => setPage((prev) => Math.max(0, prev - 1))}
-              disabled={page === 0}
-              variant="outline"
-            >
-              {t("pagination.previous")}
-            </Button>
-            <Button
-              onClick={() => setPage((prev) => prev + 1)}
-              disabled={strategies.length < limit}
-              variant="outline"
-            >
-              {t("pagination.next")}
-            </Button>
-          </div>
-        )}
+        {/* 다음 페이지 로딩: isFetchingNextPage 상태를 사용하여 스피너만 표시 */}
+        <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
+          {isFetchingNextPage && <Spinner />}
+          {!hasNextPage && strategies.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {t("noMoreStrategies")}
+            </p>
+          )}
+        </div>
       </div>
     </AuthGuard>
   );

@@ -239,7 +239,7 @@ export function TargetCoinForm({
                     colSpan={3}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    {t("noCoinsAdded")}
+                    {t("noTickerError")}
                   </TableCell>
                 </TableRow>
               )}

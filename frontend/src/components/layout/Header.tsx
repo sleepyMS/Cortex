@@ -13,17 +13,17 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Logo } from "@/components/ui/Logo";
 import { Sun, Moon, LayoutDashboard } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
-import { useHasHydrated } from "@/hooks/useHasHydrated";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 export function Header() {
   const t = useTranslations("Header");
-  const tNav = useTranslations("Navigation"); // 👈 1. 네비게이션용 번역 함수 추가
+  const tNav = useTranslations("Navigation");
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const { user, logout } = useUserStore();
-  const hasHydrated = useHasHydrated();
 
-  const isLoggedIn = !!user;
+  // 👈 1. isAuthInitialized 상태를 함께 가져옵니다.
+  const { user, logout, isAuthInitialized } = useUserStore();
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
@@ -31,7 +31,7 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    alert(t("logoutSuccess"));
+    toast.success(t("logoutSuccess"));
     router.push("/login");
   };
 
@@ -43,9 +43,9 @@ export function Header() {
             <Logo />
           </Link>
 
-          {/* 👇 2. 로그인 시 네비게이션 메뉴 표시 */}
           <nav className="hidden items-center gap-4 md:flex">
-            {hasHydrated && isLoggedIn && (
+            {/* 👈 isAuthInitialized가 true이고 user가 있을 때만 네비게이션 표시 */}
+            {isAuthInitialized && user && (
               <>
                 <Link href="/strategies" passHref>
                   <Button variant="ghost">{tNav("strategies")}</Button>
@@ -62,42 +62,35 @@ export function Header() {
           <LanguageSwitcher />
 
           <div className="hidden items-center gap-2 sm:flex">
-            {hasHydrated ? (
-              isLoggedIn ? (
-                // --- 로그인 시 UI ---
-                <>
-                  <span className="mr-2 hidden text-sm text-foreground md:inline">
-                    {user.email}
-                  </span>
-                  <Button
-                    onClick={handleLogout}
-                    variant="ghost"
-                    className="px-3"
-                  >
-                    {t("logout")}
-                  </Button>
-
-                  <IconButton
-                    onClick={() => router.push("/dashboard")}
-                    aria-label={t("dashboardLink")}
-                  >
-                    <LayoutDashboard className="h-5 w-5" />
-                  </IconButton>
-                </>
-              ) : (
-                // --- 로그아웃 시 UI ---
-                <>
-                  <Link href="/login" passHref>
-                    <Button variant="ghost">{t("login")}</Button>
-                  </Link>
-                  <Link href="/pricing" passHref>
-                    <Button>{t("startPro")}</Button>
-                  </Link>
-                </>
-              )
+            {!isAuthInitialized ? (
+              // 2. 인증 확인 중일 때: 스켈레톤 UI 표시
+              <Skeleton className="h-10 w-40" />
+            ) : user ? (
+              // 3. 인증 완료 & 로그인 상태일 때: 사용자 UI 표시
+              <>
+                <span className="mr-2 hidden text-sm text-foreground md:inline">
+                  {user.email}
+                </span>
+                <Button onClick={handleLogout} variant="ghost" className="px-3">
+                  {t("logout")}
+                </Button>
+                <IconButton
+                  onClick={() => router.push("/dashboard")}
+                  aria-label={t("dashboardLink")}
+                >
+                  <LayoutDashboard className="h-5 w-5" />
+                </IconButton>
+              </>
             ) : (
-              // --- Hydration 전, UI 깜빡임 방지용 스켈레톤 ---
-              <div className="h-10 w-40 animate-pulse rounded-md bg-muted"></div>
+              // 4. 인증 완료 & 로그아웃 상태일 때: 로그인/가입 버튼 표시
+              <>
+                <Link href="/login" passHref>
+                  <Button variant="ghost">{t("login")}</Button>
+                </Link>
+                <Link href="/pricing" passHref>
+                  <Button>{t("startPro")}</Button>
+                </Link>
+              </>
             )}
           </div>
 

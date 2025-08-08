@@ -18,6 +18,9 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRightLeft,
+  Copy,
+  Globe, // 👈 아이콘 임포트
+  Lock, // 👈 아이콘 임포트
 } from "lucide-react";
 import {
   Card,
@@ -41,56 +44,22 @@ import apiClient from "@/lib/apiClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { LogicBlock, Strategy } from "@/types/strategy"; // 👈 완성된 Strategy 타입을 직접 임포트
+import { LogicBlock, Strategy } from "@/types/strategy";
 
 interface StrategyCardProps {
-  strategy: Strategy; // 👈 props 타입을 Strategy로 변경
+  strategy: Strategy;
+  viewMode?: "grid" | "list";
 }
 
-export function StrategyCard({ strategy }: StrategyCardProps) {
+export function StrategyCard({
+  strategy,
+  viewMode = "grid",
+}: StrategyCardProps) {
   const t = useTranslations("StrategyCard");
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const deleteStrategyMutation = useMutation({
-    mutationFn: (strategyId: number) =>
-      apiClient.delete(`/strategies/${strategyId}`),
-    onSuccess: () => {
-      toast.success(t("deleteSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-    },
-    onError: (error: any) => {
-      toast.error(
-        t("deleteError", {
-          error: error?.response?.data?.detail || error.message,
-        })
-      );
-    },
-  });
-
-  const togglePublicMutation = useMutation({
-    // 👈 API 요청 시 isPublic (camelCase) 사용
-    mutationFn: (strategy: Strategy) =>
-      apiClient.put(`/strategies/${strategy.id}`, {
-        isPublic: !strategy.isPublic,
-      }),
-    onSuccess: (data: any) => {
-      toast.success(
-        data.isPublic ? t("togglePublicSuccess") : t("togglePrivateSuccess")
-      );
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-    },
-    onError: (error: any) => {
-      toast.error(
-        t("togglePublicError", {
-          error: error?.response?.data?.detail || error.message,
-        })
-      );
-    },
-  });
-
   const { strategyType, keyIndicators } = useMemo(() => {
-    // 👈 strategy 객체의 속성을 camelCase로 접근
     const hasLong =
       strategy.longEntryRules && strategy.longEntryRules.blocks.length > 0;
     const hasShort =
@@ -146,6 +115,40 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
     };
   }, [strategy]);
 
+  const deleteStrategyMutation = useMutation({
+    mutationFn: (strategyId: number) =>
+      apiClient.delete(`/strategies/${strategyId}`),
+    onSuccess: () => {
+      toast.success(t("deleteSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
+    },
+    onError: (error: any) =>
+      toast.error(
+        t("deleteError", {
+          error: error?.response?.data?.detail || error.message,
+        })
+      ),
+  });
+
+  const togglePublicMutation = useMutation({
+    mutationFn: (strategy: Strategy) =>
+      apiClient.put(`/strategies/${strategy.id}`, {
+        isPublic: !strategy.isPublic,
+      }),
+    onSuccess: (data: any) => {
+      toast.success(
+        data.isPublic ? t("togglePublicSuccess") : t("togglePrivateSuccess")
+      );
+      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
+    },
+    onError: (error: any) =>
+      toast.error(
+        t("togglePublicError", {
+          error: error?.response?.data?.detail || error.message,
+        })
+      ),
+  });
+
   const handleDelete = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
@@ -160,7 +163,138 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
     togglePublicMutation.mutate(strategy);
   };
 
+  const handleDuplicate = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    toast.info(t("duplicateWip"));
+  };
+
   const displayDateString = strategy.updatedAt || strategy.createdAt;
+
+  const dropdownMenuContent = (
+    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+      >
+        <Edit className="mr-2 h-4 w-4" />
+        {t("editStrategy")}
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleDuplicate}>
+        <Copy className="mr-2 h-4 w-4" />
+        {t("duplicateStrategy")}
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => router.push(`/backtester?strategyId=${strategy.id}`)}
+      >
+        <BarChart2 className="mr-2 h-4 w-4" />
+        {t("runBacktest")}
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => router.push(`/live-bots/new?strategyId=${strategy.id}`)}
+      >
+        <Bot className="mr-2 h-4 w-4" />
+        {t("deployLiveBot")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={handleTogglePublic}>
+        {togglePublicMutation.isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : strategy.isPublic ? (
+          <EyeOff className="mr-2 h-4 w-4" />
+        ) : (
+          <Eye className="mr-2 h-4 w-4" />
+        )}
+        {strategy.isPublic ? t("makePrivate") : t("makePublic")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onClick={handleDelete}
+        className="text-destructive focus:text-destructive"
+        disabled={deleteStrategyMutation.isPending}
+      >
+        {deleteStrategyMutation.isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Trash2 className="mr-2 h-4 w-4" />
+        )}
+        {t("deleteStrategy")}
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+
+  if (viewMode === "list") {
+    return (
+      <Card className="flex items-center w-full p-3 transition-all duration-200 ease-in-out border border-border hover:border-primary/50 hover:shadow-md">
+        <Link
+          href={`/strategies/${strategy.id}/edit`}
+          className="flex items-center gap-4 flex-grow truncate"
+        >
+          <div className="flex-grow truncate">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-foreground truncate">
+                {strategy.name}
+              </h3>
+              <Badge
+                variant="outline"
+                className="flex items-center gap-1 flex-shrink-0"
+              >
+                <strategyType.icon className="h-3 w-3" />
+                <span>{strategyType.label}</span>
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              {strategy.description || t("noDescription")}
+            </p>
+          </div>
+        </Link>
+        <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+          <div className="hidden lg:flex flex-wrap items-center gap-2">
+            {keyIndicators.map((key) => (
+              <Badge key={key} variant="secondary">
+                {key}
+              </Badge>
+            ))}
+          </div>
+          {/* 👈 공개/비공개 상태 배지 (리스트 뷰) */}
+          <Badge
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium",
+              strategy.isPublic
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+            )}
+          >
+            {strategy.isPublic ? (
+              <Globe className="h-3.5 w-3.5" />
+            ) : (
+              <Lock className="h-3.5 w-3.5" />
+            )}
+          </Badge>
+          <p className="hidden sm:block text-xs text-muted-foreground w-25 text-right">
+            {t("updatedAt")}:{" "}
+            {displayDateString
+              ? format(new Date(displayDateString), "yyyy-MM-dd")
+              : t("noDate")}
+          </p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            {dropdownMenuContent}
+          </DropdownMenu>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="flex flex-col justify-between h-full transition-all duration-200 ease-in-out border border-border hover:border-primary hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring">
@@ -173,25 +307,41 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
             <CardTitle className="text-xl font-bold text-foreground pr-2">
               {strategy.name}
             </CardTitle>
-            <Badge
-              variant="outline"
-              className="flex items-center gap-1 flex-shrink-0"
-            >
-              <strategyType.icon className="h-3 w-3" />
-              <span>{strategyType.label}</span>
-            </Badge>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* 👈 공개/비공개 상태 배지 (카드 뷰) */}
+              <Badge
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium",
+                  strategy.isPublic
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                    : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                )}
+              >
+                {strategy.isPublic ? (
+                  <Globe className="h-3.5 w-3.5" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5" />
+                )}
+                <span>
+                  {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
+                </span>
+              </Badge>
+              <Badge variant="outline" className="flex items-center gap-1">
+                <strategyType.icon className="h-3 w-3" />
+                <span>{strategyType.label}</span>
+              </Badge>
+            </div>
           </div>
         </CardHeader>
-
         <CardContent className="p-0 flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-2">
+          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
             {strategy.description || t("noDescription")}
           </p>
         </CardContent>
       </Link>
 
       <CardFooter className="p-6 pt-4 flex flex-col items-start gap-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-h-[24px]">
           {keyIndicators.map((key) => (
             <Badge key={key} variant="secondary">
               {key}
@@ -216,60 +366,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                {t("editStrategy")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/backtester?strategyId=${strategy.id}`)
-                }
-              >
-                <BarChart2 className="mr-2 h-4 w-4" />
-                {t("runBacktest")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/live-bots/new?strategyId=${strategy.id}`)
-                }
-              >
-                <Bot className="mr-2 h-4 w-4" />
-                {t("deployLiveBot")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleTogglePublic}>
-                {/* 👈 isPublic (camelCase) 사용 */}
-                {togglePublicMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : strategy.isPublic ? (
-                  <EyeOff className="mr-2 h-4 w-4" />
-                ) : (
-                  <Eye className="mr-2 h-4 w-4" />
-                )}
-                {strategy.isPublic ? t("makePrivate") : t("makePublic")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive"
-                disabled={deleteStrategyMutation.isPending}
-              >
-                {deleteStrategyMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                {t("deleteStrategy")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+            {dropdownMenuContent}
           </DropdownMenu>
         </div>
       </CardFooter>

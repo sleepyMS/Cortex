@@ -1,5 +1,4 @@
-// frontend/src/components/providers/Providers.tsx (수정)
-
+// frontend/src/components/providers/Providers.tsx
 "use client";
 
 import React, { useState } from "react";
