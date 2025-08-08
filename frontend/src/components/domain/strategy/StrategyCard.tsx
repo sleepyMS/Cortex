@@ -272,7 +272,7 @@ export function StrategyCard({
               <Lock className="h-3.5 w-3.5" />
             )}
           </Badge>
-          <p className="hidden sm:block text-xs text-muted-foreground w-25 text-right">
+          <p className="hidden sm:block text-xs text-muted-foreground w-24 text-right">
             {t("updatedAt")}:{" "}
             {displayDateString
               ? format(new Date(displayDateString), "yyyy-MM-dd")

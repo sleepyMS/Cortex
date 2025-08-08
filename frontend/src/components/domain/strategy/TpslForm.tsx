@@ -2,12 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { UseFormReturn } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 
-import { TpslLogic } from "@/types/strategy";
 import {
   Card,
   CardContent,
@@ -29,71 +25,17 @@ import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { Separator } from "@/components/ui/Separator";
 import { Lock, Sparkles } from "lucide-react";
 
-// Zod 스키마는 폼 유효성 검사를 위해 여전히 필요합니다. (부모 폼 스키마에 병합될 수 있음)
-const formSchema = z
-  .object({
-    takeProfitPctEnabled: z.boolean().default(false),
-    takeProfitPct: z.number().min(0.1).optional().nullable(),
-    stopLossPctEnabled: z.boolean().default(false),
-    stopLossPct: z.number().min(0.1).optional().nullable(),
-    atrEnabled: z.boolean().default(false),
-    atrStopLossMultiplier: z.number().min(0.1).optional().nullable(),
-    atrTakeProfitMultiplier: z.number().min(0.1).optional().nullable(),
-    atrPeriod: z.number().int().min(1).optional().nullable(),
-  })
-  .refine(
-    (data) => {
-      if (!data.atrEnabled) return true;
-      return (
-        data.atrStopLossMultiplier &&
-        data.atrTakeProfitMultiplier &&
-        data.atrPeriod
-      );
-    },
-    {
-      message: "ATR TP/SL 사용 시 모든 관련 필드를 채워야 합니다.",
-      path: ["atrEnabled"],
-    }
-  );
-
-// props 타입에서 부모의 form 객체를 받도록 수정
+// props 타입에서 form 객체만 받도록 수정
 interface TpslFormProps {
   form: UseFormReturn<any>;
-  setTpslLogic: (logic: TpslLogic | null) => void;
 }
 
-export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
+export function TpslForm({ form }: TpslFormProps) {
   const t = useTranslations("StrategyBuilder.tpslForm");
   const router = useRouter();
   const { isProOrTrader } = useUserSubscription();
 
-  // form.watch를 사용하여 부모 폼의 값 변경을 감지하고,
-  // useStrategyState의 상태를 업데이트하는 로직은 그대로 유지됩니다.
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      const newLogic: TpslLogic = {};
-      if (values.takeProfitPctEnabled && values.takeProfitPct) {
-        newLogic.takeProfitPct = values.takeProfitPct;
-      }
-      if (values.stopLossPctEnabled && values.stopLossPct) {
-        newLogic.stopLossPct = values.stopLossPct;
-      }
-      if (
-        isProOrTrader &&
-        values.atrEnabled &&
-        values.atrStopLossMultiplier &&
-        values.atrTakeProfitMultiplier &&
-        values.atrPeriod
-      ) {
-        newLogic.atrStopLossMultiplier = values.atrStopLossMultiplier;
-        newLogic.atrTakeProfitMultiplier = values.atrTakeProfitMultiplier;
-        newLogic.atrPeriod = values.atrPeriod;
-      }
-      setTpslLogic(Object.keys(newLogic).length > 0 ? newLogic : null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [form, setTpslLogic, isProOrTrader]);
+  // 폼 값 변경을 감지하여 전역 상태를 업데이트하던 useEffect 전체를 제거
 
   return (
     <Card>
@@ -102,7 +44,6 @@ export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        {/* <Form>과 <form> 태그를 제거하고 바로 FormField를 렌더링 */}
         <div className="space-y-6">
           <div className="space-y-4">
             <div className="flex items-center space-x-4">
@@ -136,7 +77,9 @@ export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
                         className="w-24 text-right"
                         disabled={!form.watch("takeProfitPctEnabled")}
                         onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value))
+                          field.onChange(
+                            parseFloat(e.target.value) || undefined
+                          )
                         }
                         value={field.value ?? ""}
                       />
@@ -181,7 +124,9 @@ export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
                         className="w-24 text-right"
                         disabled={!form.watch("stopLossPctEnabled")}
                         onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value))
+                          field.onChange(
+                            parseFloat(e.target.value) || undefined
+                          )
                         }
                         value={field.value ?? ""}
                       />
@@ -249,7 +194,9 @@ export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
                         step="0.1"
                         disabled={!isProOrTrader || !form.watch("atrEnabled")}
                         onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value))
+                          field.onChange(
+                            parseFloat(e.target.value) || undefined
+                          )
                         }
                         value={field.value ?? ""}
                       />
@@ -271,7 +218,9 @@ export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
                         step="0.1"
                         disabled={!isProOrTrader || !form.watch("atrEnabled")}
                         onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value))
+                          field.onChange(
+                            parseFloat(e.target.value) || undefined
+                          )
                         }
                         value={field.value ?? ""}
                       />
@@ -293,7 +242,9 @@ export function TpslForm({ form, setTpslLogic }: TpslFormProps) {
                         step="1"
                         disabled={!isProOrTrader || !form.watch("atrEnabled")}
                         onChange={(e) =>
-                          field.onChange(parseInt(e.target.value, 10))
+                          field.onChange(
+                            parseInt(e.target.value, 10) || undefined
+                          )
                         }
                         value={field.value ?? ""}
                       />

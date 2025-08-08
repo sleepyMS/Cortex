@@ -1,61 +1,41 @@
-// frontend/src/hooks/useUserSubscription.ts
-
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import apiClient from "@/lib/apiClient";
+import { useUserStore } from "@/store/userStore";
 
-// 사용자 및 구독 정보 타입 정의
-// 06_API_Specification.md의 GET /users/me 응답을 기반으로 합니다.
-export interface UserSubscription {
+// User 객체 내부의 subscription 객체 타입을 명확히 정의합니다.
+interface Subscription {
+  planId: number;
+  status: string;
+  planName: "basic" | "trader" | "pro";
+  currentPeriodEnd: string;
+}
+
+// 스토어에서 가져오는 User 객체의 타입을 정의합니다.
+export interface UserWithSubscription {
   id: number;
   email: string;
   role: string;
-  subscription?: {
-    planId: number;
-    status: string;
-    planName: "basic" | "trader" | "pro";
-    currentPeriodEnd: string;
-  };
+  subscription?: Subscription | null;
 }
 
-// 명시적으로 플랜 이름 타입 정의
 type PlanName = "basic" | "trader" | "pro";
 
 export function useUserSubscription() {
-  const {
-    data: user,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<UserSubscription, Error>({
-    // error 타입을 Error로 명시
-    queryKey: ["currentUser"],
-    queryFn: async () => {
-      // 06_API_Specification.md에 따라 /users/me 엔드포인트 호출
-      const response = await apiClient.get<UserSubscription>("/users/me");
-      return response.data;
-    },
-    staleTime: 1000 * 60 * 5, // 5분 동안 fresh 상태 유지
-    gcTime: 1000 * 60 * 30,
-    retry: 1,
-  });
+  // 👈 useQuery 대신, useUserStore에서 직접 사용자 정보를 가져옵니다.
+  const { user } = useUserStore();
 
-  // 사용자의 현재 플랜 이름을 반환 (구독 정보 없으면 기본 플랜으로 간주)
-  // currentPlan의 타입을 명시적으로 PlanName으로 지정
-  const currentPlan: PlanName = user?.subscription?.planName || "basic";
+  const typedUser = user as UserWithSubscription | null;
 
-  // 각 플랜이 허용하는 타임프레임 목록 (백엔드 plans.features에 정의될 내용)
+  // 👈 스토어의 user 객체에서 planName을 camelCase로 접근합니다.
+  const currentPlan: PlanName = typedUser?.subscription?.planName || "basic";
+
   const allowedTimeframesByPlan: Record<PlanName, string[]> = {
-    // Record<PlanName, string[]>으로 명시
     basic: ["1h"],
     trader: ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
     pro: ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
   };
 
-  // 플랜별 일일 백테스팅 횟수 제한 (예시)
   const maxBacktestsPerDayByPlan: Record<PlanName, number> = {
-    // Record<PlanName, number>로 명시
     basic: 5,
     trader: 50,
     pro: 9999,
@@ -63,12 +43,13 @@ export function useUserSubscription() {
 
   return {
     user,
-    isLoading,
-    error,
-    currentPlan, // 👈 currentPlan은 이제 PlanName 타입
+    isLoading: false, // 👈 더 이상 자체 로딩 상태가 없음
+    error: null,
+    currentPlan,
     allowedTimeframes: allowedTimeframesByPlan[currentPlan] || ["1h"],
     maxBacktestsPerDay: maxBacktestsPerDayByPlan[currentPlan] || 5,
     isProOrTrader: currentPlan === "trader" || currentPlan === "pro",
-    refetchUserSubscription: refetch,
+    // refetchUserSubscription는 useQuery를 사용하지 않으므로 제거하거나
+    // userStore에 별도의 refetch 액션을 만들어 연결할 수 있습니다.
   };
 }

@@ -13,7 +13,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Logo } from "@/components/ui/Logo";
 import { Sun, Moon, LayoutDashboard } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton"; // 👈 스켈레톤 UI 임포트
 import { toast } from "sonner";
 
 export function Header() {
@@ -31,7 +31,7 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    toast.success(t("logoutSuccess"));
+    toast.success(t("logoutSuccess")); // 👈 alert 대신 toast 사용 권장
     router.push("/login");
   };
 
@@ -62,6 +62,7 @@ export function Header() {
           <LanguageSwitcher />
 
           <div className="hidden items-center gap-2 sm:flex">
+            {/* 🔽🔽🔽 핵심 수정 영역 🔽🔽🔽 */}
             {!isAuthInitialized ? (
               // 2. 인증 확인 중일 때: 스켈레톤 UI 표시
               <Skeleton className="h-10 w-40" />
@@ -92,6 +93,7 @@ export function Header() {
                 </Link>
               </>
             )}
+            {/* 🔼🔼🔼 핵심 수정 영역 완료 🔼🔼🔼 */}
           </div>
 
           <IconButton onClick={toggleTheme} aria-label={t("toggleTheme")}>

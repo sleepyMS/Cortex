@@ -72,7 +72,7 @@ apiClient.interceptors.response.use(
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken: refreshToken, // 👈 핵심 버그 수정: snake_case -> camelCase
+            refreshToken: refreshToken,
           });
 
           const { accessToken: newAccessToken, refreshToken: newRefreshToken } =

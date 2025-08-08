@@ -4,11 +4,20 @@ import apiClient from "@/lib/apiClient";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+// 👈 1. 구독 정보에 대한 상세 타입을 정의합니다.
+interface Subscription {
+  planId: number;
+  status: string;
+  planName: "basic" | "trader" | "pro";
+  currentPeriodEnd: string;
+}
+
+// 👈 2. User 인터페이스의 subscription 타입에 적용합니다.
 interface User {
   id: number;
   email: string;
   role: string;
-  subscription?: any;
+  subscription?: Subscription | null;
 }
 
 interface State {
@@ -19,7 +28,10 @@ interface State {
 }
 
 interface Actions {
-  setTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
+  setTokens: (tokens: {
+    accessToken: string;
+    refreshToken?: string | null;
+  }) => void;
   setUser: (user: User | null) => void;
   logout: () => void;
   setAuthInitialized: (isInitialized: boolean) => void;
@@ -29,7 +41,7 @@ const initialState: State = {
   user: null,
   accessToken: null,
   refreshToken: null,
-  isAuthInitialized: false, // 👈 3. 초기값은 false
+  isAuthInitialized: false,
 };
 
 export const useUserStore = create<State & Actions>()(

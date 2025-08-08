@@ -1,17 +1,22 @@
-// frontend/src/app/[locale]/layout.tsx
-
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// 👈 1. Inter 대신 Noto_Sans_KR을 임포트합니다.
+import { Noto_Sans_KR as FontSans } from "next/font/google";
 import { useMessages } from "next-intl";
+
 import { Providers } from "@/providers/Providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { PageWrapper } from "@/components/layout/PageWrapper";
+import { cn } from "@/lib/utils";
+import { timeZone } from "i18n";
 import "../globals.css";
 
-import { timeZone } from "../../../i18n"; // i18n.ts가 frontend/i18n.ts에 있다면 경로를 맞춰야 합니다.
-
-const inter = Inter({ subsets: ["latin"] });
+// 👈 2. Noto Sans KR 폰트를 설정합니다. (일반, 굵은 굵기 포함)
+const fontSans = FontSans({
+  subsets: ["latin"],
+  weight: ["400", "700"], // 👈 일반(400)과 굵은(700) 굵기를 지정
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "Project: Cortex",
@@ -25,19 +30,20 @@ export default function RootLayout({
   children: React.ReactNode;
   params: { locale: string };
 }) {
-  // 여기서 메시지를 먼저 로드합니다.
   const messages = useMessages();
 
   return (
-    <html lang={locale} className="h-full">
+    <html lang={locale} className="h-full" suppressHydrationWarning={true}>
       <body
-        className={`${inter.className} flex min-h-full flex-col bg-background text-foreground`}
+        className={cn(
+          "min-h-full bg-background font-sans text-foreground flex flex-col",
+          fontSans.variable
+        )}
       >
-        {/* 로드한 messages를 Providers에 prop으로 전달합니다. */}
         <Providers locale={locale} messages={messages} timeZone={timeZone}>
           <Header />
           <PageWrapper>
-            <main>{children}</main>
+            <main className="flex-grow">{children}</main>
           </PageWrapper>
           <Footer />
         </Providers>
