@@ -2,54 +2,43 @@
 
 import { useUserStore } from "@/store/userStore";
 
-// User 객체 내부의 subscription 객체 타입을 명확히 정의합니다.
-interface Subscription {
-  planId: number;
-  status: string;
-  planName: "basic" | "trader" | "pro";
-  currentPeriodEnd: string;
-}
-
-// 스토어에서 가져오는 User 객체의 타입을 정의합니다.
-export interface UserWithSubscription {
-  id: number;
-  email: string;
-  role: string;
-  subscription?: Subscription | null;
-}
-
-type PlanName = "basic" | "trader" | "pro";
-
 export function useUserSubscription() {
-  // 👈 useQuery 대신, useUserStore에서 직접 사용자 정보를 가져옵니다.
   const { user } = useUserStore();
 
-  const typedUser = user as UserWithSubscription | null;
+  // 1. 스토어에서 직접 구독 정보와 기본값을 가져옵니다.
+  const subscription = user?.subscription;
+  const features = subscription?.plan?.features;
 
-  // 👈 스토어의 user 객체에서 planName을 camelCase로 접근합니다.
-  const currentPlan: PlanName = typedUser?.subscription?.planName || "basic";
+  // 2. 백엔드에서 받은 데이터를 기반으로 현재 플랜과 기능들을 동적으로 계산합니다.
+  const currentPlan = subscription?.plan?.name?.toLowerCase() || "basic";
 
-  const allowedTimeframesByPlan: Record<PlanName, string[]> = {
-    basic: ["1h"],
-    trader: ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
-    pro: ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
-  };
+  // 3. 더 이상 하드코딩된 객체가 필요 없습니다.
+  const allowedTimeframes = features?.supportedTimeframes.split(",") || [
+    "1h",
+    "4h",
+    "1d",
+  ];
+  const maxBacktestsPerDay = features?.dailyBacktestCount ?? 10;
+  const liveBotsLimit = features?.liveBotsLimit ?? 0;
+  const maxCoinsPerBacktest = features?.maxCoinsPerBacktest ?? 1;
 
-  const maxBacktestsPerDayByPlan: Record<PlanName, number> = {
-    basic: 5,
-    trader: 50,
-    pro: 9999,
-  };
+  // 4. 플랜 등급에 따른 파생 상태 계산
+  const isTrader = currentPlan === "trader";
+  const isPro = currentPlan === "pro";
+  const isProOrTrader = isTrader || isPro;
 
   return {
     user,
-    isLoading: false, // 👈 더 이상 자체 로딩 상태가 없음
+    isLoading: false,
     error: null,
     currentPlan,
-    allowedTimeframes: allowedTimeframesByPlan[currentPlan] || ["1h"],
-    maxBacktestsPerDay: maxBacktestsPerDayByPlan[currentPlan] || 5,
-    isProOrTrader: currentPlan === "trader" || currentPlan === "pro",
-    // refetchUserSubscription는 useQuery를 사용하지 않으므로 제거하거나
-    // userStore에 별도의 refetch 액션을 만들어 연결할 수 있습니다.
+    features, // 👈 전체 feature 객체를 반환하여 유연성 확보
+    allowedTimeframes,
+    maxBacktestsPerDay,
+    liveBotsLimit,
+    maxCoinsPerBacktest,
+    isProOrTrader,
+    isPro,
+    isTrader,
   };
 }

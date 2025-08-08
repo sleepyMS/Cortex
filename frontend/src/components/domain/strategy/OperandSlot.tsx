@@ -1,10 +1,11 @@
-// file: frontend/src/components/domain/strategy/OperandSlog.tsx
+// file: frontend/src/components/domain/strategy/OperandSlot.tsx
 
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { IndicatorValue } from "@/types/strategy";
+import { INDICATOR_METADATA } from "@/lib/indicators";
 
 import { ParameterPopover } from "./ParameterPopover";
 import { Button } from "@/components/ui/Button";
@@ -19,10 +20,10 @@ import { Settings2, Replace } from "lucide-react";
 
 interface OperandSlotProps {
   value: IndicatorValue | number | null;
-  onSelectIndicator: () => void; // IndicatorHub를 열어 지표를 선택하는 함수
-  onConvertToValue: () => void; // 현재 슬롯을 '고정 값' 타입으로 변경하는 함수
-  onConvertToIndicator: () => void; // 현재 슬롯을 '지표' 타입으로 변경하는 함수
-  onValueChange: (newValue: number) => void; // '고정 값'일 때 값을 업데이트하는 함수
+  onSelectIndicator: () => void;
+  onConvertToValue: () => void;
+  onConvertToIndicator: () => void;
+  onValueChange: (newValue: number | IndicatorValue) => void;
 }
 
 export function OperandSlot({
@@ -33,6 +34,46 @@ export function OperandSlot({
   onValueChange,
 }: OperandSlotProps) {
   const t = useTranslations("RuleBlock");
+
+  // 🔽🔽🔽 수정된 useMemo 🔽🔽🔽
+  const parameterDetails = useMemo(() => {
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("indicatorKey" in value)
+    ) {
+      return "";
+    }
+
+    const metadata = INDICATOR_METADATA.find(
+      (ind) => ind.key === value.indicatorKey
+    );
+    if (!metadata) return "";
+
+    const parts: string[] = [];
+
+    // 1. 파라미터 정보 추가 (파라미터가 있을 경우에만)
+    if (metadata.parameters.length > 0) {
+      parts.push(Object.values(value.values).join(", "));
+    }
+
+    // 2. 출력 정보 추가 (선택 가능한 출력이 2개 이상일 경우에만)
+    if (metadata.outputs.length > 1) {
+      const selectedOutputKey = value.outputs[0];
+      const outputMeta = metadata.outputs.find(
+        (out) => out.key === selectedOutputKey
+      );
+      if (outputMeta) {
+        parts.push(outputMeta.label);
+      }
+    }
+
+    // 3. 타임프레임 정보 항상 추가
+    parts.push(value.timeframe);
+
+    return parts.filter(Boolean).join(", ");
+  }, [value]);
+  // 🔼🔼🔼 수정된 useMemo 완료 🔼🔼🔼
 
   // 1. 슬롯이 비어있을 경우
   if (value === null) {
@@ -54,7 +95,7 @@ export function OperandSlot({
       <div className="flex w-full">
         <ParameterPopover
           indicatorValue={value}
-          onUpdate={(newValue) => onValueChange(newValue as any)} // 타입 호환을 위해 any 사용, 실제 로직은 상위에서 처리
+          onUpdate={(newValue) => onValueChange(newValue)}
           onIndicatorChange={onSelectIndicator}
         >
           <Button
@@ -62,10 +103,14 @@ export function OperandSlot({
             variant="outline"
             className="flex-grow justify-start text-left truncate rounded-r-none"
           >
+            {/* 🔽🔽🔽 수정된 렌더링 부분 🔽🔽🔽 */}
             <span className="font-semibold">{value.indicatorKey}</span>
-            <span className="ml-1 text-xs text-muted-foreground">
-              ({Object.values(value.values).join(", ")})
-            </span>
+            {parameterDetails && (
+              <span className="ml-1 text-xs text-muted-foreground">
+                ({parameterDetails})
+              </span>
+            )}
+            {/* 🔼🔼🔼 수정된 렌더링 부분 완료 🔼🔼🔼 */}
           </Button>
         </ParameterPopover>
         <DropdownMenu>
