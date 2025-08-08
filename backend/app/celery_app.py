@@ -1,7 +1,7 @@
 # file: backend/app/celery_app.py
 
 import os
-import sys # 👈 sys 모듈 임포트
+import sys
 import logging
 from celery import Celery
 
@@ -29,13 +29,13 @@ celery_app.conf.update(
     task_soft_time_limit=240,
 )
 
-# 👈 eventlet.monkey_patch()의 조건부 실행 (sys.argv를 사용하여 워커 여부 판단)
+# eventlet.monkey_patch()의 조건부 실행 (sys.argv를 사용하여 워커 여부 판단)
 # sys.argv에 'worker' 또는 'celery'와 'worker'가 함께 있는 경우에만 eventlet을 적용합니다.
 # 이는 이 모듈이 celery worker 명령에 의해 로드될 때만 monkey_patch가 실행되도록 합니다.
 if 'celery' in sys.argv and 'worker' in sys.argv:
     try:
-        import eventlet # 👈 eventlet 임포트
-        eventlet.monkey_patch() # 👈 monkey_patch 적용
+        import eventlet 
+        eventlet.monkey_patch() 
         logger.info("Eventlet monkey patch applied for Celery worker (via sys.argv check).")
     except ImportError:
         logger.warning("Eventlet not installed, but it is required for eventlet pool. Please install eventlet.")
