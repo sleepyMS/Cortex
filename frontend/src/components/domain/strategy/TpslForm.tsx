@@ -39,26 +39,26 @@ import { useUserSubscription } from "@/hooks/useUserSubscription";
 // --- Zod 폼 스키마 정의 ---
 const formSchema = z
   .object({
-    take_profit_pct_enabled: z.boolean().default(false),
-    take_profit_pct: z
+    takeProfitPct_enabled: z.boolean().default(false),
+    takeProfitPct: z
       .number({ invalid_type_error: "숫자를 입력해주세요." })
       .min(0.1, "0.1% 이상이어야 합니다.")
       .optional(),
-    stop_loss_pct_enabled: z.boolean().default(false),
-    stop_loss_pct: z
+    stopLossPct_enabled: z.boolean().default(false),
+    stopLossPct: z
       .number({ invalid_type_error: "숫자를 입력해주세요." })
       .min(0.1, "0.1% 이상이어야 합니다.")
       .optional(),
     atr_enabled: z.boolean().default(false),
-    atr_stop_loss_multiplier: z
+    atrStopLossMultiplier: z
       .number({ invalid_type_error: "숫자를 입력해주세요." })
       .min(0.1, "0.1 이상이어야 합니다.")
       .optional(),
-    atr_take_profit_multiplier: z
+    atrTakeProfitMultiplier: z
       .number({ invalid_type_error: "숫자를 입력해주세요." })
       .min(0.1, "0.1 이상이어야 합니다.")
       .optional(),
-    atr_period: z
+    atrPeriod: z
       .number({ invalid_type_error: "숫자를 입력해주세요." })
       .int("정수여야 합니다.")
       .min(1, "1 이상이어야 합니다.")
@@ -69,9 +69,9 @@ const formSchema = z
     (data) => {
       if (!data.atr_enabled) return true;
       return (
-        data.atr_stop_loss_multiplier !== undefined &&
-        data.atr_take_profit_multiplier !== undefined &&
-        data.atr_period !== undefined
+        data.atrStopLossMultiplier !== undefined &&
+        data.atrTakeProfitMultiplier !== undefined &&
+        data.atrPeriod !== undefined
       );
     },
     {
@@ -92,24 +92,23 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
   const router = useRouter();
   const { isProOrTrader } = useUserSubscription(); // 사용자 플랜 정보 확인
 
-  const isAtrEnabledInLogic = tpslLogic?.atr_stop_loss_multiplier !== undefined;
+  const isAtrEnabledInLogic = tpslLogic?.atrStopLossMultiplier !== undefined;
 
   const form = useForm<TpslFormValues>({
     resolver: zodResolver(formSchema),
     // 훅의 상태(tpslLogic)를 기반으로 폼의 기본값 설정
     defaultValues: {
-      take_profit_pct_enabled:
-        tpslLogic?.take_profit_pct !== undefined &&
-        tpslLogic.take_profit_pct !== null,
-      take_profit_pct: tpslLogic?.take_profit_pct ?? 2,
-      stop_loss_pct_enabled:
-        tpslLogic?.stop_loss_pct !== undefined &&
-        tpslLogic.stop_loss_pct !== null,
-      stop_loss_pct: tpslLogic?.stop_loss_pct ?? 1,
+      takeProfitPct_enabled:
+        tpslLogic?.takeProfitPct !== undefined &&
+        tpslLogic.takeProfitPct !== null,
+      takeProfitPct: tpslLogic?.takeProfitPct ?? 2,
+      stopLossPct_enabled:
+        tpslLogic?.stopLossPct !== undefined && tpslLogic.stopLossPct !== null,
+      stopLossPct: tpslLogic?.stopLossPct ?? 1,
       atr_enabled: isAtrEnabledInLogic,
-      atr_stop_loss_multiplier: tpslLogic?.atr_stop_loss_multiplier ?? 2,
-      atr_take_profit_multiplier: tpslLogic?.atr_take_profit_multiplier ?? 3,
-      atr_period: tpslLogic?.atr_period ?? 14,
+      atrStopLossMultiplier: tpslLogic?.atrStopLossMultiplier ?? 2,
+      atrTakeProfitMultiplier: tpslLogic?.atrTakeProfitMultiplier ?? 3,
+      atrPeriod: tpslLogic?.atrPeriod ?? 14,
     },
   });
 
@@ -117,22 +116,22 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
   useEffect(() => {
     const subscription = form.watch((values) => {
       const newLogic: TpslLogic = {};
-      if (values.take_profit_pct_enabled && values.take_profit_pct) {
-        newLogic.take_profit_pct = values.take_profit_pct;
+      if (values.takeProfitPct_enabled && values.takeProfitPct) {
+        newLogic.takeProfitPct = values.takeProfitPct;
       }
-      if (values.stop_loss_pct_enabled && values.stop_loss_pct) {
-        newLogic.stop_loss_pct = values.stop_loss_pct;
+      if (values.stopLossPct_enabled && values.stopLossPct) {
+        newLogic.stopLossPct = values.stopLossPct;
       }
       if (
         isProOrTrader && // 유료 사용자일 경우에만 ATR 로직 포함
         values.atr_enabled &&
-        values.atr_stop_loss_multiplier &&
-        values.atr_take_profit_multiplier &&
-        values.atr_period
+        values.atrStopLossMultiplier &&
+        values.atrTakeProfitMultiplier &&
+        values.atrPeriod
       ) {
-        newLogic.atr_stop_loss_multiplier = values.atr_stop_loss_multiplier;
-        newLogic.atr_take_profit_multiplier = values.atr_take_profit_multiplier;
-        newLogic.atr_period = values.atr_period;
+        newLogic.atrStopLossMultiplier = values.atrStopLossMultiplier;
+        newLogic.atrTakeProfitMultiplier = values.atrTakeProfitMultiplier;
+        newLogic.atrPeriod = values.atrPeriod;
       }
       // 생성된 로직 객체가 비어있지 않으면 상태 업데이트, 비어있으면 null로 설정
       setTpslLogic(Object.keys(newLogic).length > 0 ? newLogic : null);
@@ -155,7 +154,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
               <div className="flex items-center space-x-4">
                 <FormField
                   control={form.control}
-                  name="take_profit_pct_enabled"
+                  name="takeProfitPct_enabled"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                       <FormControl>
@@ -172,7 +171,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="take_profit_pct"
+                  name="takeProfitPct"
                   render={({ field }) => (
                     <FormItem className="flex-grow">
                       <FormControl>
@@ -181,7 +180,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                           type="number"
                           step="0.1"
                           className="w-24 text-right"
-                          disabled={!form.watch("take_profit_pct_enabled")}
+                          disabled={!form.watch("takeProfitPct_enabled")}
                           onChange={(e) =>
                             field.onChange(parseFloat(e.target.value))
                           }
@@ -193,13 +192,13 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                 <span className="text-muted-foreground">%</span>
               </div>
               <FormMessage>
-                {form.formState.errors.take_profit_pct?.message}
+                {form.formState.errors.takeProfitPct?.message}
               </FormMessage>
 
               <div className="flex items-center space-x-4">
                 <FormField
                   control={form.control}
-                  name="stop_loss_pct_enabled"
+                  name="stopLossPct_enabled"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                       <FormControl>
@@ -216,7 +215,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="stop_loss_pct"
+                  name="stopLossPct"
                   render={({ field }) => (
                     <FormItem className="flex-grow">
                       <FormControl>
@@ -225,7 +224,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                           type="number"
                           step="0.1"
                           className="w-24 text-right"
-                          disabled={!form.watch("stop_loss_pct_enabled")}
+                          disabled={!form.watch("stopLossPct_enabled")}
                           onChange={(e) =>
                             field.onChange(parseFloat(e.target.value))
                           }
@@ -237,7 +236,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                 <span className="text-muted-foreground">%</span>
               </div>
               <FormMessage>
-                {form.formState.errors.stop_loss_pct?.message}
+                {form.formState.errors.stopLossPct?.message}
               </FormMessage>
             </div>
 
@@ -287,7 +286,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
               <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="atr_stop_loss_multiplier"
+                  name="atrStopLossMultiplier"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("atrStopLossLabel")}</FormLabel>
@@ -310,7 +309,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="atr_take_profit_multiplier"
+                  name="atrTakeProfitMultiplier"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("atrTakeProfitLabel")}</FormLabel>
@@ -333,7 +332,7 @@ export function TpslForm({ tpslLogic, setTpslLogic }: TpslFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="atr_period"
+                  name="atrPeriod"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("atrPeriodLabel")}</FormLabel>

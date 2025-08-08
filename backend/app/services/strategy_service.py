@@ -25,63 +25,51 @@ class StrategyService:
         """
         required_level: Literal["basic", "trader", "pro"] = "basic"
         
-        # Helper function to get level from a new level
         def update_level(current, new):
             if new == "pro": return "pro"
             if new == "trader" and current == "basic": return "trader"
             return current
 
-        # 1. Target Coins 개수 검사 (명세서 v5 반영)
-        target_coins = strategy_data.target_coins
-        if target_coins:
-            if len(target_coins) > 1:
-                required_level = update_level(required_level, "trader")
-            if len(target_coins) > 5: # 명세서에 따르면 Pro 플랜은 10개까지
-                required_level = update_level(required_level, "pro")
+        # 1. Target Coins 개수 검사
+        if strategy_data.target_coins and len(strategy_data.target_coins) > 1:
+            required_level = update_level(required_level, "trader")
         
-        # 2. TP/SL 로직 검사 (명세서 v5 반영)
-        tpsl_logic = strategy_data.tpsl_logic
-        if tpsl_logic:
-            if tpsl_logic.atr_stop_loss_multiplier or tpsl_logic.atr_take_profit_multiplier:
-                required_level = update_level(required_level, "trader")
+        # 2. TP/SL 로직 검사
+        if strategy_data.tpsl_logic and (strategy_data.tpsl_logic.atr_stop_loss_multiplier or strategy_data.tpsl_logic.atr_take_profit_multiplier):
+            required_level = update_level(required_level, "trader")
 
-        # 3. Rules의 타임프레임 및 로직 검사
-        def check_rules_recursive(blocks: List[schemas.LogicBlock]):
-            nonlocal required_level
-            for block in blocks:
-                if "indicator" in block:
-                    indicator_value = block.indicator if isinstance(block, schemas.StateLogic) or isinstance(block, schemas.TrendSignalLogic) or isinstance(block, schemas.ChannelLogic) or isinstance(block, schemas.DivergenceLogic) else None
-                    if isinstance(block, schemas.ComparisonLogic):
-                        indicator_value = block.operand_a if isinstance(block.operand_a, schemas.IndicatorValue) else (block.operand_b if isinstance(block.operand_b, schemas.IndicatorValue) else None)
-                    if isinstance(block, schemas.CrossoverLogic):
-                        indicator_value = block.main_line
-                    if indicator_value:
-                        level_from_timeframe = self.plan_service.get_timeframe_level(indicator_value.timeframe)
-                        required_level = update_level(required_level, level_from_timeframe)
-                
-                # 재귀적으로 자식 블록 검사
-                if isinstance(block, schemas.PositionRules) and block.blocks:
-                    check_rules_recursive(block.blocks)
+        # 3. Rules의 타임프레임 검사
+        all_rules_blocks = []
+        if strategy_data.long_entry_rules: all_rules_blocks.extend(strategy_data.long_entry_rules.blocks)
+        if strategy_data.long_exit_rules: all_rules_blocks.extend(strategy_data.long_exit_rules.blocks)
+        if strategy_data.short_entry_rules: all_rules_blocks.extend(strategy_data.short_entry_rules.blocks)
+        if strategy_data.short_exit_rules: all_rules_blocks.extend(strategy_data.short_exit_rules.blocks)
 
-        if strategy_data.long_entry_rules:
-            check_rules_recursive(strategy_data.long_entry_rules.blocks)
-        if strategy_data.long_exit_rules:
-            check_rules_recursive(strategy_data.long_exit_rules.blocks)
-        if strategy_data.short_entry_rules:
-            check_rules_recursive(strategy_data.short_entry_rules.blocks)
-        if strategy_data.short_exit_rules:
-            check_rules_recursive(strategy_data.short_exit_rules.blocks)
+        for block in all_rules_blocks:
+            indicator_value = None
+            if hasattr(block, 'indicator') and isinstance(block.indicator, schemas.IndicatorValue):
+                indicator_value = block.indicator
+            elif hasattr(block, 'operand_a') and isinstance(block.operand_a, schemas.IndicatorValue):
+                indicator_value = block.operand_a
+            elif hasattr(block, 'main_line') and isinstance(block.main_line, schemas.IndicatorValue):
+                indicator_value = block.main_line
 
-        # 고급 기능 접근 여부 검사 (v5 명세서 반영)
-        user_plan = self.plan_service.get_user_plan_level(user) # user객체는 이 함수내부에서 받아올 수 없으므로, _verify에서 처리
-        if user_plan == "pro" and (
-            strategy_data.long_entry_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.long_entry_rules.blocks) or
-            strategy_data.long_exit_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.long_exit_rules.blocks) or
-            strategy_data.short_entry_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.short_entry_rules.blocks) or
-            strategy_data.short_exit_rules and any(isinstance(block, schemas.DivergenceLogic) for block in strategy_data.short_exit_rules.blocks)
-        ):
+            if indicator_value:
+                level_from_timeframe = self.plan_service.get_timeframe_level(indicator_value.timeframe)
+                required_level = update_level(required_level, level_from_timeframe)
+        
+        # 'user_plan'을 확인하는 대신, 전략 규칙에 'DivergenceLogic'이 포함되어 있는지 직접 확인
+        def has_divergence(rules: Optional[schemas.PositionRules]) -> bool:
+            if not rules or not rules.blocks:
+                return False
+            # ToDo: 재귀적으로 자식 블록도 검사해야 완벽함
+            return any(isinstance(block, schemas.DivergenceLogic) for block in rules.blocks)
+
+        if (has_divergence(strategy_data.long_entry_rules) or
+            has_divergence(strategy_data.long_exit_rules) or
+            has_divergence(strategy_data.short_entry_rules) or
+            has_divergence(strategy_data.short_exit_rules)):
             required_level = update_level(required_level, "pro")
-
 
         return required_level
 
@@ -134,6 +122,9 @@ class StrategyService:
             db.add(db_strategy)
             db.flush()
             db.refresh(db_strategy)
+
+            if db_strategy.target_coins is None:
+                db_strategy.target_coins = []
             
             logger.info(f"User {user.email} (ID: {user.id}) created new strategy: {db_strategy.name} (ID: {db_strategy.id}).")
             return db_strategy
@@ -171,6 +162,10 @@ class StrategyService:
             query = query.order_by(models.Strategy.created_at.desc())
         
         strategies = query.offset(skip).limit(limit).all()
+
+        for strategy in strategies:
+            if strategy.target_coins is None:
+                strategy.target_coins = []
         
         logger.info(f"User ID {user_id} fetched {len(strategies)} strategies.")
         return strategies

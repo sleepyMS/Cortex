@@ -1,89 +1,76 @@
-// file: frontend/src/components/domain/strategy/RecursiveRuleRenderer.tsx
-
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import clsx from "clsx";
 import { LogicBlock, StrategyType, LogicOperator } from "@/types/strategy";
 import { RuleBlock } from "./RuleBlock";
-import { Button } from "@/components/ui/Button";
-import { PlusCircle } from "lucide-react";
 
 // --- 타입 정의 ---
 interface RecursiveRuleRendererProps {
   items: LogicBlock[];
-  depth?: number;
   ruleType: StrategyType;
-  stateAndHandlers: {
-    onAddRule: (
-      newBlock: LogicBlock,
-      parentId: string,
-      as: LogicOperator
-    ) => void;
-    onDelete: (id: string) => void;
-    onUpdate: (id: string, newBlock: LogicBlock) => void;
-    onSlotClick: (
-      blockId: string,
-      logicType: LogicBlock["type"],
-      slotKey: string
-    ) => void;
-  };
+  onUpdateRule: (id: string, newBlock: LogicBlock) => void;
+  onDeleteRule: (id: string) => void;
+  onTriggerNestedAddRule: (parentId: string, as: LogicOperator) => void;
+  onTriggerOperandHub: (blockId: string, operandKey: string) => void;
+  depth?: number;
 }
 
 export function RecursiveRuleRenderer({
   items,
-  depth = 0,
   ruleType,
-  stateAndHandlers,
+  onUpdateRule,
+  onDeleteRule,
+  onTriggerNestedAddRule,
+  onTriggerOperandHub,
+  depth = 0,
 }: RecursiveRuleRendererProps) {
   const t = useTranslations("StrategyBuilder");
 
   return (
-    <div className="relative space-y-2">
+    <div className="space-y-4">
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
-          {depth > 0 && index > 0 && item.logic_operator === "OR" && (
-            <div className="flex items-center justify-center my-2">
-              <span className="bg-background text-muted-foreground px-3 py-1 rounded-full text-xs font-semibold border border-dashed border-border shadow-inner">
+          {/* 최상위 레벨(depth=0)의 규칙들 사이에 'OR' 구분선 표시 */}
+          {depth === 0 && index > 0 && (
+            <div
+              className="flex items-center justify-center"
+              aria-hidden="true"
+            >
+              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-muted text-muted-foreground border border-dashed">
                 {t("orOperator")}
               </span>
             </div>
           )}
+
           <div className="relative">
             <RuleBlock
               item={item}
-              depth={depth}
-              onAddRule={stateAndHandlers.onAddRule}
-              onDelete={stateAndHandlers.onDelete}
-              onUpdate={stateAndHandlers.onUpdate}
-              onSlotClick={stateAndHandlers.onSlotClick}
-              ruleType={ruleType}
+              onUpdate={onUpdateRule}
+              onDelete={() => onDeleteRule(item.id)}
+              onTriggerAddRule={onTriggerNestedAddRule}
+              onTriggerOperandHub={(blockId, operandKey) =>
+                onTriggerOperandHub(blockId, operandKey)
+              }
             />
+
+            {/* 자식 규칙(AND 조건)이 있는 경우, 들여쓰기 및 재귀 렌더링 */}
             {item.children && item.children.length > 0 && (
-              <div
-                className={clsx(
-                  "relative mt-2 pl-8 border-l-2 border-slate-700 dark:border-slate-500"
-                )}
-              >
-                <div className="absolute -left-3 top-1/2 -translate-y-1/2 z-10">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 rounded-full px-2 text-xs bg-primary text-primary-foreground border-primary hover:bg-primary-foreground hover:text-primary transition-colors whitespace-nowrap"
-                  >
+              <div className="relative mt-4 pl-4 md:pl-6 border-l-2 border-primary/50">
+                <div className="absolute -left-[11px] top-1/2 -translate-y-1/2 z-10 px-1 bg-background">
+                  <span className="text-sm font-semibold text-primary">
                     {t("andOperator")}
-                  </Button>
+                  </span>
                 </div>
-                <div className="space-y-1">
-                  <RecursiveRuleRenderer
-                    items={item.children}
-                    depth={depth + 1}
-                    ruleType={ruleType}
-                    stateAndHandlers={stateAndHandlers}
-                  />
-                </div>
+                <RecursiveRuleRenderer
+                  items={item.children}
+                  ruleType={ruleType}
+                  onUpdateRule={onUpdateRule}
+                  onDeleteRule={onDeleteRule}
+                  onTriggerNestedAddRule={onTriggerNestedAddRule}
+                  onTriggerOperandHub={onTriggerOperandHub}
+                  depth={depth + 1}
+                />
               </div>
             )}
           </div>

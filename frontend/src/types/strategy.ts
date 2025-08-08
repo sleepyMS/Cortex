@@ -18,32 +18,32 @@ export interface IndicatorValue {
 export interface ComparisonLogic {
   id: string;
   type: "comparison";
-  operand_a: IndicatorValue | number | null;
+  operandA: IndicatorValue | number | null;
   operator: ">" | "<" | "==" | "!=";
-  operand_b: IndicatorValue | number | null;
+  operandB: IndicatorValue | number | null;
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 export interface CrossoverLogic {
   id: string;
   type: "crossover";
-  main_line: IndicatorValue | number | null;
-  signal_line: IndicatorValue | number | null;
-  cross_direction: "above" | "below";
+  mainLine: IndicatorValue | number | null;
+  signalLine: IndicatorValue | number | null;
+  crossDirection: "above" | "below";
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 export interface StateLogic {
   id: string;
   type: "state";
   indicator: IndicatorValue | null;
-  lower_bound: number | null;
-  upper_bound: number | null;
-  state_action: "enter" | "exit" | "within";
+  lowerBound: number | null;
+  upperBound: number | null;
+  stateAction: "enter" | "exit" | "within";
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 export interface TrendSignalLogic {
@@ -52,35 +52,35 @@ export interface TrendSignalLogic {
   indicator: IndicatorValue | null;
   signal: "buy" | "sell" | "none";
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 export interface ChannelLogic {
   id: string;
   type: "channel";
   indicator: IndicatorValue | null;
-  channel_zone: "upper" | "middle" | "lower" | "kumo";
+  channelZone: "upper" | "middle" | "lower" | "kumo";
   action: "enter" | "exit" | "within";
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 export interface DivergenceLogic {
   id: string;
   type: "divergence";
   indicator: IndicatorValue | null;
-  divergence_type: "bullish" | "bearish" | "hidden_bullish" | "hidden_bearish";
+  divergenceType: "bullish" | "bearish" | "hidden_bullish" | "hidden_bearish";
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 export interface PatternLogic {
   id: string;
   type: "pattern";
-  pattern_key: string;
+  patternKey: string;
   direction: "bullish" | "bearish" | "any";
   children?: LogicBlock[];
-  logic_operator?: LogicOperator;
+  logicOperator?: LogicOperator;
 }
 
 // 모든 개별 로직 타입을 통합하는 유니온 타입
@@ -97,41 +97,41 @@ export type LogicBlock =
 
 // 포지션 진입/청산 규칙의 컨테이너
 export interface PositionRules {
-  logic_operator: LogicOperator;
+  logicOperator: LogicOperator;
   blocks: LogicBlock[];
 }
 
 // Take Profit / Stop Loss 로직
 export interface TpslLogic {
-  take_profit_pct?: number | null;
-  stop_loss_pct?: number | null;
-  atr_stop_loss_multiplier?: number | null;
-  atr_take_profit_multiplier?: number | null;
-  atr_period?: number | null;
+  takeProfitPct?: number | null;
+  stopLossPct?: number | null;
+  atrStopLossMultiplier?: number | null;
+  atrTakeProfitMultiplier?: number | null;
+  atrPeriod?: number | null;
 }
 
 // 타겟 코인 및 자산 배분율
 export interface TargetCoin {
   ticker: string;
-  allocation_pct: number;
+  allocationPct: number;
 }
 
 // --- 전체 전략 객체 타입 (API 응답과 일치) ---
 export interface Strategy {
   id: number;
-  author_id: number;
+  authorId: number;
   name: string;
   description: string | null;
-  is_public: boolean;
-  long_entry_rules: PositionRules | null;
-  long_exit_rules: PositionRules | null;
-  short_entry_rules: PositionRules | null;
-  short_exit_rules: PositionRules | null;
-  tpsl_logic: TpslLogic | null;
-  target_coins: TargetCoin[];
-  paid_feature_level: "basic" | "trader" | "pro";
-  created_at: string;
-  updated_at: string | null;
+  isPublic: boolean;
+  longEntryRules: PositionRules | null;
+  longExitRules: PositionRules | null;
+  shortEntryRules: PositionRules | null;
+  shortExitRules: PositionRules | null;
+  tpslLogic: TpslLogic | null;
+  targetCoins: TargetCoin[];
+  paidFeatureLevel: "basic" | "trader" | "pro";
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 // --- UI 상호작용을 위한 컨텍스트 타입 ---

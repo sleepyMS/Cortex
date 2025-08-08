@@ -1,5 +1,3 @@
-// frontend/src/components/domain/dashboard/UserDashboardClient.tsx
-
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -24,71 +22,67 @@ import {
   Code,
   KeyRound,
   Bot,
-} from "lucide-react"; // 아이콘 임포트
+} from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 
-// 백엔드 schemas.UserDashboardSummary와 일치하도록 타입 정의를 확장합니다.
-// (backend/app/schemas.py의 UserDashboardSummary 스키마 참조)
+// 👈 1. 백엔드 API 응답(camelCase)과 일치하도록 타입 정의 수정
 interface UserDashboardSummary {
   email: string;
   username: string | null;
-  user_id: number;
-  created_at: string; // ISO 8601 string
-  is_email_verified: boolean;
+  userId: number;
+  createdAt: string; // ISO 8601 string
+  isEmailVerified: boolean;
 
-  current_plan_name: string;
-  current_plan_price: number;
-  subscription_end_date: string | null; // ISO 8601 string
-  subscription_is_active: boolean;
-  max_backtests_per_day: number;
-  concurrent_bots_limit: number;
-  allowed_timeframes: string[];
+  currentPlanName: string;
+  currentPlanPrice: number;
+  subscriptionEndDate: string | null; // ISO 8601 string
+  subscriptionIsActive: boolean;
+  maxBacktestsPerDay: number;
+  concurrentBotsLimit: number;
+  allowedTimeframes: string[];
 
-  total_backtests_run_by_user: number;
-  successful_backtests_by_user: number;
+  totalBacktestsRunByUser: number;
+  successfulBacktestsByUser: number;
 
-  total_live_bots_by_user: number;
-  active_live_bots_by_user: number;
+  totalLiveBotsByUser: number;
+  activeLiveBotsByUser: number;
 
-  latest_backtests: Array<{
+  latestBacktests: Array<{
     id: number;
-    name: string; // StrategyBase.name
     status: string;
-    created_at: string;
-    strategy: { name: string }; // StrategyBase
+    createdAt: string;
+    strategy: { name: string };
   }>;
-  latest_live_bots: Array<{
+  latestLiveBots: Array<{
     id: number;
     status: string;
-    started_at: string;
-    strategy: { name: string }; // StrategyBase
-    api_key: { exchange: string }; // ApiKeyResponse
+    startedAt: string;
+    strategy: { name: string };
+    apiKey: { exchange: string };
   }>;
 }
 
-// 데이터를 페칭하는 함수
 const fetchUserDashboardSummary = async (): Promise<UserDashboardSummary> => {
-  // 👈 일반 사용자 대시보드 API 엔드포인트 호출
   const { data } = await apiClient.get("/users/me/dashboard_summary");
   return data;
 };
 
 export function UserDashboardClient() {
   const t = useTranslations("Dashboard");
-  const { user } = useUserStore(); // 전역 스토어에서 사용자 정보를 읽습니다.
+  const { user } = useUserStore();
+  const router = useRouter();
 
-  // TanStack Query를 사용하여 사용자 대시보드 데이터를 가져옵니다.
   const {
     data: dashboardData,
     isLoading,
     isError,
     error,
   } = useQuery<UserDashboardSummary, Error>({
-    queryKey: ["userDashboardSummary", user?.id], // 사용자 ID별로 캐시 키 분리
+    queryKey: ["userDashboardSummary", user?.id],
     queryFn: fetchUserDashboardSummary,
-    enabled: !!user?.id && user?.role === "user", // 👈 로그인한 'user' 역할일 때만 쿼리 실행
+    enabled: !!user?.id && user?.role === "user",
   });
 
-  // 로딩 상태 처리
   if (isLoading) {
     return (
       <div className="flex h-full min-h-[400px] items-center justify-center">
@@ -98,7 +92,6 @@ export function UserDashboardClient() {
     );
   }
 
-  // 에러 상태 처리
   if (isError) {
     return (
       <div className="container mx-auto max-w-5xl px-4 py-8 text-destructive-foreground text-center">
@@ -113,7 +106,6 @@ export function UserDashboardClient() {
     );
   }
 
-  // 데이터가 없거나, 일반 사용자가 아닌 경우 (UserDashboardClient는 일반 사용자 전용이므로)
   if (!dashboardData) {
     return (
       <div className="flex h-full min-h-[400px] items-center justify-center text-muted-foreground">
@@ -122,7 +114,7 @@ export function UserDashboardClient() {
     );
   }
 
-  // 성공 상태 처리 (일반 사용자 대시보드 렌더링)
+  // 👈 2. JSX 내부에서 dashboardData의 모든 속성을 camelCase로 접근하도록 수정
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
       <section className="rounded-lg border border-border bg-card p-6 shadow-md">
@@ -133,7 +125,6 @@ export function UserDashboardClient() {
           {t("userDashboardOverview")}
         </p>
 
-        {/* 사용자 정보 및 구독 섹션 */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Card className="p-6">
             <h3 className="mb-3 text-xl font-semibold text-foreground">
@@ -144,7 +135,7 @@ export function UserDashboardClient() {
                 {t("emailLabel")}:
               </span>{" "}
               {dashboardData.email}{" "}
-              {dashboardData.is_email_verified ? (
+              {dashboardData.isEmailVerified ? (
                 <CheckCircle size={16} className="inline text-green-500" />
               ) : (
                 <span className="text-red-500">({t("unverified")})</span>
@@ -162,7 +153,7 @@ export function UserDashboardClient() {
               <span className="font-medium text-foreground">
                 {t("memberSince")}:
               </span>{" "}
-              {new Date(dashboardData.created_at).toLocaleDateString()}
+              {new Date(dashboardData.createdAt).toLocaleDateString()}
             </p>
           </Card>
 
@@ -175,11 +166,11 @@ export function UserDashboardClient() {
                 {t("currentPlan")}:
               </span>{" "}
               <span className="font-bold text-primary">
-                {dashboardData.current_plan_name}
+                {dashboardData.currentPlanName}
               </span>{" "}
               (
-              {dashboardData.current_plan_price > 0
-                ? `$${dashboardData.current_plan_price.toFixed(2)}/월`
+              {dashboardData.currentPlanPrice > 0
+                ? `$${dashboardData.currentPlanPrice.toFixed(2)}/월`
                 : t("free")}
               )
             </p>
@@ -189,23 +180,23 @@ export function UserDashboardClient() {
               </span>{" "}
               <span
                 className={
-                  dashboardData.subscription_is_active
+                  dashboardData.subscriptionIsActive
                     ? "text-green-500 font-bold"
                     : "text-red-500 font-bold"
                 }
               >
-                {dashboardData.subscription_is_active
+                {dashboardData.subscriptionIsActive
                   ? t("active")
                   : t("inactive")}
               </span>
             </p>
-            {dashboardData.subscription_end_date && (
+            {dashboardData.subscriptionEndDate && (
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
                   {t("subscriptionEndDate")}:
                 </span>{" "}
                 {new Date(
-                  dashboardData.subscription_end_date
+                  dashboardData.subscriptionEndDate
                 ).toLocaleDateString()}
               </p>
             )}
@@ -213,130 +204,125 @@ export function UserDashboardClient() {
               <span className="font-medium text-foreground">
                 {t("backtestLimit")}:
               </span>{" "}
-              {dashboardData.max_backtests_per_day} {t("timesPerDay")}
+              {dashboardData.maxBacktestsPerDay} {t("timesPerDay")}
             </p>
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">
                 {t("concurrentBotsLimit")}:
               </span>{" "}
-              {dashboardData.concurrent_bots_limit} {t("bots")}
+              {dashboardData.concurrentBotsLimit} {t("bots")}
             </p>
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">
                 {t("allowedTimeframes")}:
               </span>{" "}
-              {dashboardData.allowed_timeframes.join(", ")}
+              {dashboardData.allowedTimeframes.join(", ")}
             </p>
             <Button
               variant="outline"
               className="mt-4 w-full"
-              onClick={() => (window.location.href = "/pricing")}
+              onClick={() => router.push("/pricing")}
             >
               {t("manageSubscription")}
             </Button>
           </Card>
         </div>
 
-        {/* 통계 요약 섹션 */}
-        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title={t("totalBacktests")}
-            value={dashboardData.total_backtests_run_by_user}
+            value={dashboardData.totalBacktestsRunByUser}
             icon={<BarChart2 className="text-blue-500" />}
           />
           <StatCard
             title={t("successfulBacktests")}
-            value={dashboardData.successful_backtests_by_user}
+            value={dashboardData.successfulBacktestsByUser}
             icon={<CheckCircle className="text-green-500" />}
           />
           <StatCard
             title={t("totalLiveBots")}
-            value={dashboardData.total_live_bots_by_user}
+            value={dashboardData.totalLiveBotsByUser}
             icon={<Bot className="text-red-500" />}
           />
           <StatCard
             title={t("activeLiveBots")}
-            value={dashboardData.active_live_bots_by_user}
+            value={dashboardData.activeLiveBotsByUser}
             icon={<Zap className="text-yellow-500" />}
           />
         </div>
 
-        {/* 최근 활동 섹션 */}
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-          {dashboardData.latest_backtests &&
-            dashboardData.latest_backtests.length > 0 && (
-              <Card className="p-6">
-                <h3 className="mb-4 text-xl font-semibold text-foreground">
-                  {t("latestBacktests")}
-                </h3>
-                <ul className="space-y-3">
-                  {dashboardData.latest_backtests.map((bt) => (
-                    <li
-                      key={bt.id}
-                      className="flex items-center justify-between text-sm text-muted-foreground"
-                    >
-                      <div className="flex items-center">
-                        <BarChart2 size={16} className="mr-2 text-blue-400" />
-                        <span className="font-medium text-foreground">
-                          {bt.strategy?.name || t("unknownStrategy")}
-                        </span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ({bt.status})
-                        </span>
-                      </div>
-                      <span className="text-xs">
-                        {new Date(bt.created_at).toLocaleDateString()}
+          {dashboardData.latestBacktests?.length > 0 && (
+            <Card className="p-6">
+              <h3 className="mb-4 text-xl font-semibold text-foreground">
+                {t("latestBacktests")}
+              </h3>
+              <ul className="space-y-3">
+                {dashboardData.latestBacktests.map((bt) => (
+                  <li
+                    key={bt.id}
+                    className="flex items-center justify-between text-sm text-muted-foreground"
+                  >
+                    <div className="flex items-center">
+                      <BarChart2 size={16} className="mr-2 text-blue-400" />
+                      <span className="font-medium text-foreground">
+                        {bt.strategy?.name || t("unknownStrategy")}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="link"
-                  className="mt-3 px-0 text-primary"
-                  onClick={() => (window.location.href = "/backtests")}
-                >
-                  {t("viewAllBacktests")}
-                </Button>
-              </Card>
-            )}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({bt.status})
+                      </span>
+                    </div>
+                    <span className="text-xs">
+                      {new Date(bt.createdAt).toLocaleDateString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant="link"
+                className="mt-3 px-0 text-primary"
+                onClick={() => router.push("/backtests")}
+              >
+                {t("viewAllBacktests")}
+              </Button>
+            </Card>
+          )}
 
-          {dashboardData.latest_live_bots &&
-            dashboardData.latest_live_bots.length > 0 && (
-              <Card className="p-6">
-                <h3 className="mb-4 text-xl font-semibold text-foreground">
-                  {t("latestLiveBots")}
-                </h3>
-                <ul className="space-y-3">
-                  {dashboardData.latest_live_bots.map((bot) => (
-                    <li
-                      key={bot.id}
-                      className="flex items-center justify-between text-sm text-muted-foreground"
-                    >
-                      <div className="flex items-center">
-                        <Bot size={16} className="mr-2 text-red-400" />
-                        <span className="font-medium text-foreground">
-                          {bot.strategy?.name || t("unknownStrategy")}
-                        </span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ({bot.api_key?.exchange || t("unknownExchange")})
-                        </span>
-                      </div>
-                      <span className="text-xs">{bot.status}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="link"
-                  className="mt-3 px-0 text-primary"
-                  onClick={() => (window.location.href = "/live-bots")}
-                >
-                  {t("viewAllLiveBots")}
-                </Button>
-              </Card>
-            )}
+          {dashboardData.latestLiveBots?.length > 0 && (
+            <Card className="p-6">
+              <h3 className="mb-4 text-xl font-semibold text-foreground">
+                {t("latestLiveBots")}
+              </h3>
+              <ul className="space-y-3">
+                {dashboardData.latestLiveBots.map((bot) => (
+                  <li
+                    key={bot.id}
+                    className="flex items-center justify-between text-sm text-muted-foreground"
+                  >
+                    <div className="flex items-center">
+                      <Bot size={16} className="mr-2 text-red-400" />
+                      <span className="font-medium text-foreground">
+                        {bot.strategy?.name || t("unknownStrategy")}
+                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({bot.apiKey?.exchange || t("unknownExchange")})
+                      </span>
+                    </div>
+                    <span className="text-xs">{bot.status}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant="link"
+                className="mt-3 px-0 text-primary"
+                onClick={() => router.push("/live-bots")}
+              >
+                {t("viewAllLiveBots")}
+              </Button>
+            </Card>
+          )}
         </div>
 
-        {/* 기타 빠른 링크 (예: API 키 관리, 전략 생성) */}
         <div className="mt-8 text-center">
           <h3 className="mb-4 text-xl font-semibold text-foreground">
             {t("quickLinks")}
@@ -344,11 +330,11 @@ export function UserDashboardClient() {
           <div className="flex justify-center space-x-4">
             <Button
               variant="outline"
-              onClick={() => (window.location.href = "/settings/keys")}
+              onClick={() => router.push("/settings/keys")}
             >
               <KeyRound className="mr-2 h-4 w-4" /> {t("manageApiKeys")}
             </Button>
-            <Button onClick={() => (window.location.href = "/strategies/new")}>
+            <Button onClick={() => router.push("/strategies/new")}>
               <Code className="mr-2 h-4 w-4" /> {t("createNewStrategy")}
             </Button>
           </div>
@@ -358,7 +344,6 @@ export function UserDashboardClient() {
   );
 }
 
-// 통계 카드 컴포넌트 (DashboardClient.tsx에서 가져옴)
 interface StatCardProps {
   title: string;
   value: string | number;

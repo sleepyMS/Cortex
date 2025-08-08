@@ -69,14 +69,16 @@ const formSchema = z.object({
 type StrategyFormValues = z.infer<typeof formSchema>;
 
 // --- API 페이로드 타입 정의 ---
-interface StrategyCreatePayload extends StrategyFormValues {
-  long_entry_rules: PositionRules | null;
-  long_exit_rules: PositionRules | null;
-  short_entry_rules: PositionRules | null;
-  short_exit_rules: PositionRules | null;
-  tpsl_logic: TpslLogic | null;
-  target_coins: TargetCoin[];
-  is_public: boolean;
+interface StrategyCreatePayload {
+  name: string;
+  description: string | null | undefined;
+  longEntryRules: PositionRules | null;
+  longExitRules: PositionRules | null;
+  shortEntryRules: PositionRules | null;
+  shortExitRules: PositionRules | null;
+  tpslLogic: TpslLogic | null;
+  targetCoins: TargetCoin[];
+  isPublic: boolean;
 }
 
 // --- 헬퍼 함수: 새로운 LogicBlock 생성 ---
@@ -98,31 +100,33 @@ const createLogicBlock = (
     timeframe: availableTimeframes.length > 0 ? availableTimeframes[0] : "1h",
   };
   const newBlockId = nanoid();
+
+  // 👈 모든 키를 camelCase로 수정
   switch (logicType) {
     case "comparison":
       return {
         id: newBlockId,
         type: "comparison",
-        operand_a: baseIndicatorValue,
+        operandA: baseIndicatorValue,
         operator: ">",
-        operand_b: 0,
+        operandB: 0,
       };
     case "crossover":
       return {
         id: newBlockId,
         type: "crossover",
-        main_line: baseIndicatorValue,
-        signal_line: 0,
-        cross_direction: "above",
+        mainLine: baseIndicatorValue,
+        signalLine: 0,
+        crossDirection: "above",
       };
     case "state":
       return {
         id: newBlockId,
         type: "state",
         indicator: baseIndicatorValue,
-        lower_bound: 30,
-        upper_bound: 70,
-        state_action: "within",
+        lowerBound: 30,
+        upperBound: 70,
+        stateAction: "within",
       };
     case "trend_signal":
       return {
@@ -136,7 +140,7 @@ const createLogicBlock = (
         id: newBlockId,
         type: "channel",
         indicator: baseIndicatorValue,
-        channel_zone: "upper",
+        channelZone: "upper",
         action: "enter",
       };
     case "divergence":
@@ -144,22 +148,22 @@ const createLogicBlock = (
         id: newBlockId,
         type: "divergence",
         indicator: baseIndicatorValue,
-        divergence_type: "bullish",
+        divergenceType: "bullish",
       };
     case "pattern":
       return {
         id: newBlockId,
         type: "pattern",
-        pattern_key: "doji",
+        patternKey: "doji",
         direction: "any",
       };
     default:
       return {
         id: newBlockId,
         type: "comparison",
-        operand_a: baseIndicatorValue,
+        operandA: baseIndicatorValue,
         operator: ">",
-        operand_b: 0,
+        operandB: 0,
       };
   }
 };
@@ -261,9 +265,15 @@ export default function NewStrategyPage() {
   const createStrategyMutation = useMutation({
     mutationFn: async (values: StrategyFormValues) => {
       const payload: StrategyCreatePayload = {
-        ...values,
-        ...strategyState,
-        is_public: false,
+        name: values.name,
+        description: values.description,
+        longEntryRules: strategyState.longEntryRules,
+        longExitRules: strategyState.longExitRules,
+        shortEntryRules: strategyState.shortEntryRules,
+        shortExitRules: strategyState.shortExitRules,
+        tpslLogic: strategyState.tpslLogic,
+        targetCoins: strategyState.targetCoins,
+        isPublic: false,
       };
       const { data } = await apiClient.post("/strategies", payload);
       return data;
@@ -399,7 +409,10 @@ export default function NewStrategyPage() {
                 {t("rulesTitle")}
               </h2>
               <StrategyBuilderCanvas
-                {...strategyState}
+                longEntryRules={strategyState.longEntryRules}
+                longExitRules={strategyState.longExitRules}
+                shortEntryRules={strategyState.shortEntryRules}
+                shortExitRules={strategyState.shortExitRules}
                 onAddTopLevelRule={handleAddTopLevelRule}
                 onTriggerNestedAddRule={handleTriggerNestedAddRule}
                 onTriggerOperandHub={handleTriggerOperandHub}

@@ -71,7 +71,7 @@ export function TargetCoinForm({
 
   // 총 자산 배분율 계산
   const totalAllocation = targetCoins.reduce(
-    (sum, coin) => sum + (coin.allocation_pct || 0),
+    (sum, coin) => sum + (coin.allocationPct || 0),
     0
   );
 
@@ -95,20 +95,20 @@ export function TargetCoinForm({
     const updatedCoins = [
       ...targetCoins.map((coin) => ({
         ...coin,
-        allocation_pct: newAllocation,
+        allocationPct: newAllocation,
       })),
-      { ticker, allocation_pct: newAllocation },
+      { ticker, allocationPct: newAllocation },
     ];
 
     // 소수점 정리 및 마지막 코인에 나머지 할당
     let sum = 0;
     const finalCoins = updatedCoins.map((coin, index) => {
-      const roundedPct = parseFloat(coin.allocation_pct.toFixed(2));
+      const roundedPct = parseFloat(coin.allocationPct.toFixed(2));
       if (index < updatedCoins.length - 1) {
         sum += roundedPct;
-        return { ...coin, allocation_pct: roundedPct };
+        return { ...coin, allocationPct: roundedPct };
       }
-      return { ...coin, allocation_pct: parseFloat((100 - sum).toFixed(2)) };
+      return { ...coin, allocationPct: parseFloat((100 - sum).toFixed(2)) };
     });
 
     setTargetCoins(finalCoins);
@@ -126,12 +126,12 @@ export function TargetCoinForm({
       const finalCoins = newCoins.map((coin, index) => {
         const roundedPct = parseFloat(newAllocation.toFixed(2));
         if (index < newCoins.length - 1) {
-          return { ...coin, allocation_pct: roundedPct };
+          return { ...coin, allocationPct: roundedPct };
         }
         const sumOfOthers = roundedPct * (newCoins.length - 1);
         return {
           ...coin,
-          allocation_pct: parseFloat((100 - sumOfOthers).toFixed(2)),
+          allocationPct: parseFloat((100 - sumOfOthers).toFixed(2)),
         };
       });
       setTargetCoins(finalCoins);
@@ -147,7 +147,7 @@ export function TargetCoinForm({
 
     const otherCoinsTotal = targetCoins
       .filter((coin) => coin.ticker !== ticker)
-      .reduce((sum, coin) => sum + coin.allocation_pct, 0);
+      .reduce((sum, coin) => sum + coin.allocationPct, 0);
 
     if (newPct + otherCoinsTotal > 100) {
       toast.warning(t("allocationExceeds100"));
@@ -155,7 +155,7 @@ export function TargetCoinForm({
     }
 
     const newCoins = targetCoins.map((coin) =>
-      coin.ticker === ticker ? { ...coin, allocation_pct: newPct } : coin
+      coin.ticker === ticker ? { ...coin, allocationPct: newPct } : coin
     );
     setTargetCoins(newCoins);
   };
@@ -209,7 +209,7 @@ export function TargetCoinForm({
                       <div className="flex items-center justify-end space-x-2">
                         <Input
                           type="number"
-                          value={coin.allocation_pct}
+                          value={coin.allocationPct}
                           onChange={(e) =>
                             handleAllocationChange(coin.ticker, e.target.value)
                           }

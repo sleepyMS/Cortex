@@ -1,5 +1,3 @@
-// frontend/src/components/domain/dashboard/AdminDashboardClient.tsx
-
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -17,24 +15,24 @@ import {
   Hash,
   CheckCircle,
 } from "lucide-react";
-import { AxiosError } from "axios"; // 👈 AxiosError 임포트
+import { AxiosError } from "axios";
 
-// 백엔드 schemas.DashboardSummary와 일치하도록 타입 정의를 확장합니다.
+// 👈 1. 백엔드 API 응답(camelCase)과 일치하도록 타입 정의 수정
 interface DashboardSummary {
-  total_users: number;
-  active_users: number;
-  total_strategies: number;
-  public_strategies: number;
-  total_backtests_run: number;
-  total_successful_backtests: number;
-  total_live_bots: number;
-  active_live_bots: number;
-  overall_pnl: number;
-  latest_signups: Array<{
+  totalUsers: number;
+  activeUsers: number;
+  totalStrategies: number;
+  publicStrategies: number;
+  totalBacktestsRun: number;
+  totalSuccessfulBacktests: number;
+  totalLiveBots: number;
+  activeLiveBots: number;
+  overallPnl: number;
+  latestSignups: Array<{
     id: number;
     email: string;
     username: string | null;
-    created_at: string;
+    createdAt: string;
   }>;
 }
 
@@ -54,7 +52,6 @@ export function AdminDashboardClient() {
     isError,
     error,
   } = useQuery<DashboardSummary, AxiosError>({
-    // 👈 error 타입을 AxiosError로 명시
     queryKey: ["adminDashboardSummary"],
     queryFn: fetchAdminDashboardSummary,
     enabled: user?.role === "admin",
@@ -70,7 +67,6 @@ export function AdminDashboardClient() {
   }
 
   if (isError) {
-    // 👈 error가 AxiosError 타입임을 확실히 알 수 있음
     if (error.response?.status === 403) {
       return (
         <div className="container mx-auto max-w-5xl px-4 py-8 text-center">
@@ -122,6 +118,7 @@ export function AdminDashboardClient() {
     );
   }
 
+  // 👈 2. JSX 내부에서 dashboardData의 모든 속성을 camelCase로 접근하도록 수정
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
       <section className="rounded-lg border border-border bg-card p-6 shadow-md">
@@ -135,68 +132,68 @@ export function AdminDashboardClient() {
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title={t("totalUsers")}
-            value={dashboardData.total_users}
+            value={dashboardData.totalUsers}
             icon={<Users className="text-primary" />}
           />
           <StatCard
             title={t("activeUsers")}
-            value={dashboardData.active_users}
+            value={dashboardData.activeUsers}
             icon={<CheckCircle className="text-green-500" />}
           />
           <StatCard
             title={t("totalStrategies")}
-            value={dashboardData.total_strategies}
+            value={dashboardData.totalStrategies}
             icon={<BarChart2 className="text-blue-500" />}
           />
           <StatCard
             title={t("publicStrategies")}
-            value={dashboardData.public_strategies}
+            value={dashboardData.publicStrategies}
             icon={<Hash className="text-indigo-500" />}
           />
           <StatCard
             title={t("totalBacktestsRun")}
-            value={dashboardData.total_backtests_run}
+            value={dashboardData.totalBacktestsRun}
             icon={<TrendingUp className="text-yellow-500" />}
           />
           <StatCard
             title={t("totalSuccessfulBacktests")}
-            value={dashboardData.total_successful_backtests}
+            value={dashboardData.totalSuccessfulBacktests}
             icon={<CheckCircle className="text-purple-500" />}
           />
           <StatCard
             title={t("totalLiveBots")}
-            value={dashboardData.total_live_bots}
+            value={dashboardData.totalLiveBots}
             icon={<Bot className="text-red-500" />}
           />
           <StatCard
             title={t("activeLiveBots")}
-            value={dashboardData.active_live_bots}
+            value={dashboardData.activeLiveBots}
             icon={<Bot className="text-teal-500" />}
           />
           <StatCard
             title={t("overallPnl")}
-            value={`$${dashboardData.overall_pnl.toFixed(2)}`}
+            value={`$${dashboardData.overallPnl.toFixed(2)}`}
             icon={<TrendingUp className="text-green-600" />}
           />
         </div>
 
-        {dashboardData.latest_signups &&
-          dashboardData.latest_signups.length > 0 && (
+        {dashboardData.latestSignups &&
+          dashboardData.latestSignups.length > 0 && (
             <div className="mt-8 rounded-lg border border-border bg-card p-6 shadow-md">
               <h3 className="mb-4 text-xl font-semibold text-foreground">
                 {t("latestSignups")}
               </h3>
               <ul className="space-y-2">
-                {dashboardData.latest_signups.map((user_signup) => (
+                {dashboardData.latestSignups.map((userSignup) => (
                   <li
-                    key={user_signup.id}
+                    key={userSignup.id}
                     className="flex items-center justify-between text-muted-foreground text-sm"
                   >
                     <span className="font-medium text-foreground">
-                      {user_signup.username || user_signup.email}
+                      {userSignup.username || userSignup.email}
                     </span>
                     <span className="text-xs">
-                      {new Date(user_signup.created_at).toLocaleDateString()}
+                      {new Date(userSignup.createdAt).toLocaleDateString()}
                     </span>
                   </li>
                 ))}

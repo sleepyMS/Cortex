@@ -26,6 +26,7 @@ import {
   Shuffle,
   Waves,
   CandlestickChart,
+  ArrowDown,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
@@ -79,17 +80,17 @@ const getCurrentIndicator = (block: LogicBlock): IndicatorValue | null => {
   )
     return (block as any).indicator;
   if (
-    "operand_a" in block &&
-    typeof block.operand_a === "object" &&
-    block.operand_a !== null
+    "operandA" in block &&
+    typeof (block as any).operandA === "object" &&
+    (block as any).operandA !== null
   )
-    return block.operand_a;
+    return (block as any).operandA;
   if (
-    "main_line" in block &&
-    typeof (block as any).main_line === "object" &&
-    (block as any).main_line !== null
+    "mainLine" in block &&
+    typeof (block as any).mainLine === "object" &&
+    (block as any).mainLine !== null
   )
-    return (block as any).main_line;
+    return (block as any).mainLine;
   return null;
 };
 
@@ -106,10 +107,8 @@ export function RuleBlock({
   const CurrentLogicIcon =
     LOGIC_TYPE_METADATA[item.type]?.icon || GitCompareArrows;
 
-  // 현재 규칙 블록에서 사용 중인 지표 정보를 바탕으로 지원되는 로직 목록을 계산
   const supportedLogics = useMemo(() => {
     const currentIndicator = getCurrentIndicator(item);
-    // 'pattern' 로직은 지표가 없으므로 항상 선택 가능하도록 예외 처리
     if (item.type === "pattern") {
       const patternMeta = Object.keys(LOGIC_TYPE_METADATA).find(
         (k) => k === "pattern"
@@ -117,7 +116,6 @@ export function RuleBlock({
       return patternMeta ? [patternMeta] : [];
     }
     if (!currentIndicator) {
-      // 지표가 아직 설정되지 않았다면 모든 로직을 보여줌
       return Object.keys(LOGIC_TYPE_METADATA);
     }
     const metadata = INDICATOR_METADATA.find(
@@ -135,7 +133,6 @@ export function RuleBlock({
 
   const handleLogicTypeChange = (newType: LogicBlock["type"]) => {
     let oldIndicator: IndicatorValue | null = getCurrentIndicator(item);
-
     let newBlock: LogicBlock;
     const baseProps = { id: item.id };
 
@@ -144,18 +141,18 @@ export function RuleBlock({
         newBlock = {
           ...baseProps,
           type: "comparison",
-          operand_a: oldIndicator,
+          operandA: oldIndicator,
           operator: ">",
-          operand_b: 0,
+          operandB: 0,
         };
         break;
       case "crossover":
         newBlock = {
           ...baseProps,
           type: "crossover",
-          main_line: oldIndicator,
-          signal_line: 0,
-          cross_direction: "above",
+          mainLine: oldIndicator,
+          signalLine: 0,
+          crossDirection: "above",
         };
         break;
       case "state":
@@ -163,9 +160,9 @@ export function RuleBlock({
           ...baseProps,
           type: "state",
           indicator: oldIndicator,
-          lower_bound: 30,
-          upper_bound: 70,
-          state_action: "within",
+          lowerBound: 30,
+          upperBound: 70,
+          stateAction: "within",
         };
         break;
       case "trend_signal":
@@ -181,7 +178,7 @@ export function RuleBlock({
           ...baseProps,
           type: "channel",
           indicator: oldIndicator,
-          channel_zone: "upper",
+          channelZone: "upper",
           action: "enter",
         };
         break;
@@ -190,14 +187,14 @@ export function RuleBlock({
           ...baseProps,
           type: "divergence",
           indicator: oldIndicator,
-          divergence_type: "bullish",
+          divergenceType: "bullish",
         };
         break;
       case "pattern":
         newBlock = {
           ...baseProps,
           type: "pattern",
-          pattern_key: "doji",
+          patternKey: "doji",
           direction: "any",
         };
         break;
@@ -205,62 +202,68 @@ export function RuleBlock({
         newBlock = {
           ...baseProps,
           type: "comparison",
-          operand_a: oldIndicator,
+          operandA: oldIndicator,
           operator: ">",
-          operand_b: 0,
+          operandB: 0,
         };
     }
     onUpdate(item.id, newBlock);
   };
 
-  // --- 각 로직 타입별 렌더링 함수 ---
+  // --- 각 로직 타입별 렌더링 함수 (camelCase 적용) ---
   const renderComparisonLogic = (logic: ComparisonLogic) => (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
-        value={logic.operand_a}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "operand_a")}
-        onConvertToValue={() => handleUpdateField("operand_a", 0)}
-        onConvertToIndicator={() => handleUpdateField("operand_a", null)}
-        onValueChange={(val) => handleUpdateField("operand_a", val)}
+        value={logic.operandA}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "operandA")}
+        onConvertToValue={() => handleUpdateField("operandA", 0)}
+        onConvertToIndicator={() => handleUpdateField("operandA", null)}
+        onValueChange={(val) => handleUpdateField("operandA", val)}
       />
+      <div className="flex justify-center items-center md:hidden text-muted-foreground">
+        <ArrowDown className="w-4 h-4" />
+      </div>
       <Select
         value={logic.operator}
         onValueChange={(val) => handleUpdateField("operator", val)}
       >
-        <SelectTrigger className="w-20">
+        <SelectTrigger className="w-full md:w-28 mx-auto">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value=">">&gt;</SelectItem>
-          <SelectItem value="<">&lt;</SelectItem>
-          <SelectItem value="==">=</SelectItem>
-          <SelectItem value="!=">≠</SelectItem>
+          <SelectItem value=">">&gt; (크다)</SelectItem>
+          <SelectItem value="<">&lt; (작다)</SelectItem>
+          <SelectItem value="==">= (같다)</SelectItem>
+          <SelectItem value="!=">≠ (다르다)</SelectItem>
         </SelectContent>
       </Select>
+      <div className="flex justify-center items-center md:hidden text-muted-foreground">
+        <ArrowDown className="w-4 h-4" />
+      </div>
       <OperandSlot
-        value={logic.operand_b}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "operand_b")}
-        onConvertToValue={() => handleUpdateField("operand_b", 0)}
-        onConvertToIndicator={() => handleUpdateField("operand_b", null)}
-        onValueChange={(val) => handleUpdateField("operand_b", val)}
+        value={logic.operandB}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "operandB")}
+        onConvertToValue={() => handleUpdateField("operandB", 0)}
+        onConvertToIndicator={() => handleUpdateField("operandB", null)}
+        onValueChange={(val) => handleUpdateField("operandB", val)}
       />
     </div>
   );
 
   const renderCrossoverLogic = (logic: CrossoverLogic) => (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
-        value={logic.main_line}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "main_line")}
-        onConvertToValue={() => handleUpdateField("main_line", 0)}
-        onConvertToIndicator={() => handleUpdateField("main_line", null)}
-        onValueChange={(val) => handleUpdateField("main_line", val)}
+        value={logic.mainLine}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "mainLine")}
+        onConvertToValue={() => handleUpdateField("mainLine", 0)}
+        onConvertToIndicator={() => handleUpdateField("mainLine", null)}
+        onValueChange={(val) => handleUpdateField("mainLine", val)}
       />
       <Select
-        value={logic.cross_direction}
-        onValueChange={(val) => handleUpdateField("cross_direction", val)}
+        value={logic.crossDirection}
+        onValueChange={(val) => handleUpdateField("crossDirection", val)}
       >
-        <SelectTrigger className="w-28">
+        <SelectTrigger className="w-full md:w-28 mx-auto">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -269,17 +272,17 @@ export function RuleBlock({
         </SelectContent>
       </Select>
       <OperandSlot
-        value={logic.signal_line}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "signal_line")}
-        onConvertToValue={() => handleUpdateField("signal_line", 0)}
-        onConvertToIndicator={() => handleUpdateField("signal_line", null)}
-        onValueChange={(val) => handleUpdateField("signal_line", val)}
+        value={logic.signalLine}
+        onSelectIndicator={() => onTriggerOperandHub(logic.id, "signalLine")}
+        onConvertToValue={() => handleUpdateField("signalLine", 0)}
+        onConvertToIndicator={() => handleUpdateField("signalLine", null)}
+        onValueChange={(val) => handleUpdateField("signalLine", val)}
       />
     </div>
   );
 
   const renderStateLogic = (logic: StateLogic) => (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
@@ -287,40 +290,40 @@ export function RuleBlock({
         onConvertToIndicator={() => {}}
         onValueChange={() => {}}
       />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-center gap-2 flex-wrap">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">
           {t("range")}
         </Label>
         <Input
           type="number"
           placeholder={t("min")}
-          value={logic.lower_bound ?? ""}
+          value={logic.lowerBound ?? ""}
           onChange={(e) =>
             handleUpdateField(
-              "lower_bound",
+              "lowerBound",
               e.target.value === "" ? null : Number(e.target.value)
             )
           }
-          className="h-8 text-center"
+          className="h-8 text-center flex-grow"
         />
         <span className="text-muted-foreground">~</span>
         <Input
           type="number"
           placeholder={t("max")}
-          value={logic.upper_bound ?? ""}
+          value={logic.upperBound ?? ""}
           onChange={(e) =>
             handleUpdateField(
-              "upper_bound",
+              "upperBound",
               e.target.value === "" ? null : Number(e.target.value)
             )
           }
-          className="h-8 text-center"
+          className="h-8 text-center flex-grow"
         />
         <Select
-          value={logic.state_action}
-          onValueChange={(val) => handleUpdateField("state_action", val)}
+          value={logic.stateAction}
+          onValueChange={(val) => handleUpdateField("stateAction", val)}
         >
-          <SelectTrigger className="h-8 w-32">
+          <SelectTrigger className="h-8 w-full sm:w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -334,7 +337,7 @@ export function RuleBlock({
   );
 
   const renderTrendSignalLogic = (logic: TrendSignalLogic) => (
-    <div className="grid grid-cols-[2fr_1fr] items-center gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] items-center gap-2">
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
@@ -359,7 +362,7 @@ export function RuleBlock({
   );
 
   const renderChannelLogic = (logic: ChannelLogic) => (
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] items-center gap-2">
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
@@ -368,8 +371,8 @@ export function RuleBlock({
         onValueChange={() => {}}
       />
       <Select
-        value={logic.channel_zone}
-        onValueChange={(val) => handleUpdateField("channel_zone", val)}
+        value={logic.channelZone}
+        onValueChange={(val) => handleUpdateField("channelZone", val)}
       >
         <SelectTrigger>
           <SelectValue placeholder={t("selectChannelZone")} />
@@ -398,7 +401,7 @@ export function RuleBlock({
   );
 
   const renderDivergenceLogic = (logic: DivergenceLogic) => (
-    <div className="grid grid-cols-[1fr_1fr] items-center gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] items-center gap-2">
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
@@ -407,8 +410,8 @@ export function RuleBlock({
         onValueChange={() => {}}
       />
       <Select
-        value={logic.divergence_type}
-        onValueChange={(val) => handleUpdateField("divergence_type", val)}
+        value={logic.divergenceType}
+        onValueChange={(val) => handleUpdateField("divergenceType", val)}
       >
         <SelectTrigger>
           <SelectValue placeholder={t("selectDivergenceType")} />
@@ -424,10 +427,10 @@ export function RuleBlock({
   );
 
   const renderPatternLogic = (logic: PatternLogic) => (
-    <div className="grid grid-cols-[2fr_1fr] items-center gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] items-center gap-2">
       <Select
-        value={logic.pattern_key}
-        onValueChange={(val) => handleUpdateField("pattern_key", val)}
+        value={logic.patternKey}
+        onValueChange={(val) => handleUpdateField("patternKey", val)}
       >
         <SelectTrigger>
           <SelectValue placeholder={t("selectPattern")} />
@@ -481,70 +484,74 @@ export function RuleBlock({
   };
 
   return (
-    <Card className="p-3 transition-shadow hover:shadow-lg bg-card">
-      <div className="flex items-center justify-between mb-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
-              disabled={item.type === "pattern"}
-            >
-              <CurrentLogicIcon className="h-4 w-4 text-primary" />
-              {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {Object.entries(LOGIC_TYPE_METADATA)
-              .filter(([type]) =>
-                supportedLogics.includes(type as LogicBlock["type"])
-              )
-              .map(([type, { icon: Icon, labelKey }]) => (
-                <DropdownMenuItem
-                  key={type}
-                  onClick={() =>
-                    handleLogicTypeChange(type as LogicBlock["type"])
-                  }
-                >
-                  <Icon className="mr-2 h-4 w-4" />
-                  <span>{tLogic(labelKey as any)}</span>
-                </DropdownMenuItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <Card className="p-3 transition-shadow shadow-md hover:shadow-lg border-l-4 border-primary/70 overflow-x-auto">
+      <div className="min-w-[380px]">
+        <div className="flex items-center justify-between mb-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
+                disabled={item.type === "pattern"}
+              >
+                <CurrentLogicIcon className="h-4 w-4 text-primary" />
+                {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {Object.entries(LOGIC_TYPE_METADATA)
+                .filter(([type]) =>
+                  supportedLogics.includes(type as LogicBlock["type"])
+                )
+                .map(([type, { icon: Icon, labelKey }]) => (
+                  <DropdownMenuItem
+                    key={type}
+                    onClick={() =>
+                      handleLogicTypeChange(type as LogicBlock["type"])
+                    }
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    <span>{tLogic(labelKey as any)}</span>
+                  </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "OR")}>
-              <ArrowRight className="mr-2 h-4 w-4" />
-              <span>{t("addOrCondition")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "AND")}>
-              <CornerDownRight className="mr-2 h-4 w-4" />
-              <span>{t("addAndCondition")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onClick={() => onDelete(item.id)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              <span>{t("delete")}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "OR")}>
+                <ArrowRight className="mr-2 h-4 w-4" />
+                <span>{t("addOrCondition")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onTriggerAddRule(item.id, "AND")}
+              >
+                <CornerDownRight className="mr-2 h-4 w-4" />
+                <span>{t("addAndCondition")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={() => onDelete(item.id)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>{t("delete")}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="mt-2">{renderLogic(item)}</div>
       </div>
-
-      <div className="mt-2">{renderLogic(item)}</div>
     </Card>
   );
 }
