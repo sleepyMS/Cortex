@@ -31,6 +31,7 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ScrollArea, ScrollBar } from "@/components/ui/ScrollArea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,10 +82,10 @@ const getCurrentIndicator = (block: LogicBlock): IndicatorValue | null => {
     return (block as any).indicator;
   if (
     "operandA" in block &&
-    typeof (block as any).operandA === "object" &&
-    (block as any).operandA !== null
+    typeof block.operandA === "object" &&
+    block.operandA !== null
   )
-    return (block as any).operandA;
+    return block.operandA;
   if (
     "mainLine" in block &&
     typeof (block as any).mainLine === "object" &&
@@ -210,7 +211,7 @@ export function RuleBlock({
     onUpdate(item.id, newBlock);
   };
 
-  // --- 각 로직 타입별 렌더링 함수 (camelCase 적용) ---
+  // --- 각 로직 타입별 렌더링 함수 ---
   const renderComparisonLogic = (logic: ComparisonLogic) => (
     <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
@@ -220,25 +221,30 @@ export function RuleBlock({
         onConvertToIndicator={() => handleUpdateField("operandA", null)}
         onValueChange={(val) => handleUpdateField("operandA", val)}
       />
-      <div className="flex justify-center items-center md:hidden text-muted-foreground">
-        <ArrowDown className="w-4 h-4" />
+
+      <div className="flex justify-center items-center md:hidden">
+        <ArrowDown className="w-4 h-4 text-muted-foreground" />
       </div>
-      <Select
-        value={logic.operator}
-        onValueChange={(val) => handleUpdateField("operator", val)}
-      >
-        <SelectTrigger className="w-full md:w-28 mx-auto">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value=">">&gt; (크다)</SelectItem>
-          <SelectItem value="<">&lt; (작다)</SelectItem>
-          <SelectItem value="==">= (같다)</SelectItem>
-          <SelectItem value="!=">≠ (다르다)</SelectItem>
-        </SelectContent>
-      </Select>
-      <div className="flex justify-center items-center md:hidden text-muted-foreground">
-        <ArrowDown className="w-4 h-4" />
+
+      <div className="hidden md:flex justify-center">
+        <Select
+          value={logic.operator}
+          onValueChange={(val) => handleUpdateField("operator", val)}
+        >
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value=">">&gt;</SelectItem>
+            <SelectItem value="<">&lt;</SelectItem>
+            <SelectItem value="==">=</SelectItem>
+            <SelectItem value="!=">≠</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex justify-center items-center md:hidden">
+        <ArrowDown className="w-4 h-4 text-muted-foreground" />
       </div>
       <OperandSlot
         value={logic.operandB}
@@ -283,6 +289,7 @@ export function RuleBlock({
 
   const renderStateLogic = (logic: StateLogic) => (
     <div className="flex flex-col gap-3">
+      {/* 지표 선택 슬롯은 그대로 유지 */}
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
@@ -290,48 +297,59 @@ export function RuleBlock({
         onConvertToIndicator={() => {}}
         onValueChange={() => {}}
       />
-      <div className="flex flex-col sm:flex-row items-center gap-2 flex-wrap">
-        <Label className="text-xs text-muted-foreground whitespace-nowrap">
-          {t("range")}
-        </Label>
-        <Input
-          type="number"
-          placeholder={t("min")}
-          value={logic.lowerBound ?? ""}
-          onChange={(e) =>
-            handleUpdateField(
-              "lowerBound",
-              e.target.value === "" ? null : Number(e.target.value)
-            )
-          }
-          className="h-8 text-center flex-grow"
-        />
-        <span className="text-muted-foreground">~</span>
-        <Input
-          type="number"
-          placeholder={t("max")}
-          value={logic.upperBound ?? ""}
-          onChange={(e) =>
-            handleUpdateField(
-              "upperBound",
-              e.target.value === "" ? null : Number(e.target.value)
-            )
-          }
-          className="h-8 text-center flex-grow"
-        />
-        <Select
-          value={logic.stateAction}
-          onValueChange={(val) => handleUpdateField("stateAction", val)}
-        >
-          <SelectTrigger className="h-8 w-full sm:w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="enter">{t("enterState")}</SelectItem>
-            <SelectItem value="exit">{t("exitState")}</SelectItem>
-            <SelectItem value="within">{t("withinState")}</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* 🔽 핵심 수정 영역: flex-wrap을 사용한 유연한 컨테이너 */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* '범위' 그룹: 이 그룹은 한 단위로 움직입니다. */}
+        <div className="flex flex-grow items-center gap-2 min-w-[200px]">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">
+            {t("range")}
+          </Label>
+          <Input
+            type="number"
+            placeholder={t("min")}
+            value={logic.lowerBound ?? ""}
+            onChange={(e) =>
+              handleUpdateField(
+                "lowerBound",
+                e.target.value === "" ? null : Number(e.target.value)
+              )
+            }
+            className="h-8 text-center flex-1" // 👈 너비를 유연하게 조절
+          />
+          <span className="text-muted-foreground">~</span>
+          <Input
+            type="number"
+            placeholder={t("max")}
+            value={logic.upperBound ?? ""}
+            onChange={(e) =>
+              handleUpdateField(
+                "upperBound",
+                e.target.value === "" ? null : Number(e.target.value)
+              )
+            }
+            className="h-8 text-center flex-1" // 👈 너비를 유연하게 조절
+          />
+        </div>
+
+        {/* '동작' 그룹: 이 그룹도 공간이 부족하면 아래로 내려갑니다. */}
+        <div className="flex flex-grow items-center gap-2 min-w-[150px]">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">
+            {t("action")}
+          </Label>
+          <Select
+            value={logic.stateAction}
+            onValueChange={(val) => handleUpdateField("stateAction", val)}
+          >
+            <SelectTrigger className="h-8 flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="enter">{t("enterState")}</SelectItem>
+              <SelectItem value="exit">{t("exitState")}</SelectItem>
+              <SelectItem value="within">{t("withinState")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );
@@ -484,74 +502,79 @@ export function RuleBlock({
   };
 
   return (
-    <Card className="p-3 transition-shadow shadow-md hover:shadow-lg border-l-4 border-primary/70 overflow-x-auto">
-      <div className="min-w-[380px]">
-        <div className="flex items-center justify-between mb-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
-                disabled={item.type === "pattern"}
-              >
-                <CurrentLogicIcon className="h-4 w-4 text-primary" />
-                {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {Object.entries(LOGIC_TYPE_METADATA)
-                .filter(([type]) =>
-                  supportedLogics.includes(type as LogicBlock["type"])
-                )
-                .map(([type, { icon: Icon, labelKey }]) => (
-                  <DropdownMenuItem
-                    key={type}
-                    onClick={() =>
-                      handleLogicTypeChange(type as LogicBlock["type"])
-                    }
-                  >
-                    <Icon className="mr-2 h-4 w-4" />
-                    <span>{tLogic(labelKey as any)}</span>
-                  </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <Card className="p-3 transition-shadow shadow-md hover:shadow-lg border-l-4 border-primary/70">
+      <ScrollArea className="w-full">
+        <div className="min-w-[380px]">
+          <div className="flex items-center justify-between mb-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
+                  disabled={item.type === "pattern"}
+                >
+                  <CurrentLogicIcon className="h-4 w-4 text-primary" />
+                  {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {Object.entries(LOGIC_TYPE_METADATA)
+                  .filter(([type]) =>
+                    supportedLogics.includes(type as LogicBlock["type"])
+                  )
+                  .map(([type, { icon: Icon, labelKey }]) => (
+                    <DropdownMenuItem
+                      key={type}
+                      onClick={() =>
+                        handleLogicTypeChange(type as LogicBlock["type"])
+                      }
+                    >
+                      <Icon className="mr-2 h-4 w-4" />
+                      <span>{tLogic(labelKey as any)}</span>
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "OR")}>
-                <ArrowRight className="mr-2 h-4 w-4" />
-                <span>{t("addOrCondition")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onTriggerAddRule(item.id, "AND")}
-              >
-                <CornerDownRight className="mr-2 h-4 w-4" />
-                <span>{t("addAndCondition")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                onClick={() => onDelete(item.id)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>{t("delete")}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => onTriggerAddRule(item.id, "OR")}
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  <span>{t("addOrCondition")}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onTriggerAddRule(item.id, "AND")}
+                >
+                  <CornerDownRight className="mr-2 h-4 w-4" />
+                  <span>{t("addAndCondition")}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  onClick={() => onDelete(item.id)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>{t("delete")}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="mt-2">{renderLogic(item)}</div>
         </div>
-
-        <div className="mt-2">{renderLogic(item)}</div>
-      </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </Card>
   );
 }
