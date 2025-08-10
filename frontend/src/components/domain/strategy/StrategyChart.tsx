@@ -16,7 +16,7 @@ import {
 } from "lightweight-charts";
 
 import { useChartIndicatorManager } from "@/hooks/useChartIndicatorManager";
-import { LegendData } from "@/types/charts";
+import { LegendData } from "@/types/chart";
 import { PositionRules } from "@/types/strategy";
 import { INDICATOR_METADATA } from "@/lib/indicators";
 import { parseRulesForIndicators } from "@/lib/strategyUtils";
@@ -81,6 +81,16 @@ export default function StrategyChart({
     });
 
     const newPanes = Array.from(requiredPanes);
+
+    // ====================== 👇 로그 추가 👇 ======================
+    console.log("===== [1단계: StrategyChart] 보조 차트 생성 목록 =====");
+    console.log(
+      "전략 규칙에서 추출된 지표:",
+      indicatorConfigs.map((c) => c.indicatorKey)
+    );
+    console.log("생성될 보조 차트 목록 (newPanes):", newPanes);
+    // ==========================================================
+
     // 실제 패널 목록에 변화가 있을 때만 상태를 업데이트하여 불필요한 리렌더링을 방지합니다.
     setPaneIndicators((prevPanes) =>
       JSON.stringify(prevPanes) !== JSON.stringify(newPanes)

@@ -1,5 +1,3 @@
-// file: src/app/[locale]/strategies/new/page.tsx
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -116,6 +114,7 @@ const createLogicBlock = (
   };
   const newBlockId = nanoid();
 
+  // 예시: 다양한 로직 타입에 대한 기본 블록 생성
   switch (logicType) {
     case "comparison":
       return {
@@ -133,7 +132,7 @@ const createLogicBlock = (
         signalLine: 0,
         crossDirection: "above",
       };
-    default:
+    default: // 기본값 또는 다른 로직 타입들...
       return {
         id: newBlockId,
         type: "comparison",
@@ -174,10 +173,12 @@ export default function NewStrategyPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // ✅ 1. useStrategyState 훅을 호출하여 전략의 현재 상태를 구독합니다.
   const strategyState = useStrategyState();
+
   const { allowedTimeframes } = useUserSubscription();
   const [isHubOpen, setIsHubOpen] = useState(false);
-  const [currentTarget, setCurrentTarget] = useState<TargetSlot>(null);
+  const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
   const [hubSelectionMode, setHubSelectionMode] = useState<
     "full" | "indicatorOnly"
   >("full");
@@ -214,10 +215,26 @@ export default function NewStrategyPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const indicatorConfigs = useMemo(
-    () => parseRulesForIndicators(strategyState),
-    [strategyState]
-  );
+  // ✅ 2. useMemo를 사용하여 strategyState가 변경될 때마다 indicatorConfigs를 다시 계산합니다.
+  const indicatorConfigs = useMemo(() => {
+    // 👈 헬퍼 함수가 원하는 모양의 객체를 새로 만듭니다.
+    const rulesForParsing = {
+      longEntry: strategyState.longEntryRules,
+      longExit: strategyState.longExitRules,
+      shortEntry: strategyState.shortEntryRules,
+      shortExit: strategyState.shortExitRules,
+    };
+    return parseRulesForIndicators(rulesForParsing);
+
+    // 👈 의존성 배열을 전체 객체가 아닌, 실제 사용하는 규칙들로 한정하여 최적화합니다.
+  }, [
+    strategyState.longEntryRules,
+    strategyState.longExitRules,
+    strategyState.shortEntryRules,
+    strategyState.shortExitRules,
+  ]);
+
+  // ✅ 3. useQuery의 queryKey에 indicatorConfigs를 포함시켜, 규칙 변경 시 자동으로 데이터를 다시 가져옵니다.
   const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
     queryFn: () =>
@@ -256,33 +273,29 @@ export default function NewStrategyPage() {
     logicType: string
   ) => {
     if (!currentTarget) return;
+
+    const newBlock = createLogicBlock(indicator, logicType, allowedTimeframes);
+
     if (currentTarget.type === "operand") {
-      const newIndicatorValue: IndicatorValue = {
-        /* ... */
-      };
+      const newIndicatorValue =
+        (newBlock as any).operandA || (newBlock as any).mainLine;
       strategyState.updateRuleLogic(
         currentTarget.ruleType,
         currentTarget.blockId,
         currentTarget.operandKey,
         newIndicatorValue
       );
-    } else {
-      const newBlock = createLogicBlock(
-        indicator,
-        logicType,
-        allowedTimeframes
+    } else if (currentTarget.type === "top-level") {
+      strategyState.addRule(currentTarget.ruleType, newBlock, null);
+    } else if (currentTarget.type === "nested-add") {
+      strategyState.addRule(
+        currentTarget.ruleType,
+        newBlock,
+        currentTarget.parentId,
+        currentTarget.as
       );
-      if (currentTarget.type === "top-level") {
-        strategyState.addRule(currentTarget.ruleType, newBlock, null);
-      } else if (currentTarget.type === "nested-add") {
-        strategyState.addRule(
-          currentTarget.ruleType,
-          newBlock,
-          currentTarget.parentId,
-          currentTarget.as
-        );
-      }
     }
+
     setIsHubOpen(false);
     setCurrentTarget(null);
   };
@@ -296,7 +309,7 @@ export default function NewStrategyPage() {
         longExitRules: strategyState.longExitRules,
         shortEntryRules: strategyState.shortEntryRules,
         shortExitRules: strategyState.shortExitRules,
-        tpslLogic: strategyState.tpslLogic,
+        tpslLogic: null, // TpslForm에서 상태를 받아와야 함
         targetCoins: strategyState.targetCoins,
         isPublic: false,
       };
@@ -360,8 +373,8 @@ export default function NewStrategyPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
-                    {t("form.saveButton")}
+                    {" "}
+                    <Save className="mr-2 h-4 w-4" /> {t("form.saveButton")}{" "}
                   </>
                 )}
               </Button>
@@ -383,7 +396,6 @@ export default function NewStrategyPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t("form.nameLabel")}</FormLabel>
-
                           <FormControl>
                             <Input
                               placeholder={t("form.namePlaceholder")}
@@ -473,14 +485,12 @@ export default function NewStrategyPage() {
                   </div>
                 ) : (
                   <DynamicStrategyChart
+                    // ✅ 4. rules prop으로 strategyState의 최신 규칙들을 전달합니다.
+                    rules={strategyState}
                     ohlcvData={ohlcvData}
                     indicatorData={indicatorData}
+                    isLoadingIndicators={isLoadingIndicators}
                   />
-                )}
-                {isLoadingIndicators && !isLoadingOHLCV && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 rounded-lg">
-                    <Spinner />
-                  </div>
                 )}
               </div>
             </div>
@@ -499,8 +509,12 @@ export default function NewStrategyPage() {
                 onAddTopLevelRule={handleAddTopLevelRule}
                 onTriggerNestedAddRule={handleTriggerNestedAddRule}
                 onTriggerOperandHub={handleTriggerOperandHub}
-                onUpdateRule={strategyState.updateRule}
-                onDeleteRule={strategyState.deleteRule}
+                onUpdateRule={(ruleType, id, newBlock) =>
+                  strategyState.updateRule(ruleType, id, newBlock)
+                }
+                onDeleteRule={(ruleType, id) =>
+                  strategyState.deleteRule(ruleType, id)
+                }
               />
             </div>
           </form>
