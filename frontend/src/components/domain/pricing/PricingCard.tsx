@@ -71,7 +71,7 @@ export const PricingCard = ({
               ? "성장"
               : "완성"}
           </p>
-          <div className="mt-2 text-6xl font-extrabold text-foreground">
+          <div className="mt-2 text-3xl font-extrabold text-foreground">
             {isFree ? (
               "Free"
             ) : (

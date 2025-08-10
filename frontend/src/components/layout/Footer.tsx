@@ -16,7 +16,7 @@ const Footer = () => {
 
   return (
     <footer className="w-full border-t border-border/40 bg-background">
-      <div className="container mx-auto max-w-5xl px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div className="flex flex-col gap-4">
             <Link href="/" passHref>

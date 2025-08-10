@@ -13,7 +13,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Logo } from "@/components/ui/Logo";
 import { Sun, Moon, LayoutDashboard } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
-import { Skeleton } from "@/components/ui/Skeleton"; // 👈 스켈레톤 UI 임포트
+import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 
 export function Header() {
@@ -31,13 +31,13 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    toast.success(t("logoutSuccess")); // 👈 alert 대신 toast 사용 권장
+    toast.success(t("logoutSuccess"));
     router.push("/login");
   };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/" passHref>
             <Logo />
