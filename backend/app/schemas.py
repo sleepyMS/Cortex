@@ -396,3 +396,38 @@ class LikeResponse(CamelCaseModel):
     user_id: int
     post_id: int
     status: bool = True
+
+# ==============================================================================
+# 4. 시장 데이터 관련 스키마 
+# ==============================================================================
+
+class OHLCVData(CamelCaseModel):
+    """단일 OHLCV 캔들스틱 데이터를 위한 스키마"""
+    time: int  
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+class IndicatorConfig(CamelCaseModel):
+    """단일 지표 설정 정보를 위한 스키마"""
+    indicator_key: str  # 예: "SMA"
+    values: Dict[str, Any]  # 예: {"period": 20}
+    outputs: List[str] # 예: ["sma"]
+
+class IndicatorCalculationRequest(CamelCaseModel):
+    """지표 계산 요청을 위한 스키마"""
+    ticker: str
+    timeframe: str
+    indicators: List[IndicatorConfig]
+
+class IndicatorDataPoint(CamelCaseModel):
+    """계산된 지표의 단일 데이터 포인트"""
+    time: int
+    value: float | None
+
+class IndicatorCalculationResponse(CamelCaseModel):
+    """지표 계산 결과 응답 스키마"""
+    # Key: "SMA_20", Value: [IndicatorDataPoint, ...]
+    results: Dict[str, List[IndicatorDataPoint]]

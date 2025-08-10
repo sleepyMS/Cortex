@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # 모든 라우터들을 임포트
-from .app.routers import auth, users, backtests, strategies, api_keys, plans, subscriptions, live_bots, community, admin
+from .app.routers import auth, users, backtests, strategies, api_keys, plans, subscriptions, live_bots, community, admin, market_data
 
 # FastAPI 애플리케이션 인스턴스 생성
 app = FastAPI(
@@ -67,6 +67,7 @@ app.include_router(subscriptions.router, prefix="/api")
 app.include_router(live_bots.router, prefix="/api")
 app.include_router(community.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(market_data.router, prefix="/api")
 
 # 서버가 살아있는지 확인하기 위한 루트 엔드포인트
 @app.get("/")

@@ -341,3 +341,30 @@ class PasswordResetToken(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="password_reset_tokens")
+
+# ==============================================================================
+# 5. 시계열 데이터 모델 (TimescaleDB Hypertables)
+# ==============================================================================
+
+class OHLCV1h(Base):
+    """
+    1시간봉 OHLCV 데이터 모델. Alembic이 테이블 구조를 인식하도록 하기 위해 정의합니다.
+    실제 하이퍼테이블 변환은 마이그레이션 스크립트에서 수동으로 처리합니다.
+    """
+    __tablename__ = "ohlcv_1h"
+    __table_args__ = (
+        # Upsert를 위한 고유 제약 조건
+        UniqueConstraint('time', 'ticker', name='_ohlcv_1h_time_ticker_uc'),
+        # 데이터 조회 성능 최적화를 위한 인덱스
+        # SQLAlchemy 2.0+ 에서는 Index 객체를 직접 사용합니다.
+        # from sqlalchemy import Index
+        # Index('idx_ohlcv_1h_ticker_time', 'ticker', postgresql_ops={'time': 'DESC'}),
+    )
+
+    time = Column(DateTime(timezone=True), primary_key=True)
+    ticker = Column(Text, primary_key=True)
+    open = Column(Float, nullable=False)
+    high = Column(Float, nullable=False)
+    low = Column(Float, nullable=False)
+    close = Column(Float, nullable=False)
+    volume = Column(Float, nullable=False)

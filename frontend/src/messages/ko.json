@@ -242,6 +242,7 @@
   },
   "StrategyBuilder": {
     "title": "새로운 전략 생성",
+    "chartTitle": "전략 차트",
     "rulesTitle": "전략 규칙",
     "longEntryConditionsTitle": "📈 롱 포지션 진입 조건",
     "longExitConditionsTitle": "📉 롱 포지션 청산 조건",

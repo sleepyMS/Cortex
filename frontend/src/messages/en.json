@@ -242,6 +242,7 @@
   },
   "StrategyBuilder": {
     "title": "Create New Strategy",
+    "chartTitle": "Strategy Chart",
     "rulesTitle": "Strategy Rules",
     "longEntryConditionsTitle": "📈 Long Position Entry Conditions",
     "longExitConditionsTitle": "📉 Long Position Exit Conditions",

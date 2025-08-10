@@ -1,21 +1,93 @@
-# file: backend/app/tasks.py (UPDATED)
-
 from celery import Celery
 from sqlalchemy.orm import Session
-# from fastapi import HTTPException # 👈 HTTPException은 라우터에서만 사용, 여기서는 불필요
+from sqlalchemy import text # 👈 text 임포트 추가
 import logging
 from datetime import datetime, timezone
 import time
 
-from .celery_app import celery_app # 👈 celery_app을 별도 파일에서 임포트
-# 👈 database 모듈에서 SessionLocal과 engine_celery를 모두 임포트
+# 🔽 ccxt 임포트
+import ccxt
+
+from .celery_app import celery_app
 from .database import SessionLocal, engine_celery 
-from . import models # 모델 임포트
-from .security import decrypt_data # 👈 API 키 복호화를 위해 임포트
-# TODO: 실제 트레이딩 클라이언트 (CCXT) 임포트 필요 (pip install ccxt)
-# import ccxt
+from . import models
+from .security import decrypt_data
 
 logger = logging.getLogger(__name__)
+
+# 허용된 타임프레임 목록 (SQL 인젝션 방지용)
+ALLOWED_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"]
+
+# 🔽🔽🔽 신규 태스크 추가 🔽🔽🔽
+@celery_app.task(bind=True, name="fetch_and_store_ohlcv")
+def fetch_and_store_ohlcv_task(self, ticker: str, timeframe: str, since: int = None, limit: int = 500):
+    """
+    CCXT를 사용하여 특정 티커와 타임프레임의 OHLCV 데이터를 가져와
+    TimescaleDB 하이퍼테이블에 저장(Upsert)합니다.
+    """
+    if timeframe not in ALLOWED_TIMEFRAMES:
+        logger.error(f"Unsupported timeframe provided to Celery task: {timeframe}")
+        return
+
+    logger.info(f"Starting OHLCV fetch for {ticker} ({timeframe})...")
+    db: Session = None
+    try:
+        # 1. CCXT를 사용하여 데이터 가져오기
+        exchange = ccxt.binance() # 예시: 바이낸스 거래소
+        # CCXT는 since를 millisecond 단위 타임스탬프로 받음
+        ohlcv = exchange.fetch_ohlcv(ticker, timeframe, since=since, limit=limit)
+        
+        if not ohlcv:
+            logger.warning(f"No OHLCV data returned for {ticker} ({timeframe}).")
+            return
+
+        # 2. 데이터베이스에 연결
+        db = SessionLocal(bind=engine_celery)
+        table_name = f"ohlcv_{timeframe}"
+
+        # 3. PostgreSQL의 'INSERT ... ON CONFLICT' (Upsert) 쿼리 준비
+        # (time, ticker) 쌍이 중복될 경우, 나머지 값들을 업데이트합니다.
+        # 이를 통해 데이터 중복을 방지하고 항상 최신 상태를 유지할 수 있습니다.
+        sql_query = text(f"""
+            INSERT INTO {table_name} (time, ticker, open, high, low, close, volume)
+            VALUES (:time, :ticker, :open, :high, :low, :close, :volume)
+            ON CONFLICT (time, ticker) DO UPDATE SET
+                open = EXCLUDED.open,
+                high = EXCLUDED.high,
+                low = EXCLUDED.low,
+                close = EXCLUDED.close,
+                volume = EXCLUDED.volume;
+        """)
+
+        # 4. 데이터 변환 및 DB에 저장
+        data_to_insert = [
+            {
+                "time": datetime.fromtimestamp(item[0] / 1000, tz=timezone.utc), # ms -> datetime
+                "ticker": ticker,
+                "open": item[1],
+                "high": item[2],
+                "low": item[3],
+                "close": item[4],
+                "volume": item[5]
+            }
+            for item in ohlcv
+        ]
+
+        db.execute(sql_query, data_to_insert)
+        db.commit()
+
+        logger.info(f"Successfully fetched and stored {len(data_to_insert)} OHLCV records for {ticker} ({timeframe}).")
+
+    except ccxt.NetworkError as e:
+        logger.error(f"CCXT Network Error for {ticker} ({timeframe}): {e}", exc_info=True)
+        self.retry(exc=e) # 네트워크 오류 시 재시도
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in fetch_and_store_ohlcv_task for {ticker} ({timeframe}): {e}", exc_info=True)
+        if db:
+            db.rollback()
+    finally:
+        if db:
+            db.close()
 
 @celery_app.task(bind=True, default_retry_delay=300, max_retries=3)
 def run_backtest_task(self, backtest_id: int):

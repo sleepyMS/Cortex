@@ -1,15 +1,18 @@
+// file: src/app/[locale]/strategies/new/page.tsx
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { nanoid } from "nanoid";
 import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { CandlestickData, UTCTimestamp } from "lightweight-charts";
 
 // --- 커스텀 훅 및 타입 임포트 ---
 import { useStrategyState } from "@/hooks/useStrategyState";
@@ -25,10 +28,13 @@ import {
   IndicatorValue,
   LogicOperator,
 } from "@/types/strategy";
+import { OHLCVData } from "@/types/market";
+import { parseRulesForIndicators } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
 // --- UI 및 도메인 컴포넌트 임포트 ---
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import DynamicStrategyChart from "@/components/domain/strategy/DynamicStrategyChart";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
 import { TpslForm } from "@/components/domain/strategy/TpslForm";
@@ -52,6 +58,15 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/Card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Spinner } from "@/components/ui/Spinner";
 
 // --- Zod 폼 스키마 정의 ---
 const formSchema = z.object({
@@ -81,7 +96,7 @@ interface StrategyCreatePayload {
   isPublic: boolean;
 }
 
-// --- 헬퍼 함수: 새로운 LogicBlock 생성 ---
+// --- 헬퍼 함수 ---
 const createLogicBlock = (
   indicator: IndicatorMetadata,
   logicType: string,
@@ -101,7 +116,6 @@ const createLogicBlock = (
   };
   const newBlockId = nanoid();
 
-  // 👈 모든 키를 camelCase로 수정
   switch (logicType) {
     case "comparison":
       return {
@@ -119,44 +133,6 @@ const createLogicBlock = (
         signalLine: 0,
         crossDirection: "above",
       };
-    case "state":
-      return {
-        id: newBlockId,
-        type: "state",
-        indicator: baseIndicatorValue,
-        lowerBound: 30,
-        upperBound: 70,
-        stateAction: "within",
-      };
-    case "trend_signal":
-      return {
-        id: newBlockId,
-        type: "trend_signal",
-        indicator: baseIndicatorValue,
-        signal: "buy",
-      };
-    case "channel":
-      return {
-        id: newBlockId,
-        type: "channel",
-        indicator: baseIndicatorValue,
-        channelZone: "upper",
-        action: "enter",
-      };
-    case "divergence":
-      return {
-        id: newBlockId,
-        type: "divergence",
-        indicator: baseIndicatorValue,
-        divergenceType: "bullish",
-      };
-    case "pattern":
-      return {
-        id: newBlockId,
-        type: "pattern",
-        patternKey: "doji",
-        direction: "any",
-      };
     default:
       return {
         id: newBlockId,
@@ -166,6 +142,30 @@ const createLogicBlock = (
         operandB: 0,
       };
   }
+};
+
+const fetchOHLCVData = async (
+  ticker: string,
+  timeframe: string
+): Promise<CandlestickData<UTCTimestamp>[]> => {
+  const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
+    params: { ticker, timeframe, limit: 500 },
+  });
+  return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
+};
+
+const fetchIndicatorData = async (
+  ticker: string,
+  timeframe: string,
+  indicatorConfigs: any[]
+) => {
+  if (indicatorConfigs.length === 0) return null;
+  const { data } = await apiClient.post("/market/calculate-indicators", {
+    ticker,
+    timeframe,
+    indicators: indicatorConfigs,
+  });
+  return data.results;
 };
 
 // --- 메인 페이지 컴포넌트 ---
@@ -181,13 +181,50 @@ export default function NewStrategyPage() {
   const [hubSelectionMode, setHubSelectionMode] = useState<
     "full" | "indicatorOnly"
   >("full");
+  const [chartTicker, setChartTicker] = useState("BTC/USDT");
+  const [chartTimeframe, setChartTimeframe] = useState("1h");
+
+  useEffect(() => {
+    if (
+      strategyState.targetCoins.length > 0 &&
+      strategyState.targetCoins[0].ticker !== chartTicker
+    ) {
+      setChartTicker(strategyState.targetCoins[0].ticker);
+    } else if (
+      strategyState.targetCoins.length === 0 &&
+      chartTicker !== "BTC/USDT"
+    ) {
+      setChartTicker("BTC/USDT");
+    }
+  }, [strategyState.targetCoins, chartTicker]);
 
   const form = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { name: "", description: "" },
   });
 
-  // --- 이벤트 핸들러 ---
+  const {
+    data: ohlcvData,
+    isLoading: isLoadingOHLCV,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["ohlcv", chartTicker, chartTimeframe],
+    queryFn: () => fetchOHLCVData(chartTicker, chartTimeframe),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const indicatorConfigs = useMemo(
+    () => parseRulesForIndicators(strategyState),
+    [strategyState]
+  );
+  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
+    queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
+    queryFn: () =>
+      fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs),
+    enabled: !!ohlcvData && indicatorConfigs.length > 0,
+  });
+
   const handleAddTopLevelRule = (ruleType: StrategyType) => {
     setCurrentTarget({ type: "top-level", ruleType });
     setHubSelectionMode("full");
@@ -219,20 +256,9 @@ export default function NewStrategyPage() {
     logicType: string
   ) => {
     if (!currentTarget) return;
-
     if (currentTarget.type === "operand") {
-      const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
-        allowedTimeframes.includes(tf)
-      );
       const newIndicatorValue: IndicatorValue = {
-        indicatorKey: indicator.key,
-        outputs: [indicator.outputs[0].key],
-        values: indicator.parameters.reduce(
-          (acc, param) => ({ ...acc, [param.key]: param.default }),
-          {}
-        ),
-        timeframe:
-          availableTimeframes.length > 0 ? availableTimeframes[0] : "1h",
+        /* ... */
       };
       strategyState.updateRuleLogic(
         currentTarget.ruleType,
@@ -261,7 +287,6 @@ export default function NewStrategyPage() {
     setCurrentTarget(null);
   };
 
-  // --- API Mutation ---
   const createStrategyMutation = useMutation({
     mutationFn: async (values: StrategyFormValues) => {
       const payload: StrategyCreatePayload = {
@@ -284,11 +309,9 @@ export default function NewStrategyPage() {
       router.push("/strategies");
     },
     onError: (error: any) => {
-      const detail = error?.response?.data?.detail;
       toast.error(
         t("form.saveError", {
-          error:
-            typeof detail === "string" ? detail : t("form.saveFailedGeneric"),
+          error: error?.response?.data?.detail || "Unknown error",
         })
       );
     },
@@ -360,6 +383,7 @@ export default function NewStrategyPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t("form.nameLabel")}</FormLabel>
+
                           <FormControl>
                             <Input
                               placeholder={t("form.namePlaceholder")}
@@ -395,11 +419,69 @@ export default function NewStrategyPage() {
                   targetCoins={strategyState.targetCoins}
                   setTargetCoins={strategyState.setTargetCoins}
                 />
-                <TpslForm
-                  form={form}
-                  tpslLogic={strategyState.tpslLogic}
-                  setTpslLogic={strategyState.setTpslLogic}
-                />
+                <TpslForm form={form} />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <h2 className="text-2xl font-bold text-foreground">
+                  {t("chartTitle")}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={chartTicker}
+                    onValueChange={setChartTicker}
+                    disabled={strategyState.targetCoins.length === 0}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select a coin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {strategyState.targetCoins.map((coin) => (
+                        <SelectItem key={coin.ticker} value={coin.ticker}>
+                          {coin.ticker}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center p-1 rounded-md bg-muted">
+                    {["15m", "1h", "4h", "1d"].map((tf) => (
+                      <Button
+                        key={tf}
+                        type="button"
+                        variant={chartTimeframe === tf ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setChartTimeframe(tf)}
+                        className="h-8 px-3"
+                      >
+                        {tf}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative">
+                {isLoadingOHLCV ? (
+                  <Skeleton className="w-full h-[400px] rounded-lg" />
+                ) : isError ? (
+                  <div className="w-full h-[400px] rounded-lg border bg-destructive/10 flex items-center justify-center text-destructive font-semibold">
+                    Chart data could not be loaded. ({(error as Error).message})
+                  </div>
+                ) : (
+                  <DynamicStrategyChart
+                    ohlcvData={ohlcvData}
+                    indicatorData={indicatorData}
+                  />
+                )}
+                {isLoadingIndicators && !isLoadingOHLCV && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 rounded-lg">
+                    <Spinner />
+                  </div>
+                )}
               </div>
             </div>
 

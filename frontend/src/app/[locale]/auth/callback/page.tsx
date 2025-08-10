@@ -10,21 +10,20 @@ import { toast } from "sonner";
 function AuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setTokens } = useUserStore();
-  const hasProcessed = useRef(false); //
+  // 1. setUser 액션을 스토어에서 가져옵니다.
+  const { setTokens, setUser } = useUserStore.getState();
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     const provider = localStorage.getItem("social_provider");
 
-    // 2. 이미 처리했다면, 즉시 실행을 중단
     if (hasProcessed.current) {
       return;
     }
 
     if (code && provider) {
-      // 3. 처리 시작을 동기적으로 표시 (리렌더링 없음)
       hasProcessed.current = true;
 
       const exchangeCodeForToken = async () => {
@@ -39,14 +38,24 @@ function AuthCallback() {
           const { accessToken, refreshToken } = response.data;
 
           if (accessToken) {
-            setTokens({
-              accessToken: accessToken,
-              refreshToken: refreshToken,
-            });
-            // 로그인 성공 후 대시보드로 즉시 이동
+            // 2. 토큰을 스토어에 저장합니다.
+            setTokens({ accessToken, refreshToken });
+
+            // 3. 다음 API 요청을 위해 apiClient의 기본 헤더를 즉시 설정합니다.
+            apiClient.defaults.headers.common[
+              "Authorization"
+            ] = `Bearer ${accessToken}`;
+
+            // 4. 사용자 정보를 바로 요청합니다.
+            const userResponse = await apiClient.get("/users/me");
+
+            // 5. 받은 사용자 정보를 스토어에 저장합니다.
+            setUser(userResponse.data);
+
+            // 6. 모든 상태 저장이 완료된 후 대시보드로 이동합니다.
+            toast.success("로그인되었습니다. 환영합니다!");
             router.push("/dashboard");
           } else {
-            // 응답은 성공했지만 토큰이 없는 예외적인 경우
             throw new Error("인증 토큰을 응답에서 찾을 수 없습니다.");
           }
         } catch (error) {
@@ -59,7 +68,8 @@ function AuthCallback() {
 
       exchangeCodeForToken();
     }
-  }, [router, searchParams, setTokens]);
+    // setUser를 의존성 배열에 추가합니다.
+  }, [router, searchParams]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">
