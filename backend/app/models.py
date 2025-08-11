@@ -1,13 +1,13 @@
 # file: backend/app/models.py
 import enum
-import uuid
+import uuid 
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Float, JSON,
     ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -30,7 +30,7 @@ class SubscriptionStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, index=True, nullable=False)
     username = Column(String(100), unique=True, index=True, nullable=True)
     hashed_password = Column(String(255), nullable=True)
@@ -58,8 +58,8 @@ class SocialAccount(Base):
     __tablename__ = "social_accounts"
     __table_args__ = (UniqueConstraint('provider', 'provider_user_id', name='_provider_user_uc'),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     provider = Column(String(50), nullable=False)
     provider_user_id = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=True)
@@ -72,17 +72,17 @@ class Plan(Base):
     """구독 플랜 모델"""
     __tablename__ = "plans"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(50), unique=True, nullable=False)
     price = Column(Float, nullable=False)
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
 
 class PlanFeature(Base):
-    """플랜별 기능 제한 모델 (명세서 v5 반영)"""
+    """플랜별 기능 제한 모델"""
     __tablename__ = "plan_features"
-    id = Column(Integer, primary_key=True, index=True)
-    plan_id = Column(Integer, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, unique=True)
     
     max_strategies = Column(Integer, nullable=False)
     max_coins_per_backtest = Column(Integer, nullable=False)
@@ -102,9 +102,9 @@ class Subscription(Base):
     """사용자 구독 정보 모델"""
     __tablename__ = "subscriptions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
-    plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False)
     status = Column(String(50), nullable=False, default='active')
     current_period_end = Column(DateTime(timezone=True), nullable=True)
     payment_gateway_sub_id = Column(String(255), unique=True, nullable=True)
@@ -124,8 +124,8 @@ class Strategy(Base):
     """투자 전략 모델"""
     __tablename__ = "strategies"
 
-    id = Column(Integer, primary_key=True, index=True)
-    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(String, nullable=True)
     
@@ -150,9 +150,9 @@ class Backtest(Base):
     """백테스팅 실행 기록 모델"""
     __tablename__ = "backtests"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
     status = Column(String(50), nullable=False, default='pending')
     parameters = Column(JSON, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -169,8 +169,8 @@ class BacktestResult(Base):
     """백테스팅 결과 요약 모델"""
     __tablename__ = "backtest_results"
 
-    id = Column(Integer, primary_key=True, index=True)
-    backtest_id = Column(Integer, ForeignKey("backtests.id", ondelete="CASCADE"), unique=True, nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    backtest_id = Column(UUID(as_uuid=True), ForeignKey("backtests.id", ondelete="CASCADE"), unique=True, nullable=False)
     total_return_pct = Column(Float, nullable=True)
     mdd_pct = Column(Float, nullable=True)
     sharpe_ratio = Column(Float, nullable=True)
@@ -192,9 +192,9 @@ class TradeLog(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    backtest_id = Column(Integer, ForeignKey("backtests.id", ondelete="CASCADE"), nullable=True)
-    live_bot_id = Column(Integer, ForeignKey("live_bots.id", ondelete="CASCADE"), nullable=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    backtest_id = Column(UUID(as_uuid=True), ForeignKey("backtests.id", ondelete="CASCADE"), nullable=True)
+    live_bot_id = Column(UUID(as_uuid=True), ForeignKey("live_bots.id", ondelete="CASCADE"), nullable=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
     side = Column(String(10), nullable=False)
     price = Column(Float, nullable=False)
@@ -211,8 +211,8 @@ class ApiKey(Base):
     __tablename__ = "api_keys"
     __table_args__ = (UniqueConstraint('user_id', 'exchange', name='_user_exchange_uc'),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     exchange = Column(String(100), nullable=False)
     api_key_encrypted = Column(String(512), nullable=False)
     secret_key_encrypted = Column(String(512), nullable=False)
@@ -229,10 +229,10 @@ class LiveBot(Base):
     """자동매매 봇 인스턴스 모델"""
     __tablename__ = "live_bots"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
-    api_key_id = Column(Integer, ForeignKey("api_keys.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
+    api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
     status = Column(String(50), default='active', nullable=False)
     started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     stopped_at = Column(DateTime(timezone=True), nullable=True)
@@ -255,9 +255,9 @@ class CommunityPost(Base):
     """커뮤니티 게시물 모델"""
     __tablename__ = "community_posts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    backtest_id = Column(Integer, ForeignKey("backtests.id"), unique=True, nullable=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    backtest_id = Column(UUID(as_uuid=True), ForeignKey("backtests.id"), unique=True, nullable=True)
     title = Column(String(255), nullable=False)
     content = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
@@ -272,9 +272,9 @@ class Comment(Base):
     """게시물 댓글 모델"""
     __tablename__ = "comments"
 
-    id = Column(Integer, primary_key=True, index=True)
-    post_id = Column(Integer, ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False)
-    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    post_id = Column(UUID(as_uuid=True), ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     content = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
@@ -287,9 +287,9 @@ class Like(Base):
     __tablename__ = "likes"
     __table_args__ = (UniqueConstraint('user_id', 'post_id', name='_user_post_uc'),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    post_id = Column(Integer, ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    post_id = Column(UUID(as_uuid=True), ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="likes")
@@ -300,8 +300,8 @@ class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
     __table_args__ = (UniqueConstraint('user_id', 'jti', name='_user_jti_uc'),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     jti = Column(String(255), unique=True, nullable=False, index=True)
     hashed_token = Column(String(512), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
@@ -319,8 +319,8 @@ class EmailVerificationToken(Base):
     __tablename__ = "email_verification_tokens"
     __table_args__ = (UniqueConstraint('user_id', 'jti', name='_user_email_verif_jti_uc'),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     jti = Column(String(255), unique=True, nullable=False, index=True)
     hashed_token = Column(String(512), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
@@ -334,8 +334,8 @@ class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
     __table_args__ = (UniqueConstraint('user_id', 'jti', name='_user_password_reset_jti_uc'),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     jti = Column(String(255), unique=True, nullable=False, index=True)
     hashed_token = Column(String(512), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)

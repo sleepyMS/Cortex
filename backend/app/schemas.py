@@ -3,17 +3,14 @@ from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
 import enum
+import uuid
 
 # --- 모든 모델의 기반이 될 CamelCaseModel 생성 ---
 class CamelCaseModel(BaseModel):
-    """
-    들어오는 camelCase JSON을 snake_case 모델 필드로 변환하고,
-    나가는 snake_case 모델 필드를 camelCase JSON으로 변환하는 기본 모델
-    """
     model_config = ConfigDict(
         alias_generator=to_camel,
-        populate_by_name=True, # 별칭(camelCase)과 필드명(snake_case) 둘 다로 데이터를 받을 수 있도록 허용
-        from_attributes=True,  # ORM 모델로부터 자동 변환 지원
+        populate_by_name=True,
+        from_attributes=True,
     )
 
 # ==============================================================================
@@ -67,6 +64,13 @@ class SocialUserProfile(CamelCaseModel):
 class RefreshTokenRequest(CamelCaseModel):
     refresh_token: str
 
+# --- [개선] DashboardSummary 내부용 스키마 정의 ---
+class LatestSignupItem(CamelCaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    username: Optional[str]
+    created_at: datetime
+
 class DashboardSummary(CamelCaseModel):
     total_users: int = 0
     active_users: int = 0
@@ -77,7 +81,7 @@ class DashboardSummary(CamelCaseModel):
     total_live_bots: int = 0
     active_live_bots: int = 0
     overall_pnl: float = 0.0
-    latest_signups: List[Any] = Field(default_factory=list)
+    latest_signups: List[LatestSignupItem] = Field(default_factory=list) # 👈 [개선] List[Any] 대신 명시적 타입 사용
 
 class SocialCallbackRequest(CamelCaseModel):
     code: str
@@ -114,21 +118,21 @@ class PlanFeatureSchema(CamelCaseModel):
     portfolio_backtest_access: bool
 
 class PlanSchema(CamelCaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     price: float
     features: PlanFeatureSchema
 
 class SubscriptionSchema(CamelCaseModel):
-    id: int
-    user_id: int
-    plan_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
+    plan_id: uuid.UUID
     status: str
     current_period_end: Optional[datetime]
     plan: PlanSchema
 
 class User(UserBase):
-    id: int
+    id: uuid.UUID
     is_active: bool
     is_email_verified: bool
     role: str
@@ -136,10 +140,21 @@ class User(UserBase):
     updated_at: Optional[datetime] = None
     subscription: Optional[SubscriptionSchema] = None
     
+# --- UserDashboardSummary 내부용 스키마 정의 ---
+class LatestBacktestItem(CamelCaseModel):
+    id: uuid.UUID
+    status: str
+    created_at: datetime
+
+class LatestLiveBotItem(CamelCaseModel):
+    id: uuid.UUID
+    status: str
+    started_at: datetime
+
 class UserDashboardSummary(CamelCaseModel):
     email: EmailStr
     username: str | None
-    user_id: int
+    user_id: uuid.UUID
     created_at: datetime
     is_email_verified: bool
     current_plan_name: str
@@ -153,11 +168,11 @@ class UserDashboardSummary(CamelCaseModel):
     successful_backtests_by_user: int
     total_live_bots_by_user: int
     active_live_bots_by_user: int
-    latest_backtests: List[Any] = Field(default_factory=list)
-    latest_live_bots: List[Any] = Field(default_factory=list)
+    latest_backtests: List[LatestBacktestItem] = Field(default_factory=list) 
+    latest_live_bots: List[LatestLiveBotItem] = Field(default_factory=list)  
 
 class CheckoutRequest(CamelCaseModel):
-    plan_id: int
+    plan_id: uuid.UUID
 
 class CheckoutResponse(CamelCaseModel):
     checkout_url: str
@@ -261,8 +276,8 @@ class StrategyUpdate(CamelCaseModel):
     target_coins: Optional[List[TargetCoin]] = None
 
 class Strategy(CamelCaseModel):
-    id: int
-    author_id: int
+    id: uuid.UUID
+    author_id: uuid.UUID
     name: str
     description: Optional[str] = None
     is_public: bool
@@ -284,8 +299,8 @@ class ApiKeyCreate(CamelCaseModel):
     is_active: bool = True
 
 class ApiKeyResponse(CamelCaseModel):
-    id: int
-    user_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
     exchange: str
     memo: Optional[str] = None
     is_active: bool
@@ -293,7 +308,7 @@ class ApiKeyResponse(CamelCaseModel):
     updated_at: Optional[datetime] = None
 
 class BacktestCreate(CamelCaseModel):
-    strategy_id: int
+    strategy_id: uuid.UUID
     ticker: str = Field(..., description="Trading pair ticker, e.g., 'BTC/USDT'")
     start_date: datetime = Field(..., description="Start date for backtest period (UTC)")
     end_date: datetime = Field(..., description="End date for backtest period (UTC)")
@@ -319,9 +334,9 @@ class BacktestResultSummary(CamelCaseModel):
     executed_at: Optional[datetime] = None
 
 class Backtest(CamelCaseModel):
-    id: int
-    user_id: int
-    strategy_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
+    strategy_id: uuid.UUID
     status: str
     parameters: Dict[str, Any]
     created_at: datetime
@@ -331,8 +346,8 @@ class Backtest(CamelCaseModel):
     strategy: Optional[Strategy] = None
 
 class LiveBotCreate(CamelCaseModel):
-    strategy_id: int
-    api_key_id: int
+    strategy_id: uuid.UUID
+    api_key_id: uuid.UUID
     initial_capital: Optional[float] = Field(None, ge=0.0, description="Initial capital for the live bot")
     ticker: str = Field(..., description="Trading pair for the bot")
 
@@ -340,10 +355,10 @@ class LiveBotUpdate(CamelCaseModel):
     status: Optional[Literal["active", "paused", "stopped"]] = None
 
 class LiveBot(CamelCaseModel):
-    id: int
-    user_id: int
-    strategy_id: int
-    api_key_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
+    strategy_id: uuid.UUID
+    api_key_id: uuid.UUID
     status: str
     started_at: datetime
     stopped_at: Optional[datetime] = None
@@ -359,7 +374,7 @@ class LiveBot(CamelCaseModel):
 class CommunityPostCreate(CamelCaseModel):
     title: str = Field(..., min_length=5, max_length=255)
     content: str = Field(..., min_length=10)
-    backtest_id: Optional[int] = Field(None, description="Optional ID of backtest result to share")
+    backtest_id: Optional[uuid.UUID] = Field(None, description="Optional ID of backtest result to share")
     is_public: bool = True
 
 class CommunityPostUpdate(CamelCaseModel):
@@ -368,9 +383,9 @@ class CommunityPostUpdate(CamelCaseModel):
     is_public: Optional[bool] = None
 
 class CommunityPostResponse(CamelCaseModel):
-    id: int
-    author_id: int
-    backtest_id: Optional[int] = None
+    id: uuid.UUID
+    author_id: uuid.UUID
+    backtest_id: Optional[uuid.UUID] = None
     title: str
     content: str
     created_at: datetime
@@ -382,9 +397,9 @@ class CommentCreate(CamelCaseModel):
     content: str = Field(..., min_length=1, max_length=500)
 
 class CommentResponse(CamelCaseModel):
-    id: int
-    post_id: int
-    author_id: int
+    id: uuid.UUID
+    post_id: uuid.UUID
+    author_id: uuid.UUID
     content: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -393,8 +408,8 @@ class LikeCreate(CamelCaseModel):
     pass
 
 class LikeResponse(CamelCaseModel):
-    user_id: int
-    post_id: int
+    user_id: uuid.UUID
+    post_id: uuid.UUID
     status: bool = True
 
 # ==============================================================================
