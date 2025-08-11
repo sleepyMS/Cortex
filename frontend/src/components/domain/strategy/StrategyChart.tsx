@@ -82,15 +82,6 @@ export default function StrategyChart({
 
     const newPanes = Array.from(requiredPanes);
 
-    // ====================== 👇 로그 추가 👇 ======================
-    console.log("===== [1단계: StrategyChart] 보조 차트 생성 목록 =====");
-    console.log(
-      "전략 규칙에서 추출된 지표:",
-      indicatorConfigs.map((c) => c.indicatorKey)
-    );
-    console.log("생성될 보조 차트 목록 (newPanes):", newPanes);
-    // ==========================================================
-
     // 실제 패널 목록에 변화가 있을 때만 상태를 업데이트하여 불필요한 리렌더링을 방지합니다.
     setPaneIndicators((prevPanes) =>
       JSON.stringify(prevPanes) !== JSON.stringify(newPanes)
@@ -116,13 +107,13 @@ export default function StrategyChart({
   });
 
   return (
-    <div className="w-full flex flex-col relative">
+    <div className="w-full flex flex-col relative bg-background">
       {/* 범례(Legend) UI */}
       <ChartLegend legendData={legendData} />
 
       {/* 지표 로딩 시 스피너 오버레이 */}
       {isLoadingIndicators && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 rounded-lg">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted">
           <Spinner />
         </div>
       )}

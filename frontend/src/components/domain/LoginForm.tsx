@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { motion, Variants } from "framer-motion";
+// motion과 Variants는 사용되지 않으므로 import 문을 정리합니다.
+// import { motion, Variants } from "framer-motion";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -18,7 +19,8 @@ import { useUserStore } from "@/store/userStore";
 export default function LoginForm() {
   const t = useTranslations("Auth");
   const router = useRouter();
-  const { setTokens } = useUserStore();
+  // 1. 'setTokens' 대신 'loginAndUpdateUser' 액션을 가져옵니다.
+  const loginAndUpdateUser = useUserStore((state) => state.loginAndUpdateUser);
 
   const formSchema = z.object({
     email: z
@@ -47,28 +49,25 @@ export default function LoginForm() {
         },
       });
 
-      if (response.data.access_token) {
-        // 1. 스토어에 토큰만 저장합니다.
-        setTokens({
-          accessToken: response.data.access_token,
-          refreshToken: response.data.refresh_token,
+      const tokens = response.data;
+
+      if (tokens.access_token) {
+        // 2. [핵심 개선] 토큰 저장과 사용자 정보 로딩을 한번에 처리하는 중앙 액션을 호출합니다.
+        await loginAndUpdateUser({
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
         });
 
-        // 2. 대시보드로 리디렉션합니다.
-        // 사용자 정보 fetch는 전역 useReAuth 훅이 자동으로 처리합니다.
+        // 3. 스토어에서 모든 인증 상태 준비가 끝난 후 대시보드로 이동합니다.
         router.push("/dashboard");
       }
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.detail || t("loginFailedGeneric");
+      // UI/UX 개선을 위해 alert 대신 toast를 사용하는 것을 권장합니다.
       alert(`${t("loginFailedPrefix")}: ${errorMessage}`);
     }
   }
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-  };
 
   return (
     <>

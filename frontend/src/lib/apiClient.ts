@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { useUserStore } from "@/store/userStore";
-import { toast } from "sonner"; // 👈 alert 대신 toast를 사용하기 위해 임포트
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
@@ -9,7 +9,7 @@ const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// 요청 인터셉터: 모든 요청에 인증 토큰 추가
+// 요청 인터셉터는 변경 없습니다.
 apiClient.interceptors.request.use(
   (config) => {
     const accessToken = useUserStore.getState().accessToken;
@@ -21,7 +21,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 👈 토큰 갱신 중복 실행을 방지하기 위한 변수
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value: any) => void;
@@ -33,11 +32,8 @@ const processQueue = (
   token: string | null = null
 ) => {
   failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
+    if (error) prom.reject(error);
+    else prom.resolve(token);
   });
   failedQueue = [];
 };
@@ -47,11 +43,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const status = error.response?.status;
-
-    if (status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // 토큰 갱신이 이미 진행 중인 경우, 현재 요청을 큐에 추가하고 대기
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
@@ -67,45 +60,27 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const { refreshToken, setTokens, logout } = useUserStore.getState();
+      try {
+        // [핵심 개선] 스토어의 중앙화된 토큰 갱신 액션을 호출합니다.
+        const newAccessToken = await useUserStore.getState().refreshSession();
 
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken: refreshToken,
-          });
-
-          const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-            response.data;
-
-          setTokens({
-            accessToken: newAccessToken,
-            refreshToken: newRefreshToken,
-          });
-
-          // 새로 받은 토큰으로 원래 요청 헤더를 설정
-          apiClient.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${newAccessToken}`;
+        if (newAccessToken) {
+          // 토큰 갱신 성공 시, 대기 중이던 모든 요청을 새로운 토큰으로 재시도합니다.
+          processQueue(null, newAccessToken);
           originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
-
-          processQueue(null, newAccessToken); // 대기 중인 모든 요청을 성공 처리
-          return apiClient(originalRequest); // 원래 요청 재시도
-        } catch (refreshError) {
-          processQueue(refreshError as AxiosError, null); // 대기 중인 모든 요청을 실패 처리
-          console.error("Refresh token failed:", refreshError);
-          logout();
+          return apiClient(originalRequest);
+        } else {
+          // refreshSession 내부에서 logout이 호출되고 null이 반환된 경우
+          processQueue(error, null);
           toast.error("세션이 만료되었습니다. 다시 로그인해주세요.");
-          window.location.href = "/login";
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
+          if (typeof window !== "undefined") window.location.href = "/login";
+          return Promise.reject(error);
         }
-      } else {
-        logout();
-        toast.error("로그인이 필요합니다.");
-        window.location.href = "/login";
-        return Promise.reject(error);
+      } catch (e) {
+        processQueue(e as AxiosError, null);
+        return Promise.reject(e);
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);

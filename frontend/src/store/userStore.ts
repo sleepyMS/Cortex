@@ -1,6 +1,7 @@
 // file: src/store/userStore.ts
 
 import apiClient from "@/lib/apiClient";
+import axios from "axios";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -61,7 +62,6 @@ interface User {
 }
 
 // --- Zustand 스토어 상태 및 액션 타입 ---
-
 interface State {
   user: User | null;
   accessToken: string | null;
@@ -70,13 +70,14 @@ interface State {
 }
 
 interface Actions {
-  setTokens: (tokens: {
+  loginAndUpdateUser: (tokens: {
     accessToken: string;
     refreshToken?: string | null;
-  }) => void;
-  setUser: (user: User | null) => void;
+  }) => Promise<void>;
+  rehydrateAndSetUser: () => Promise<void>;
   logout: () => void;
-  setAuthInitialized: (isInitialized: boolean) => void;
+  // 토큰 갱신을 전담하는 새로운 중앙 액션
+  refreshSession: () => Promise<string | null>;
 }
 
 const initialState: State = {
@@ -87,52 +88,99 @@ const initialState: State = {
 };
 
 // --- Zustand 스토어 생성 ---
-
 export const useUserStore = create<State & Actions>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
 
-      /**
-       * 액세스 토큰과 리프레시 토큰을 상태에 저장합니다.
-       */
-      setTokens: ({ accessToken, refreshToken }) => {
+      // 로그인 성공 후 호출되는 중앙 액션
+      loginAndUpdateUser: async (tokens) => {
+        const { accessToken, refreshToken } = tokens;
         set({ accessToken, refreshToken });
+        apiClient.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${accessToken}`;
+
+        try {
+          const response = await apiClient.get("/users/me");
+          set({ user: response.data, isAuthInitialized: true });
+        } catch (error) {
+          console.error("로그인 후 사용자 정보 가져오기 실패:", error);
+          get().logout();
+        }
       },
 
-      /**
-       * API로부터 받은 사용자 객체를 상태에 저장합니다.
-       */
-      setUser: (user) => {
-        set({ user });
+      // 페이지 로드/새로고침 시 호출되는 재인증 액션
+      rehydrateAndSetUser: async () => {
+        const { accessToken } = get();
+        if (!accessToken) {
+          set({ isAuthInitialized: true });
+          return;
+        }
+        apiClient.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${accessToken}`;
+
+        try {
+          const response = await apiClient.get("/users/me");
+          set({ user: response.data, isAuthInitialized: true });
+        } catch (error) {
+          console.error("재인증 실패:", error);
+          get().logout();
+        }
       },
 
-      /**
-       * 사용자를 로그아웃 처리하고 모든 인증 관련 상태를 초기화합니다.
-       */
+      // 사용자를 로그아웃 처리하는 액션
       logout: () => {
-        // API 클라이언트의 기본 헤더에서 인증 토큰 제거
         delete apiClient.defaults.headers.common["Authorization"];
-        // 상태를 초기화하되, 인증 절차는 완료되었음을 명시
         set({ ...initialState, isAuthInitialized: true });
       },
 
       /**
-       * 초기 인증 시도(useReAuth)가 완료되었음을 표시합니다.
-       * 이 값은 UI에서 로딩 상태(스켈레톤 UI)를 제어하는 데 사용됩니다.
+       * 토큰 갱신(Refresh) 로직 전체를 책임지는 중앙 액션입니다.
+       * apiClient의 401 인터셉터에서 호출됩니다.
        */
-      setAuthInitialized: (isInitialized) => {
-        set({ isAuthInitialized: isInitialized });
+      refreshSession: async () => {
+        const { refreshToken } = get();
+        if (!refreshToken) {
+          get().logout();
+          return null;
+        }
+
+        try {
+          // 토큰 갱신은 순환 참조를 피하기 위해 apiClient 대신 axios를 직접 사용합니다.
+          const response = await axios.post(
+            `${
+              process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api"
+            }/auth/refresh`,
+            { refreshToken }
+          );
+
+          const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+            response.data;
+
+          set({
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+          });
+
+          // apiClient의 기본 헤더도 새로운 토큰으로 업데이트합니다.
+          apiClient.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${newAccessToken}`;
+
+          // 성공 시, 재요청에 사용할 새로운 액세스 토큰을 반환합니다.
+          return newAccessToken;
+        } catch (error) {
+          console.error("Refresh token failed, logging out:", error);
+          get().logout();
+          return null;
+        }
       },
     }),
     {
-      name: "cortex-auth-storage", // localStorage에 저장될 키 이름
+      name: "cortex-auth-storage",
       storage: createJSONStorage(() => localStorage),
-      /**
-       * 전체 상태 객체 중 accessToken과 refreshToken만 localStorage에 저장합니다.
-       * 사용자 정보(user)는 민감할 수 있고 항상 최신 상태를 유지해야 하므로,
-       * 앱 로딩 시 API를 통해 새로 가져오는 것이 안전합니다.
-       */
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

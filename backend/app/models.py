@@ -1,11 +1,13 @@
 # file: backend/app/models.py
 import enum
+import uuid
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Float, JSON,
     ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
