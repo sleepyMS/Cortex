@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime, timezone
+import uuid
 
 from .. import models, schemas
 from ..services.plan_service import plan_service
@@ -97,7 +98,7 @@ class BacktestService:
     def get_backtests(
         self,
         db: Session,
-        user_id: int,
+        user_id: uuid.UUID,
         skip: int = 0,
         limit: int = 100,
         status_filter: Optional[str] = None,
@@ -127,7 +128,7 @@ class BacktestService:
         logger.info(f"User {user_id} fetched {len(backtests)} backtest records.")
         return backtests
 
-    def get_backtest_by_id(self, db: Session, backtest_id: int) -> models.Backtest | None:
+    def get_backtest_by_id(self, db: Session, backtest_id: uuid.UUID) -> models.Backtest | None:
         """ID로 단일 백테스팅 기록을 조회합니다."""
         backtest = db.query(models.Backtest).options(
             joinedload(models.Backtest.result),
@@ -136,7 +137,7 @@ class BacktestService:
         ).filter(models.Backtest.id == backtest_id).first()
         return backtest
 
-    def get_trade_logs_for_backtest(self, db: Session, backtest_id: int) -> List[models.TradeLog]:
+    def get_trade_logs_for_backtest(self, db: Session, backtest_id: uuid.UUID) -> List[models.TradeLog]:
         """
         특정 백테스트의 거래 기록 목록을 조회합니다.
         """
@@ -144,7 +145,7 @@ class BacktestService:
         logger.info(f"Fetched {len(trade_logs)} trade logs for Backtest ID: {backtest_id}.")
         return trade_logs
 
-    def cancel_backtest_job(self, db: Session, backtest_id: int, user_id: int) -> bool:
+    def cancel_backtest_job(self, db: Session, backtest_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """
         진행 중인 백테스팅 작업을 취소합니다.
         Celery에 취소 명령을 보내고 DB 상태를 업데이트합니다.

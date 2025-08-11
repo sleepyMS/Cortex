@@ -2,8 +2,7 @@
 
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.pool import NullPool, QueuePool # 👈 QueuePool도 임포트 유지
 from dotenv import load_dotenv
 
@@ -39,7 +38,8 @@ engine_celery = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_fastapi)
 
 # 모델의 Base 클래스
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 # DB 세션 의존성 주입 함수 (FastAPI 라우터용)
 def get_db():

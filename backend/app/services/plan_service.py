@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Dict, Any, Literal
+import uuid
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from .. import models, schemas
@@ -75,7 +76,6 @@ class PlanService:
                 db_plan = models.Plan(
                     name=data['name'],
                     price=data['price'],
-                    # 👈 'plan_type' 속성 제거
                 )
                 db.add(db_plan)
                 db.flush()
@@ -106,7 +106,7 @@ class PlanService:
         subscription = user.subscription
         if not subscription:
             return PlanType.BASIC.value
-        return subscription.plan.plan_type.value
+        return subscription.plan.name
 
     def get_user_plan_features(self, user: models.User, db: Session) -> schemas.PlanFeatureSchema:
         """
@@ -131,7 +131,7 @@ class PlanService:
             return "basic"
         return "basic"
 
-    def get_plan_by_id(self, db: Session, plan_id: int) -> models.Plan | None:
+    def get_plan_by_id(self, db: Session, plan_id: uuid.UUID) -> models.Plan | None:
         """ID로 단일 플랜을 조회합니다."""
         return db.query(models.Plan).filter(models.Plan.id == plan_id).options(joinedload(models.Plan.features)).first()
 

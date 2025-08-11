@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError # 고유 제약 조건 위반 시
 from fastapi import HTTPException, status
 import logging
 from typing import List, Dict, Any, Optional
+import uuid
 
 from .. import models, schemas
 
@@ -113,7 +114,7 @@ class CommunityService:
         logger.info(f"Fetched {len(posts)} community posts.")
         return posts
 
-    def get_post_by_id(self, db: Session, post_id: int) -> models.CommunityPost | None:
+    def get_post_by_id(self, db: Session, post_id: uuid.UUID) -> models.CommunityPost | None:
         """
         ID로 단일 게시물을 조회합니다.
         작성자, 백테스트 결과, 댓글 등을 함께 로드합니다.
@@ -126,7 +127,7 @@ class CommunityService:
         ).filter(models.CommunityPost.id == post_id).first()
         return post
 
-    def update_post(self, db: Session, post_id: int, user: models.User, post_update: schemas.CommunityPostUpdate) -> models.CommunityPost:
+    def update_post(self, db: Session, post_id: uuid.UUID, user: models.User, post_update: schemas.CommunityPostUpdate) -> models.CommunityPost:
         """
         게시물을 업데이트합니다. (소유권 또는 관리자 권한 검증 포함)
         """
@@ -150,7 +151,7 @@ class CommunityService:
         logger.info(f"User {user.email} (ID: {user.id}) updated post: '{db_post.title}' (ID: {db_post.id}).")
         return db_post
 
-    def delete_post(self, db: Session, post_id: int, user: models.User) -> bool:
+    def delete_post(self, db: Session, post_id: uuid.UUID, user: models.User) -> bool:
         """
         게시물을 삭제합니다. (소유권 또는 관리자 권한 검증 포함)
         """
@@ -170,7 +171,7 @@ class CommunityService:
 
     # --- 댓글 (Comments) 관련 서비스 함수 ---
 
-    def create_comment(self, db: Session, post_id: int, user: models.User, comment_create: schemas.CommentCreate) -> models.Comment:
+    def create_comment(self, db: Session, post_id: uuid.UUID, user: models.User, comment_create: schemas.CommentCreate) -> models.Comment:
         """
         게시물에 새 댓글을 추가합니다.
         """
@@ -189,7 +190,7 @@ class CommunityService:
         logger.info(f"User {user.email} (ID: {user.id}) commented on post {post_id}.")
         return db_comment
 
-    def get_comments_for_post(self, db: Session, post_id: int, skip: int = 0, limit: int = 100) -> List[models.Comment]:
+    def get_comments_for_post(self, db: Session, post_id: uuid.UUID, skip: int = 0, limit: int = 100) -> List[models.Comment]:
         """
         특정 게시물의 댓글 목록을 조회합니다.
         """
@@ -199,7 +200,7 @@ class CommunityService:
         logger.info(f"Fetched {len(comments)} comments for post {post_id}.")
         return comments
 
-    def delete_comment(self, db: Session, comment_id: int, user: models.User) -> bool:
+    def delete_comment(self, db: Session, comment_id: uuid.UUID, user: models.User) -> bool:
         """
         댓글을 삭제합니다. (소유권 또는 관리자 권한 검증 포함)
         """
@@ -219,7 +220,7 @@ class CommunityService:
 
     # --- 좋아요 (Likes) 관련 서비스 함수 ---
 
-    def toggle_like(self, db: Session, post_id: int, user: models.User) -> schemas.LikeResponse:
+    def toggle_like(self, db: Session, post_id: uuid.UUID, user: models.User) -> schemas.LikeResponse:
         """
         게시물에 '좋아요'를 추가하거나 취소합니다. (토글 기능)
         """

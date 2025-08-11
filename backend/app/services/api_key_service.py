@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 import logging
 from typing import List, Dict, Optional
+import uuid
 
 from .. import models, schemas
 from ..security import encrypt_data, decrypt_data # 👈 암호화/복호화 함수 임포트
@@ -15,7 +16,7 @@ class ApiKeyService:
     사용자 거래소 API 키의 CRUD 및 암호화/복호화를 담당하는 서비스.
     """
 
-    def create_api_key(self, db: Session, user_id: int, api_key_create: schemas.ApiKeyCreate) -> models.ApiKey:
+    def create_api_key(self, db: Session, user_id: uuid.UUID, api_key_create: schemas.ApiKeyCreate) -> models.ApiKey:
         """
         새로운 API 키를 암호화하여 데이터베이스에 저장합니다.
         동일한 사용자-거래소 쌍에 대한 중복 키를 방지합니다.
@@ -58,7 +59,7 @@ class ApiKeyService:
         logger.info(f"User {user_id} successfully added API key for {api_key_create.exchange} (ID: {db_api_key.id}).")
         return db_api_key
 
-    def get_api_keys(self, db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[models.ApiKey]:
+    def get_api_keys(self, db: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100) -> List[models.ApiKey]:
         """
         사용자의 API 키 목록을 조회합니다. 민감 정보는 마스킹된 스키마로 반환되어야 합니다.
         """
@@ -66,11 +67,11 @@ class ApiKeyService:
         logger.info(f"User {user_id} fetched {len(api_keys)} API keys.")
         return api_keys
 
-    def get_api_key_by_id(self, db: Session, api_key_id: int) -> models.ApiKey | None:
+    def get_api_key_by_id(self, db: Session, api_key_id: uuid.UUID) -> models.ApiKey | None:
         """ID로 단일 API 키 레코드를 조회합니다."""
         return db.query(models.ApiKey).filter(models.ApiKey.id == api_key_id).first()
 
-    def delete_api_key(self, db: Session, api_key_id: int, user_id: int) -> bool:
+    def delete_api_key(self, db: Session, api_key_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """
         사용자의 특정 API 키를 삭제합니다. (소유권 검증 포함)
         """
@@ -96,7 +97,7 @@ class ApiKeyService:
         logger.info(f"User {user_id} deleted API key {api_key_id} for {db_api_key.exchange}.")
         return True
 
-    def get_decrypted_api_key_pair(self, db: Session, api_key_id: int, user_id: int) -> Dict[str, str]:
+    def get_decrypted_api_key_pair(self, db: Session, api_key_id: uuid.UUID, user_id: uuid.UUID) -> Dict[str, str]:
         """
         지정된 API 키를 조회하고 복호화하여 평문 API 키와 Secret 키를 반환합니다.
         주로 LiveBot 실행과 같은 내부 서비스에서 사용됩니다.

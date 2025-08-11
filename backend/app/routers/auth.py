@@ -1,7 +1,7 @@
 # file: backend/app/routers/auth.py
 
 from fastapi import APIRouter, HTTPException, Depends, status, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from datetime import datetime, timedelta, timezone

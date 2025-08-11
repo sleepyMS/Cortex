@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
+import uuid
 
 from .. import models, schemas
 from ..security import get_password_hash # 비밀번호 해싱 (필요 시)
@@ -16,7 +17,7 @@ class SubscriptionService:
     사용자 구독 정보 조회 및 결제 웹훅 이벤트를 처리하여
     Subscription 모델을 업데이트하는 서비스.
     """
-    def get_user_subscription(self, db: Session, user_id: int) -> models.Subscription | None:
+    def get_user_subscription(self, db: Session, user_id: uuid.UUID) -> models.Subscription | None:
         """
         특정 사용자의 현재 구독 정보를 조회합니다.
         """

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Literal
+import uuid
 
 from .. import models, schemas
 from ..services.plan_service import plan_service
@@ -140,7 +141,7 @@ class StrategyService:
     def get_strategies(
         self,
         db: Session,
-        user_id: int,
+        user_id: uuid.UUID,
         skip: int = 0,
         limit: int = 100,
         search_query: Optional[str] = None,
@@ -170,7 +171,7 @@ class StrategyService:
         logger.info(f"User ID {user_id} fetched {len(strategies)} strategies.")
         return strategies
 
-    def get_strategy_by_id(self, db: Session, strategy_id: int) -> models.Strategy | None:
+    def get_strategy_by_id(self, db: Session, strategy_id: uuid.UUID) -> models.Strategy | None:
         strategy = db.query(models.Strategy).options(
             joinedload(models.Strategy.author)
         ).filter(models.Strategy.id == strategy_id).first()
@@ -180,7 +181,7 @@ class StrategyService:
     def update_strategy(
         self,
         db: Session,
-        strategy_id: int,
+        strategy_id: uuid.UUID,
         user: models.User,
         strategy_update: schemas.StrategyUpdate
     ) -> models.Strategy:
@@ -234,7 +235,7 @@ class StrategyService:
                 detail="전략 업데이트 중 서버 오류가 발생했습니다."
             )
 
-    def delete_strategy(self, db: Session, strategy_id: int, user: models.User) -> bool:
+    def delete_strategy(self, db: Session, strategy_id: uuid.UUID, user: models.User) -> bool:
         db_strategy = self.get_strategy_by_id(db, strategy_id)
         if not db_strategy:
             return False

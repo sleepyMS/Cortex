@@ -6,10 +6,13 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from .database import get_db, SessionLocal
-from . import models, schemas
+from . import models, schemas, security
 import os
 from datetime import datetime, timedelta
 from typing import Annotated, Generator, Optional
+from typing import Type, TypeVar
+from .database import Base
+import uuid
 
 # OAuth2PasswordBearer: 토큰이 "Bearer {token}" 형식으로 전송되는 것을 기대
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -115,3 +118,109 @@ def get_current_active_admin_user(current_user: models.User = Depends(get_curren
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
     return current_user
+
+
+# 소유권 검증 의존성을 생성하는 팩토리 함수
+ModelType = TypeVar("ModelType", bound=Base)
+
+def get_verified_strategy(
+    strategy_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.Strategy:
+    """ID로 전략을 조회하고, 현재 사용자가 소유주(author)인지 검증합니다."""
+    strategy = db.query(models.Strategy).filter(models.Strategy.id == strategy_id).first()
+    if not strategy:
+        raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
+    if strategy.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+    return strategy
+
+def get_verified_backtest(
+    backtest_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.Backtest:
+    """ID로 백테스트를 조회하고, 현재 사용자가 소유주(user)인지 검증합니다."""
+    backtest = db.query(models.Backtest).filter(models.Backtest.id == backtest_id).first()
+    if not backtest:
+        raise HTTPException(status_code=404, detail="백테스트를 찾을 수 없습니다.")
+    if backtest.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+    return backtest
+
+def get_verified_api_key(
+    api_key_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.ApiKey:
+    """ID로 API 키를 조회하고, 현재 사용자가 소유주인지 검증합니다."""
+    api_key = db.query(models.ApiKey).filter(models.ApiKey.id == api_key_id).first()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API 키를 찾을 수 없습니다.")
+    if api_key.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+    return api_key
+
+def get_verified_live_bot(
+    live_bot_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.LiveBot:
+    """ID로 자동매매 봇을 조회하고, 현재 사용자가 소유주인지 검증합니다."""
+    live_bot = db.query(models.LiveBot).filter(models.LiveBot.id == live_bot_id).first()
+    if not live_bot:
+        raise HTTPException(status_code=404, detail="자동매매 봇을 찾을 수 없습니다.")
+    if live_bot.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+    return live_bot
+
+def get_verified_community_post(
+    community_post_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.CommunityPost:
+    """ID로 커뮤니티 게시글을 조회하고, 현재 사용자가 소유주(author)인지 검증합니다."""
+    post = db.query(models.CommunityPost).filter(models.CommunityPost.id == community_post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
+    if post.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+    return post
+
+########### 게시물 조회 권환 확인 ###########
+def get_viewable_post(
+    post_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(security.get_current_user) # 비로그인 유저도 허용
+) -> models.CommunityPost:
+    """
+    게시물을 조회할 권한이 있는지 (공개 게시물, 또는 비공개라도 소유주/관리자) 검증합니다.
+    """
+    post = db.query(models.CommunityPost).filter(models.CommunityPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="게시물을 찾을 수 없습니다.")
+
+    # 공개 게시물이면 누구나 통과
+    if post.is_public:
+        return post
+
+    # 비공개 게시물일 경우, 로그인 상태이고 소유주이거나 관리자인지 확인
+    if not current_user or (post.author_id != current_user.id and current_user.role != "admin"):
+        raise HTTPException(status_code=403, detail="이 게시물을 조회할 권한이 없습니다.")
+    
+    return post
+########### 게시물 조회 권환 확인 끝 ###########
+
+def get_verified_comment(
+    comment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.Comment:
+    """ID로 댓글을 조회하고, 현재 사용자가 소유주(author)인지 검증합니다."""
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="댓글을 찾을 수 없습니다.")
+    if comment.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+    return comment

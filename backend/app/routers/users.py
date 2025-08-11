@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 import logging
 from typing import List, Optional
 from datetime import datetime, timezone
+import uuid
 
 from backend.app import schemas, models, security
 from backend.app.database import get_db
@@ -218,7 +219,7 @@ async def list_users(
 
 @router.get("/{user_id}", response_model=schemas.User, summary="Get user profile by ID (Admin only)")
 async def read_user_by_id(
-    user_id: int,
+    user_id: uuid.UUID,
     # 👈 함수 이름 변경에 맞춤
     current_admin_user: models.User = Depends(security.get_current_admin_user),
     db: Session = Depends(get_db)
@@ -235,7 +236,7 @@ async def read_user_by_id(
 
 @router.put("/{user_id}", response_model=schemas.User, summary="Update user profile by ID (Admin only)")
 async def update_user_by_id(
-    user_id: int,
+    user_id: uuid.UUID,
     user_update: schemas.UserAdminUpdate,
     # 👈 함수 이름 변경에 맞춤
     current_admin_user: models.User = Depends(security.get_current_admin_user),
@@ -260,7 +261,7 @@ async def update_user_by_id(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete user by ID (Admin only)")
 async def delete_user_by_id(
-    user_id: int,
+    user_id: uuid.UUID,
     # 👈 함수 이름 변경에 맞춤
     current_admin_user: models.User = Depends(security.get_current_admin_user),
     db: Session = Depends(get_db)

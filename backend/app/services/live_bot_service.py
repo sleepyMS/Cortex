@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime, timezone
+import uuid
 
 from .. import models, schemas
 from ..services.plan_service import plan_service
@@ -94,7 +95,7 @@ class LiveBotService:
     def get_live_bots(
         self,
         db: Session,
-        user_id: int,
+        user_id: uuid.UUID,
         skip: int = 0,
         limit: int = 100,
         status_filter: Optional[str] = None,
@@ -119,7 +120,7 @@ class LiveBotService:
         logger.info(f"User {user_id} fetched {len(live_bots)} live bot records.")
         return live_bots
 
-    def get_live_bot_by_id(self, db: Session, bot_id: int) -> models.LiveBot | None:
+    def get_live_bot_by_id(self, db: Session, bot_id: uuid.UUID) -> models.LiveBot | None:
         """ID로 단일 라이브 봇 기록을 조회합니다."""
         live_bot = db.query(models.LiveBot).options(
             joinedload(models.LiveBot.strategy),
@@ -130,8 +131,8 @@ class LiveBotService:
     def update_live_bot_status(
         self,
         db: Session,
-        bot_id: int,
-        user_id: int,
+        bot_id: uuid.UUID,
+        user_id: uuid.UUID,
         new_status: Literal["active", "paused", "stopped"]
     ) -> models.LiveBot:
         """
@@ -172,7 +173,7 @@ class LiveBotService:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="봇 제어 명령에 실패했습니다.")
 
 
-    def delete_live_bot(self, db: Session, bot_id: int, user_id: int) -> bool:
+    def delete_live_bot(self, db: Session, bot_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """
         라이브 봇을 삭제합니다. 봇이 활성 상태인 경우 먼저 중지 명령을 보냅니다.
         """

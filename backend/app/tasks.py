@@ -1,11 +1,11 @@
 from celery import Celery
 from sqlalchemy.orm import Session
-from sqlalchemy import text # 👈 text 임포트 추가
+from sqlalchemy import text
 import logging
 from datetime import datetime, timezone
 import time
+import uuid
 
-# 🔽 ccxt 임포트
 import ccxt
 
 from .celery_app import celery_app
@@ -90,7 +90,7 @@ def fetch_and_store_ohlcv_task(self, ticker: str, timeframe: str, since: int = N
             db.close()
 
 @celery_app.task(bind=True, default_retry_delay=300, max_retries=3)
-def run_backtest_task(self, backtest_id: int):
+def run_backtest_task(self, backtest_id: uuid.UUID):
     """
     실제 백테스팅 시뮬레이션을 실행하는 Celery 태스크.
     장시간 소요되는 작업이므로 비동기로 처리됩니다.
@@ -176,7 +176,7 @@ def run_backtest_task(self, backtest_id: int):
 
 
 @celery_app.task(bind=True, default_retry_delay=30, max_retries=5)
-def run_live_bot_task(self, bot_id: int):
+def run_live_bot_task(self, bot_id: uuid.UUID):
     db: Session = None
     try:
         # 👈 Celery 태스크 내에서는 Celery 전용 엔진을 바인딩하여 세션 생성

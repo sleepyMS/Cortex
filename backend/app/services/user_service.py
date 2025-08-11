@@ -4,13 +4,14 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 import logging
 from typing import List, Optional
+import uuid
 
 from .. import models, schemas
 from ..security import get_password_hash, verify_password # 비밀번호 해싱/검증 임포트
 
 logger = logging.getLogger(__name__)
 
-def get_user_by_id(db: Session, user_id: int) -> models.User | None:
+def get_user_by_id(db: Session, user_id: uuid.UUID) -> models.User | None:
     """ID로 사용자를 조회합니다."""
     return db.query(models.User).filter(models.User.id == user_id).first()
 
@@ -79,7 +80,7 @@ def update_user_password(db: Session, user: models.User, password_update: schema
     logger.info(f"User ID {user.id} password updated successfully.")
     return user
 
-def admin_update_user(db: Session, user_id: int, user_admin_update: schemas.UserAdminUpdate) -> models.User:
+def admin_update_user(db: Session, user_id: uuid.UUID, user_admin_update: schemas.UserAdminUpdate) -> models.User:
     """
     관리자 권한으로 특정 사용자 정보를 업데이트합니다.
     """
@@ -103,7 +104,7 @@ def admin_update_user(db: Session, user_id: int, user_admin_update: schemas.User
     return db_user
 
 
-def delete_user(db: Session, user_id: int) -> bool:
+def delete_user(db: Session, user_id: uuid.UUID) -> bool:
     """
     사용자를 삭제합니다.
     CASCADE 옵션에 따라 연관된 데이터(전략, 백테스트 등)도 함께 삭제됩니다.
