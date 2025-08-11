@@ -175,20 +175,20 @@ def get_verified_live_bot(
         raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
     return live_bot
 
-def get_verified_community_post(
-    community_post_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
-) -> models.CommunityPost:
-    """ID로 커뮤니티 게시글을 조회하고, 현재 사용자가 소유주(author)인지 검증합니다."""
-    post = db.query(models.CommunityPost).filter(models.CommunityPost.id == community_post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
-    if post.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
-    return post
+###################### 게시물 관리 권환 확인 ######################
+# def get_verified_community_post(
+#     community_post_id: uuid.UUID,
+#     db: Session = Depends(get_db),
+#     current_user: models.User = Depends(get_current_active_user)
+# ) -> models.CommunityPost:
+#     """ID로 커뮤니티 게시글을 조회하고, 현재 사용자가 소유주(author)인지 검증합니다."""
+#     post = db.query(models.CommunityPost).filter(models.CommunityPost.id == community_post_id).first()
+#     if not post:
+#         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
+#     if post.author_id != current_user.id:
+#         raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
+#     return post
 
-########### 게시물 조회 권환 확인 ###########
 def get_viewable_post(
     post_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -210,7 +210,39 @@ def get_viewable_post(
         raise HTTPException(status_code=403, detail="이 게시물을 조회할 권한이 없습니다.")
     
     return post
-########### 게시물 조회 권환 확인 끝 ###########
+
+def get_post_for_modification(
+    post_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.CommunityPost:
+    """게시물을 수정/삭제할 권한이 있는지 (소유주 또는 관리자) 검증합니다."""
+    post = db.query(models.CommunityPost).filter(models.CommunityPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="게시물을 찾을 수 없습니다.")
+    
+    # 소유주가 아니고 관리자도 아니면, 403 에러 발생
+    if post.author_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="이 게시물을 수정/삭제할 권한이 없습니다.")
+    
+    return post
+
+def get_comment_for_modification(
+    comment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.Comment:
+    """댓글을 수정/삭제할 권한이 있는지 (소유주 또는 관리자) 검증합니다."""
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="댓글을 찾을 수 없습니다.")
+        
+    # 소유주가 아니고 관리자도 아니면, 403 에러 발생
+    if comment.author_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="이 댓글을 수정/삭제할 권한이 없습니다.")
+        
+    return comment
+###################### 게시물 관리 권환 확인 끝 ######################
 
 def get_verified_comment(
     comment_id: uuid.UUID,

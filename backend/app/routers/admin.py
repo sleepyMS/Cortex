@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
 import logging
 from typing import List, Optional
+import uuid
 
 from .. import schemas, models, security
 from ..database import get_db
@@ -54,7 +55,7 @@ async def get_all_strategies_admin(
     search_query: Optional[str] = Query(None, description="Search by strategy name"),
     sort_by: Optional[str] = Query(None, description="Sort order (e.g., 'created_at_desc', 'updated_at_desc')"),
     is_public: Optional[bool] = Query(None, description="Filter by public status"),
-    author_id: Optional[int] = Query(None, description="Filter by author ID")
+    author_id: Optional[uuid.UUID] = Query(None, description="Filter by author ID")
 ):
     """
     관리자가 모든 사용자의 전략 목록을 조회합니다.

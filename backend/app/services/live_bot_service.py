@@ -99,7 +99,7 @@ class LiveBotService:
         skip: int = 0,
         limit: int = 100,
         status_filter: Optional[str] = None,
-        strategy_id_filter: Optional[int] = None
+        strategy_id_filter: Optional[uuid.UUID] = None
     ) -> List[models.LiveBot]:
         """
         사용자 본인의 라이브 봇 목록을 조회합니다.
@@ -131,70 +131,58 @@ class LiveBotService:
     def update_live_bot_status(
         self,
         db: Session,
-        bot_id: uuid.UUID,
-        user_id: uuid.UUID,
+        bot_to_update: models.LiveBot,
         new_status: Literal["active", "paused", "stopped"]
     ) -> models.LiveBot:
         """
-        라이브 봇의 상태를 업데이트합니다. Celery에 명령을 보내고 DB 상태를 반영합니다.
+        라이브 봇의 상태를 업데이트합니다.
+        (라우터에서 봇 소유권 검증이 완료되었다고 가정합니다.)
         """
-        db_live_bot = self.get_live_bot_by_id(db, bot_id)
-        if not db_live_bot:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="봇을 찾을 수 없습니다.")
-        if db_live_bot.user_id != user_id:
-            logger.warning(f"User {user_id} attempted to update status of bot {bot_id} not owned by them.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 봇을 제어할 권한이 없습니다.")
+        if bot_to_update.status == new_status:
+            return bot_to_update
         
-        if db_live_bot.status == new_status:
-            logger.info(f"LiveBot ID {bot_id} already in status '{new_status}'. No action taken.")
-            return db_live_bot
-        
-        if db_live_bot.status == 'stopped' or db_live_bot.status == 'error':
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"'{db_live_bot.status}' 상태의 봇은 제어할 수 없습니다. (재배포 필요)")
+        if bot_to_update.status in ['stopped', 'error']:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"'{bot_to_update.status}' 상태의 봇은 제어할 수 없습니다.")
 
         try:
             task_control = celery_app.control
             if new_status == "stopped":
-                task_control.revoke(str(db_live_bot.id), terminate=True)
-                db_live_bot.stopped_at = datetime.now(timezone.utc)
-                logger.info(f"LiveBot ID {bot_id} received 'stop' command. Task revoked.")
-            elif new_status == "paused":
-                logger.info(f"LiveBot ID {bot_id} status set to 'paused'.")
-            elif new_status == "active":
-                logger.info(f"LiveBot ID {bot_id} status set to 'active'.")
+                task_control.revoke(str(bot_to_update.id), terminate=True)
+                bot_to_update.stopped_at = datetime.now(timezone.utc)
+                logger.info(f"LiveBot ID {bot_to_update.id} received 'stop' command.")
             
-            db_live_bot.status = new_status
-            db_live_bot.updated_at = datetime.now(timezone.utc)
-            db.add(db_live_bot)
-            logger.info(f"LiveBot ID {bot_id} status updated to '{new_status}'.")
-            return db_live_bot
+            bot_to_update.status = new_status
+            db.add(bot_to_update)
+            db.flush()
+            db.refresh(bot_to_update)
+            logger.info(f"LiveBot ID {bot_to_update.id} status updated to '{new_status}'.")
+            return bot_to_update
         except Exception as e:
-            logger.error(f"Failed to send control command for LiveBot {bot_id} to Celery: {e}", exc_info=True)
+            logger.error(f"Failed to send control command for LiveBot {bot_to_update.id} to Celery: {e}", exc_info=True)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="봇 제어 명령에 실패했습니다.")
 
 
-    def delete_live_bot(self, db: Session, bot_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    def delete_live_bot(
+        self,
+        db: Session,
+        bot_to_delete: models.LiveBot
+    ) -> None:
         """
-        라이브 봇을 삭제합니다. 봇이 활성 상태인 경우 먼저 중지 명령을 보냅니다.
+        라이브 봇을 삭제합니다.
+        (라우터에서 봇 소유권 검증이 완료되었다고 가정합니다.)
         """
-        db_live_bot = self.get_live_bot_by_id(db, bot_id)
-        if not db_live_bot:
-            return False
-        if db_live_bot.user_id != user_id:
-            logger.warning(f"User {user_id} attempted to delete bot {bot_id} not owned by them.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 봇을 삭제할 권한이 없습니다.")
-        
-        if db_live_bot.status in ['active', 'paused', 'initializing']:
-            logger.info(f"LiveBot ID {bot_id} is active. Attempting to stop before deletion.")
+        if bot_to_delete.status in ['active', 'paused', 'initializing']:
+            logger.info(f"LiveBot ID {bot_to_delete.id} is active. Attempting to stop before deletion.")
             try:
-                self.update_live_bot_status(db, bot_id, user_id, "stopped")
+                # [개선] 내부 함수 호출 시에도 변경된 시그니처에 맞게 호출합니다.
+                self.update_live_bot_status(db, bot_to_delete, "stopped")
             except Exception as e:
-                logger.error(f"Failed to stop LiveBot {bot_id} before deletion: {e}", exc_info=True)
+                logger.error(f"Failed to stop LiveBot {bot_to_delete.id} before deletion: {e}", exc_info=True)
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="봇 삭제 전 중지 실패. 먼저 수동으로 봇을 중지해주세요.")
         
-        db.delete(db_live_bot)
-        db.commit()
-        logger.info(f"User {user_id} deleted LiveBot: {db_live_bot.id} (Strategy: {db_live_bot.strategy_id}).")
-        return True
+        db.delete(bot_to_delete)
+        db.flush()
+        logger.info(f"User {bot_to_delete.user_id} deleted LiveBot: {bot_to_delete.id}.")
+        return
 
 live_bot_service = LiveBotService()

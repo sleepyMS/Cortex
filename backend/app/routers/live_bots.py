@@ -27,12 +27,16 @@ async def create_live_bot(
 ):
     """
     새로운 자동매매 봇을 배포하고 시작합니다.
+    플랜 제한, 전략/API 키 유효성 및 소유권 검사는 서비스 계층에서 모두 처리됩니다.
     """
     try:
+        # 3. 서비스 함수에 필요한 모든 정보를 그대로 전달합니다.
+        # 서비스 함수 내부에서 strategy_id, api_key_id의 유효성과 소유권을 모두 검증할 것입니다.
         new_bot = await live_bot_service.create_live_bot(db, current_user, live_bot_create)
+        
         db.commit()
         db.refresh(new_bot)
-        logger.info(f"Live bot (ID: {new_bot.id}) deployed for user {current_user.email} with strategy ID: {new_bot.strategy_id} and API Key ID: {new_bot.api_key_id}.")
+        logger.info(f"Live bot (ID: {new_bot.id}) deployed for user {current_user.email}.")
         return new_bot
     except HTTPException as e:
         db.rollback()
@@ -40,7 +44,7 @@ async def create_live_bot(
         raise e
     except Exception as e:
         db.rollback()
-        logger.error(f"An unexpected error occurred while creating live bot for user {current_user.email}: {e}", exc_info=True)
+        logger.error(f"An unexpected error occurred while creating live bot: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="라이브 봇 배포 중 서버 오류가 발생했습니다."

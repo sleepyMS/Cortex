@@ -7,7 +7,7 @@ from typing import List, Optional
 import uuid
 
 from .. import schemas, models, security
-from ..dependencies import get_verified_community_post, get_verified_comment, get_viewable_post
+from ..dependencies import get_post_for_modification, get_verified_comment, get_viewable_post
 from ..database import get_db
 from ..services.community_service import community_service
 
@@ -66,8 +66,8 @@ async def get_post_by_id(
 @router.put("/posts/{post_id}", response_model=schemas.CommunityPostResponse, summary="Update a specific community post")
 async def update_post(
     post_update: schemas.CommunityPostUpdate,
-    # 'get_verified_community_post'가 '소유주'만 허용하는 엄격한 검증을 처리합니다.
-    post_to_update: models.CommunityPost = Depends(get_verified_community_post),
+    # 'get_post_for_modification'가 '소유주'만 허용하는 엄격한 검증을 처리합니다.
+    post_to_update: models.CommunityPost = Depends(get_post_for_modification),
     db: Session = Depends(get_db)
 ):
     """특정 ID의 게시물을 업데이트합니다. (소유권 자동 검증)"""
@@ -88,8 +88,8 @@ async def update_post(
 # 소유권 검증 로직을 의존성 주입으로 대체
 @router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a specific community post")
 async def delete_post(
-    # 'get_verified_community_post'가 '소유주'만 허용하는 엄격한 검증을 처리합니다.
-    post_to_delete: models.CommunityPost = Depends(get_verified_community_post),
+    # 'get_post_for_modification'가 '소유주'만 허용하는 엄격한 검증을 처리합니다.
+    post_to_delete: models.CommunityPost = Depends(get_post_for_modification),
     db: Session = Depends(get_db)
 ):
     """특정 ID의 게시물을 삭제합니다. (소유권 자동 검증)"""

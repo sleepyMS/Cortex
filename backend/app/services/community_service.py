@@ -62,7 +62,7 @@ class CommunityService:
         limit: int = 100,
         search_query: Optional[str] = None,
         sort_by: Optional[str] = None, # 'created_at_desc', 'likes_count_desc'
-        author_id: Optional[int] = None,
+        author_id: Optional[uuid.UUID] = None,
         current_user: Optional[models.User] = None, # 비인증 사용자도 조회 가능해야 하므로 Optional
         include_private: bool = False # 관리자용 또는 본인 비공개 조회용
     ) -> List[models.CommunityPost]:
@@ -127,47 +127,39 @@ class CommunityService:
         ).filter(models.CommunityPost.id == post_id).first()
         return post
 
-    def update_post(self, db: Session, post_id: uuid.UUID, user: models.User, post_update: schemas.CommunityPostUpdate) -> models.CommunityPost:
+    def update_post(
+        self,
+        db: Session,
+        post_to_update: models.CommunityPost,
+        post_update_data: schemas.CommunityPostUpdate
+    ) -> models.CommunityPost:
         """
-        게시물을 업데이트합니다. (소유권 또는 관리자 권한 검증 포함)
+        게시물을 업데이트합니다.
+        (라우터의 의존성 계층에서 소유권/관리자 권한 검증이 완료되었다고 가정합니다.)
         """
-        db_post = self.get_post_by_id(db, post_id)
-        if not db_post:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="게시물을 찾을 수 없습니다.")
-        
-        # 소유자 또는 관리자만 수정 가능
-        if db_post.author_id != user.id and user.role != "admin":
-            logger.warning(f"User {user.email} (ID: {user.id}) attempted to update post {post_id} not owned by them and is not admin.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 게시물을 수정할 권한이 없습니다.")
-
-        update_data = post_update.model_dump(exclude_unset=True)
-        
+        update_data = post_update_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
-            setattr(db_post, key, value)
+            setattr(post_to_update, key, value)
         
-        db.add(db_post)
-        db.commit() # 변경사항 커밋
-        db.refresh(db_post)
-        logger.info(f"User {user.email} (ID: {user.id}) updated post: '{db_post.title}' (ID: {db_post.id}).")
-        return db_post
+        db.add(post_to_update)
+        db.flush()
+        db.refresh(post_to_update)
+        logger.info(f"Post {post_to_update.id} updated by user {post_to_update.author_id}.")
+        return post_to_update
 
-    def delete_post(self, db: Session, post_id: uuid.UUID, user: models.User) -> bool:
+    def delete_post(
+        self,
+        db: Session,
+        post_to_delete: models.CommunityPost
+    ) -> None:
         """
-        게시물을 삭제합니다. (소유권 또는 관리자 권한 검증 포함)
+        게시물을 삭제합니다.
+        (라우터의 의존성 계층에서 소유권/관리자 권한 검증이 완료되었다고 가정합니다.)
         """
-        db_post = self.get_post_by_id(db, post_id)
-        if not db_post:
-            return False # 삭제할 게시물 없음
-        
-        # 소유자 또는 관리자만 삭제 가능
-        if db_post.author_id != user.id and user.role != "admin":
-            logger.warning(f"User {user.email} (ID: {user.id}) attempted to delete post {post_id} not owned by them and is not admin.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 게시물을 삭제할 권한이 없습니다.")
-
-        db.delete(db_post)
-        db.commit()
-        logger.info(f"User {user.email} (ID: {user.id}) deleted post ID: {db_post.id}.")
-        return True
+        db.delete(post_to_delete)
+        db.flush()
+        logger.info(f"Post {post_to_delete.id} deleted by user {post_to_delete.author_id}.")
+        return
 
     # --- 댓글 (Comments) 관련 서비스 함수 ---
 
@@ -200,23 +192,19 @@ class CommunityService:
         logger.info(f"Fetched {len(comments)} comments for post {post_id}.")
         return comments
 
-    def delete_comment(self, db: Session, comment_id: uuid.UUID, user: models.User) -> bool:
+    def delete_comment(
+        self,
+        db: Session,
+        comment_to_delete: models.Comment
+    ) -> None:
         """
-        댓글을 삭제합니다. (소유권 또는 관리자 권한 검증 포함)
+        댓글을 삭제합니다.
+        (라우터의 의존성 계층에서 소유권/관리자 권한 검증이 완료되었다고 가정합니다.)
         """
-        db_comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
-        if not db_comment:
-            return False # 삭제할 댓글 없음
-        
-        # 소유자 또는 관리자만 삭제 가능
-        if db_comment.author_id != user.id and user.role != "admin":
-            logger.warning(f"User {user.email} (ID: {user.id}) attempted to delete comment {comment_id} not owned by them and is not admin.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 댓글을 삭제할 권한이 없습니다.")
-
-        db.delete(db_comment)
-        db.commit()
-        logger.info(f"User {user.email} (ID: {user.id}) deleted comment ID: {db_comment.id}.")
-        return True
+        db.delete(comment_to_delete)
+        db.flush()
+        logger.info(f"Comment {comment_to_delete.id} deleted by user {comment_to_delete.author_id}.")
+        return
 
     # --- 좋아요 (Likes) 관련 서비스 함수 ---
 

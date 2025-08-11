@@ -71,55 +71,48 @@ class ApiKeyService:
         """ID로 단일 API 키 레코드를 조회합니다."""
         return db.query(models.ApiKey).filter(models.ApiKey.id == api_key_id).first()
 
-    def delete_api_key(self, db: Session, api_key_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    def delete_api_key(
+        self,
+        db: Session,
+        api_key_to_delete: models.ApiKey
+    ) -> None:
         """
-        사용자의 특정 API 키를 삭제합니다. (소유권 검증 포함)
+        사용자의 특정 API 키를 삭제합니다.
+        (라우터의 의존성 계층에서 소유권 검증이 완료되었다고 가정합니다.)
         """
-        db_api_key = self.get_api_key_by_id(db, api_key_id)
-        if not db_api_key:
-            return False # 삭제할 키 없음
-        if db_api_key.user_id != user_id:
-            logger.warning(f"User {user_id} attempted to delete API key {api_key_id} not owned by them.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 API 키를 삭제할 권한이 없습니다.")
-        
-        # 🚨 중요: 이 API 키를 사용하는 LiveBot이 있는지 확인하고 처리 (비즈니스 로직)
         active_bots_using_key = db.query(models.LiveBot).filter(
-            models.LiveBot.api_key_id == api_key_id,
-            models.LiveBot.status.in_(['active', 'paused', 'initializing']) # 활성 상태 봇
+            models.LiveBot.api_key_id == api_key_to_delete.id,
+            models.LiveBot.status.in_(['active', 'paused', 'initializing'])
         ).first()
 
         if active_bots_using_key:
-            logger.warning(f"User {user_id} attempted to delete API key {api_key_id} which is used by active bot {active_bots_using_key.id}.")
+            logger.warning(f"User {api_key_to_delete.user_id} attempted to delete API key {api_key_to_delete.id} which is used by active bot {active_bots_using_key.id}.")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이 API 키를 사용하는 활성 봇이 있습니다. 먼저 봇을 중지하거나 삭제해주세요.")
 
-        db.delete(db_api_key)
-        db.commit()
-        logger.info(f"User {user_id} deleted API key {api_key_id} for {db_api_key.exchange}.")
-        return True
+        db.delete(api_key_to_delete)
+        db.flush() # 라우터에서 commit을 하므로 flush만 수행
+        logger.info(f"User {api_key_to_delete.user_id} deleted API key {api_key_to_delete.id} for {api_key_to_delete.exchange}.")
+        return
 
-    def get_decrypted_api_key_pair(self, db: Session, api_key_id: uuid.UUID, user_id: uuid.UUID) -> Dict[str, str]:
+    def get_decrypted_api_key_pair(
+        self,
+        db: Session,
+        api_key_record: models.ApiKey
+    ) -> Dict[str, str]:
         """
-        지정된 API 키를 조회하고 복호화하여 평문 API 키와 Secret 키를 반환합니다.
-        주로 LiveBot 실행과 같은 내부 서비스에서 사용됩니다.
+        검증된 API 키 레코드를 받아 복호화된 키 쌍을 반환합니다.
+        (이 함수를 호출하는 상위 서비스나 라우터에서 소유권 검증이 완료되었다고 가정합니다.)
         """
-        api_key_record = self.get_api_key_by_id(db, api_key_id)
-        if not api_key_record:
-            logger.error(f"Attempt to decrypt non-existent API key ID: {api_key_id} by user {user_id}.")
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API 키를 찾을 수 없습니다.")
-        if api_key_record.user_id != user_id:
-            logger.warning(f"Unauthorized decryption attempt: User {user_id} for API key {api_key_id} not owned by them.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 API 키에 접근할 권한이 없습니다.")
-
         try:
             plain_api_key = decrypt_data(api_key_record.api_key_encrypted)
             plain_secret_key = decrypt_data(api_key_record.secret_key_encrypted)
-            logger.info(f"Successfully decrypted API key {api_key_id} for user {user_id}.")
+            logger.info(f"Successfully decrypted API key {api_key_record.id} for user {api_key_record.user_id}.")
             return {"api_key": plain_api_key, "secret_key": plain_secret_key}
         except RuntimeError as e:
-            logger.error(f"Decryption failed for API key {api_key_id}: {e}", exc_info=True)
+            logger.error(f"Decryption failed for API key {api_key_record.id}: {e}", exc_info=True)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="API 키 복호화에 실패했습니다.")
         except Exception as e:
-            logger.error(f"Unexpected error during API key decryption for {api_key_id}: {e}", exc_info=True)
+            logger.error(f"Unexpected error during API key decryption for {api_key_record.id}: {e}", exc_info=True)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="API 키 처리 중 오류가 발생했습니다.")
 
 # 서비스 인스턴스 생성

@@ -181,79 +181,60 @@ class StrategyService:
     def update_strategy(
         self,
         db: Session,
-        strategy_id: uuid.UUID,
-        user: models.User,
-        strategy_update: schemas.StrategyUpdate
+        strategy_to_update: models.Strategy,
+        strategy_update_data: schemas.StrategyUpdate
     ) -> models.Strategy:
-        db_strategy = self.get_strategy_by_id(db, strategy_id)
-        if not db_strategy:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="전략을 찾을 수 없습니다.")
-        if db_strategy.author_id != user.id:
-            logger.warning(f"User {user.email} (ID: {user.id}) attempted to update strategy {strategy_id} not owned by them.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략을 수정할 권한이 없습니다.")
-
+        """
+        전략을 업데이트합니다.
+        (다른 세션에서 온 객체를 현재 세션에 병합하여 처리합니다.)
+        """
         try:
-            required_level = self._verify_rules_against_plan(user, strategy_update, db)
+            # 플랜 검증 로직은 동일하게 유지
+            required_level = self._verify_rules_against_plan(strategy_to_update.author, strategy_update_data, db)
             
-            update_data = strategy_update.model_dump(mode='json', exclude_unset=True)
+            # merge는 현재 세션에 병합된 객체를 반환하므로, 이 객체를 이후에 사용.
+            merged_strategy = db.merge(strategy_to_update)
 
-            if "name" in update_data:
-                db_strategy.name = update_data["name"]
-            if "description" in update_data:
-                db_strategy.description = update_data["description"]
-            if "is_public" in update_data:
-                db_strategy.is_public = update_data["is_public"]
-            if "long_entry_rules" in update_data:
-                db_strategy.long_entry_rules = update_data["long_entry_rules"]
-            if "long_exit_rules" in update_data:
-                db_strategy.long_exit_rules = update_data["long_exit_rules"]
-            if "short_entry_rules" in update_data:
-                db_strategy.short_entry_rules = update_data["short_entry_rules"]
-            if "short_exit_rules" in update_data:
-                db_strategy.short_exit_rules = update_data["short_exit_rules"]
-            if "tpsl_logic" in update_data:
-                db_strategy.tpsl_logic = update_data["tpsl_logic"]
-            if "target_coins" in update_data:
-                db_strategy.target_coins = update_data["target_coins"]
+            update_data = strategy_update_data.model_dump(exclude_unset=True)
+            for key, value in update_data.items():
+                setattr(merged_strategy, key, value)
             
-            db_strategy.paid_feature_level = required_level
+            merged_strategy.paid_feature_level = required_level
             
-            db.add(db_strategy)
-            db.commit()
-            db.refresh(db_strategy)
+            db.flush()
+            db.refresh(merged_strategy) # 병합된 객체를 refresh 합니다.
             
-            logger.info(f"User {user.email} (ID: {user.id}) updated strategy: {db_strategy.name} (ID: {db_strategy.id}).")
-            return db_strategy
-        except HTTPException as e:
+            logger.info(f"Strategy {merged_strategy.id} updated by user {merged_strategy.author_id}.")
+            return merged_strategy
+        except HTTPException:
             db.rollback()
-            raise e
+            raise
         except Exception as e:
             db.rollback()
-            logger.error(f"An unexpected error occurred while updating strategy {strategy_id} for user {user.email}: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="전략 업데이트 중 서버 오류가 발생했습니다."
-            )
-
-    def delete_strategy(self, db: Session, strategy_id: uuid.UUID, user: models.User) -> bool:
-        db_strategy = self.get_strategy_by_id(db, strategy_id)
-        if not db_strategy:
-            return False
-        if db_strategy.author_id != user.id:
-            logger.warning(f"User {user.email} (ID: {user.id}) attempted to delete strategy {strategy_id} not owned by them.")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략을 삭제할 권한이 없습니다.")
-
+            logger.error(f"Error updating strategy {strategy_to_update.id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="전략 업데이트 중 서버 오류가 발생했습니다.")
+        
+    def delete_strategy(
+        self,
+        db: Session,
+        strategy_to_delete: models.Strategy
+    ) -> None:
+        """
+        전략을 삭제합니다.
+        (라우터의 의존성 계층에서 소유권 검증이 완료되었다고 가정합니다.)
+        """
         active_bots_using_strategy = db.query(models.LiveBot).filter(
-            models.LiveBot.strategy_id == strategy_id,
+            models.LiveBot.strategy_id == strategy_to_delete.id,
             models.LiveBot.status.in_(['active', 'paused', 'initializing'])
         ).first()
+
         if active_bots_using_strategy:
-            logger.warning(f"User {user.email} (ID: {user.id}) attempted to delete strategy {strategy_id} which is used by active bot {active_bots_using_strategy.id}.")
+            logger.warning(f"User {strategy_to_delete.author_id} attempted to delete strategy {strategy_to_delete.id} which is used by active bot {active_bots_using_strategy.id}.")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이 전략을 사용하는 활성 봇이 있습니다. 먼저 봇을 중지하거나 삭제해주세요.")
 
-        db.delete(db_strategy)
-        db.commit()
-        logger.info(f"User {user.email} (ID: {user.id}) deleted strategy: {db_strategy.name} (ID: {db_strategy.id}).")
-        return True
+        db.delete(strategy_to_delete)
+        db.flush()
+        logger.info(f"Strategy {strategy_to_delete.id} deleted by user {strategy_to_delete.author_id}.")
+        return
 
 strategy_service = StrategyService()

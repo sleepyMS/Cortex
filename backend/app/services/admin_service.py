@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_ # func 임포트
 import logging
 from typing import List, Optional, Dict, Any
+import uuid
 
 from .. import models, schemas
 
@@ -64,7 +65,7 @@ class AdminService:
         search_query: Optional[str] = None,
         sort_by: Optional[str] = None,
         is_public: Optional[bool] = None,
-        author_id: Optional[int] = None
+        author_id: Optional[uuid.UUID] = None
     ) -> List[models.Strategy]:
         """
         관리자가 모든 전략 목록을 조회합니다. (is_public 필터링 가능, 특정 저자 조회 가능)

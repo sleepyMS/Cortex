@@ -8,7 +8,7 @@ import uuid
 
 # 👇 [수정] dependencies에서 get_verified_backtest를 import 합니다.
 from .. import schemas, models, security
-from ..dependencies import get_verified_backtest
+from ..dependencies import get_verified_backtest, get_verified_strategy
 from ..database import get_db
 from ..services.backtest_service import backtest_service
 
@@ -23,13 +23,14 @@ router = APIRouter(prefix="/backtests", tags=["Backtesting"])
 async def create_backtest(
     backtest_create: schemas.BacktestCreate,
     current_user: models.User = Depends(security.get_current_active_user),
+    strategy_to_use: models.Strategy = Depends(get_verified_strategy),
     db: Session = Depends(get_db)
 ):
     """
     새로운 백테스팅 작업을 요청합니다. 작업은 비동기적으로 처리됩니다.
     """
     try:
-        new_backtest = backtest_service.create_backtest_job(db, current_user, backtest_create)
+        new_backtest = backtest_service.create_backtest_job(db, current_user, strategy_to_use, backtest_create)
         db.commit()
         db.refresh(new_backtest)
         logger.info(f"Backtest job (ID: {new_backtest.id}) requested for user {current_user.email} with strategy ID: {new_backtest.strategy_id}.")
