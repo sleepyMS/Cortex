@@ -1,14 +1,15 @@
 # file: backend/app/services/social_auth_service.py
 
 from fastapi import HTTPException, status
-
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import logging
 import secrets
+from datetime import datetime, timezone
+from typing import Optional
 
-from .. import models # models 임포트
-from ..security import generate_random_password # security.py에서 임시 비밀번호 생성 함수 임포트
+from .. import models, schemas
+from ..security import generate_random_password
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,12 @@ def get_or_create_social_user(
     provider: str,
     social_id: str,
     email: str,
-    username: str | None,
+    username: Optional[str],
     db: Session
 ) -> models.User:
     """
     소셜 계정 정보를 바탕으로 사용자를 찾거나 생성하고, SocialAccount와 연결합니다.
-    이 함수는 DB 세션을 커밋하지 않습니다. 상위 호출자가 커밋을 담당해야 합니다.
+    새로운 사용자인 경우, 기본 'Basic' 플랜을 할당합니다.
     """
     try:
         # 1. SocialAccount 테이블에서 먼저 조회: 이미 이 소셜 계정이 연결된 User가 있는지 확인
@@ -40,54 +41,64 @@ def get_or_create_social_user(
                 user_id=user.id,
                 provider=provider,
                 provider_user_id=social_id,
-                email=email, # SocialAccount에도 이메일 저장
-                username=username # SocialAccount에도 닉네임 저장
+                email=email,
+                username=username
             )
             db.add(new_social_account)
-            # db.commit() # 호출하는 라우터에서 커밋을 담당하므로 제거
             return user
         else:
-            # 4. 신규 User 생성 및 SocialAccount 연결
+            # 4. 이메일과 소셜 계정 모두 없으면, 새로운 사용자 및 구독 생성
             logger.info(f"No existing user for email {email}. Creating new user via {provider} social login.")
             
-            # 4a. 제안된 username이 이미 사용 중인지 확인하고 고유하게 만듦
             final_username = username
-            if final_username: # username이 제공된 경우에만 중복 확인
+            if final_username:
                 db_user_by_username = db.query(models.User).filter_by(username=final_username).first()
                 if db_user_by_username:
-                    # 중복이라면, 뒤에 짧은 랜덤 문자열을 붙여 고유하게 만듦
-                    # 최대 길이를 고려하여 자르거나 더 짧게 생성 (예: secrets.token_hex(2))
-                    # username 필드 길이가 100이므로 최대 95자 + '_xxxx'
                     base_username = final_username[:95] if len(final_username) > 95 else final_username
                     final_username = f"{base_username}_{secrets.token_hex(4)}"
                     logger.info(f"Username '{username}' was duplicated, adjusted to '{final_username}'.")
-            else: # username이 제공되지 않은 경우, 이메일 기반으로 기본 생성
+            else:
                 base_email_username = email.split('@')[0]
                 final_username = f"{base_email_username}_{secrets.token_hex(4)}"
                 logger.info(f"No username provided by {provider}, generated '{final_username}'.")
 
-            # 소셜 로그인 사용자는 비밀번호가 필요 없으므로 None
             new_user = models.User(
                 email=email,
                 username=final_username,
-                hashed_password=None, # 소셜 로그인 사용자는 비밀번호 없음
+                hashed_password=None,
                 is_active=True,
                 role="user"
             )
             db.add(new_user)
-            db.flush() # new_user의 ID를 즉시 얻기 위해 flush (커밋은 아님)
-            # db.refresh(new_user) # ID만 필요하므로 flush로 충분
+            db.flush()
 
             new_social_account = models.SocialAccount(
                 user_id=new_user.id,
                 provider=provider,
                 provider_user_id=social_id,
                 email=email,
-                username=final_username # 새로 생성된 사용자 이름으로 연결
+                username=final_username
             )
             db.add(new_social_account)
-            # db.commit() # 호출하는 라우터에서 커밋을 담당하므로 제거
-            logger.info(f"New user {new_user.email} (ID: {new_user.id}) created via {provider} social login.")
+
+            # 👈 새로운 사용자에게 Basic Plan 할당 로직 추가
+            basic_plan = db.query(models.Plan).filter(models.Plan.name == "Basic Plan").first()
+            if not basic_plan:
+                # Basic Plan이 없으면 심각한 서버 오류이므로 HTTP 예외를 발생
+                db.rollback()
+                logger.error("Default 'Basic Plan' not found in the database.")
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="서버 오류: 기본 플랜 설정이 누락되었습니다.")
+
+            new_subscription = models.Subscription(
+                user_id=new_user.id,
+                plan_id=basic_plan.id,
+                status="active",
+                current_period_end=datetime.max.replace(tzinfo=timezone.utc)
+            )
+            db.add(new_subscription)
+            # 👈 여기까지 db.commit() 없이 진행하고, 라우터에서 커밋을 담당함
+            
+            logger.info(f"New user {new_user.email} (ID: {new_user.id}) created via {provider} social login with a Basic Plan.")
             return new_user
     except IntegrityError as e:
         db.rollback()

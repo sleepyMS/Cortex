@@ -12,7 +12,10 @@
     "manageSubscription": "Manage Subscription",
     "adminDashboard": "Admin Dashboard",
     "langKorean": "한국어",
-    "langEnglish": "English"
+    "langEnglish": "English",
+    "dashboard": "dashboard",
+    "settings": "settings",
+    "upgradePlan": "Upgrade Plan"
   },
   "Footer": {
     "description": "Start a new investment journey with Cortex, the data-driven investment platform.",

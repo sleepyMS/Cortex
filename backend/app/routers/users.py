@@ -19,13 +19,35 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=schemas.User, summary="Get current user profile")
 async def read_users_me(
+    db: Session = Depends(get_db),
     current_user: models.User = Depends(security.get_current_active_user)
 ):
     """
-    현재 로그인된 사용자의 프로필 정보를 반환합니다.
+    현재 로그인된 사용자의 프로필 정보와 구독 정보를 함께 반환합니다.
     """
     logger.info(f"User {current_user.email} (ID: {current_user.id}) requested their profile.")
-    return current_user
+
+    # SQLAlchemy의 joinedload를 사용하여 subscription 및 plan, features 관계를 명확하게 Eager Load 합니다.
+    # User -> Subscription -> Plan -> PlanFeature의 관계를 한 번의 쿼리로 가져옵니다.
+    user_with_subscription = db.query(models.User).options(
+        joinedload(models.User.subscription).joinedload(models.Subscription.plan).joinedload(models.Plan.features)
+    ).filter(models.User.id == current_user.id).first()
+
+    if not user_with_subscription:
+        logger.error(f"Failed to find user with ID: {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자 정보를 찾을 수 없습니다."
+        )
+
+    # 구독 정보가 성공적으로 로드되었는지 최종 확인하는 로그.
+    if user_with_subscription.subscription and user_with_subscription.subscription.plan:
+        logger.info(f"ORM Success: Subscription for user {current_user.id} loaded with plan '{user_with_subscription.subscription.plan.name}'.")
+    else:
+        logger.info(f"ORM Success: User {current_user.id} does not have an active subscription.")
+
+    # 모든 관계가 로드된 ORM 객체를 반환하면 FastAPI가 Pydantic 모델로 변환합니다.
+    return user_with_subscription
 
 
 @router.put("/me/profile", response_model=schemas.User, summary="Update current user's profile information")

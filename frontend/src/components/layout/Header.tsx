@@ -1,3 +1,5 @@
+// file: frontend/src/components/domain/Header.tsx
+
 "use client";
 
 import * as React from "react";
@@ -11,10 +13,18 @@ import { useUserStore } from "@/store/userStore";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Logo } from "@/components/ui/Logo";
-import { Sun, Moon, LayoutDashboard } from "lucide-react";
+import { Sun, Moon, LayoutDashboard, Settings, LogOut } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
+import { useUserSubscription } from "@/hooks/useUserSubscription";
 
 export function Header() {
   const t = useTranslations("Header");
@@ -22,8 +32,8 @@ export function Header() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
 
-  // 👈 1. isAuthInitialized 상태를 함께 가져옵니다.
   const { user, logout, isAuthInitialized } = useUserStore();
+  const { currentPlan, isPro } = useUserSubscription();
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
@@ -44,7 +54,6 @@ export function Header() {
           </Link>
 
           <nav className="hidden items-center gap-4 md:flex">
-            {/* 👈 isAuthInitialized가 true이고 user가 있을 때만 네비게이션 표시 */}
             {isAuthInitialized && user && (
               <>
                 <Link href="/strategies" passHref>
@@ -62,28 +71,52 @@ export function Header() {
           <LanguageSwitcher />
 
           <div className="hidden items-center gap-2 sm:flex">
-            {/* 🔽🔽🔽 핵심 수정 영역 🔽🔽🔽 */}
             {!isAuthInitialized ? (
-              // 2. 인증 확인 중일 때: 스켈레톤 UI 표시
               <Skeleton className="h-10 w-40" />
             ) : user ? (
-              // 3. 인증 완료 & 로그인 상태일 때: 사용자 UI 표시
               <>
-                <span className="mr-2 hidden text-sm text-foreground md:inline">
-                  {user.email}
-                </span>
-                <Button onClick={handleLogout} variant="ghost" className="px-3">
-                  {t("logout")}
-                </Button>
-                <IconButton
-                  onClick={() => router.push("/dashboard")}
-                  aria-label={t("dashboardLink")}
-                >
-                  <LayoutDashboard className="h-5 w-5" />
-                </IconButton>
+                {!isPro && (
+                  <Link href="/pricing" passHref>
+                    <Button className="px-3">{t("upgradePlan")}</Button>
+                  </Link>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton aria-label={t("dashboardLink")}>
+                      <LayoutDashboard className="h-5 w-5" />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <div className="flex flex-col space-y-1 p-2">
+                      <span className="text-sm font-medium leading-none">
+                        {user.email}
+                      </span>
+                      <span className="text-xs leading-none text-muted-foreground">
+                        {currentPlan}
+                      </span>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard" className="flex items-center">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <span>{t("dashboard")}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings" className="flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>{t("settings")}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>{t("logout")}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
-              // 4. 인증 완료 & 로그아웃 상태일 때: 로그인/가입 버튼 표시
               <>
                 <Link href="/login" passHref>
                   <Button variant="ghost">{t("login")}</Button>
@@ -93,7 +126,6 @@ export function Header() {
                 </Link>
               </>
             )}
-            {/* 🔼🔼🔼 핵심 수정 영역 완료 🔼🔼🔼 */}
           </div>
 
           <IconButton onClick={toggleTheme} aria-label={t("toggleTheme")}>

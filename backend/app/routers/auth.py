@@ -94,10 +94,10 @@ def create_and_set_tokens(user: models.User, db: Session) -> tuple[str, str]:
 # --- 로컬 인증 엔드포인트 (Local Authentication) ---
 
 @router.post("/signup", response_model=schemas.User, status_code=status.HTTP_201_CREATED, summary="Register a new user")
-async def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)): # async로 변경
+async def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     """
-    새로운 사용자를 생성합니다 (이메일/비밀번호 회원가입).
-    회원가입 후 이메일 인증이 필요합니다.
+    새로운 사용자를 생성하고, 기본 'Basic' 플랜을 자동으로 할당한 뒤
+    이메일 인증 링크를 발송합니다.
     """
     db_user = db.query(models.User).filter(models.User.email == user_in.email).first()
     if db_user:
@@ -108,26 +108,50 @@ async def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)): # 
         email=user_in.email, 
         username=user_in.username, 
         hashed_password=hashed_password,
-        is_email_verified=False # 👈 회원가입 시 이메일 미인증 상태로 시작
+        is_email_verified=False
     )
     db.add(new_user)
-    db.flush() # new_user의 ID를 얻기 위해 flush (아직 커밋 아님)
-    db.refresh(new_user) # ID와 기본값들을 로드
+    db.flush()
+    db.refresh(new_user)
 
-    # 회원가입 후 즉시 이메일 인증 요청 발송 (비동기)
+    # 👈 1. Basic Plan 찾기
+    basic_plan = db.query(models.Plan).filter(models.Plan.name == "Basic Plan").first()
+    if not basic_plan:
+        db.rollback()
+        logger.error("Default 'Basic Plan' not found in the database. Cannot create user subscription.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="서버 오류: 기본 플랜 설정이 누락되었습니다.")
+
+    # 👈 2. 새로운 사용자를 위한 구독 정보 생성 및 할당
+    new_subscription = models.Subscription(
+        user_id=new_user.id,
+        plan_id=basic_plan.id,
+        status="active",
+        current_period_end=datetime.max.replace(tzinfo=timezone.utc)
+    )
+    db.add(new_subscription)
+    
+    # 이메일 인증 요청 발송 (비동기)
     try:
         await verification_service.request_email_verification(new_user, db, FRONTEND_BASE_URL)
-        db.commit() # 사용자 생성 및 토큰 저장 커밋
-        logger.info(f"New user signed up: {new_user.email}. Verification email sent.")
-        return new_user
+        db.commit()
+        logger.info(f"New user signed up: {new_user.email} with Basic Plan. Verification email sent.")
+        
+        # 👈 3. 구독 정보까지 로드하여 반환
+        user_with_subscription = db.query(models.User).options(
+            joinedload(models.User.subscription).joinedload(models.Subscription.plan)
+        ).filter(models.User.id == new_user.id).first()
+        
+        return user_with_subscription
+
     except HTTPException as e:
-        db.rollback() # 이메일 전송 실패 시 사용자 생성 롤백
+        db.rollback()
         logger.error(f"Signup failed for {user_in.email} due to email sending error: {e.detail}")
-        raise e # 이메일 서비스에서 발생한 HTTPException 전달
+        raise e
     except Exception as e:
         db.rollback()
         logger.error(f"Unexpected error during signup for {user_in.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="회원가입 중 서버 오류가 발생했습니다.")
+
 
 
 @router.post("/login", response_model=schemas.Token, summary="Log in user and issue tokens")

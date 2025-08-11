@@ -32,7 +32,7 @@ export function useUserSubscription() {
     isLoading: false,
     error: null,
     currentPlan,
-    features, // 👈 전체 feature 객체를 반환하여 유연성 확보
+    features,
     allowedTimeframes,
     maxBacktestsPerDay,
     liveBotsLimit,
