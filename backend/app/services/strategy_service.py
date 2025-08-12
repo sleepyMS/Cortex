@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional, Literal
 import uuid
 
 from .. import models, schemas
+from ..models import PlanType
 from ..services.plan_service import plan_service
 import logging
 
@@ -20,24 +21,24 @@ class StrategyService:
     def __init__(self):
         self.plan_service = plan_service
 
-    def _get_required_plan_level(self, strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate) -> Literal["basic", "trader", "pro"]:
+    def _get_required_plan_level(self, strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate) -> PlanType:
         """
         전략 데이터에 포함된 기능들을 분석하여 필요한 최소 플랜 등급을 계산합니다.
         """
-        required_level: Literal["basic", "trader", "pro"] = "basic"
+        required_level: PlanType = PlanType.BASIC
         
         def update_level(current, new):
-            if new == "pro": return "pro"
-            if new == "trader" and current == "basic": return "trader"
+            if new == PlanType.PRO: return PlanType.PRO
+            if new == PlanType.TRADER and current == PlanType.BASIC: return PlanType.TRADER
             return current
 
         # 1. Target Coins 개수 검사
         if strategy_data.target_coins and len(strategy_data.target_coins) > 1:
-            required_level = update_level(required_level, "trader")
+            required_level = update_level(required_level, PlanType.TRADER)
         
         # 2. TP/SL 로직 검사
         if strategy_data.tpsl_logic and (strategy_data.tpsl_logic.atr_stop_loss_multiplier or strategy_data.tpsl_logic.atr_take_profit_multiplier):
-            required_level = update_level(required_level, "trader")
+            required_level = update_level(required_level, PlanType.TRADER)
 
         # 3. Rules의 타임프레임 검사
         all_rules_blocks = []
@@ -70,27 +71,46 @@ class StrategyService:
             has_divergence(strategy_data.long_exit_rules) or
             has_divergence(strategy_data.short_entry_rules) or
             has_divergence(strategy_data.short_exit_rules)):
-            required_level = update_level(required_level, "pro")
+            required_level = update_level(required_level, PlanType.PRO)
 
         return required_level
 
-    def _verify_rules_against_plan(self, user: models.User, strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate, db: Session) -> Literal["basic", "trader", "pro"]:
+    def _verify_rules_against_plan(
+        self, 
+        user: models.User, 
+        strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate, 
+        db: Session
+    ) -> PlanType: 
         """
         전략 규칙이 사용자의 플랜에 맞는지 검증하고, 필요한 플랜 등급을 반환합니다.
         """
-        required_level = self._get_required_plan_level(strategy_data)
+        # _get_required_plan_level 함수도 PlanType Enum을 반환한다고 가정합니다.
+        required_level: models.PlanType = self._get_required_plan_level(strategy_data)
         
-        user_plan_level = self.plan_service.get_user_plan_level(user, db)
-        allowed_level_map = {"basic": 0, "trader": 1, "pro": 2}
+        # plan_service에서 가져온 사용자 플랜 이름(문자열)을 Enum 멤버로 변환합니다.
+        user_plan_level_str = self.plan_service.get_user_plan_level(user, db)
+        try:
+            user_plan_level = models.PlanType(user_plan_level_str)
+        except ValueError:
+            # 혹시 모를 예외 상황에 대비 (예: DB에 잘못된 플랜 이름이 있는 경우)
+            logger.error(f"User {user.email} has an invalid plan name: {user_plan_level_str}")
+            raise HTTPException(status_code=500, detail="사용자 플랜 정보를 확인하는 중 오류가 발생했습니다.")
+
+        # 이 맵은 플랜 간의 서열을 정의합니다 (Pro > Trader > Basic).
+        plan_hierarchy = {
+            PlanType.BASIC: 0,
+            PlanType.TRADER: 1,
+            PlanType.PRO: 2
+        }
         
-        user_level_value = allowed_level_map.get(user_plan_level, 0)
-        required_level_value = allowed_level_map.get(required_level, 0)
+        user_level_value = plan_hierarchy.get(user_plan_level, 0)
+        required_level_value = plan_hierarchy.get(required_level, 0)
         
         if user_level_value < required_level_value:
-            logger.warning(f"User {user.email} attempted to use features requiring '{required_level}' plan with '{user_plan_level}' plan.")
+            logger.warning(f"User {user.email} attempted to use features requiring '{required_level.value}' plan with '{user_plan_level.value}' plan.")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"선택한 기능은 '{required_level}' 플랜 이상에서 지원됩니다. 플랜을 업그레이드해주세요."
+                detail=f"선택한 기능은 '{required_level.value}' 플랜 이상에서 지원됩니다. 플랜을 업그레이드해주세요."
             )
         
         return required_level

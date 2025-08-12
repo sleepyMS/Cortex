@@ -21,7 +21,7 @@ class PlanService:
         """
         plans_to_seed = {
             PlanType.BASIC: {
-                "name": "Basic Plan",
+                "name": PlanType.BASIC,
                 "price": 0.0,
                 "features": {
                     "max_strategies": 3,
@@ -37,7 +37,7 @@ class PlanService:
                 }
             },
             PlanType.TRADER: {
-                "name": "Trader Plan",
+                "name": PlanType.TRADER,
                 "price": 49.99,
                 "features": {
                     "max_strategies": 20,
@@ -53,7 +53,7 @@ class PlanService:
                 }
             },
             PlanType.PRO: {
-                "name": "Pro Plan",
+                "name": PlanType.PRO,
                 "price": 129.99,
                 "features": {
                     "max_strategies": 100,
@@ -101,11 +101,11 @@ class PlanService:
 
     def get_user_plan_level(self, user: models.User, db: Session) -> str:
         """
-        사용자의 현재 플랜 등급(예: 'basic', 'trader')을 반환합니다.
+        사용자의 현재 플랜 등급(예: 'Basic', 'Trader')을 반환합니다.
         """
         subscription = user.subscription
         if not subscription:
-            return PlanType.BASIC.value
+            return PlanType.BASIC
         return subscription.plan.name
 
     def get_user_plan_features(self, user: models.User, db: Session) -> schemas.PlanFeatureSchema:
@@ -114,22 +114,22 @@ class PlanService:
         """
         subscription = user.subscription
         if not subscription or not subscription.plan.features:
-            basic_features = db.query(models.PlanFeature).join(models.Plan).filter(models.Plan.name == 'Basic Plan').options(joinedload(models.PlanFeature.plan)).first()
+            basic_features = db.query(models.PlanFeature).join(models.Plan).filter(models.Plan.name == PlanType.BASIC).options(joinedload(models.PlanFeature.plan)).first()
             if not basic_features:
                 raise HTTPException(status_code=500, detail="Default 'Basic' plan features not found.")
             return schemas.PlanFeatureSchema.model_validate(basic_features)
 
         return schemas.PlanFeatureSchema.model_validate(subscription.plan.features)
 
-    def get_timeframe_level(self, timeframe: str) -> Literal["basic", "trader", "pro"]:
+    def get_timeframe_level(self, timeframe: str) -> PlanType:
         """
         주어진 타임프레임이 요구하는 최소 플랜 등급을 결정합니다.
         """
         if timeframe in ["1m", "5m", "15m", "30m", "4h", "1d", "1w", "1M"]:
-            return "trader"
+            return PlanType.TRADER
         elif timeframe == "1h":
-            return "basic"
-        return "basic"
+            return PlanType.BASIC
+        return PlanType.BASIC
 
     def get_plan_by_id(self, db: Session, plan_id: uuid.UUID) -> models.Plan | None:
         """ID로 단일 플랜을 조회합니다."""

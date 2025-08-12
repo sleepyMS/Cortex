@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 878bfc269ef8
+Revision ID: cb62262c04c3
 Revises: 
-Create Date: 2025-08-12 06:51:25.157453
+Create Date: 2025-08-12 23:28:17.359949
 
 """
 from typing import Sequence, Union
@@ -12,10 +12,11 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '878bfc269ef8'
+revision: str = 'cb62262c04c3'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
 
 TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"]
 
@@ -49,7 +50,7 @@ def upgrade() -> None:
         print(f"Table '{table_name}' created and converted to hypertable.")
     op.create_table('plans',
     sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('name', sa.String(length=50), nullable=False),
+    sa.Column('name', sa.Enum('BASIC', 'TRADER', 'PRO', name='plantype'), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')

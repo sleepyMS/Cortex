@@ -63,8 +63,8 @@ export function ParameterPopover({
     onUpdate({ ...indicatorValue, timeframe: newTimeframe });
   };
 
-  const planName = currentPlan?.plan?.name?.toLowerCase() || "basic";
-  const canSelectMultipleTimeframes = ["trader", "pro"].includes(planName);
+  const planName = currentPlan || "Basic";
+  const canSelectMultipleTimeframes = ["Trader", "Pro"].includes(planName);
 
   return (
     <Popover>

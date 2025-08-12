@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from backend.app.database import engine_fastapi, Base, SessionLocal
 from backend.app import models
 from backend.app.security import get_password_hash
+from .models import PlanType
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,7 +30,7 @@ def init_db():
     try:
         # 1. 초기 구독 플랜 및 기능 데이터 정의 (plan_service.py 로직 참조)
         plans_to_seed = {
-            "Basic": {
+            PlanType.BASIC: {
                 "price": 0.0,
                 "features": {
                     "max_strategies": 3,
@@ -44,7 +45,7 @@ def init_db():
                     "portfolio_backtest_access": False
                 }
             },
-            "Trader": {
+            PlanType.TRADER: {
                 "price": 49.99,
                 "features": {
                     "max_strategies": 20,
@@ -59,7 +60,7 @@ def init_db():
                     "portfolio_backtest_access": False
                 }
             },
-            "Pro": {
+            PlanType.PRO: {
                 "price": 129.99,
                 "features": {
                     "max_strategies": 100,

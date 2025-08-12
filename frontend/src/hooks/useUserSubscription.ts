@@ -10,7 +10,7 @@ export function useUserSubscription() {
   const features = subscription?.plan?.features;
 
   // 2. 백엔드에서 받은 데이터를 기반으로 현재 플랜과 기능들을 동적으로 계산합니다.
-  const currentPlan = subscription?.plan?.name?.toLowerCase() || "basic";
+  const currentPlan = subscription?.plan?.name || "Basic";
 
   // 3. 더 이상 하드코딩된 객체가 필요 없습니다.
   const allowedTimeframes = features?.supportedTimeframes.split(",") || [
@@ -23,8 +23,8 @@ export function useUserSubscription() {
   const maxCoinsPerBacktest = features?.maxCoinsPerBacktest ?? 1;
 
   // 4. 플랜 등급에 따른 파생 상태 계산
-  const isTrader = currentPlan === "trader";
-  const isPro = currentPlan === "pro";
+  const isTrader = currentPlan === "Trader";
+  const isPro = currentPlan === "Pro";
   const isProOrTrader = isTrader || isPro;
 
   return {

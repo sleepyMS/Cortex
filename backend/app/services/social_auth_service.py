@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from .. import models, schemas
+from ..models import PlanType
 from ..security import generate_random_password
 
 logger = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ def get_or_create_social_user(
             db.add(new_social_account)
 
             # 👈 새로운 사용자에게 Basic Plan 할당 로직 추가
-            basic_plan = db.query(models.Plan).filter(models.Plan.name == "Basic Plan").first()
+            basic_plan = db.query(models.Plan).filter(models.Plan.name == PlanType.BASIC).first()
             if not basic_plan:
                 # Basic Plan이 없으면 심각한 서버 오류이므로 HTTP 예외를 발생
                 db.rollback()

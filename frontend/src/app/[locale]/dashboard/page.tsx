@@ -46,8 +46,8 @@ export default function DashboardPage() {
     return <AdminDashboardClient />;
   } else if (
     user.role === "user" ||
-    user.role === "pro" ||
-    user.role === "trader"
+    user.role === "Pro" ||
+    user.role === "Trader"
   ) {
     return <UserDashboardClient />;
   } else {

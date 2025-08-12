@@ -16,11 +16,6 @@ from .database import Base
 # 1. 사용자, 인증, 구독 관련 모델
 # ==============================================================================
 
-class PlanType(str, enum.Enum):
-    BASIC = "basic"
-    TRADER = "trader"
-    PRO = "pro"
-
 class SubscriptionStatus(str, enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
@@ -68,12 +63,19 @@ class SocialAccount(Base):
 
     user = relationship("User", back_populates="social_accounts")
 
+
+class PlanType(str, enum.Enum):
+    BASIC = "Basic"
+    TRADER = "Trader"
+    PRO = "Pro"
+
+    
 class Plan(Base):
     """구독 플랜 모델"""
     __tablename__ = "plans"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(50), unique=True, nullable=False)
+    name = Column(Enum(PlanType), unique=True, nullable=False)
     price = Column(Float, nullable=False)
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
@@ -138,7 +140,7 @@ class Strategy(Base):
     target_coins = Column(JSON, nullable=False, default=[])
 
     is_public = Column(Boolean, default=False, nullable=False)
-    paid_feature_level = Column(String(50), default="basic", nullable=False)
+    paid_feature_level = Column(String(50), default=PlanType.BASIC, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 

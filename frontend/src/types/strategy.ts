@@ -129,7 +129,7 @@ export interface Strategy {
   shortExitRules: PositionRules | null;
   tpslLogic: TpslLogic | null;
   targetCoins: TargetCoin[];
-  paidFeatureLevel: "basic" | "trader" | "pro";
+  paidFeatureLevel: "Basic" | "Trader" | "Pro";
   createdAt: string;
   updatedAt: string | null;
 }

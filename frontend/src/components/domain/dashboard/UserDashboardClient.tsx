@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 
-// 👈 1. 백엔드 API 응답(camelCase)과 일치하도록 타입 정의 수정
 interface UserDashboardSummary {
   email: string;
   username: string | null;
@@ -114,7 +113,6 @@ export function UserDashboardClient() {
     );
   }
 
-  // 👈 2. JSX 내부에서 dashboardData의 모든 속성을 camelCase로 접근하도록 수정
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
       <section className="rounded-lg border border-border bg-card p-6 shadow-md">

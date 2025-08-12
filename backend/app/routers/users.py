@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session, joinedload
 import logging
 from typing import List, Optional
+from ..models import PlanType
 from datetime import datetime, timezone
 import uuid
 
@@ -163,7 +164,7 @@ async def get_user_dashboard_summary(
             created_at=current_user.created_at,
             is_email_verified=current_user.is_email_verified,
 
-            current_plan_name=subscription.plan.name if subscription and subscription.plan else "Basic",
+            current_plan_name=subscription.plan.name if subscription and subscription.plan else PlanType.BASIC,
             current_plan_price=subscription.plan.price if subscription and subscription.plan else 0.0,
             subscription_end_date=subscription.current_period_end if subscription else None,
             subscription_is_active=subscription.status == "active" if subscription else False,

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from .database import get_db, SessionLocal
 from . import models, schemas, security
+from .models import PlanType
 import os
 from datetime import datetime, timedelta
 from typing import Annotated, Generator, Optional
@@ -94,7 +95,7 @@ def get_user_subscription(current_user: Annotated[models.User, Depends(get_curre
 
     # 2. 활성 구독이 없으면, 'Basic' 플랜을 반환
     if not active_subscription:
-        basic_plan = db.query(models.Plan).filter(models.Plan.plan_type == 'basic').options(joinedload(models.Plan.features)).first()
+        basic_plan = db.query(models.Plan).filter(models.Plan.name == PlanType.BASIC).options(joinedload(models.Plan.features)).first()
         if not basic_plan:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

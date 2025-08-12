@@ -30,7 +30,7 @@ erDiagram
 
     plans {
         Integer id PK
-        String name UK "e.g., basic, trader, pro"
+        String name UK "e.g., Basic, Trader, Pro"
         Float price "월 가격"
         Json features "플랜별 기능 제한 e.g., {'backtests_per_day': 10, 'concurrent_bots_limit': 5}"
     }

@@ -3,6 +3,7 @@ from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
 import enum
+from .models import PlanType
 import uuid
 
 # --- 모든 모델의 기반이 될 CamelCaseModel 생성 ---
@@ -38,7 +39,7 @@ class UserAdminUpdate(CamelCaseModel):
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
     is_email_verified: Optional[bool] = None
-    role: Optional[Literal["user", "admin", "pro", "trader"]] = None
+    role: Optional[Literal["user", "admin", "Pro", "Trader"]] = None
     new_password: Optional[str] = Field(None, min_length=8, max_length=255)
 
 class Token(CamelCaseModel):
@@ -101,9 +102,9 @@ class ResetPasswordRequest(CamelCaseModel):
     new_password: str = Field(..., min_length=8, max_length=255)
 
 class PlanType(str, enum.Enum):
-    BASIC = "basic"
-    TRADER = "trader"
-    PRO = "pro"
+    BASIC = "Basic"
+    TRADER = "Trader"
+    PRO = "Pro"
 
 class PlanFeatureSchema(CamelCaseModel):
     max_coins_per_backtest: int
@@ -119,7 +120,7 @@ class PlanFeatureSchema(CamelCaseModel):
 
 class PlanSchema(CamelCaseModel):
     id: uuid.UUID
-    name: str
+    name: PlanType 
     price: float
     features: PlanFeatureSchema
 
@@ -289,7 +290,7 @@ class Strategy(CamelCaseModel):
     target_coins: List[TargetCoin]
     created_at: datetime
     updated_at: Optional[datetime] = None
-    paid_feature_level: Literal["basic", "trader", "pro"] = "basic"
+    paid_feature_level: PlanType = PlanType.BASIC
 
 class ApiKeyCreate(CamelCaseModel):
     exchange: str = Field(..., min_length=2, max_length=50)
