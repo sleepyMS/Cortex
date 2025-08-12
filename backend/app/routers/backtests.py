@@ -1,6 +1,7 @@
 # file: backend/app/routers/backtests.py
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
+from ..limiter import limiter 
 from sqlalchemy.orm import Session
 import logging
 from typing import List, Optional
@@ -18,19 +19,19 @@ router = APIRouter(prefix="/backtests", tags=["Backtesting"])
 
 # --- 백테스팅 관련 엔드포인트 ---
 
-# [변경 없음] 새로운 백테스트를 '생성'하므로, 기존 객체에 대한 소유권 검증이 필요 없습니다.
 @router.post("/", response_model=schemas.Backtest, status_code=status.HTTP_202_ACCEPTED, summary="Request a new backtest job")
+@limiter.limit("5/minute")
 async def create_backtest(
     backtest_create: schemas.BacktestCreate,
+    request: Request,
     current_user: models.User = Depends(security.get_current_active_user),
-    strategy_to_use: models.Strategy = Depends(get_verified_strategy),
     db: Session = Depends(get_db)
 ):
     """
     새로운 백테스팅 작업을 요청합니다. 작업은 비동기적으로 처리됩니다.
     """
     try:
-        new_backtest = backtest_service.create_backtest_job(db, current_user, strategy_to_use, backtest_create)
+        new_backtest = backtest_service.create_backtest_job(db, current_user, backtest_create)
         db.commit()
         db.refresh(new_backtest)
         logger.info(f"Backtest job (ID: {new_backtest.id}) requested for user {current_user.email} with strategy ID: {new_backtest.strategy_id}.")

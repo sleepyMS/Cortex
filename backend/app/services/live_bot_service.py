@@ -36,7 +36,6 @@ class LiveBotService:
         새로운 라이브 자동매매 봇을 생성하고 Celery 큐에 시작 태스크를 추가합니다.
         """
         # 1. 플랜 기반 동시 실행 봇 개수 제한 검사
-        # 👈 plan_service.get_user_plan_features를 사용하도록 수정
         user_features = self.plan_service.get_user_plan_features(user=user, db=db)
         concurrent_limit = user_features.live_bots_limit
         active_bots_count = db.query(models.LiveBot).filter(

@@ -1,6 +1,6 @@
 # file: backend/app/routers/live_bots.py
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from sqlalchemy.orm import Session
 import logging
 from typing import List, Optional
@@ -11,6 +11,7 @@ from .. import schemas, models, security
 from ..dependencies import get_verified_live_bot
 from ..database import get_db
 from ..services.live_bot_service import live_bot_service
+from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,11 @@ router = APIRouter(prefix="/live_bots", tags=["Live Bots"])
 
 # --- 라이브 봇 관련 엔드포인트 ---
 
-# 새로운 봇을 '생성'하므로, 기존 객체에 대한 소유권 검증이 필요 없습니다.
 @router.post("/", response_model=schemas.LiveBot, status_code=status.HTTP_201_CREATED, summary="Deploy and start a new live trading bot")
+@limiter.limit("5/minute") 
 async def create_live_bot(
     live_bot_create: schemas.LiveBotCreate,
+    request: Request, 
     current_user: models.User = Depends(security.get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -30,8 +32,7 @@ async def create_live_bot(
     플랜 제한, 전략/API 키 유효성 및 소유권 검사는 서비스 계층에서 모두 처리됩니다.
     """
     try:
-        # 3. 서비스 함수에 필요한 모든 정보를 그대로 전달합니다.
-        # 서비스 함수 내부에서 strategy_id, api_key_id의 유효성과 소유권을 모두 검증할 것입니다.
+        # 서비스 함수 호출 부분은 기존 구조가 올바르므로 변경이 없습니다.
         new_bot = await live_bot_service.create_live_bot(db, current_user, live_bot_create)
         
         db.commit()

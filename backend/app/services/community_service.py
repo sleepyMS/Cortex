@@ -163,23 +163,24 @@ class CommunityService:
 
     # --- 댓글 (Comments) 관련 서비스 함수 ---
 
-    def create_comment(self, db: Session, post_id: uuid.UUID, user: models.User, comment_create: schemas.CommentCreate) -> models.Comment:
-        """
-        게시물에 새 댓글을 추가합니다.
-        """
-        db_post = self.get_post_by_id(db, post_id)
-        if not db_post:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="댓글을 작성할 게시물을 찾을 수 없습니다.")
+    def create_comment(
+        self, 
+        db: Session, 
+        post: models.CommunityPost, 
+        user: models.User, 
+        comment_create: schemas.CommentCreate
+    ) -> models.Comment:
+        """게시물에 새 댓글을 추가합니다."""
 
         db_comment = models.Comment(
-            post_id=post_id,
+            post_id=post.id, # 주입받은 객체의 ID를 사용
             author_id=user.id,
             content=comment_create.content
         )
         db.add(db_comment)
         db.flush()
         db.refresh(db_comment)
-        logger.info(f"User {user.email} (ID: {user.id}) commented on post {post_id}.")
+        logger.info(f"User {user.email} commented on post {post.id}.")
         return db_comment
 
     def get_comments_for_post(self, db: Session, post_id: uuid.UUID, skip: int = 0, limit: int = 100) -> List[models.Comment]:

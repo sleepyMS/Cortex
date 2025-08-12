@@ -1,6 +1,6 @@
 # file: backend/app/routers/strategies.py
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from sqlalchemy.orm import Session
 import logging
 from typing import List, Optional
@@ -10,6 +10,7 @@ from .. import schemas, models, security
 from ..dependencies import get_verified_strategy
 from ..database import get_db
 from ..services.strategy_service import strategy_service
+from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,11 @@ router = APIRouter(prefix="/strategies", tags=["strategies"])
 
 # --- 전략 관련 엔드포인트 ---
 
-# 새로운 전략을 '생성'하는 것이므로, 기존 객체에 대한 소유권 검증이 필요 없습니다.
 @router.post("/", response_model=schemas.Strategy, status_code=status.HTTP_201_CREATED, summary="Create a new trading strategy")
+@limiter.limit("20/minute")
 async def create_strategy(
     strategy_create: schemas.StrategyCreate,
+    request: Request, 
     current_user: models.User = Depends(security.get_current_active_user),
     db: Session = Depends(get_db)
 ):

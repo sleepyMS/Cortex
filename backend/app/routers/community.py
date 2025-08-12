@@ -1,15 +1,16 @@
 # file: backend/app/routers/community.py
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from sqlalchemy.orm import Session
 import logging
 from typing import List, Optional
 import uuid
 
 from .. import schemas, models, security
-from ..dependencies import get_post_for_modification, get_verified_comment, get_viewable_post
+from ..dependencies import get_post_for_modification, get_comment_for_modification, get_viewable_post, get_existing_post
 from ..database import get_db
 from ..services.community_service import community_service
+from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,10 @@ router = APIRouter(prefix="/community", tags=["Community"])
 # --- 게시물 (Posts) 엔드포인트 ---
 
 @router.post("/posts", response_model=schemas.CommunityPostResponse, status_code=status.HTTP_201_CREATED, summary="Create a new community post")
+@limiter.limit("5/10minutes")
 async def create_post(
     post_create: schemas.CommunityPostCreate,
+    request: Request,
     current_user: models.User = Depends(security.get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -39,7 +42,9 @@ async def create_post(
         raise HTTPException(status_code=500, detail="게시물 생성 중 서버 오류 발생")
 
 @router.get("/posts", response_model=List[schemas.CommunityPostResponse], summary="Get list of community posts")
+@limiter.limit("60/minute") 
 async def get_posts(
+    request: Request,
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -109,26 +114,28 @@ async def delete_post(
 # --- 댓글 (Comments) 엔드포인트 ---
 
 @router.post("/posts/{post_id}/comments", response_model=schemas.CommentResponse, status_code=status.HTTP_201_CREATED, summary="Add a comment to a post")
+@limiter.limit("20/minute") 
 async def create_comment(
-    post_id: uuid.UUID,
     comment_create: schemas.CommentCreate,
+    request: Request,
+    post: models.CommunityPost = Depends(get_existing_post),
     current_user: models.User = Depends(security.get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """특정 게시물에 새 댓글을 추가합니다."""
     try:
-        new_comment = community_service.create_comment(db, post_id, current_user, comment_create)
+        new_comment = community_service.create_comment(db, post, current_user, comment_create)
         db.commit()
         db.refresh(new_comment)
-        logger.info(f"User {current_user.email} added comment {new_comment.id} to post {post_id}.")
+        logger.info(f"User {current_user.email} added comment {new_comment.id} to post {post.id}.")
         return new_comment
     except HTTPException as e:
         db.rollback()
         raise e
     except Exception as e:
         db.rollback()
-        logger.error(f"Error creating comment for user {current_user.email} on post {post_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="댓글 생성 중 서버 오류 발생")
+        logger.error(f"Error creating comment for user {current_user.email} on post {post.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="댓글 생성 중 서버 오류가 발생했습니다.")
 
 @router.get("/posts/{post_id}/comments", response_model=List[schemas.CommentResponse], summary="Get comments for a specific post")
 async def get_comments_for_post(
@@ -141,14 +148,12 @@ async def get_comments_for_post(
     comments = community_service.get_comments_for_post(db, post_id, skip, limit)
     return comments
 
-# 소유권 검증 로직을 의존성 주입으로 대체
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a specific comment")
 async def delete_comment(
-    # 'get_verified_comment'가 '소유주'만 허용하는 엄격한 검증을 처리합니다.
-    comment_to_delete: models.Comment = Depends(get_verified_comment),
+    comment_to_delete: models.Comment = Depends(get_comment_for_modification),
     db: Session = Depends(get_db)
 ):
-    """특정 ID의 댓글을 삭제합니다. (소유권 자동 검증)"""
+    """특정 ID의 댓글을 삭제합니다. (소유자 또는 관리자 권한 자동 검증)"""
     try:
         community_service.delete_comment(db, comment_to_delete)
         db.commit()
@@ -160,8 +165,8 @@ async def delete_comment(
     except Exception as e:
         db.rollback()
         logger.error(f"Error deleting comment {comment_to_delete.id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="댓글 삭제 중 서버 오류 발생")
-
+        raise HTTPException(status_code=500, detail="댓글 삭제 중 서버 오류가 발생했습니다.")
+    
 # --- 좋아요 (Likes) 엔드포인트 ---
 
 @router.post("/posts/{post_id}/likes", response_model=schemas.LikeResponse, summary="Like or unlike a post")

@@ -243,17 +243,14 @@ def get_comment_for_modification(
         raise HTTPException(status_code=403, detail="이 댓글을 수정/삭제할 권한이 없습니다.")
         
     return comment
-###################### 게시물 관리 권환 확인 끝 ######################
 
-def get_verified_comment(
-    comment_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
-) -> models.Comment:
-    """ID로 댓글을 조회하고, 현재 사용자가 소유주(author)인지 검증합니다."""
-    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
-    if not comment:
-        raise HTTPException(status_code=404, detail="댓글을 찾을 수 없습니다.")
-    if comment.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
-    return comment
+def get_existing_post(
+    post_id: uuid.UUID,
+    db: Session = Depends(get_db)
+) -> models.CommunityPost:
+    """ID로 게시물을 조회하고, 없으면 404 에러를 발생시킵니다."""
+    post = db.query(models.CommunityPost).filter(models.CommunityPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="댓글을 작성할 게시물을 찾을 수 없습니다.")
+    return post
+###################### 게시물 관리 권환 확인 끝 ######################

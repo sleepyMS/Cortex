@@ -28,31 +28,33 @@ class BacktestService:
         self,
         db: Session,
         user: models.User,
-        strategy_to_use: models.Strategy,
         backtest_create: schemas.BacktestCreate
     ) -> models.Backtest:
         """
         새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다.
-        (라우터에서 전략 소유권 검증이 완료되었다고 가정합니다.)
         """
-        # 1. 일일 백테스팅 횟수 제한 검사 
+        # 1. 일일 백테스팅 횟수 제한 검사 (비즈니스 로직)
         user_features = self.plan_service.get_user_plan_features(user=user, db=db)
         max_backtests = user_features.daily_backtest_count
         today = datetime.now(timezone.utc).date()
         
         executed_today = db.query(models.Backtest).filter(
             models.Backtest.user_id == user.id,
-            models.Backtest.created_at >= today,
-            models.Backtest.status.in_(['pending', 'running', 'completed'])
+            models.Backtest.created_at >= today
         ).count()
 
         if executed_today >= max_backtests:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"일일 백테스트 제한({max_backtests}회)을 초과했습니다.")
 
+        strategy = self.strategy_service.get_strategy_by_id(db, backtest_create.strategy_id)
+        if not strategy or strategy.author_id != user.id:
+            logger.warning(f"User {user.email} attempted to use invalid/unowned strategy {backtest_create.strategy_id} for backtest.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
+
         # 2. 백테스트 DB 레코드 생성
         db_backtest = models.Backtest(
             user_id=user.id,
-            strategy_id=strategy_to_use.id, # 주입받은 객체의 ID를 사용
+            strategy_id=strategy.id,
             status='pending',
             parameters=backtest_create.model_dump(mode='json', exclude_unset=True)
         )
