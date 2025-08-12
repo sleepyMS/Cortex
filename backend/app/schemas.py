@@ -1,10 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
-import enum
 from .models import PlanType
 import uuid
+
+from .models import PlanType
+from .sanitizers import sanitize_html
+
 
 # --- 모든 모델의 기반이 될 CamelCaseModel 생성 ---
 class CamelCaseModel(BaseModel):
@@ -30,6 +33,14 @@ class UserCreate(CamelCaseModel):
 class UserUpdateProfile(CamelCaseModel):
     username: Optional[str] = Field(None, min_length=2, max_length=100)
 
+    # 👇 [개선] 사용자 입력값 자동 살균
+    @field_validator('username')
+    @classmethod
+    def sanitize_username(cls, value: Optional[str]) -> Optional[str]:
+        if value:
+            return sanitize_html(value)
+        return value
+
 class UserUpdatePassword(CamelCaseModel):
     old_password: str = Field(..., min_length=8, max_length=255)
     new_password: str = Field(..., min_length=8, max_length=255)
@@ -39,7 +50,7 @@ class UserAdminUpdate(CamelCaseModel):
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
     is_email_verified: Optional[bool] = None
-    role: Optional[Literal["user", "admin", "Pro", "Trader"]] = None
+    role: Optional[Literal["user", "admin", "Basic", "Trader", "Pro"]] = None
     new_password: Optional[str] = Field(None, min_length=8, max_length=255)
 
 class Token(CamelCaseModel):
@@ -100,11 +111,6 @@ class PasswordResetRequest(CamelCaseModel):
 class ResetPasswordRequest(CamelCaseModel):
     token: str = Field(..., min_length=32, description="Reset token received via email")
     new_password: str = Field(..., min_length=8, max_length=255)
-
-class PlanType(str, enum.Enum):
-    BASIC = "Basic"
-    TRADER = "Trader"
-    PRO = "Pro"
 
 class PlanFeatureSchema(CamelCaseModel):
     max_coins_per_backtest: int
@@ -257,6 +263,13 @@ class StrategyBase(CamelCaseModel):
     description: str | None = Field(None, max_length=500)
     is_public: bool = False
 
+    @field_validator('name', 'description')
+    @classmethod
+    def sanitize_fields(cls, value: Optional[str]) -> Optional[str]:
+        if value:
+            return sanitize_html(value)
+        return value
+
 class StrategyCreate(StrategyBase):
     long_entry_rules: Optional[PositionRules] = None
     long_exit_rules: Optional[PositionRules] = None
@@ -275,6 +288,13 @@ class StrategyUpdate(CamelCaseModel):
     short_exit_rules: Optional[PositionRules] = None
     tpsl_logic: Optional[TpslLogic] = None
     target_coins: Optional[List[TargetCoin]] = None
+    
+    @field_validator('name', 'description')
+    @classmethod
+    def sanitize_fields(cls, value: Optional[str]) -> Optional[str]:
+        if value:
+            return sanitize_html(value)
+        return value
 
 class Strategy(CamelCaseModel):
     id: uuid.UUID
@@ -375,13 +395,25 @@ class LiveBot(CamelCaseModel):
 class CommunityPostCreate(CamelCaseModel):
     title: str = Field(..., min_length=5, max_length=255)
     content: str = Field(..., min_length=10)
-    backtest_id: Optional[uuid.UUID] = Field(None, description="Optional ID of backtest result to share")
+    backtest_id: Optional[uuid.UUID] = Field(None)
     is_public: bool = True
+
+    @field_validator('title', 'content')
+    @classmethod
+    def sanitize_fields(cls, value: str) -> str:
+        return sanitize_html(value)
 
 class CommunityPostUpdate(CamelCaseModel):
     title: Optional[str] = Field(None, min_length=5, max_length=255)
     content: Optional[str] = Field(None, min_length=10)
     is_public: Optional[bool] = None
+
+    @field_validator('title', 'content')
+    @classmethod
+    def sanitize_fields(cls, value: Optional[str]) -> Optional[str]:
+        if value:
+            return sanitize_html(value)
+        return value
 
 class CommunityPostResponse(CamelCaseModel):
     id: uuid.UUID
@@ -396,6 +428,11 @@ class CommunityPostResponse(CamelCaseModel):
 
 class CommentCreate(CamelCaseModel):
     content: str = Field(..., min_length=1, max_length=500)
+
+    @field_validator('content')
+    @classmethod
+    def sanitize_fields(cls, value: str) -> str:
+        return sanitize_html(value)
 
 class CommentResponse(CamelCaseModel):
     id: uuid.UUID
