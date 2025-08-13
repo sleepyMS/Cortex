@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
-import { nanoid } from "nanoid";
 import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
@@ -27,7 +26,8 @@ import {
   LogicOperator,
 } from "@/types/strategy";
 import { OHLCVData } from "@/types/market";
-import { parseRulesForIndicators } from "@/lib/strategyUtils";
+// 👇 [개선] createLogicBlock을 공통 유틸리티 파일에서 import 합니다.
+import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
 // --- UI 및 도메인 컴포넌트 임포트 ---
@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Separator } from "@/components/ui/Separator";
+import { Switch } from "@/components/ui/Switch";
 import {
   Form,
   FormControl,
@@ -48,6 +49,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/Form";
 import {
   Card,
@@ -64,7 +66,6 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Spinner } from "@/components/ui/Spinner";
 
 // --- Zod 폼 스키마 정의 ---
 const formSchema = z.object({
@@ -77,6 +78,15 @@ const formSchema = z.object({
     .max(500, { message: "설명은 500자 이내여야 합니다." })
     .optional()
     .nullable(),
+  isPublic: z.boolean().default(false),
+  takeProfitPctEnabled: z.boolean().default(false),
+  takeProfitPct: z.number().min(0.1).optional().nullable(),
+  stopLossPctEnabled: z.boolean().default(false),
+  stopLossPct: z.number().min(0.1).optional().nullable(),
+  atrEnabled: z.boolean().default(false),
+  atrStopLossMultiplier: z.number().min(0.1).optional().nullable(),
+  atrTakeProfitMultiplier: z.number().min(0.1).optional().nullable(),
+  atrPeriod: z.number().int().min(1).optional().nullable(),
 });
 
 type StrategyFormValues = z.infer<typeof formSchema>;
@@ -95,54 +105,6 @@ interface StrategyCreatePayload {
 }
 
 // --- 헬퍼 함수 ---
-const createLogicBlock = (
-  indicator: IndicatorMetadata,
-  logicType: string,
-  allowedTimeframes: string[]
-): LogicBlock => {
-  const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
-    allowedTimeframes.includes(tf)
-  );
-  const baseIndicatorValue: IndicatorValue = {
-    indicatorKey: indicator.key,
-    outputs: [indicator.outputs[0].key],
-    values: indicator.parameters.reduce(
-      (acc, param) => ({ ...acc, [param.key]: param.default }),
-      {}
-    ),
-    timeframe: availableTimeframes.length > 0 ? availableTimeframes[0] : "1h",
-  };
-  const newBlockId = nanoid();
-
-  // 예시: 다양한 로직 타입에 대한 기본 블록 생성
-  switch (logicType) {
-    case "comparison":
-      return {
-        id: newBlockId,
-        type: "comparison",
-        operandA: baseIndicatorValue,
-        operator: ">",
-        operandB: 0,
-      };
-    case "crossover":
-      return {
-        id: newBlockId,
-        type: "crossover",
-        mainLine: baseIndicatorValue,
-        signalLine: 0,
-        crossDirection: "above",
-      };
-    default: // 기본값 또는 다른 로직 타입들...
-      return {
-        id: newBlockId,
-        type: "comparison",
-        operandA: baseIndicatorValue,
-        operator: ">",
-        operandB: 0,
-      };
-  }
-};
-
 const fetchOHLCVData = async (
   ticker: string,
   timeframe: string
@@ -173,9 +135,9 @@ export default function NewStrategyPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // ✅ 1. useStrategyState 훅을 호출하여 전략의 현재 상태를 구독합니다.
-  const strategyState = useStrategyState();
+  // ⚠️ [제거] 페이지 내에 있던 불완전한 createLogicBlock 함수 정의를 삭제했습니다.
 
+  const strategyState = useStrategyState();
   const { allowedTimeframes } = useUserSubscription();
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
@@ -185,6 +147,12 @@ export default function NewStrategyPage() {
   const [chartTicker, setChartTicker] = useState("BTC/USDT");
   const [chartTimeframe, setChartTimeframe] = useState("1h");
 
+  // 페이지 진입 시 Zustand 스토어 상태를 초기화합니다.
+  useEffect(() => {
+    strategyState.reset();
+  }, [strategyState.reset]);
+
+  // 차트 표시용 Ticker를 동적으로 업데이트합니다.
   useEffect(() => {
     if (
       strategyState.targetCoins.length > 0 &&
@@ -199,9 +167,16 @@ export default function NewStrategyPage() {
     }
   }, [strategyState.targetCoins, chartTicker]);
 
-  const form = useForm<StrategyFormValues>({
+  const formMethods = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: {
+      name: "",
+      description: "",
+      isPublic: false,
+      takeProfitPctEnabled: false,
+      stopLossPctEnabled: false,
+      atrEnabled: false,
+    },
   });
 
   const {
@@ -215,9 +190,7 @@ export default function NewStrategyPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // ✅ 2. useMemo를 사용하여 strategyState가 변경될 때마다 indicatorConfigs를 다시 계산합니다.
   const indicatorConfigs = useMemo(() => {
-    // 👈 헬퍼 함수가 원하는 모양의 객체를 새로 만듭니다.
     const rulesForParsing = {
       longEntry: strategyState.longEntryRules,
       longExit: strategyState.longExitRules,
@@ -225,8 +198,6 @@ export default function NewStrategyPage() {
       shortExit: strategyState.shortExitRules,
     };
     return parseRulesForIndicators(rulesForParsing);
-
-    // 👈 의존성 배열을 전체 객체가 아닌, 실제 사용하는 규칙들로 한정하여 최적화합니다.
   }, [
     strategyState.longEntryRules,
     strategyState.longExitRules,
@@ -234,7 +205,6 @@ export default function NewStrategyPage() {
     strategyState.shortExitRules,
   ]);
 
-  // ✅ 3. useQuery의 queryKey에 indicatorConfigs를 포함시켜, 규칙 변경 시 자동으로 데이터를 다시 가져옵니다.
   const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
     queryFn: () =>
@@ -274,11 +244,14 @@ export default function NewStrategyPage() {
   ) => {
     if (!currentTarget) return;
 
+    // 중앙화된 createLogicBlock 함수를 사용하여 버그를 해결합니다.
     const newBlock = createLogicBlock(indicator, logicType, allowedTimeframes);
 
     if (currentTarget.type === "operand") {
       const newIndicatorValue =
-        (newBlock as any).operandA || (newBlock as any).mainLine;
+        (newBlock as any).operandA ||
+        (newBlock as any).indicator ||
+        (newBlock as any).mainLine;
       strategyState.updateRuleLogic(
         currentTarget.ruleType,
         currentTarget.blockId,
@@ -295,23 +268,44 @@ export default function NewStrategyPage() {
         currentTarget.as
       );
     }
-
     setIsHubOpen(false);
     setCurrentTarget(null);
   };
 
   const createStrategyMutation = useMutation({
     mutationFn: async (values: StrategyFormValues) => {
+      // 폼에서 TP/SL 값을 읽어 tpslLogic 객체를 올바르게 생성합니다.
+      const tpslLogic: TpslLogic | null =
+        values.takeProfitPctEnabled ||
+        values.stopLossPctEnabled ||
+        values.atrEnabled
+          ? {
+              takeProfitPct: values.takeProfitPctEnabled
+                ? values.takeProfitPct
+                : null,
+              stopLossPct: values.stopLossPctEnabled
+                ? values.stopLossPct
+                : null,
+              atrStopLossMultiplier: values.atrEnabled
+                ? values.atrStopLossMultiplier
+                : null,
+              atrTakeProfitMultiplier: values.atrEnabled
+                ? values.atrTakeProfitMultiplier
+                : null,
+              atrPeriod: values.atrEnabled ? values.atrPeriod : null,
+            }
+          : null;
+
       const payload: StrategyCreatePayload = {
         name: values.name,
         description: values.description,
+        isPublic: values.isPublic,
         longEntryRules: strategyState.longEntryRules,
         longExitRules: strategyState.longExitRules,
         shortEntryRules: strategyState.shortEntryRules,
         shortExitRules: strategyState.shortExitRules,
-        tpslLogic: null, // TpslForm에서 상태를 받아와야 함
+        tpslLogic: tpslLogic,
         targetCoins: strategyState.targetCoins,
-        isPublic: false,
       };
       const { data } = await apiClient.post("/strategies", payload);
       return data;
@@ -349,8 +343,11 @@ export default function NewStrategyPage() {
         selectionMode={hubSelectionMode}
       />
       <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <FormProvider {...formMethods}>
+          <form
+            onSubmit={formMethods.handleSubmit(onSubmit)}
+            className="space-y-8"
+          >
             <div className="flex items-center justify-between gap-4">
               <Button
                 type="button"
@@ -373,8 +370,7 @@ export default function NewStrategyPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    {" "}
-                    <Save className="mr-2 h-4 w-4" /> {t("form.saveButton")}{" "}
+                    <Save className="mr-2 h-4 w-4" /> {t("form.saveButton")}
                   </>
                 )}
               </Button>
@@ -391,7 +387,7 @@ export default function NewStrategyPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
-                      control={form.control}
+                      control={formMethods.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
@@ -407,7 +403,7 @@ export default function NewStrategyPage() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={formMethods.control}
                       name="description"
                       render={({ field }) => (
                         <FormItem>
@@ -423,6 +419,26 @@ export default function NewStrategyPage() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={formMethods.control}
+                      name="isPublic"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>{t("form.isPublicLabel")}</FormLabel>
+                            <FormDescription>
+                              {t("form.isPublicDescription")}
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </CardContent>
                 </Card>
               </div>
@@ -431,7 +447,7 @@ export default function NewStrategyPage() {
                   targetCoins={strategyState.targetCoins}
                   setTargetCoins={strategyState.setTargetCoins}
                 />
-                <TpslForm form={form} />
+                <TpslForm form={formMethods} />
               </div>
             </div>
 
@@ -485,7 +501,6 @@ export default function NewStrategyPage() {
                   </div>
                 ) : (
                   <DynamicStrategyChart
-                    // ✅ 4. rules prop으로 strategyState의 최신 규칙들을 전달합니다.
                     rules={strategyState}
                     ohlcvData={ohlcvData}
                     indicatorData={indicatorData}
@@ -518,7 +533,7 @@ export default function NewStrategyPage() {
               />
             </div>
           </form>
-        </Form>
+        </FormProvider>
       </div>
     </AuthGuard>
   );
