@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
 
-// --- 커스텀 훅 및 타입 임포트 ---
+// --- 커스텀 훅, 타입, 유틸리티 임포트 ---
 import { useStrategyState } from "@/hooks/useStrategyState";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { IndicatorMetadata } from "@/lib/indicators";
@@ -26,7 +26,6 @@ import {
   LogicOperator,
 } from "@/types/strategy";
 import { OHLCVData } from "@/types/market";
-// 👇 [개선] createLogicBlock을 공통 유틸리티 파일에서 import 합니다.
 import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
@@ -35,7 +34,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import DynamicStrategyChart from "@/components/domain/strategy/DynamicStrategyChart";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
-import { TpslForm } from "@/components/domain/strategy/TpslForm";
+import { TpslForm, TpslMode } from "@/components/domain/strategy/TpslForm";
 import { TargetCoinForm } from "@/components/domain/strategy/TargetCoinForm";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -79,11 +78,8 @@ const formSchema = z.object({
     .optional()
     .nullable(),
   isPublic: z.boolean().default(false),
-  takeProfitPctEnabled: z.boolean().default(false),
   takeProfitPct: z.number().min(0.1).optional().nullable(),
-  stopLossPctEnabled: z.boolean().default(false),
   stopLossPct: z.number().min(0.1).optional().nullable(),
-  atrEnabled: z.boolean().default(false),
   atrStopLossMultiplier: z.number().min(0.1).optional().nullable(),
   atrTakeProfitMultiplier: z.number().min(0.1).optional().nullable(),
   atrPeriod: z.number().int().min(1).optional().nullable(),
@@ -95,13 +91,13 @@ type StrategyFormValues = z.infer<typeof formSchema>;
 interface StrategyCreatePayload {
   name: string;
   description: string | null | undefined;
+  isPublic: boolean;
   longEntryRules: PositionRules | null;
   longExitRules: PositionRules | null;
   shortEntryRules: PositionRules | null;
   shortExitRules: PositionRules | null;
   tpslLogic: TpslLogic | null;
   targetCoins: TargetCoin[];
-  isPublic: boolean;
 }
 
 // --- 헬퍼 함수 ---
@@ -135,10 +131,9 @@ export default function NewStrategyPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // ⚠️ [제거] 페이지 내에 있던 불완전한 createLogicBlock 함수 정의를 삭제했습니다.
-
   const strategyState = useStrategyState();
   const { allowedTimeframes } = useUserSubscription();
+  const [tpslMode, setTpslMode] = useState<TpslMode>("percentage");
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
   const [hubSelectionMode, setHubSelectionMode] = useState<
@@ -147,12 +142,10 @@ export default function NewStrategyPage() {
   const [chartTicker, setChartTicker] = useState("BTC/USDT");
   const [chartTimeframe, setChartTimeframe] = useState("1h");
 
-  // 페이지 진입 시 Zustand 스토어 상태를 초기화합니다.
   useEffect(() => {
     strategyState.reset();
   }, [strategyState.reset]);
 
-  // 차트 표시용 Ticker를 동적으로 업데이트합니다.
   useEffect(() => {
     if (
       strategyState.targetCoins.length > 0 &&
@@ -173,9 +166,11 @@ export default function NewStrategyPage() {
       name: "",
       description: "",
       isPublic: false,
-      takeProfitPctEnabled: false,
-      stopLossPctEnabled: false,
-      atrEnabled: false,
+      takeProfitPct: undefined,
+      stopLossPct: undefined,
+      atrStopLossMultiplier: undefined,
+      atrTakeProfitMultiplier: undefined,
+      atrPeriod: undefined,
     },
   });
 
@@ -191,13 +186,12 @@ export default function NewStrategyPage() {
   });
 
   const indicatorConfigs = useMemo(() => {
-    const rulesForParsing = {
+    return parseRulesForIndicators({
       longEntry: strategyState.longEntryRules,
       longExit: strategyState.longExitRules,
       shortEntry: strategyState.shortEntryRules,
       shortExit: strategyState.shortExitRules,
-    };
-    return parseRulesForIndicators(rulesForParsing);
+    });
   }, [
     strategyState.longEntryRules,
     strategyState.longExitRules,
@@ -243,10 +237,7 @@ export default function NewStrategyPage() {
     logicType: string
   ) => {
     if (!currentTarget) return;
-
-    // 중앙화된 createLogicBlock 함수를 사용하여 버그를 해결합니다.
     const newBlock = createLogicBlock(indicator, logicType, allowedTimeframes);
-
     if (currentTarget.type === "operand") {
       const newIndicatorValue =
         (newBlock as any).operandA ||
@@ -274,27 +265,33 @@ export default function NewStrategyPage() {
 
   const createStrategyMutation = useMutation({
     mutationFn: async (values: StrategyFormValues) => {
-      // 폼에서 TP/SL 값을 읽어 tpslLogic 객체를 올바르게 생성합니다.
-      const tpslLogic: TpslLogic | null =
-        values.takeProfitPctEnabled ||
-        values.stopLossPctEnabled ||
-        values.atrEnabled
-          ? {
-              takeProfitPct: values.takeProfitPctEnabled
-                ? values.takeProfitPct
-                : null,
-              stopLossPct: values.stopLossPctEnabled
-                ? values.stopLossPct
-                : null,
-              atrStopLossMultiplier: values.atrEnabled
-                ? values.atrStopLossMultiplier
-                : null,
-              atrTakeProfitMultiplier: values.atrEnabled
-                ? values.atrTakeProfitMultiplier
-                : null,
-              atrPeriod: values.atrEnabled ? values.atrPeriod : null,
-            }
-          : null;
+      let tpslLogic: TpslLogic | null = null;
+
+      if (
+        tpslMode === "percentage" &&
+        (values.takeProfitPct || values.stopLossPct)
+      ) {
+        tpslLogic = {
+          takeProfitPct: values.takeProfitPct || null,
+          stopLossPct: values.stopLossPct || null,
+          atrStopLossMultiplier: null,
+          atrTakeProfitMultiplier: null,
+          atrPeriod: null,
+        };
+      } else if (
+        tpslMode === "atr" &&
+        (values.atrPeriod ||
+          values.atrStopLossMultiplier ||
+          values.atrTakeProfitMultiplier)
+      ) {
+        tpslLogic = {
+          takeProfitPct: null,
+          stopLossPct: null,
+          atrStopLossMultiplier: values.atrStopLossMultiplier || null,
+          atrTakeProfitMultiplier: values.atrTakeProfitMultiplier || null,
+          atrPeriod: values.atrPeriod || null,
+        };
+      }
 
       const payload: StrategyCreatePayload = {
         name: values.name,
@@ -307,6 +304,7 @@ export default function NewStrategyPage() {
         tpslLogic: tpslLogic,
         targetCoins: strategyState.targetCoins,
       };
+
       const { data } = await apiClient.post("/strategies", payload);
       return data;
     },
@@ -447,7 +445,7 @@ export default function NewStrategyPage() {
                   targetCoins={strategyState.targetCoins}
                   setTargetCoins={strategyState.setTargetCoins}
                 />
-                <TpslForm form={formMethods} />
+                <TpslForm form={formMethods} onModeChange={setTpslMode} />
               </div>
             </div>
 
@@ -524,8 +522,8 @@ export default function NewStrategyPage() {
                 onAddTopLevelRule={handleAddTopLevelRule}
                 onTriggerNestedAddRule={handleTriggerNestedAddRule}
                 onTriggerOperandHub={handleTriggerOperandHub}
-                onUpdateRule={(ruleType, id, newBlock) =>
-                  strategyState.updateRule(ruleType, id, newBlock)
+                onUpdateRule={(ruleType, id, updater) =>
+                  strategyState.updateRule(ruleType, id, updater)
                 }
                 onDeleteRule={(ruleType, id) =>
                   strategyState.deleteRule(ruleType, id)

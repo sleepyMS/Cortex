@@ -1,41 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
-import { nanoid } from "nanoid";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { CandlestickData, UTCTimestamp } from "lightweight-charts";
 
+// --- 커스텀 훅, 타입, 유틸리티 임포트 ---
 import { useStrategyState } from "@/hooks/useStrategyState";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { IndicatorMetadata } from "@/lib/indicators";
 import {
   Strategy,
-  TargetSlot,
+  StrategyType,
+  LogicBlock,
   TpslLogic,
   TargetCoin,
   PositionRules,
-  LogicBlock,
-  IndicatorMetadata,
+  TargetSlot,
   IndicatorValue,
   LogicOperator,
-  StrategyType,
 } from "@/types/strategy";
+import { OHLCVData } from "@/types/market";
+import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
+// --- UI 및 도메인 컴포넌트 임포트 ---
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import DynamicStrategyChart from "@/components/domain/strategy/DynamicStrategyChart";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
-import { TpslForm } from "@/components/domain/strategy/TpslForm";
+import { TpslForm, TpslMode } from "@/components/domain/strategy/TpslForm";
 import { TargetCoinForm } from "@/components/domain/strategy/TargetCoinForm";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Separator } from "@/components/ui/Separator";
+import { Switch } from "@/components/ui/Switch";
 import {
   Form,
   FormControl,
@@ -43,6 +49,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/Form";
 import {
   Card,
@@ -51,28 +58,41 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/Card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-// Zod 스키마, API 페이로드, createLogicBlock 헬퍼는 변경 없음
+// --- Zod 폼 스키마 정의 ---
 const formSchema = z.object({
   name: z
     .string()
-    .min(3, "전략 이름은 최소 3글자 이상")
-    .max(100, "전략 이름은 100자 이내"),
-  description: z.string().max(500, "설명은 500자 이내").optional().nullable(),
-  takeProfitPctEnabled: z.boolean().default(false),
+    .min(3, { message: "전략 이름은 최소 3글자 이상이어야 합니다." })
+    .max(100, { message: "전략 이름은 100자 이내여야 합니다." }),
+  description: z
+    .string()
+    .max(500, { message: "설명은 500자 이내여야 합니다." })
+    .optional()
+    .nullable(),
+  isPublic: z.boolean().default(false),
   takeProfitPct: z.number().min(0.1).optional().nullable(),
-  stopLossPctEnabled: z.boolean().default(false),
   stopLossPct: z.number().min(0.1).optional().nullable(),
-  atrEnabled: z.boolean().default(false),
   atrStopLossMultiplier: z.number().min(0.1).optional().nullable(),
   atrTakeProfitMultiplier: z.number().min(0.1).optional().nullable(),
   atrPeriod: z.number().int().min(1).optional().nullable(),
 });
+
 type StrategyFormValues = z.infer<typeof formSchema>;
+
+// --- API 페이로드 타입 정의 ---
 interface StrategyUpdatePayload {
   name: string;
   description: string | null | undefined;
+  isPublic: boolean;
   longEntryRules: PositionRules | null;
   longExitRules: PositionRules | null;
   shortEntryRules: PositionRules | null;
@@ -80,93 +100,32 @@ interface StrategyUpdatePayload {
   tpslLogic: TpslLogic | null;
   targetCoins: TargetCoin[];
 }
-const createLogicBlock = (
-  indicator: IndicatorMetadata,
-  logicType: string,
-  allowedTimeframes: string[]
-): LogicBlock => {
-  const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
-    allowedTimeframes.includes(tf)
-  );
-  const baseIndicatorValue: IndicatorValue = {
-    indicatorKey: indicator.key,
-    outputs: [indicator.outputs[0].key],
-    values: indicator.parameters.reduce(
-      (acc, param) => ({ ...acc, [param.key]: param.default }),
-      {}
-    ),
-    timeframe: availableTimeframes.length > 0 ? availableTimeframes[0] : "1h",
-  };
-  const newBlockId = nanoid();
-  switch (logicType) {
-    case "comparison":
-      return {
-        id: newBlockId,
-        type: "comparison",
-        operandA: baseIndicatorValue,
-        operator: ">",
-        operandB: 0,
-      };
-    case "crossover":
-      return {
-        id: newBlockId,
-        type: "crossover",
-        mainLine: baseIndicatorValue,
-        signalLine: 0,
-        crossDirection: "above",
-      };
-    case "state":
-      return {
-        id: newBlockId,
-        type: "state",
-        indicator: baseIndicatorValue,
-        lowerBound: 30,
-        upperBound: 70,
-        stateAction: "within",
-      };
-    case "trend_signal":
-      return {
-        id: newBlockId,
-        type: "trend_signal",
-        indicator: baseIndicatorValue,
-        signal: "buy",
-      };
-    case "channel":
-      return {
-        id: newBlockId,
-        type: "channel",
-        indicator: baseIndicatorValue,
-        channelZone: "upper",
-        action: "enter",
-      };
-    case "divergence":
-      return {
-        id: newBlockId,
-        type: "divergence",
-        indicator: baseIndicatorValue,
-        divergenceType: "bullish",
-      };
-    case "pattern":
-      return {
-        id: newBlockId,
-        type: "pattern",
-        patternKey: "doji",
-        direction: "any",
-      };
-    default:
-      return {
-        id: newBlockId,
-        type: "comparison",
-        operandA: baseIndicatorValue,
-        operator: ">",
-        operandB: 0,
-      };
-  }
+
+// --- 헬퍼 함수 ---
+const fetchOHLCVData = async (
+  ticker: string,
+  timeframe: string
+): Promise<CandlestickData<UTCTimestamp>[]> => {
+  const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
+    params: { ticker, timeframe, limit: 500 },
+  });
+  return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
+};
+const fetchIndicatorData = async (
+  ticker: string,
+  timeframe: string,
+  indicatorConfigs: any[]
+) => {
+  if (indicatorConfigs.length === 0) return null;
+  const { data } = await apiClient.post("/market/calculate-indicators", {
+    ticker,
+    timeframe,
+    indicators: indicatorConfigs,
+  });
+  return data.results;
 };
 
-// -----------------------------------------------------------------------------
-// ✨ 1. 실제 폼 UI와 로직을 담당할 내부 컴포넌트 분리
-// -----------------------------------------------------------------------------
+// --- 1. 실제 폼 UI와 로직을 담당할 내부 컴포넌트 ---
 function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
   const t = useTranslations("StrategyBuilder");
   const router = useRouter();
@@ -176,23 +135,25 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
   const strategyState = useStrategyState();
   const { setStrategy } = strategyState;
   const { allowedTimeframes } = useUserSubscription();
-
+  const [tpslMode, setTpslMode] = useState<TpslMode>("percentage");
   const [isHubOpen, setIsHubOpen] = useState(false);
-  const [currentTarget, setCurrentTarget] = useState<TargetSlot>(null);
+  const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
   const [hubSelectionMode, setHubSelectionMode] = useState<
     "full" | "indicatorOnly"
   >("full");
+  const [chartTicker, setChartTicker] = useState(
+    initialStrategy.targetCoins[0]?.ticker || "BTC/USDT"
+  );
+  const [chartTimeframe, setChartTimeframe] = useState("1h");
 
   const formMethods = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
     values: {
       name: initialStrategy.name,
       description: initialStrategy.description,
-      takeProfitPctEnabled: !!initialStrategy.tpslLogic?.takeProfitPct,
+      isPublic: initialStrategy.isPublic,
       takeProfitPct: initialStrategy.tpslLogic?.takeProfitPct,
-      stopLossPctEnabled: !!initialStrategy.tpslLogic?.stopLossPct,
       stopLossPct: initialStrategy.tpslLogic?.stopLossPct,
-      atrEnabled: !!initialStrategy.tpslLogic?.atrPeriod,
       atrStopLossMultiplier: initialStrategy.tpslLogic?.atrStopLossMultiplier,
       atrTakeProfitMultiplier:
         initialStrategy.tpslLogic?.atrTakeProfitMultiplier,
@@ -210,65 +171,40 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
     });
   }, [initialStrategy, setStrategy]);
 
-  const updateStrategyMutation = useMutation({
-    mutationFn: async (values: StrategyFormValues) => {
-      const tpslLogic: TpslLogic | null =
-        values.takeProfitPctEnabled ||
-        values.stopLossPctEnabled ||
-        values.atrEnabled
-          ? {
-              takeProfitPct: values.takeProfitPctEnabled
-                ? values.takeProfitPct
-                : null,
-              stopLossPct: values.stopLossPctEnabled
-                ? values.stopLossPct
-                : null,
-              atrStopLossMultiplier: values.atrEnabled
-                ? values.atrStopLossMultiplier
-                : null,
-              atrTakeProfitMultiplier: values.atrEnabled
-                ? values.atrTakeProfitMultiplier
-                : null,
-              atrPeriod: values.atrEnabled ? values.atrPeriod : null,
-            }
-          : null;
-      const payload: Partial<StrategyUpdatePayload> = {
-        name: values.name,
-        description: values.description,
-        longEntryRules: strategyState.longEntryRules,
-        longExitRules: strategyState.longExitRules,
-        shortEntryRules: strategyState.shortEntryRules,
-        shortExitRules: strategyState.shortExitRules,
-        tpslLogic: tpslLogic,
-        targetCoins: strategyState.targetCoins,
-      };
-      const { data } = await apiClient.put(
-        `/strategies/${strategyId}`,
-        payload
-      );
-      return data;
-    },
-    onSuccess: (data: any) => {
-      toast.success(t("form.saveSuccess", { strategyName: data.name }));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-      queryClient.invalidateQueries({ queryKey: ["strategy", strategyId] });
-      router.push("/strategies");
-    },
-    onError: (error: any) => {
-      const detail = error?.response?.data?.detail;
-      toast.error(
-        t("form.saveError", {
-          error:
-            typeof detail === "string" ? detail : t("form.saveFailedGeneric"),
-        })
-      );
-    },
+  useEffect(() => {
+    if (
+      strategyState.targetCoins.length > 0 &&
+      strategyState.targetCoins[0].ticker !== chartTicker
+    ) {
+      setChartTicker(strategyState.targetCoins[0].ticker);
+    } else if (
+      strategyState.targetCoins.length === 0 &&
+      chartTicker !== "BTC/USDT"
+    ) {
+      setChartTicker("BTC/USDT");
+    }
+  }, [strategyState.targetCoins, chartTicker]);
+
+  const {
+    data: ohlcvData,
+    isLoading: isLoadingOHLCV,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["ohlcv", chartTicker, chartTimeframe],
+    queryFn: () => fetchOHLCVData(chartTicker, chartTimeframe),
+    staleTime: 300000,
   });
-
-  const onSubmit = (values: StrategyFormValues) => {
-    updateStrategyMutation.mutate(values);
-  };
-
+  const indicatorConfigs = useMemo(
+    () => parseRulesForIndicators(strategyState),
+    [strategyState]
+  );
+  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
+    queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
+    queryFn: () =>
+      fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs),
+    enabled: !!ohlcvData && indicatorConfigs.length > 0,
+  });
   const handleAddTopLevelRule = (ruleType: StrategyType) => {
     setCurrentTarget({ type: "top-level", ruleType });
     setHubSelectionMode("full");
@@ -297,41 +233,102 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
     logicType: string
   ) => {
     if (!currentTarget) return;
+    const newBlock = createLogicBlock(indicator, logicType, allowedTimeframes);
     if (currentTarget.type === "operand") {
-      const newIndicatorValue: IndicatorValue = {
-        indicatorKey: indicator.key,
-        outputs: [indicator.outputs[0].key],
-        values: indicator.parameters.reduce(
-          (acc, param) => ({ ...acc, [param.key]: param.default }),
-          {}
-        ),
-        timeframe: allowedTimeframes[0],
-      };
+      const newIndicatorValue =
+        (newBlock as any).operandA ||
+        (newBlock as any).indicator ||
+        (newBlock as any).mainLine;
       strategyState.updateRuleLogic(
         currentTarget.ruleType,
         currentTarget.blockId,
         currentTarget.operandKey,
         newIndicatorValue
       );
-    } else {
-      const newBlock = createLogicBlock(
-        indicator,
-        logicType,
-        allowedTimeframes
+    } else if (currentTarget.type === "top-level") {
+      strategyState.addRule(currentTarget.ruleType, newBlock, null);
+    } else if (currentTarget.type === "nested-add") {
+      strategyState.addRule(
+        currentTarget.ruleType,
+        newBlock,
+        currentTarget.parentId,
+        currentTarget.as
       );
-      if (currentTarget.type === "top-level") {
-        strategyState.addRule(currentTarget.ruleType, newBlock, null);
-      } else if (currentTarget.type === "nested-add") {
-        strategyState.addRule(
-          currentTarget.ruleType,
-          newBlock,
-          currentTarget.parentId,
-          currentTarget.as
-        );
-      }
     }
     setIsHubOpen(false);
     setCurrentTarget(null);
+  };
+
+  const updateStrategyMutation = useMutation({
+    mutationFn: async (values: StrategyFormValues) => {
+      let tpslLogic: TpslLogic | null = null;
+
+      if (
+        tpslMode === "percentage" &&
+        (values.takeProfitPct || values.stopLossPct)
+      ) {
+        tpslLogic = {
+          takeProfitPct: values.takeProfitPct || null,
+          stopLossPct: values.stopLossPct || null,
+          atrStopLossMultiplier: null,
+          atrTakeProfitMultiplier: null,
+          atrPeriod: null,
+        };
+      } else if (
+        tpslMode === "atr" &&
+        (values.atrPeriod ||
+          values.atrStopLossMultiplier ||
+          values.atrTakeProfitMultiplier)
+      ) {
+        tpslLogic = {
+          takeProfitPct: null,
+          stopLossPct: null,
+          atrStopLossMultiplier: values.atrStopLossMultiplier || null,
+          atrTakeProfitMultiplier: values.atrTakeProfitMultiplier || null,
+          atrPeriod: values.atrPeriod || null,
+        };
+      }
+
+      const payload: Partial<StrategyUpdatePayload> = {
+        name: values.name,
+        description: values.description,
+        isPublic: values.isPublic,
+        longEntryRules: strategyState.longEntryRules,
+        longExitRules: strategyState.longExitRules,
+        shortEntryRules: strategyState.shortEntryRules,
+        shortExitRules: strategyState.shortExitRules,
+        tpslLogic: tpslLogic,
+        targetCoins: strategyState.targetCoins,
+      };
+      const { data } = await apiClient.put(
+        `/strategies/${strategyId}`,
+        payload
+      );
+      return data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(t("form.saveSuccess", { strategyName: data.name }));
+      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
+      queryClient.invalidateQueries({ queryKey: ["strategy", strategyId] });
+      router.push("/strategies");
+    },
+    onError: (error: any) => {
+      toast.error(
+        t("form.saveError", {
+          error: error?.response?.data?.detail || "Unknown error",
+        })
+      );
+    },
+  });
+
+  const onSubmit = (values: StrategyFormValues) => {
+    if (!strategyState.longEntryRules && !strategyState.shortEntryRules) {
+      return toast.error(t("form.rulesRequired"));
+    }
+    if (strategyState.targetCoins.length === 0) {
+      return toast.error(t("targetCoinForm.noTickerError"));
+    }
+    updateStrategyMutation.mutate(values);
   };
 
   return (
@@ -352,14 +349,14 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/strategies")}
+                onClick={() => router.back()}
                 disabled={updateStrategyMutation.isPending}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 {t("form.goBackButton")}
               </Button>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-center">
-                전략 수정
+                {t("editTitle")}
               </h1>
               <Button
                 type="submit"
@@ -370,8 +367,7 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
-                    {t("form.saveButton")}
+                    <Save className="mr-2 h-4 w-4" /> {t("form.saveButton")}
                   </>
                 )}
               </Button>
@@ -412,6 +408,26 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={formMethods.control}
+                      name="isPublic"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>{t("form.isPublicLabel")}</FormLabel>
+                            <FormDescription>
+                              {t("form.isPublicDescription")}
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </CardContent>
                 </Card>
               </div>
@@ -420,7 +436,63 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                   targetCoins={strategyState.targetCoins}
                   setTargetCoins={strategyState.setTargetCoins}
                 />
-                <TpslForm form={formMethods} />
+                <TpslForm form={formMethods} onModeChange={setTpslMode} />
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <h2 className="text-2xl font-bold text-foreground">
+                  {t("chartTitle")}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={chartTicker}
+                    onValueChange={setChartTicker}
+                    disabled={strategyState.targetCoins.length === 0}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select a coin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {strategyState.targetCoins.map((coin) => (
+                        <SelectItem key={coin.ticker} value={coin.ticker}>
+                          {coin.ticker}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center p-1 rounded-md bg-muted">
+                    {["15m", "1h", "4h", "1d"].map((tf) => (
+                      <Button
+                        key={tf}
+                        type="button"
+                        variant={chartTimeframe === tf ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setChartTimeframe(tf)}
+                        className="h-8 px-3"
+                      >
+                        {tf}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="relative">
+                {isLoadingOHLCV ? (
+                  <Skeleton className="w-full h-[400px] rounded-lg" />
+                ) : isError ? (
+                  <div className="w-full h-[400px] flex items-center justify-center text-destructive">
+                    {(error as Error).message}
+                  </div>
+                ) : (
+                  <DynamicStrategyChart
+                    rules={strategyState}
+                    ohlcvData={ohlcvData}
+                    indicatorData={indicatorData}
+                    isLoadingIndicators={isLoadingIndicators}
+                  />
+                )}
               </div>
             </div>
             <Separator />
@@ -436,8 +508,12 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                 onAddTopLevelRule={handleAddTopLevelRule}
                 onTriggerNestedAddRule={handleTriggerNestedAddRule}
                 onTriggerOperandHub={handleTriggerOperandHub}
-                onUpdateRule={strategyState.updateRule}
-                onDeleteRule={strategyState.deleteRule}
+                onUpdateRule={(ruleType, id, updater) =>
+                  strategyState.updateRule(ruleType, id, updater)
+                }
+                onDeleteRule={(ruleType, id) =>
+                  strategyState.deleteRule(ruleType, id)
+                }
               />
             </div>
           </form>
@@ -447,21 +523,19 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
   );
 }
 
-// -----------------------------------------------------------------------------
-// ✨ 2. 페이지의 최상위 컴포넌트: 데이터 로딩만 책임
-// -----------------------------------------------------------------------------
+// --- 2. 페이지의 최상위 컴포넌트: 데이터 로딩만 책임 ---
 export default function EditStrategyPage({
   params,
 }: {
   params: { strategyId: string };
 }) {
-  const strategyId = params.strategyId;
+  const t = useTranslations("StrategyBuilder");
+  const { strategyId } = params;
 
   const {
     data: initialStrategy,
     isLoading,
     isError,
-    status, // useQuery의 현재 상태를 더 자세히 보기 위해 status를 추가합니다.
   } = useQuery<Strategy, Error>({
     queryKey: ["strategy", strategyId],
     queryFn: async () => {
@@ -490,7 +564,7 @@ export default function EditStrategyPage({
   if (isError || !initialStrategy) {
     return (
       <div className="container mx-auto p-8 text-center text-destructive">
-        전략을 불러오는 데 실패했습니다.
+        {t("form.loadError")}
       </div>
     );
   }
