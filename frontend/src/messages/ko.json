@@ -280,16 +280,26 @@
       "pattern": "특정 캔들 패턴의 발생 여부를 확인합니다."
     },
     "tpslForm": {
-      "title": "이익 실현(TP) / 손절(SL) 설정",
-      "description": "고정 비율 또는 ATR 기반으로 청산 규칙을 설정합니다.",
-      "takeProfitPctLabel": "이익 실현",
+      "title": "익절/손절(TP/SL) 설정",
+      "description": "진입한 포지션의 자동 익절 및 손절 규칙을 설정합니다.",
+      "percentageTab": "퍼센티지 기반",
+      "atrTab": "ATR 기반",
+      "takeProfitPctLabel": "익절",
       "stopLossPctLabel": "손절",
-      "atrEnabledLabel": "ATR 기반 TP/SL 사용",
-      "atrStopLossLabel": "ATR 손절 배수",
-      "atrTakeProfitLabel": "ATR 이익 실현 배수",
+      "percentSymbol": "%",
+      "takeProfitPctPlaceholder": "5.0",
+      "stopLossPctPlaceholder": "2.0",
+      "atrTakeProfitLabel": "익절 (ATR 배수)",
+      "atrStopLossLabel": "손절 (ATR 배수)",
       "atrPeriodLabel": "ATR 기간",
-      "upgradeRequiredTitle": "유료 플랜 기능",
-      "upgradeButton": "업그레이드"
+      "atrMultiplierUnit": "x ATR",
+      "atrTakeProfitMultiplierPlaceholder": "2.0",
+      "atrStopLossMultiplierPlaceholder": "1.5",
+      "atrPeriodPlaceholder": "14",
+      "proFeatureLock": {
+        "description": "ATR 기반 TP/SL는 유료 플랜 전용 기능입니다.",
+        "upgradeButton": "플랜 업그레이드"
+      }
     },
     "targetCoinForm": {
       "title": "타겟 코인 설정",

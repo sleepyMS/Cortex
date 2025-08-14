@@ -28,7 +28,7 @@ import { INDICATOR_METADATA } from "@/lib/indicators";
 import { LegendData } from "@/types/chart";
 
 // =================================================================================
-// #region 유틸리티 및 상수 (Utility & Constants)
+// #region 유틸리티 및 상수
 // =================================================================================
 
 const LEGEND_KEY_CANDLE = "CANDLE";
@@ -64,7 +64,6 @@ const dynamicTickMarkFormatter = (
 ): string => {
   const date = new Date((time as number) * 1000);
   const formatOptions: Intl.DateTimeFormatOptions = { timeZone: "Asia/Seoul" };
-
   switch (tickMarkType) {
     case TickMarkType.Year:
       return new Intl.DateTimeFormat("en-US", {
@@ -129,19 +128,9 @@ const createBaseChartOptions = (
     fixRightEdge: true,
     tickMarkFormatter: dynamicTickMarkFormatter,
   },
-  localization: {
-    locale: "ko-KR",
-    timeFormatter: crosshairTimeFormatter,
-  },
-  handleScroll: {
-    pressedMouseMove: !isPane,
-    mouseWheel: true,
-  },
-  handleScale: {
-    axisPressedMouseMove: false,
-    mouseWheel: true,
-    pinch: true,
-  },
+  localization: { locale: "ko-KR", timeFormatter: crosshairTimeFormatter },
+  handleScroll: { pressedMouseMove: !isPane, mouseWheel: true },
+  handleScale: { axisPressedMouseMove: false, mouseWheel: true, pinch: true },
 });
 
 const getThemeOptions = (resolvedTheme?: string): DeepPartial<ChartOptions> => {
@@ -162,12 +151,12 @@ const getThemeOptions = (resolvedTheme?: string): DeepPartial<ChartOptions> => {
 };
 
 // #endregion
-// =================================================================================
 
-type SeriesMapValue = {
-  series: ISeriesApi<SeriesType>;
-  chart: IChartApi;
-};
+// [수정] 새로운 통합 상태 관리 타입
+interface IndicatorState {
+  paneChart: IChartApi | null;
+  series: Map<string, ISeriesApi<SeriesType>>;
+}
 
 interface ChartManagerProps {
   mainChartContainerRef: React.RefObject<HTMLDivElement>;
@@ -194,8 +183,8 @@ export function useChartIndicatorManager({
 }: ChartManagerProps) {
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const paneChartRefs = useRef<Map<string, IChartApi>>(new Map());
-  const indicatorSeriesRef = useRef<Map<string, SeriesMapValue>>(new Map());
+  // [수정] 여러 개로 분리되었던 ref를 단일 관리 객체로 통합
+  const indicatorManagerRef = useRef<Map<string, IndicatorState>>(new Map());
 
   const ohlcvCacheRef = useRef<Map<number, CandlestickData<UTCTimestamp>>>(
     new Map()
@@ -211,27 +200,30 @@ export function useChartIndicatorManager({
     (container: HTMLElement, options: DeepPartial<ChartOptions>): IChartApi => {
       const chart = createChart(container, options);
 
-      // [수정] 콜백의 `range` 파라미터 타입을 라이브러리가 제공하는 `IRange<Time> | null`로 변경
       chart
         .timeScale()
         .subscribeVisibleTimeRangeChange((range: IRange<Time> | null) => {
           if (range) {
-            // [수정] setVisibleRange가 요구하는 `IRange<UTCTimestamp>` 타입에 맞게 새로운 객체 생성
             const newRange: IRange<UTCTimestamp> = {
               from: timeToSeconds(range.from) as UTCTimestamp,
               to: timeToSeconds(range.to) as UTCTimestamp,
             };
-            [chartRef.current, ...paneChartRefs.current.values()].forEach(
-              (otherChart) => {
-                if (otherChart && otherChart !== chart) {
-                  try {
-                    otherChart.timeScale().setVisibleRange(newRange);
-                  } catch (e) {
-                    /* 무시 */
-                  }
+            // [수정] 통합된 indicatorManagerRef를 순회하여 모든 차트에 적용
+            const allCharts = [
+              chartRef.current,
+              ...Array.from(indicatorManagerRef.current.values()).map(
+                (state) => state.paneChart
+              ),
+            ];
+            allCharts.forEach((otherChart) => {
+              if (otherChart && otherChart !== chart) {
+                try {
+                  otherChart.timeScale().setVisibleRange(newRange);
+                } catch (e) {
+                  /* 무시 */
                 }
               }
-            );
+            });
           }
         });
 
@@ -240,10 +232,8 @@ export function useChartIndicatorManager({
           setLegendData({});
           return;
         }
-
         const timeSec = timeToSeconds(param.time);
         const newLegendData: LegendData = {};
-
         const candleData = ohlcvCacheRef.current.get(timeSec);
         if (candleData) {
           newLegendData[LEGEND_KEY_CANDLE] = {
@@ -252,25 +242,27 @@ export function useChartIndicatorManager({
           };
         }
 
-        indicatorSeriesRef.current.forEach(({ series }, key) => {
-          const indicatorPoint = indicatorCacheRef.current
-            .get(key)
-            ?.get(timeSec);
-          if (indicatorPoint) {
-            const seriesOptions = series.options();
-            newLegendData[key] = {
-              ...indicatorPoint,
-              time: timeToSeconds(indicatorPoint.time) as UTCTimestamp,
-              color:
-                "color" in seriesOptions
-                  ? (seriesOptions.color as string)
-                  : undefined,
-            };
-          }
+        // [수정] 통합된 indicatorManagerRef를 순회하여 범례 데이터 수집
+        indicatorManagerRef.current.forEach((indicatorState) => {
+          indicatorState.series.forEach((series, key) => {
+            const indicatorPoint = indicatorCacheRef.current
+              .get(key)
+              ?.get(timeSec);
+            if (indicatorPoint) {
+              const seriesOptions = series.options();
+              newLegendData[key] = {
+                ...indicatorPoint,
+                time: timeToSeconds(indicatorPoint.time) as UTCTimestamp,
+                color:
+                  "color" in seriesOptions
+                    ? (seriesOptions.color as string)
+                    : undefined,
+              };
+            }
+          });
         });
         setLegendData(newLegendData);
       });
-
       return chart;
     },
     [setLegendData]
@@ -280,13 +272,11 @@ export function useChartIndicatorManager({
   useEffect(() => {
     const container = mainChartContainerRef.current;
     if (!container || chartRef.current) return;
-
-    const baseOptions = createBaseChartOptions(mainChartHeight);
-    const themeOptions = getThemeOptions(resolvedTheme);
-    const finalOptions = { ...baseOptions, ...themeOptions };
-
+    const finalOptions = {
+      ...createBaseChartOptions(mainChartHeight),
+      ...getThemeOptions(resolvedTheme),
+    };
     const mainChart = setupChart(container, finalOptions);
-
     chartRef.current = mainChart;
     candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
       upColor: "#26a69a",
@@ -295,67 +285,33 @@ export function useChartIndicatorManager({
       wickUpColor: "#26a69a",
       wickDownColor: "#ef5350",
     });
-
     const resizeObserver = new ResizeObserver((entries) => {
       const { width } = entries[0].contentRect;
       if (width > 0) mainChart.resize(width, mainChartHeight);
     });
     resizeObserver.observe(container);
-
     return () => {
       resizeObserver.disconnect();
-      paneChartRefs.current.forEach((chart) => chart.remove());
+      // [수정] 컴포넌트 파괴 시 모든 지표 상태를 정리
+      indicatorManagerRef.current.forEach((state) => {
+        state.series.forEach((series) => state.paneChart?.removeSeries(series));
+        state.paneChart?.remove();
+      });
       mainChart.remove();
       chartRef.current = null;
     };
   }, [mainChartContainerRef, mainChartHeight, setupChart, resolvedTheme]);
 
-  // Effect 2: 보조지표 차트(Pane) 동적 관리
-  useEffect(() => {
-    const chartsMap = paneChartRefs.current;
-    const existingKeys = new Set(chartsMap.keys());
-    const requiredKeys = new Set(paneIndicators);
-
-    existingKeys.forEach((key) => {
-      if (!requiredKeys.has(key)) {
-        chartsMap.get(key)?.remove();
-        chartsMap.delete(key);
-      }
-    });
-
-    requiredKeys.forEach((key) => {
-      const container = getPaneContainer(key);
-      if (container && !existingKeys.has(key)) {
-        const baseOptions = createBaseChartOptions(paneChartHeight, true);
-        const themeOptions = getThemeOptions(resolvedTheme);
-        const finalOptions = { ...baseOptions, ...themeOptions };
-
-        const paneChart = setupChart(container, finalOptions);
-        chartsMap.set(key, paneChart);
-
-        const resizeObserver = new ResizeObserver((entries) => {
-          const { width } = entries[0].contentRect;
-          if (width > 0) paneChart.resize(width, paneChartHeight);
-        });
-        resizeObserver.observe(container);
-      }
-    });
-  }, [
-    paneIndicators,
-    getPaneContainer,
-    paneChartHeight,
-    setupChart,
-    resolvedTheme,
-  ]);
-
-  // Effect 3: 테마 변경 적용
+  // Effect 2: 테마 변경 적용
   useEffect(() => {
     const themeOptions = getThemeOptions(resolvedTheme);
     chartRef.current?.applyOptions(themeOptions);
-    paneChartRefs.current.forEach((chart) => chart.applyOptions(themeOptions));
+    indicatorManagerRef.current.forEach((state) =>
+      state.paneChart?.applyOptions(themeOptions)
+    );
   }, [resolvedTheme]);
 
-  // Effect 4: 데이터 업데이트 및 캐싱
+  // Effect 3: 데이터 업데이트 및 캐싱
   useEffect(() => {
     if (ohlcvData) {
       const cache = new Map<number, CandlestickData<UTCTimestamp>>();
@@ -373,87 +329,114 @@ export function useChartIndicatorManager({
           number,
           LineData<UTCTimestamp> | HistogramData<UTCTimestamp>
         >();
-        dataPoints.forEach((p) => {
-          const timeAsSeconds = timeToSeconds(p.time);
-          const newPoint = { ...p, time: timeAsSeconds as UTCTimestamp };
-          innerMap.set(timeAsSeconds, newPoint);
-        });
+        dataPoints.forEach((p) =>
+          innerMap.set(timeToSeconds(p.time), {
+            ...p,
+            time: timeToSeconds(p.time) as UTCTimestamp,
+          })
+        );
         cache.set(key, innerMap);
       });
       indicatorCacheRef.current = cache;
     }
   }, [ohlcvData, indicatorData]);
 
-  // Effect 5: 지표 시리즈 동적 관리
+  // [수정] Effect 4: 지표의 생성/제거를 통합된 상태 관리 로직으로 재작성
   useEffect(() => {
-    if (!chartRef.current) return;
+    const mainChart = chartRef.current;
+    if (!mainChart) return;
 
-    const currentSeriesMap = indicatorSeriesRef.current;
+    const manager = indicatorManagerRef.current;
     const newSeriesKeys = new Set(
       indicatorData ? Object.keys(indicatorData) : []
     );
+    const currentIndicatorBaseKeys = new Set(manager.keys());
 
-    currentSeriesMap.forEach(({ chart, series }, key) => {
-      if (!newSeriesKeys.has(key)) {
-        chart.removeSeries(series);
-        currentSeriesMap.delete(key);
+    // --- 1. 파괴 (Cleanup) 단계 ---
+    currentIndicatorBaseKeys.forEach((baseKey) => {
+      const state = manager.get(baseKey)!;
+      let hasActiveSeries = false;
+      state.series.forEach((_, fullKey) => {
+        if (newSeriesKeys.has(fullKey)) {
+          hasActiveSeries = true;
+        } else {
+          state.paneChart?.removeSeries(state.series.get(fullKey)!);
+          state.series.delete(fullKey);
+        }
+      });
+
+      // 해당 지표 그룹에 속한 시리즈가 하나도 없으면 보조 차트(Pane)도 제거
+      if (!hasActiveSeries) {
+        state.paneChart?.remove();
+        manager.delete(baseKey);
       }
     });
 
+    // --- 2. 생성 (Setup) 단계 ---
     if (indicatorData) {
-      Object.entries(indicatorData).forEach(([key, data], index) => {
-        if (!data || data.length === 0) return;
-
+      Object.entries(indicatorData).forEach(([fullSeriesKey, data], index) => {
         const metadata = INDICATOR_METADATA.find((ind) =>
-          key.toUpperCase().startsWith(ind.key.toUpperCase())
+          fullSeriesKey.toUpperCase().startsWith(ind.key.toUpperCase())
         );
-        if (!metadata) return;
+        if (!metadata || !data || data.length === 0) return;
 
-        const isPaneIndicator =
-          metadata.paneType === "pane" || metadata.key === "Volume";
-        let targetChart: IChartApi | null = chartRef.current;
-        if (isPaneIndicator) {
-          targetChart =
-            paneChartRefs.current.get(metadata.key) || chartRef.current;
-        }
+        const baseKey = metadata.key;
 
-        if (targetChart) {
-          if (currentSeriesMap.has(key)) {
-            // `setData`는 타입 추론이 어려우므로 `any`를 사용하여 타입 검사를 우회합니다.
-            // 데이터 포맷이 일치함을 보장하는 상황에서 사용합니다.
-            currentSeriesMap.get(key)!.series.setData(data as any);
-          } else {
-            const isHistogram = metadata.key === "Volume";
-
-            if (isHistogram) {
-              const options: DeepPartial<HistogramSeriesOptions> = {
-                color: "#26a69a",
-                priceFormat: { type: "volume" },
+        // 새로운 지표 그룹이면 상태 객체를 먼저 생성
+        if (!manager.has(baseKey)) {
+          let paneChart: IChartApi | null = null;
+          if (paneIndicators.includes(baseKey)) {
+            const container = getPaneContainer(baseKey);
+            if (container) {
+              const finalOptions = {
+                ...createBaseChartOptions(paneChartHeight, true),
+                ...getThemeOptions(resolvedTheme),
               };
-              const newSeries = targetChart.addSeries(HistogramSeries, options);
-              newSeries.setData(data as HistogramData<UTCTimestamp>[]);
-              currentSeriesMap.set(key, {
-                series: newSeries,
-                chart: targetChart,
+              paneChart = setupChart(container, finalOptions);
+              const resizeObserver = new ResizeObserver((entries) => {
+                const { width } = entries[0].contentRect;
+                if (width > 0) paneChart?.resize(width, paneChartHeight);
               });
-            } else {
-              const options: DeepPartial<LineSeriesOptions> = {
-                color:
-                  INDICATOR_COLOR_PALETTE[
-                    index % INDICATOR_COLOR_PALETTE.length
-                  ],
-                lineWidth: 2,
-              };
-              const newSeries = targetChart.addSeries(LineSeries, options);
-              newSeries.setData(data as LineData<UTCTimestamp>[]);
-              currentSeriesMap.set(key, {
-                series: newSeries,
-                chart: targetChart,
-              });
+              resizeObserver.observe(container);
             }
           }
+          manager.set(baseKey, { paneChart, series: new Map() });
+        }
+
+        const indicatorState = manager.get(baseKey)!;
+
+        // 해당 시리즈가 아직 없으면 생성
+        if (!indicatorState.series.has(fullSeriesKey)) {
+          const targetChart = indicatorState.paneChart || mainChart;
+          const isHistogram = fullSeriesKey.toLowerCase().includes("histogram");
+          let newSeries: ISeriesApi<SeriesType>;
+
+          if (isHistogram) {
+            const options: DeepPartial<HistogramSeriesOptions> = {
+              color: "#26a69a",
+              priceFormat: { type: "volume" },
+            };
+            newSeries = targetChart.addSeries(HistogramSeries, options);
+            newSeries.setData(data as HistogramData<UTCTimestamp>[]);
+          } else {
+            const options: DeepPartial<LineSeriesOptions> = {
+              color:
+                INDICATOR_COLOR_PALETTE[index % INDICATOR_COLOR_PALETTE.length],
+              lineWidth: 2,
+            };
+            newSeries = targetChart.addSeries(LineSeries, options);
+            newSeries.setData(data as LineData<UTCTimestamp>[]);
+          }
+          indicatorState.series.set(fullSeriesKey, newSeries);
         }
       });
     }
-  }, [indicatorData, paneIndicators]);
+  }, [
+    indicatorData,
+    paneIndicators,
+    getPaneContainer,
+    paneChartHeight,
+    resolvedTheme,
+    setupChart,
+  ]);
 }

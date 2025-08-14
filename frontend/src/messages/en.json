@@ -280,16 +280,26 @@
       "pattern": "Checks if a specific candle pattern has occurred."
     },
     "tpslForm": {
-      "title": "Take Profit (TP) / Stop Loss (SL) Setup",
-      "description": "Set exit rules based on fixed percentages or ATR.",
+      "title": "Take Profit / Stop Loss (TP/SL) Settings",
+      "description": "Set automatic take-profit and stop-loss rules for your positions.",
+      "percentageTab": "Percentage Based",
+      "atrTab": "ATR Based",
       "takeProfitPctLabel": "Take Profit",
       "stopLossPctLabel": "Stop Loss",
-      "atrEnabledLabel": "Use ATR-based TP/SL",
-      "atrStopLossLabel": "ATR Stop Loss Multiplier",
-      "atrTakeProfitLabel": "ATR Take Profit Multiplier",
+      "percentSymbol": "%",
+      "takeProfitPctPlaceholder": "5.0",
+      "stopLossPctPlaceholder": "2.0",
+      "atrTakeProfitLabel": "Take Profit (ATR Multiplier)",
+      "atrStopLossLabel": "Stop Loss (ATR Multiplier)",
       "atrPeriodLabel": "ATR Period",
-      "upgradeRequiredTitle": "Premium Feature",
-      "upgradeButton": "Upgrade Plan"
+      "atrMultiplierUnit": "x ATR",
+      "atrTakeProfitMultiplierPlaceholder": "2.0",
+      "atrStopLossMultiplierPlaceholder": "1.5",
+      "atrPeriodPlaceholder": "14",
+      "proFeatureLock": {
+        "description": "ATR-based TP/SL is a feature for paid plans only.",
+        "upgradeButton": "Upgrade Plan"
+      }
     },
     "targetCoinForm": {
       "title": "Target Coin Setup",
