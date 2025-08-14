@@ -522,8 +522,8 @@ export default function NewStrategyPage() {
                 onAddTopLevelRule={handleAddTopLevelRule}
                 onTriggerNestedAddRule={handleTriggerNestedAddRule}
                 onTriggerOperandHub={handleTriggerOperandHub}
-                onUpdateRule={(ruleType, id, updater) =>
-                  strategyState.updateRule(ruleType, id, updater)
+                onUpdateRule={(ruleType, id, newBlock) =>
+                  strategyState.updateRule(ruleType, id, newBlock)
                 }
                 onDeleteRule={(ruleType, id) =>
                   strategyState.deleteRule(ruleType, id)

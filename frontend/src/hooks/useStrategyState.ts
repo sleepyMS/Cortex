@@ -33,7 +33,7 @@ interface StrategyActions {
   updateRule: (
     ruleType: StrategyType,
     blockId: string,
-    updater: (block: LogicBlock) => LogicBlock
+    newBlock: LogicBlock // 새로운 객체를 직접 받음
   ) => void;
   updateRuleLogic: (
     ruleType: StrategyType,
@@ -112,13 +112,17 @@ export const useStrategyState = create<StrategyState & StrategyActions>()(
         });
       }),
 
-    updateRule: (ruleType, blockId, updater) =>
+    updateRule: (
+      ruleType,
+      blockId,
+      newBlock // 인자 이름 변경
+    ) =>
       set((state) => {
         const rulesetKey: RulesetKey = `${ruleType}Rules`;
         const ruleset = state[rulesetKey];
         if (ruleset) {
           findAndModifyBlock(ruleset.blocks, blockId, (blocks, index) => {
-            blocks[index] = updater(blocks[index]);
+            blocks[index] = newBlock; // 객체로 직접 교체
           });
         }
       }),

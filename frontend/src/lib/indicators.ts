@@ -1,4 +1,4 @@
-// file: frontend/src/lib/indicators.ts
+// file: frontend/src/lib/indicators.ts (최종 수정 버전)
 
 // --- 지표 파라미터 및 출력값 타입 정의 ---
 export interface ParameterDefinition {
@@ -31,7 +31,7 @@ export interface IndicatorMetadata {
     | "Channel"
     | "Quant"
     | "Candlestick";
-  paneType: "overlay" | "pane"; // 지표를 그릴 위치 (메인 차트 위 또는 별도 패널)
+  paneType: "overlay" | "pane";
   parameters: ParameterDefinition[];
   outputs: OutputDefinition[];
   supportedTimeframes: string[];
@@ -251,23 +251,26 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
     paneType: "overlay",
     parameters: [
       {
-        key: "af",
-        label: "가속 변수",
+        key: "af0",
+        label: "초기 가속",
         type: "float",
         default: 0.02,
         min: 0.01,
         step: 0.01,
       },
       {
-        key: "max",
-        label: "최대 변수",
+        key: "afmax",
+        label: "최대 가속",
         type: "float",
         default: 0.2,
         min: 0.01,
         step: 0.01,
       },
     ],
-    outputs: [{ key: "sar", label: "SAR 값" }],
+    outputs: [
+      { key: "long", label: "상승 SAR" },
+      { key: "short", label: "하락 SAR" },
+    ],
     supportedTimeframes: [
       "1m",
       "5m",
@@ -298,7 +301,12 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
         step: 0.1,
       },
     ],
-    outputs: [{ key: "supertrend", label: "슈퍼트렌드 라인" }],
+    outputs: [
+      { key: "trend", label: "추세선" },
+      { key: "direction", label: "추세 방향" },
+      { key: "long", label: "상승 추세" },
+      { key: "short", label: "하락 추세" },
+    ],
     supportedTimeframes: [
       "1m",
       "5m",
@@ -501,10 +509,10 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
   },
 
   // =================================
-  // 변동성 지표 (Volatility)
+  // 변동성 & 채널 지표 (Volatility & Channel)
   // =================================
   {
-    key: "BB",
+    key: "BBands",
     label: "볼린저 밴드 (Bollinger Bands)",
     description: "주가의 변동성 범위를 나타내는 지표.",
     category: "Channel",
@@ -675,26 +683,5 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1M",
     ],
     supported_logics: ["comparison", "crossover", "channel"],
-  },
-  {
-    key: "CVD",
-    label: "누적 거래량 델타 (CVD)",
-    description: "매수/매도 압력을 분석하는 지표.",
-    category: "Quant",
-    paneType: "pane",
-    parameters: [],
-    outputs: [{ key: "cvd", label: "CVD 값" }],
-    supportedTimeframes: [
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "4h",
-      "1d",
-      "1w",
-      "1M",
-    ],
-    supported_logics: ["comparison", "divergence"],
   },
 ];

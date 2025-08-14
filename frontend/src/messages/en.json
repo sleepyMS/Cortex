@@ -325,6 +325,8 @@
       "namePlaceholder": "My First Quant Strategy",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "This strategy is based on...",
+      "isPublicLabel": "Make Strategy Public",
+      "isPublicDescription": "Share the backtesting results of this strategy with the community and interact with other users. (Only the results are shared, not the strategy rules.)",
       "saveSuccess": "Strategy was saved successfully.",
       "saveError": "Failed to save strategy: {error}",
       "saveFailedGeneric": "An unknown error occurred.",
