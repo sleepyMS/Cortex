@@ -247,6 +247,7 @@
     "title": "Create New Strategy",
     "chartTitle": "Strategy Chart",
     "rulesTitle": "Strategy Rules",
+    "editTitle": "Edit Strategy",
     "longEntryConditionsTitle": "📈 Long Position Entry Conditions",
     "longExitConditionsTitle": "📉 Long Position Exit Conditions",
     "shortEntryConditionsTitle": "📉 Short Position Entry Conditions",
@@ -312,6 +313,7 @@
       "searchCoinPlaceholder": "Search coin (e.g., BTC)",
       "noCoinFound": "No coin found.",
       "allocationWarning": "Please adjust allocations to sum up to 100%.",
+      "allocationExceeds100": "The total asset allocation cannot exceed 100%.",
       "noTickerError": "Please select a coin to add.",
       "duplicateTickerError": "This coin has already been added.",
       "maxCoinsError": "You can only add up to {max} coins."

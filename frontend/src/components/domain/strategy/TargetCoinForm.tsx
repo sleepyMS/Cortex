@@ -63,11 +63,11 @@ export function TargetCoinForm({
   setTargetCoins,
 }: TargetCoinFormProps) {
   const t = useTranslations("StrategyBuilder.targetCoinForm");
-  const { currentPlan } = useUserSubscription();
+  const { maxCoinsPerBacktest } = useUserSubscription();
   const [openCombobox, setOpenCombobox] = useState(false);
 
   // 현재 플랜에서 허용하는 최대 코인 개수 (기본값: 1)
-  const maxCoins = currentPlan?.features?.max_coins_per_backtest ?? 1;
+  const maxCoins = maxCoinsPerBacktest ?? 1;
 
   // 총 자산 배분율 계산
   const totalAllocation = targetCoins.reduce(

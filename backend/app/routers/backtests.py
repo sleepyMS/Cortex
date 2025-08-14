@@ -9,7 +9,7 @@ import uuid
 
 # 👇 [수정] dependencies에서 get_verified_backtest를 import 합니다.
 from .. import schemas, models, security
-from ..dependencies import get_verified_backtest, get_verified_strategy
+from ..dependencies import get_verified_backtest
 from ..database import get_db
 from ..services.backtest_service import backtest_service
 
