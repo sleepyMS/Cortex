@@ -19,6 +19,7 @@
 
     --primary: 259 92% 66%; /* 유지: 핵심 바이올렛 색상 */
     --primary-foreground: 259 92% 98%;
+    --primary-rgb: 116, 12, 238;
 
     --secondary: 250 15% 95%; /* 변경: 240 4.8% 95.9% -> 250 15% 95% (라벤더 톤으로 통일) */
     --secondary-foreground: 240 5.9% 10%;
@@ -53,6 +54,7 @@
 
     --primary: 259 92% 66%; /* 유지 */
     --primary-foreground: 259 92% 98%;
+    --primary-rgb: 116, 12, 238;
 
     --secondary: 240 5% 18%; /* 변경: 240 3.7% 15.9% -> 240 5% 18% (카드보다 조금 더 밝은 톤) */
     --secondary-foreground: 240 5% 98%;

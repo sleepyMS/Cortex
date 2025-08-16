@@ -101,11 +101,6 @@ export function Header() {
               <Skeleton className="h-10 w-40" />
             ) : user ? (
               <>
-                {!isPro && (
-                  <Link href="/pricing" passHref>
-                    <Button className="px-3">{t("upgradePlan")}</Button>
-                  </Link>
-                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <IconButton aria-label={t("dashboardLink")}>
