@@ -13,7 +13,14 @@ import { useUserStore } from "@/store/userStore";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Logo } from "@/components/ui/Logo";
-import { Sun, Moon, LayoutDashboard, Settings, LogOut } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  Sparkles,
+} from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
@@ -33,7 +40,7 @@ export function Header() {
   const { theme, setTheme } = useTheme();
 
   const { user, logout, isAuthInitialized } = useUserStore();
-  const { currentPlan, isPro } = useUserSubscription();
+  const { currentPlan, isPro, isTrader } = useUserSubscription();
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
@@ -44,6 +51,13 @@ export function Header() {
     toast.success(t("logoutSuccess"));
     router.push("/login");
   };
+
+  // [수정] Basic 플랜에 동(Bronze) 느낌의 갈색 테마 적용
+  const planButtonClass = isPro
+    ? "text-primary border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]"
+    : isTrader
+    ? "text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/10 hover:text-yellow-400 hover:shadow-[0_0_20px_rgba(255,215,0,0.3)]"
+    : "text-amber-700 border-amber-700/40 hover:bg-amber-700/10 hover:text-amber-600 hover:shadow-[0_0_15px_rgba(217,119,6,0.3)]";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -69,6 +83,18 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
+
+          {isAuthInitialized && user && (
+            <Link href="/pricing" passHref>
+              <Button
+                variant="outline"
+                className={`hidden sm:flex items-center gap-2 border-2 transition-all duration-300 ${planButtonClass}`}
+              >
+                {isTrader && <Sparkles className="h-4 w-4 text-yellow-400" />}
+                <span className="font-bold">{currentPlan} Plan</span>
+              </Button>
+            </Link>
+          )}
 
           <div className="hidden items-center gap-2 sm:flex">
             {!isAuthInitialized ? (

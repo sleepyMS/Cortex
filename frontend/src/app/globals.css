@@ -6,68 +6,68 @@
 
 @layer base {
   :root {
-    --background: 240 10% 100%; /* Light mode background - white */
-    --foreground: 240 10% 3.9%; /* Light mode text - almost black */
+    /* * 라이트 모드: 순백색 대신 부드러운 라벤더 그레이 톤으로 변경 
+     */
+    --background: 250 20% 98%; /* 변경: 240 10% 100% -> 250 20% 98% (아주 옅은 라벤더 빛이 도는 흰색) */
+    --foreground: 240 10% 15%; /* 변경: 240 10% 3.9% -> 240 10% 15% (완전한 검정에서 부드러운 다크 그레이로) */
 
-    --card: 240 10% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 250 20% 100%; /* 변경: 240 10% 100% -> 250 20% 100% (배경보다 살짝 밝게) */
+    --card-foreground: 240 10% 15%; /* --foreground와 일치 */
 
-    --popover: 240 10% 100%; /* Light mode popover background */
-    --popover-foreground: 240 10% 3.9%; /* Light mode popover text */
+    --popover: 250 20% 100%;
+    --popover-foreground: 240 10% 15%;
 
-    --primary: 259 92% 66%; /* Violet */
-    --primary-foreground: 259 92% 98%; /* Light text for on-violet buttons */
-    --primary-rgb: 116, 12, 238; /* Approximate RGB for 259 92% 66% */
+    --primary: 259 92% 66%; /* 유지: 핵심 바이올렛 색상 */
+    --primary-foreground: 259 92% 98%;
 
-    --secondary: 240 4.8% 95.9%;
+    --secondary: 250 15% 95%; /* 변경: 240 4.8% 95.9% -> 250 15% 95% (라벤더 톤으로 통일) */
     --secondary-foreground: 240 5.9% 10%;
-    --accent-rgb: 244, 245, 247; /* Approximate RGB for 240 4.8% 95.9% (light mode accent) */
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 250 15% 95%;
+    --muted-foreground: 240 4% 46%;
 
-    --accent: 240 4.8% 95.9%;
+    --accent: 250 15% 92%; /* 변경: 240 4.8% 95.9% -> 250 15% 92% (Hover 등 강조 색상) */
     --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
+    --border: 250 10% 90%; /* 변경: 240 5.9% 90% -> 250 10% 90% (테두리를 더 부드럽게) */
+    --input: 250 10% 92%; /* 변경: 240 5.9% 90% -> 250 10% 92% (입력창 배경) */
     --ring: 259 92% 66%;
 
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%; /* Dark mode background - almost black */
-    --foreground: 0 0% 98%; /* Dark mode text - almost white */
+    /* * 다크 모드: 칠흑 같은 검정 대신 깊고 푸른 '우주' 톤으로 변경 
+     */
+    --background: 240 6% 10%; /* 변경: 240 10% 3.9% -> 240 6% 10% (심우주 느낌의 다크 블루) */
+    --foreground: 240 5% 95%; /* 변경: 0 0% 98% -> 240 5% 95% (완전한 흰색에서 눈이 편안한 밝은 회색으로) */
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 240 6% 12%; /* 변경: 240 10% 3.9% -> 240 6% 12% (배경보다 미세하게 밝게) */
+    --card-foreground: 240 5% 95%;
 
-    --popover: 240 10% 3.9%; /* Dark mode popover background */
-    --popover-foreground: 0 0% 98%; /* Dark mode popover text */
+    --popover: 240 6% 8%; /* Popover는 배경보다 더 어둡게 하여 깊이감 부여 */
+    --popover-foreground: 240 5% 95%;
 
-    --primary: 259 92% 66%;
+    --primary: 259 92% 66%; /* 유지 */
     --primary-foreground: 259 92% 98%;
-    --primary-rgb: 116, 12, 238; /* R, G, B for --primary (consistent for dark mode) */
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --accent-rgb: 23, 24, 25; /* Approximate RGB for 240 3.7% 15.9% (dark mode accent) */
+    --secondary: 240 5% 18%; /* 변경: 240 3.7% 15.9% -> 240 5% 18% (카드보다 조금 더 밝은 톤) */
+    --secondary-foreground: 240 5% 98%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 240 5% 18%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 240 5% 22%; /* 변경: 240 3.7% 15.9% -> 240 5% 22% (Hover 등 강조 색상) */
+    --accent-foreground: 240 5% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 240 5% 16%; /* 변경: 240 3.7% 15.9% -> 240 5% 16% (경계가 은은하게 보이도록) */
+    --input: 240 5% 16%;
     --ring: 259 92% 66%;
   }
 }
