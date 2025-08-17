@@ -1,6 +1,7 @@
+// file: frontend/src/app/layout.tsx
+
 import type { Metadata } from "next";
-// 👈 1. Inter 대신 Noto_Sans_KR을 임포트합니다.
-import { Noto_Sans_KR as FontSans } from "next/font/google";
+import localFont from "next/font/local";
 import { useMessages } from "next-intl";
 
 import { Providers } from "@/providers/Providers";
@@ -10,12 +11,13 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { cn } from "@/lib/utils";
 import { timeZone } from "i18n";
 import "../globals.css";
+import { ThemeScript } from "@/lib/ThemeScript";
 
-// 👈 2. Noto Sans KR 폰트를 설정합니다. (일반, 굵은 굵기 포함)
-const fontSans = FontSans({
-  subsets: ["latin"],
-  weight: ["400", "700"], // 👈 일반(400)과 굵은(700) 굵기를 지정
-  variable: "--font-sans",
+const fontSans = localFont({
+  src: "../../../public/fonts/PretendardJPVariable.woff2",
+  display: "swap", // 폰트 로딩 중 대체 텍스트를 보여줍니다.
+  weight: "400 500 700", // 사용할 폰트 굵기를 지정할 수 있습니다.
+  variable: "--font-sans", // CSS 변수 이름은 그대로 유지합니다.
 });
 
 export const metadata: Metadata = {
@@ -33,7 +35,10 @@ export default function RootLayout({
   const messages = useMessages();
 
   return (
-    <html lang={locale} className="h-full" suppressHydrationWarning={true}>
+    <html lang={locale} className="h-full" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body
         className={cn(
           "min-h-full bg-background font-sans text-foreground flex flex-col",

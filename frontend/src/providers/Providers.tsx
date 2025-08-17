@@ -12,21 +12,25 @@ export function Providers({
   children,
   locale,
   messages,
-  timeZone, // 👈 timeZone prop 추가
+  timeZone,
 }: {
   children: React.ReactNode;
   locale: string;
   messages: AbstractIntlMessages;
-  timeZone: string; // 👈 timeZone prop 타입 정의
+  timeZone: string;
 }) {
   const [queryClient] = useState(() => new QueryClient());
 
   useReAuth();
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
       <QueryClientProvider client={queryClient}>
-        {/* 👈 NextIntlClientProvider에 timeZone prop 전달 */}
         <NextIntlClientProvider
           locale={locale}
           messages={messages}
