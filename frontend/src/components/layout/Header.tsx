@@ -53,6 +53,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
 
+          <UserActions />
           {hasHydrated && (
             <IconButton onClick={toggleTheme} aria-label={t("toggleTheme")}>
               {theme === "dark" ? (
@@ -62,8 +63,6 @@ export function Header() {
               )}
             </IconButton>
           )}
-
-          <UserActions />
         </div>
       </div>
     </header>
