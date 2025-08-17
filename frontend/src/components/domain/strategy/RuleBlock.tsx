@@ -4,7 +4,8 @@ import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   LogicBlock,
-  LogicOperator,
+  AllLogicBlockKeys,
+  RuleBlockProps,
   ComparisonLogic,
   CrossoverLogic,
   StateLogic,
@@ -49,15 +50,6 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { OperandSlot } from "./OperandSlot";
-
-// --- 타입 정의 ---
-interface RuleBlockProps {
-  item: LogicBlock;
-  onUpdate: (id: string, newBlock: LogicBlock) => void;
-  onDelete: (id: string) => void;
-  onTriggerAddRule: (parentId: string, as: LogicOperator) => void;
-  onTriggerOperandHub: (blockId: string, operandKey: string) => void;
-}
 
 // 각 로직 타입에 대한 메타데이터 (아이콘, 레이블 키)
 const LOGIC_TYPE_METADATA: {
@@ -125,11 +117,9 @@ export function RuleBlock({
     return metadata ? metadata.supported_logics : [];
   }, [item]);
 
-  const handleUpdateField = (
-    field: keyof LogicBlock | keyof typeof item,
-    value: any
-  ) => {
-    onUpdate(item.id, { ...item, [field]: value });
+  const handleUpdateField = (field: AllLogicBlockKeys, value: any) => {
+    // onUpdate 함수의 타입 안정성을 위해 타입 단언(as)을 사용할 수 있습니다.
+    onUpdate(item.id, { ...item, [field as any]: value });
   };
 
   const handleLogicTypeChange = (newType: LogicBlock["type"]) => {
@@ -299,7 +289,7 @@ export function RuleBlock({
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
-        onValueChange={() => {}}
+        onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
       />
       {/* 🔽 핵심 수정 영역: flex-wrap을 사용한 유연한 컨테이너 */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -318,7 +308,7 @@ export function RuleBlock({
                 e.target.value === "" ? null : Number(e.target.value)
               )
             }
-            className="h-8 text-center flex-1" // 👈 너비를 유연하게 조절
+            className="h-8 text-center flex-1"
           />
           <span className="text-muted-foreground">~</span>
           <Input
@@ -331,7 +321,7 @@ export function RuleBlock({
                 e.target.value === "" ? null : Number(e.target.value)
               )
             }
-            className="h-8 text-center flex-1" // 👈 너비를 유연하게 조절
+            className="h-8 text-center flex-1"
           />
         </div>
 
@@ -365,7 +355,7 @@ export function RuleBlock({
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
-        onValueChange={() => {}}
+        onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
       />
       <Select
         value={logic.signal}
@@ -390,7 +380,7 @@ export function RuleBlock({
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
-        onValueChange={() => {}}
+        onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
       />
       <Select
         value={logic.channelZone}
@@ -429,7 +419,7 @@ export function RuleBlock({
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
-        onValueChange={() => {}}
+        onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
       />
       <Select
         value={logic.divergenceType}
@@ -507,76 +497,74 @@ export function RuleBlock({
 
   return (
     <Card className="p-3 transition-shadow shadow-md hover:shadow-lg border-l-4 border-primary/70">
+      {/* --- 1. 헤더 영역 --- */}
+      {/* 이 부분은 이제 ScrollArea의 바깥에 위치하여 스크롤되지 않습니다. */}
+      <div className="flex items-center justify-between mb-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
+              disabled={item.type === "pattern"}
+            >
+              <CurrentLogicIcon className="h-4 w-4 text-primary" />
+              {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {Object.entries(LOGIC_TYPE_METADATA)
+              .filter(([type]) =>
+                supportedLogics.includes(type as LogicBlock["type"])
+              )
+              .map(([type, { icon: Icon, labelKey }]) => (
+                <DropdownMenuItem
+                  key={type}
+                  onClick={() =>
+                    handleLogicTypeChange(type as LogicBlock["type"])
+                  }
+                >
+                  <Icon className="mr-2 h-4 w-4" />
+                  <span>{tLogic(labelKey as any)}</span>
+                </DropdownMenuItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "OR")}>
+              <ArrowRight className="mr-2 h-4 w-4" />
+              <span>{t("addOrCondition")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "AND")}>
+              <CornerDownRight className="mr-2 h-4 w-4" />
+              <span>{t("addAndCondition")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              onClick={() => onDelete(item.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>{t("delete")}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* --- 2. 스크롤이 필요한 콘텐츠 영역 --- */}
+      {/* ScrollArea가 이제 로직 상세 UI 부분만 감싸도록 범위를 축소합니다. */}
       <ScrollArea className="w-full">
-        <div className="min-w-[380px]">
-          <div className="flex items-center justify-between mb-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 px-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
-                  disabled={item.type === "pattern"}
-                >
-                  <CurrentLogicIcon className="h-4 w-4 text-primary" />
-                  {tLogic(LOGIC_TYPE_METADATA[item.type].labelKey as any)}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {Object.entries(LOGIC_TYPE_METADATA)
-                  .filter(([type]) =>
-                    supportedLogics.includes(type as LogicBlock["type"])
-                  )
-                  .map(([type, { icon: Icon, labelKey }]) => (
-                    <DropdownMenuItem
-                      key={type}
-                      onClick={() =>
-                        handleLogicTypeChange(type as LogicBlock["type"])
-                      }
-                    >
-                      <Icon className="mr-2 h-4 w-4" />
-                      <span>{tLogic(labelKey as any)}</span>
-                    </DropdownMenuItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => onTriggerAddRule(item.id, "OR")}
-                >
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  <span>{t("addOrCondition")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onTriggerAddRule(item.id, "AND")}
-                >
-                  <CornerDownRight className="mr-2 h-4 w-4" />
-                  <span>{t("addAndCondition")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                  onClick={() => onDelete(item.id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>{t("delete")}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <div className="mt-2">{renderLogic(item)}</div>
-        </div>
+        <div className="min-w-[380px] pt-1 pb-4">{renderLogic(item)}</div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </Card>

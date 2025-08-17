@@ -24,7 +24,6 @@ const findIndicatorsRecursive = (
   if (!blocks) return;
 
   blocks.forEach((block) => {
-    // 👇 [개선] Object.values() 대신 switch 구문으로 타입을 명확히 구분하여 안정성 향상
     switch (block.type) {
       case "comparison":
         if (
@@ -43,7 +42,11 @@ const findIndicatorsRecursive = (
         }
         break;
       case "crossover":
-        if (block.mainLine && "indicatorKey" in block.mainLine) {
+        if (
+          block.mainLine &&
+          typeof block.mainLine === "object" &&
+          "indicatorKey" in block.mainLine
+        ) {
           indicatorSet.add(JSON.stringify(toIndicatorConfig(block.mainLine)));
         }
         if (
@@ -58,14 +61,14 @@ const findIndicatorsRecursive = (
       case "trend_signal":
       case "channel":
       case "divergence":
+        // 이 로직들은 indicator 타입이 IndicatorValue | null 이므로 typeof 체크가 필요 없습니다.
         if (block.indicator && "indicatorKey" in block.indicator) {
           indicatorSet.add(JSON.stringify(toIndicatorConfig(block.indicator)));
         }
         break;
-      // 'pattern' 타입은 IndicatorValue를 사용하지 않으므로 처리할 필요 없음
     }
 
-    // 자식 노드가 있으면 재귀 호출 (AND/OR 복합 규칙을 위한 확장)
+    // 자식 노드가 있으면 재귀 호출
     if (block.children && block.children.length > 0) {
       findIndicatorsRecursive(block.children, indicatorSet);
     }
@@ -93,7 +96,7 @@ export const parseRulesForIndicators = (
   return Array.from(indicatorSet).map((s) => JSON.parse(s));
 };
 
-// 👇 [추가] createLogicBlock 함수를 중앙화하여 관리
+// createLogicBlock 함수를 중앙화하여 관리
 export const createLogicBlock = (
   indicator: IndicatorMetadata,
   logicType: string,
@@ -102,6 +105,14 @@ export const createLogicBlock = (
   const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
     allowedTimeframes.includes(tf)
   );
+
+  // '1h'가 사용 가능한 경우 우선적으로 기본값으로 설정합니다.
+  const defaultTimeframe = availableTimeframes.includes("1h")
+    ? "1h"
+    : availableTimeframes.length > 0
+    ? availableTimeframes[0]
+    : "1h"; // 사용 가능한 타임프레임이 없는 경우의 최종 fallback
+
   const baseIndicatorValue: IndicatorValue = {
     indicatorKey: indicator.key,
     outputs: [indicator.outputs[0].key],
@@ -109,7 +120,7 @@ export const createLogicBlock = (
       (acc, param) => ({ ...acc, [param.key]: param.default }),
       {}
     ),
-    timeframe: availableTimeframes.length > 0 ? availableTimeframes[0] : "1h",
+    timeframe: defaultTimeframe,
   };
   const newBlockId = nanoid();
 

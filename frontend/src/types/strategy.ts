@@ -6,6 +6,31 @@ export type StrategyType =
   | "shortEntry"
   | "shortExit";
 
+// 지표의 파라미터(예: 기간, 승수) 정의
+export interface IndicatorParameter {
+  key: string; // "length"
+  label: string; // "기간"
+  default: number; // 14
+}
+
+// 지표의 출력값(예: MACD 라인, 신호선) 정의
+export interface IndicatorOutput {
+  key: string; // "macd"
+  label: string; // "MACD"
+}
+
+// 지표의 기본 정보를 정의하는 '설계도' 타입
+export interface IndicatorMetadata {
+  key: string; // "RSI", "MACD"
+  label: string; // "상대강도지수", "MACD"
+  description: string; // "가격의 상승 압력과 하락 압력 간의 상대적인 강도를 나타냅니다."
+  category: string; // "Momentum", "Trend"
+  parameters: IndicatorParameter[];
+  outputs: IndicatorOutput[];
+  supported_logics: LogicBlock["type"][]; // 지원하는 로직 타입 배열 (e.g., ["comparison", "state"])
+  supportedTimeframes: string[]; // 지원하는 타임프레임 배열 (e.g., ["1m", "5m", "1h"])
+}
+
 // --- 지표 및 값 관련 타입 ---
 export interface IndicatorValue {
   indicatorKey: string;
@@ -159,3 +184,18 @@ export type TargetSlot =
   | NestedAddTarget
   | OperandTarget
   | null;
+
+// LogicBlock Union의 모든 가능한 키를 추출하는 유틸리티 타입
+export type AllLogicBlockKeys = LogicBlock extends infer T
+  ? T extends LogicBlock
+    ? keyof T
+    : never
+  : never;
+
+export interface RuleBlockProps {
+  item: LogicBlock;
+  onUpdate: (id: string, newBlock: LogicBlock) => void;
+  onDelete: (id: string) => void;
+  onTriggerAddRule: (parentId: string, as: LogicOperator) => void;
+  onTriggerOperandHub: (blockId: string, operandKey: string) => void;
+}
