@@ -1,5 +1,4 @@
 // file: frontend/src/components/domain/strategy/OperandSlot.tsx
-
 "use client";
 
 import React, { useMemo } from "react";
@@ -43,20 +42,14 @@ export function OperandSlot({
     ) {
       return "";
     }
-
     const metadata = INDICATOR_METADATA.find(
       (ind) => ind.key === value.indicatorKey
     );
     if (!metadata) return "";
-
     const parts: string[] = [];
-
-    // 1. 파라미터 정보 추가 (파라미터가 있을 경우에만)
     if (metadata.parameters.length > 0) {
       parts.push(Object.values(value.values).join(", "));
     }
-
-    // 2. 출력 정보 추가 (선택 가능한 출력이 2개 이상일 경우에만)
     if (metadata.outputs.length > 1) {
       const selectedOutputKey = value.outputs[0];
       const outputMeta = metadata.outputs.find(
@@ -66,20 +59,16 @@ export function OperandSlot({
         parts.push(outputMeta.label);
       }
     }
-
-    // 3. 타임프레임 정보 항상 추가
     parts.push(value.timeframe);
-
     return parts.filter(Boolean).join(", ");
   }, [value]);
 
-  // 1. 슬롯이 비어있을 경우
   if (value === null) {
     return (
       <Button
         type="button"
         variant="outline"
-        className="h-full w-full border-dashed transition-colors hover:bg-muted/50 hover:border-primary/30 flex items-center justify-center text-muted-foreground"
+        className="h-10 w-full border-dashed transition-colors hover:bg-muted/50 hover:border-primary/30 flex items-center justify-center text-muted-foreground"
         onClick={onSelectIndicator}
       >
         {t("addIndicatorOrValue")}
@@ -87,10 +76,9 @@ export function OperandSlot({
     );
   }
 
-  // 2. 슬롯의 값이 '지표'일 경우
   if (typeof value === "object" && "indicatorKey" in value) {
     return (
-      <div className="flex w-full">
+      <div className="flex w-full items-center">
         <ParameterPopover
           indicatorValue={value}
           onUpdate={(newValue) => onValueChange(newValue)}
@@ -99,14 +87,16 @@ export function OperandSlot({
           <Button
             type="button"
             variant="outline"
-            className="flex-grow justify-start text-left truncate rounded-r-none"
+            className="flex h-10 w-full items-center justify-start rounded-r-none text-left"
           >
-            <span className="font-semibold">{value.indicatorKey}</span>
-            {parameterDetails && (
-              <span className="ml-1 text-xs text-muted-foreground">
-                ({parameterDetails})
-              </span>
-            )}
+            <div className="truncate">
+              <span className="font-semibold">{value.indicatorKey}</span>
+              {parameterDetails && (
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  ({parameterDetails})
+                </span>
+              )}
+            </div>
           </Button>
         </ParameterPopover>
         <DropdownMenu>
@@ -114,7 +104,7 @@ export function OperandSlot({
             <Button
               variant="outline"
               size="icon"
-              className="w-10 rounded-l-none border-l-0"
+              className="h-10 w-10 rounded-l-none border-l-0 flex-shrink-0"
             >
               <Settings2 className="h-4 w-4" />
             </Button>
@@ -132,21 +122,21 @@ export function OperandSlot({
     );
   }
 
-  // 3. 슬롯의 값이 '고정 값'일 경우
   return (
-    <div className="flex w-full">
+    <div className="flex w-full items-center">
+      {/* 👇 [수정] h-10 고정 높이 */}
       <Input
         type="number"
         value={value}
         onChange={(e) => onValueChange(Number(e.target.value))}
-        className="flex-grow rounded-r-none focus-visible:ring-offset-0"
+        className="h-10 flex-grow rounded-r-none focus-visible:ring-offset-0"
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
             size="icon"
-            className="w-10 rounded-l-none border-l-0"
+            className="h-10 w-10 rounded-l-none border-l-0 flex-shrink-0"
           >
             <Replace className="h-4 w-4" />
           </Button>

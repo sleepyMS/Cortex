@@ -207,6 +207,7 @@ export function RuleBlock({
 
   // --- 각 로직 타입별 렌더링 함수 ---
   const renderComparisonLogic = (logic: ComparisonLogic) => (
+    // 👇 [수정] 자식 요소들의 수직 정렬을 위해 items-center 유지
     <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
         value={logic.operandA}
@@ -216,16 +217,14 @@ export function RuleBlock({
         onValueChange={(val) => handleUpdateField("operandA", val)}
       />
 
-      <div className="flex justify-center items-center md:hidden">
-        <ArrowDown className="w-4 h-4 text-muted-foreground" />
-      </div>
-
-      <div className="hidden md:flex justify-center">
+      {/* 👇 [수정] 항상 보이도록 hidden 클래스 제거 및 UX 개선 */}
+      <div className="flex justify-center">
         <Select
           value={logic.operator}
           onValueChange={(val) => handleUpdateField("operator", val)}
         >
-          <SelectTrigger className="w-20">
+          {/* 👇 [수정] 모바일에선 꽉 차게, 데스크탑에선 작게 표시 */}
+          <SelectTrigger className="h-10 w-full md:w-20">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -237,9 +236,8 @@ export function RuleBlock({
         </Select>
       </div>
 
-      <div className="flex justify-center items-center md:hidden">
-        <ArrowDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+      {/* 👇 [수정] 불필요한 ArrowDown 아이콘은 모두 제거 */}
+
       <OperandSlot
         value={logic.operandB}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "operandB")}
@@ -564,7 +562,7 @@ export function RuleBlock({
       {/* --- 2. 스크롤이 필요한 콘텐츠 영역 --- */}
       {/* ScrollArea가 이제 로직 상세 UI 부분만 감싸도록 범위를 축소합니다. */}
       <ScrollArea className="w-full">
-        <div className="min-w-[380px] pt-1 pb-4">{renderLogic(item)}</div>
+        <div className="min-w-[380px] pt-1 pb-3">{renderLogic(item)}</div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </Card>
