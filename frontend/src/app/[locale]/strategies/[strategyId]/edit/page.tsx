@@ -196,8 +196,20 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
     staleTime: 300000,
   });
   const indicatorConfigs = useMemo(
-    () => parseRulesForIndicators(strategyState),
-    [strategyState]
+    () =>
+      parseRulesForIndicators({
+        longEntry: strategyState.longEntryRules,
+        longExit: strategyState.longExitRules,
+        shortEntry: strategyState.shortEntryRules,
+        shortExit: strategyState.shortExitRules,
+      }),
+    // 종속성 배열은 개별 값으로 분리하여 불필요한 재계산을 방지합니다.
+    [
+      strategyState.longEntryRules,
+      strategyState.longExitRules,
+      strategyState.shortEntryRules,
+      strategyState.shortExitRules,
+    ]
   );
   const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
@@ -467,7 +479,7 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                       <Button
                         key={tf}
                         type="button"
-                        variant={chartTimeframe === tf ? "default" : "ghost"}
+                        variant={chartTimeframe === tf ? "primary" : "ghost"}
                         size="sm"
                         onClick={() => setChartTimeframe(tf)}
                         className="h-8 px-3"
@@ -487,7 +499,12 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                   </div>
                 ) : (
                   <DynamicStrategyChart
-                    rules={strategyState}
+                    rules={{
+                      longEntry: strategyState.longEntryRules,
+                      longExit: strategyState.longExitRules,
+                      shortEntry: strategyState.shortEntryRules,
+                      shortExit: strategyState.shortExitRules,
+                    }}
                     ohlcvData={ohlcvData}
                     indicatorData={indicatorData}
                     isLoadingIndicators={isLoadingIndicators}
@@ -571,7 +588,7 @@ export default function EditStrategyPage({
 
   return (
     <AuthGuard>
-      <StrategyEditForm initialStrategy={initialStrategy} />
+      <StrategyEditForm key={strategyId} initialStrategy={initialStrategy} />
     </AuthGuard>
   );
 }

@@ -14,15 +14,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/Popover";
 import { ChevronDown } from "lucide-react";
+import { locales } from "i18n";
 
-import { locales } from "@/i18n/i18n";
 type Locale = (typeof locales)[number];
 
 const LanguageSwitcher = () => {
   const t = useTranslations("Header");
   const currentLocale = useLocale(); // 현재 활성화된 로케일
-  // const router = useRouter(); // 사용하지 않음
-  // const pathname = usePathname(); // 사용하지 않음
 
   const handleLocaleChange = (newLocale: Locale) => {
     // 현재 URL의 경로 부분을 가져옵니다. (로케일 접두사를 제외한)
