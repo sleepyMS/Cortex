@@ -316,7 +316,8 @@
       "allocationExceeds100": "The total asset allocation cannot exceed 100%.",
       "noTickerError": "Please select a coin to add.",
       "duplicateTickerError": "This coin has already been added.",
-      "maxCoinsError": "You can only add up to {max} coins."
+      "maxCoinsError": "You can only add up to {max} coins.",
+      "upgradeButton": "Upgrade Plan"
     },
     "form": {
       "goBackButton": "Back",

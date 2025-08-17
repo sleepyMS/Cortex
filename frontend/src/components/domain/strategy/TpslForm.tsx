@@ -280,7 +280,7 @@ export function TpslForm({ form, onModeChange }: TpslFormProps) {
             </fieldset>
 
             {!isProOrTrader && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-background/80 text-center backdrop-blur-sm z-10">
+              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-background/80 text-center backdrop-blur-sm z-10 p-2">
                 <Lock className="h-8 w-8 text-purple-500" />
                 <p className="mt-2 text-sm font-semibold text-foreground">
                   {t("proFeatureLock.description")}

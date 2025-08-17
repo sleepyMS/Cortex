@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { cn } from "@/lib/utils";
+import { useRouter } from "@/i18n/navigation";
 
 // --- 타입 및 UI 컴포넌트 임포트 ---
 import { TargetCoin } from "@/types/strategy";
@@ -40,8 +41,16 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/Command";
-import { PlusCircle, Trash2, ChevronsUpDown, Check } from "lucide-react";
+import {
+  PlusCircle,
+  Trash2,
+  ChevronsUpDown,
+  Check,
+  Lock,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/ScrollArea";
 
 interface TargetCoinFormProps {
   targetCoins: TargetCoin[];
@@ -63,6 +72,7 @@ export function TargetCoinForm({
   setTargetCoins,
 }: TargetCoinFormProps) {
   const t = useTranslations("StrategyBuilder.targetCoinForm");
+  const router = useRouter();
   const { maxCoinsPerBacktest } = useUserSubscription();
   const [openCombobox, setOpenCombobox] = useState(false);
 
@@ -165,89 +175,96 @@ export function TargetCoinForm({
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          {maxCoins > 1
-            ? t("descriptionMulti", { max: maxCoins })
-            : t("descriptionSingle")}
+          {/* 개선점 1: 무료 사용자에게 업그레이드 혜택 안내 */}
+          {t("descriptionMulti", { max: maxCoins })}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {maxCoins > 1 && (
-          <div className="space-y-2">
-            <div className="flex items-center space-x-4">
-              <Progress value={totalAllocation} className="h-2 flex-grow" />
-              <span className="text-sm font-semibold tabular-nums">
-                {totalAllocation.toFixed(2)}% / 100%
-              </span>
-            </div>
-            {totalAllocation.toFixed(2) !== "100.00" && (
-              <p className="text-xs text-destructive">
-                {t("allocationWarning")}
-              </p>
-            )}
+        {/* 개선점 2: Progress Bar를 항상 표시하되, 무료 플랜에서는 비활성화된 시각적 효과 제공 */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-4">
+            <Progress
+              value={totalAllocation}
+              className="h-2 flex-grow"
+              aria-disabled={maxCoins === 1}
+            />
+            <span
+              className={`text-sm font-semibold tabular-nums ${
+                maxCoins === 1 ? "opacity-50" : ""
+              }`}
+            >
+              {totalAllocation.toFixed(2)}% / 100%
+            </span>
           </div>
-        )}
-
-        <div className="max-h-60 overflow-y-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("tickerLabel")}</TableHead>
-                <TableHead className="w-2/5 text-right">
-                  {t("allocationLabel")}
-                </TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {targetCoins.length > 0 ? (
-                targetCoins.map((coin) => (
-                  <TableRow key={coin.ticker}>
-                    <TableCell className="font-semibold">
-                      {coin.ticker}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end space-x-2">
-                        <Input
-                          type="number"
-                          value={coin.allocationPct}
-                          onChange={(e) =>
-                            handleAllocationChange(coin.ticker, e.target.value)
-                          }
-                          className="h-8 w-24 text-right"
-                          step="0.01"
-                          disabled={maxCoins === 1}
-                        />
-                        <span className="text-muted-foreground">%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveCoin(coin.ticker)}
-                        className="h-8 w-8"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {t("noTickerError")}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
         </div>
 
-        {targetCoins.length < maxCoins && (
+        <div className="flex max-h-60 rounded-md border">
+          <ScrollArea className="flex-1">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("tickerLabel")}</TableHead>
+                  <TableHead className="w-2/5 text-right">
+                    {t("allocationLabel")}
+                  </TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {targetCoins.length > 0 ? (
+                  targetCoins.map((coin) => (
+                    <TableRow key={coin.ticker}>
+                      <TableCell className="font-semibold">
+                        {coin.ticker}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end space-x-2">
+                          <Input
+                            type="number"
+                            value={coin.allocationPct}
+                            onChange={(e) =>
+                              handleAllocationChange(
+                                coin.ticker,
+                                e.target.value
+                              )
+                            }
+                            className="h-8 w-24 text-right"
+                            step="0.01"
+                            disabled={maxCoins === 1}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveCoin(coin.ticker)}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      {t("noTickerError")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </div>
+
+        {/* 개선점 3: 코인 추가 버튼을 조건부 렌더링하여 업그레이드 유도 */}
+        {targetCoins.length < maxCoins ? (
           <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
             <PopoverTrigger asChild>
               <Button
@@ -297,6 +314,42 @@ export function TargetCoinForm({
               </Command>
             </PopoverContent>
           </Popover>
+        ) : (
+          <div className="relative pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between"
+              disabled
+            >
+              <span className="flex items-center">
+                <Lock className="mr-2 h-4 w-4" />
+                {t("addCoinPlaceholder")}
+              </span>
+            </Button>
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-background/80 text-center backdrop-blur-sm z-10 p-2">
+              <button
+                type="button"
+                onClick={() => router.push("/pricing")}
+                className="col-span-2 h-9 p-[2px] rounded-lg relative group overflow-hidden
+                           bg-gradient-to-r from-teal-400 via-pink-500 to-yellow-500
+                           transition-all duration-500 [background-size:200%_auto] hover:[background-position:100%_0]"
+              >
+                <div className="w-full h-full flex items-center justify-center rounded-md bg-background group-hover:bg-muted/80 transition-colors px-3">
+                  <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
+                  <span
+                    className="font-semibold text-sm
+                               bg-gradient-to-r from-teal-400 via-pink-500 to-yellow-500
+                               text-transparent bg-clip-text
+                               [background-size:200%_auto] transition-all duration-500
+                               group-hover:[background-position:100%_0]"
+                  >
+                    {t("upgradeButton")}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
