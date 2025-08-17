@@ -194,54 +194,57 @@ class IndicatorValue(CamelCaseModel):
     values: Dict[str, Any]
     timeframe: str
 
-class ComparisonLogic(CamelCaseModel):
+class BaseLogicBlock(CamelCaseModel):
     id: str
-    type: Literal["comparison"]
-    operand_a: Union[IndicatorValue, float]
-    operator: str
-    operand_b: Union[IndicatorValue, float]
+    type: str
+    children: Optional[List['LogicBlock']] = Field(None, description="Nested AND conditions")
+    logic_operator: Optional[Literal["AND", "OR"]] = Field(None, description="Operator for children blocks")
 
-class CrossoverLogic(CamelCaseModel):
-    id: str
+
+class ComparisonLogic(BaseLogicBlock):
+    type: Literal["comparison"]
+    operand_a: Union[IndicatorValue, float, int, None] = None
+    operator: str
+    operand_b: Union[IndicatorValue, float, int, None] = None
+
+class CrossoverLogic(BaseLogicBlock):
     type: Literal["crossover"]
-    main_line: IndicatorValue
-    signal_line: Union[IndicatorValue, float]
+    main_line: Union[IndicatorValue, float, int, None] = None
+    signal_line: Union[IndicatorValue, float, int, None] = None
     cross_direction: Literal["above", "below"]
 
-class StateLogic(CamelCaseModel):
-    id: str
+class StateLogic(BaseLogicBlock):
     type: Literal["state"]
-    indicator: IndicatorValue
+    indicator: Optional[IndicatorValue] = None
     lower_bound: Optional[float] = None
     upper_bound: Optional[float] = None
     state_action: Literal["enter", "exit", "within"]
 
-class TrendSignalLogic(CamelCaseModel):
-    id: str
+class TrendSignalLogic(BaseLogicBlock):
     type: Literal["trend_signal"]
-    indicator: IndicatorValue
+    indicator: Optional[IndicatorValue] = None
     signal: Literal["buy", "sell", "none"]
 
-class ChannelLogic(CamelCaseModel):
-    id: str
+class ChannelLogic(BaseLogicBlock):
     type: Literal["channel"]
-    indicator: IndicatorValue
+    indicator: Optional[IndicatorValue] = None
     channel_zone: Literal["upper", "middle", "lower", "kumo"]
     action: Literal["enter", "exit", "within"]
 
-class DivergenceLogic(CamelCaseModel):
-    id: str
+class DivergenceLogic(BaseLogicBlock):
     type: Literal["divergence"]
-    indicator: IndicatorValue
+    indicator: Optional[IndicatorValue] = None
     divergence_type: Literal["bullish", "bearish", "hidden_bullish", "hidden_bearish"]
     
-class PatternLogic(CamelCaseModel):
-    id: str
+class PatternLogic(BaseLogicBlock):
     type: Literal["pattern"]
     pattern_key: str
     direction: Literal["bullish", "bearish", "any"]
 
-LogicBlock = Union[ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, ChannelLogic, DivergenceLogic, PatternLogic]
+LogicBlock = Union[
+    ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, ChannelLogic, DivergenceLogic, PatternLogic
+]
+AnnotatedLogicBlock = Field(..., discriminator='type')
 
 class PositionRules(CamelCaseModel):
     logic_operator: Literal["AND", "OR"] = "OR"
@@ -312,6 +315,12 @@ class Strategy(CamelCaseModel):
     updated_at: Optional[datetime] = None
     paid_feature_level: PlanType = PlanType.BASIC
 
+    # 👈 [개선 4] DB에서 target_coins가 NULL일 경우에도 항상 list를 반환하도록 보장
+    @field_validator('target_coins', mode='before')
+    @classmethod
+    def validate_target_coins(cls, v):
+        return v if v is not None else []
+    
 class ApiKeyCreate(CamelCaseModel):
     exchange: str = Field(..., min_length=2, max_length=50)
     api_key: str = Field(..., min_length=10)

@@ -208,6 +208,10 @@ export function RuleBlock({
           operandB: 0,
         };
     }
+    if (item.children && item.children.length > 0) {
+      newBlock.children = item.children;
+    }
+
     onUpdate(item.id, newBlock);
   };
 

@@ -112,17 +112,19 @@ export const useStrategyState = create<StrategyState & StrategyActions>()(
         });
       }),
 
-    updateRule: (
-      ruleType,
-      blockId,
-      newBlock // 인자 이름 변경
-    ) =>
+    updateRule: (ruleType, blockId, newBlock) =>
       set((state) => {
         const rulesetKey: RulesetKey = `${ruleType}Rules`;
         const ruleset = state[rulesetKey];
         if (ruleset) {
           findAndModifyBlock(ruleset.blocks, blockId, (blocks, index) => {
-            blocks[index] = newBlock; // 객체로 직접 교체
+            // 👇 [핵심 수정] 기존 객체와 새 객체를 병합하여 children 유실을 방지합니다.
+            const originalBlock = blocks[index];
+            blocks[index] = {
+              ...originalBlock, // 1. 기존 블록의 모든 프로퍼티를 가져옵니다 (children 포함).
+              ...newBlock, // 2. 새로운 블록의 프로퍼티로 덮어씁니다.
+              id: originalBlock.id, // 3. id는 절대 변경되지 않도록 보장합니다.
+            };
           });
         }
       }),

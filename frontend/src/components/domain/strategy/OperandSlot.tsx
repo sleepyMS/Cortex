@@ -35,7 +35,6 @@ export function OperandSlot({
 }: OperandSlotProps) {
   const t = useTranslations("RuleBlock");
 
-  // 🔽🔽🔽 수정된 useMemo 🔽🔽🔽
   const parameterDetails = useMemo(() => {
     if (
       typeof value !== "object" ||
@@ -73,7 +72,6 @@ export function OperandSlot({
 
     return parts.filter(Boolean).join(", ");
   }, [value]);
-  // 🔼🔼🔼 수정된 useMemo 완료 🔼🔼🔼
 
   // 1. 슬롯이 비어있을 경우
   if (value === null) {
@@ -103,14 +101,12 @@ export function OperandSlot({
             variant="outline"
             className="flex-grow justify-start text-left truncate rounded-r-none"
           >
-            {/* 🔽🔽🔽 수정된 렌더링 부분 🔽🔽🔽 */}
             <span className="font-semibold">{value.indicatorKey}</span>
             {parameterDetails && (
               <span className="ml-1 text-xs text-muted-foreground">
                 ({parameterDetails})
               </span>
             )}
-            {/* 🔼🔼🔼 수정된 렌더링 부분 완료 🔼🔼🔼 */}
           </Button>
         </ParameterPopover>
         <DropdownMenu>

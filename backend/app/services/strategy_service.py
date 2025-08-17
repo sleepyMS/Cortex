@@ -23,7 +23,7 @@ class StrategyService:
 
     def _get_required_plan_level(self, strategy_data: schemas.StrategyCreate | schemas.StrategyUpdate) -> PlanType:
         """
-        전략 데이터에 포함된 기능들을 분석하여 필요한 최소 플랜 등급을 계산합니다.
+        전략 데이터에 포함된 기능들을 재귀적으로 분석하여 필요한 최소 플랜 등급을 계산합니다.
         """
         required_level: PlanType = PlanType.BASIC
         
@@ -40,37 +40,45 @@ class StrategyService:
         if strategy_data.tpsl_logic and (strategy_data.tpsl_logic.atr_stop_loss_multiplier or strategy_data.tpsl_logic.atr_take_profit_multiplier):
             required_level = update_level(required_level, PlanType.TRADER)
 
-        # 3. Rules의 타임프레임 검사
-        all_rules_blocks = []
-        if strategy_data.long_entry_rules: all_rules_blocks.extend(strategy_data.long_entry_rules.blocks)
-        if strategy_data.long_exit_rules: all_rules_blocks.extend(strategy_data.long_exit_rules.blocks)
-        if strategy_data.short_entry_rules: all_rules_blocks.extend(strategy_data.short_entry_rules.blocks)
-        if strategy_data.short_exit_rules: all_rules_blocks.extend(strategy_data.short_exit_rules.blocks)
+        # 재귀적으로 모든 블록을 순회하는 헬퍼 함수 정의
+        def get_all_blocks_recursive(blocks: List[schemas.LogicBlock]) -> List[schemas.LogicBlock]:
+            all_blocks = []
+            for block in blocks:
+                all_blocks.append(block)
+                if block.children:
+                    all_blocks.extend(get_all_blocks_recursive(block.children))
+            return all_blocks
 
+        # 모든 규칙 세트에서 모든 블록(중첩 포함)을 가져옵니다.
+        all_rules_blocks = []
+        if strategy_data.long_entry_rules: all_rules_blocks.extend(get_all_blocks_recursive(strategy_data.long_entry_rules.blocks))
+        if strategy_data.long_exit_rules: all_rules_blocks.extend(get_all_blocks_recursive(strategy_data.long_exit_rules.blocks))
+        if strategy_data.short_entry_rules: all_rules_blocks.extend(get_all_blocks_recursive(strategy_data.short_entry_rules.blocks))
+        if strategy_data.short_exit_rules: all_rules_blocks.extend(get_all_blocks_recursive(strategy_data.short_exit_rules.blocks))
+        
+        # 3. 모든 블록을 순회하며 플랜 레벨 검사
+        has_divergence_feature = False
         for block in all_rules_blocks:
+            # 다이버전스 기능 사용 여부 확인
+            if isinstance(block, schemas.DivergenceLogic):
+                has_divergence_feature = True
+
+            # 타임프레임 레벨 확인
             indicator_value = None
-            if hasattr(block, 'indicator') and isinstance(block.indicator, schemas.IndicatorValue):
+            # Pydantic 모델의 필드 존재 여부를 안전하게 확인
+            if hasattr(block, 'indicator') and isinstance(getattr(block, 'indicator', None), schemas.IndicatorValue):
                 indicator_value = block.indicator
-            elif hasattr(block, 'operand_a') and isinstance(block.operand_a, schemas.IndicatorValue):
+            elif hasattr(block, 'operand_a') and isinstance(getattr(block, 'operand_a', None), schemas.IndicatorValue):
                 indicator_value = block.operand_a
-            elif hasattr(block, 'main_line') and isinstance(block.main_line, schemas.IndicatorValue):
+            elif hasattr(block, 'main_line') and isinstance(getattr(block, 'main_line', None), schemas.IndicatorValue):
                 indicator_value = block.main_line
 
-            if indicator_value:
+            if indicator_value and indicator_value.timeframe:
                 level_from_timeframe = self.plan_service.get_timeframe_level(indicator_value.timeframe)
                 required_level = update_level(required_level, level_from_timeframe)
-        
-        # 'user_plan'을 확인하는 대신, 전략 규칙에 'DivergenceLogic'이 포함되어 있는지 직접 확인
-        def has_divergence(rules: Optional[schemas.PositionRules]) -> bool:
-            if not rules or not rules.blocks:
-                return False
-            # ToDo: 재귀적으로 자식 블록도 검사해야 완벽함
-            return any(isinstance(block, schemas.DivergenceLogic) for block in rules.blocks)
 
-        if (has_divergence(strategy_data.long_entry_rules) or
-            has_divergence(strategy_data.long_exit_rules) or
-            has_divergence(strategy_data.short_entry_rules) or
-            has_divergence(strategy_data.short_exit_rules)):
+        # 다이버전스 기능이 하나라도 있으면 Pro 플랜으로 설정
+        if has_divergence_feature:
             required_level = update_level(required_level, PlanType.PRO)
 
         return required_level
