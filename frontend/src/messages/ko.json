@@ -70,7 +70,7 @@
       "passwordLength": "비밀번호는 8자 이상이어야 합니다."
     },
     "loginTitle": "오신 것을 환영합니다",
-    "loginSubtitle": "Cortex에 로그인하여 분석을 계속하세요.",
+    "loginSubtitle": "Cortex에 로그인하여 전략을 구성하세요.",
     "loginButton": "로그인",
     "forgotPassword": "비밀번호를 잊으셨나요?",
     "noAccount": "계정이 없으신가요?",

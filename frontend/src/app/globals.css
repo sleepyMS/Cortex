@@ -155,7 +155,6 @@
   }
 }
 
-/* @keyframes float 애니메이션 정의 - globals.css로 이동 */
 @keyframes float {
   0% {
     transform: translate(0, 0) scale(1);
@@ -172,4 +171,19 @@
   100% {
     transform: translate(0, 0) scale(1);
   }
+}
+
+@keyframes icon-rotate-scale-in {
+  from {
+    transform: rotate(90deg) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.theme-icon-animate {
+  animation: icon-rotate-scale-in 0.35s ease-in-out;
 }
