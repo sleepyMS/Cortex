@@ -478,7 +478,7 @@ export default function NewStrategyPage() {
                       <Button
                         key={tf}
                         type="button"
-                        variant={chartTimeframe === tf ? "default" : "ghost"}
+                        variant={chartTimeframe === tf ? "primary" : "ghost"}
                         size="sm"
                         onClick={() => setChartTimeframe(tf)}
                         className="h-8 px-3"
@@ -499,7 +499,12 @@ export default function NewStrategyPage() {
                   </div>
                 ) : (
                   <DynamicStrategyChart
-                    rules={strategyState}
+                    rules={{
+                      longEntry: strategyState.longEntryRules,
+                      longExit: strategyState.longExitRules,
+                      shortEntry: strategyState.shortEntryRules,
+                      shortExit: strategyState.shortExitRules,
+                    }}
                     ohlcvData={ohlcvData}
                     indicatorData={indicatorData}
                     isLoadingIndicators={isLoadingIndicators}
