@@ -299,6 +299,10 @@ class StrategyUpdate(CamelCaseModel):
             return sanitize_html(value)
         return value
 
+class BacktestResultSummaryForCard(CamelCaseModel):
+    total_return_pct: Optional[float] = None
+    win_rate_pct: Optional[float] = None
+
 class Strategy(CamelCaseModel):
     id: uuid.UUID
     author_id: uuid.UUID
@@ -314,6 +318,7 @@ class Strategy(CamelCaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     paid_feature_level: PlanType = PlanType.BASIC
+    latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
 
     # 👈 [개선 4] DB에서 target_coins가 NULL일 경우에도 항상 list를 반환하도록 보장
     @field_validator('target_coins', mode='before')

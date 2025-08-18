@@ -1,3 +1,5 @@
+// file: frontend/src/app/[locale]/strategies/page.tsx
+
 "use client";
 
 import * as React from "react";
@@ -21,16 +23,25 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { StrategyCard } from "@/components/domain/strategy/StrategyCard";
-import {
-  PlusCircle,
-  Search as SearchIcon,
-  List,
-  LayoutGrid,
-} from "lucide-react";
+import { PlusCircle, List, LayoutGrid } from "lucide-react";
 import { Strategy } from "@/types/strategy";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-// --- Helper Components ---
+// --- 주요 지표 목록 (변경 없음) ---
+const KEY_INDICATORS = [
+  "RSI",
+  "MACD",
+  "EMA",
+  "SMA",
+  "BBands",
+  "Stochastic",
+  "CCI",
+  "ATR",
+  "SuperTrend",
+  "Ichimoku",
+];
+
+// --- Helper Components (변경 없음) ---
 const LoadingSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) =>
   viewMode === "grid" ? (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -81,18 +92,25 @@ export default function StrategiesPage() {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "public" | "private"
   >("all");
-  const [sortBy, setSortBy] = useState<string>("created_at_desc");
+  const [indicatorFilter, setIndicatorFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("updated_at_desc");
   const { ref, inView } = useInView();
 
   const {
     data,
-    isLoading, // 👈 첫 페이지 로딩 상태
+    isLoading,
     isError,
     fetchNextPage,
     hasNextPage,
-    isFetchingNextPage, // 👈 다음 페이지 로딩 상태
+    isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["userStrategies", debouncedSearchTerm, filterStatus, sortBy],
+    queryKey: [
+      "userStrategies",
+      debouncedSearchTerm,
+      filterStatus,
+      sortBy,
+      indicatorFilter,
+    ],
     queryFn: async ({ pageParam = 0 }) => {
       const limit = 12;
       const params = new URLSearchParams({
@@ -103,7 +121,9 @@ export default function StrategiesPage() {
       if (debouncedSearchTerm) params.set("search_query", debouncedSearchTerm);
       if (filterStatus !== "all")
         params.set("is_public_filter", (filterStatus === "public").toString());
-
+      if (indicatorFilter !== "all") {
+        params.set("indicator_filter", indicatorFilter);
+      }
       const res = await apiClient.get(`/strategies?${params.toString()}`);
       return res.data;
     },
@@ -120,23 +140,18 @@ export default function StrategiesPage() {
 
   const strategies = data?.pages.flat() ?? [];
 
-  // 렌더링할 콘텐츠를 결정하는 함수
   const renderContent = () => {
-    // 1. 첫 페이지 로딩: isLoading 상태를 사용하여 스켈레톤 UI만 표시
     if (isLoading) {
       return <LoadingSkeleton viewMode={viewMode} />;
     }
-    // 2. 에러 발생 시
     if (isError) {
       return (
         <div className="text-center text-destructive">{t("fetchError")}</div>
       );
     }
-    // 3. 데이터가 없을 때
     if (strategies.length === 0) {
       return <EmptyState />;
     }
-    // 4. 데이터가 있을 때
     return (
       <div
         className={
@@ -158,7 +173,7 @@ export default function StrategiesPage() {
 
   return (
     <AuthGuard>
-      <div className="container mx-auto max-w-6xl px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
           <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
           <div className="flex items-center gap-2">
@@ -167,6 +182,7 @@ export default function StrategiesPage() {
                 variant={viewMode === "grid" ? "secondary" : "ghost"}
                 size="icon"
                 onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
@@ -174,6 +190,7 @@ export default function StrategiesPage() {
                 variant={viewMode === "list" ? "secondary" : "ghost"}
                 size="icon"
                 onClick={() => setViewMode("list")}
+                aria-label="List view"
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -187,11 +204,13 @@ export default function StrategiesPage() {
           </div>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ▼▼▼ [수정] 제안해주신 대로 필터 레이아웃을 5열 그리드로 변경 ▼▼▼ */}
+        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Input
             placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="lg:col-span-2"
           />
           <Select
             value={filterStatus}
@@ -206,25 +225,44 @@ export default function StrategiesPage() {
               <SelectItem value="private">{t("filterPrivate")}</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* ▼▼▼ [수정] 지표 필터를 다른 필터와 함께 배치 + 버그 수정 ▼▼▼ */}
+          <Select
+            value={indicatorFilter}
+            onValueChange={(v: any) => setIndicatorFilter(v)} // 👈 [버그 수정] onValueValueChange -> onValueChange
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("indicatorFilterAll")}</SelectItem>
+              {KEY_INDICATORS.map((indicator) => (
+                <SelectItem key={indicator} value={indicator}>
+                  {indicator}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
             <SelectTrigger>
               <SelectValue placeholder={t("sortByPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="created_at_desc">
-                {t("sortByNewest")}
-              </SelectItem>
               <SelectItem value="updated_at_desc">
                 {t("sortByLastUpdated")}
+              </SelectItem>
+              <SelectItem value="created_at_desc">
+                {t("sortByNewest")}
               </SelectItem>
               <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {/* ▲▲▲ 필터 레이아웃 수정 및 버그 수정 완료 ▲▲▲ */}
 
         {renderContent()}
 
-        {/* 다음 페이지 로딩: isFetchingNextPage 상태를 사용하여 스피너만 표시 */}
         <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
           {isFetchingNextPage && <Spinner />}
           {!hasNextPage && strategies.length > 0 && (

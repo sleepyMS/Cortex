@@ -1,3 +1,5 @@
+// file: frontend/src/components/domain/strategy/StrategyCard.tsx
+
 "use client";
 
 import * as React from "react";
@@ -19,8 +21,10 @@ import {
   TrendingDown,
   ArrowRightLeft,
   Copy,
-  Globe, // 👈 아이콘 임포트
-  Lock, // 👈 아이콘 임포트
+  Globe,
+  Lock,
+  Zap, // 👈 [추가] 성과 아이콘
+  ShieldCheck, // 👈 [추가] 성과 아이콘
 } from "lucide-react";
 import {
   Card,
@@ -39,6 +43,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/Tooltip"; // 👈 [추가] Tooltip 임포트
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -116,8 +126,9 @@ export function StrategyCard({
   }, [strategy]);
 
   const deleteStrategyMutation = useMutation({
-    mutationFn: (strategyId: number) =>
-      apiClient.delete(`/strategies/${strategyId}`),
+    mutationFn: (
+      strategyId: string // 👈 [수정] 타입을 number에서 string으로 변경
+    ) => apiClient.delete(`/strategies/${strategyId}`),
     onSuccess: () => {
       toast.success(t("deleteSuccess"));
       queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
@@ -135,9 +146,13 @@ export function StrategyCard({
       apiClient.put(`/strategies/${strategy.id}`, {
         isPublic: !strategy.isPublic,
       }),
-    onSuccess: (data: any) => {
+    onSuccess: (response: any) => {
+      // 👈 [수정] 응답 객체를 명시적으로 받음
+      const updatedStrategy = response.data; // API Client의 응답 구조에 따라 .data 추가
       toast.success(
-        data.isPublic ? t("togglePublicSuccess") : t("togglePrivateSuccess")
+        updatedStrategy.isPublic
+          ? t("togglePublicSuccess")
+          : t("togglePrivateSuccess")
       );
       queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
     },
@@ -224,6 +239,54 @@ export function StrategyCard({
     </DropdownMenuContent>
   );
 
+  // ▼▼▼ [핵심 추가 UI] 성과 요약 배지를 렌더링하는 컴포넌트 ▼▼▼
+  const PerformanceBadges = () => {
+    if (!strategy.latestBacktestSummary) {
+      return null;
+    }
+    const { totalReturnPct, winRatePct } = strategy.latestBacktestSummary;
+    const isProfitable = totalReturnPct !== null && totalReturnPct >= 0;
+
+    return (
+      <TooltipProvider delayDuration={100}>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                className={cn(
+                  "flex items-center gap-1.5 cursor-help",
+                  isProfitable
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300/50"
+                    : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/50"
+                )}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                <span>{totalReturnPct?.toFixed(2) ?? "N/A"}%</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{t("totalReturnTooltip")}</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1.5 cursor-help"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>{winRatePct?.toFixed(1) ?? "N/A"}%</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{t("winRateTooltip")}</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    );
+  };
+
   if (viewMode === "list") {
     return (
       <Card className="flex items-center w-full p-3 transition-all duration-200 ease-in-out border border-border hover:border-primary/50 hover:shadow-md">
@@ -250,6 +313,9 @@ export function StrategyCard({
           </div>
         </Link>
         <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+          <div className="hidden xl:block">
+            <PerformanceBadges />
+          </div>
           <div className="hidden lg:flex flex-wrap items-center gap-2">
             {keyIndicators.map((key) => (
               <Badge key={key} variant="secondary">
@@ -257,7 +323,6 @@ export function StrategyCard({
               </Badge>
             ))}
           </div>
-          {/* 👈 공개/비공개 상태 배지 (리스트 뷰) */}
           <Badge
             className={cn(
               "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium",
@@ -308,7 +373,6 @@ export function StrategyCard({
               {strategy.name}
             </CardTitle>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* 👈 공개/비공개 상태 배지 (카드 뷰) */}
               <Badge
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium",
@@ -337,6 +401,9 @@ export function StrategyCard({
           <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
             {strategy.description || t("noDescription")}
           </p>
+          <div className="mt-4">
+            <PerformanceBadges />
+          </div>
         </CardContent>
       </Link>
 
