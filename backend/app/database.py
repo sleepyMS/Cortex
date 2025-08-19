@@ -1,50 +1,48 @@
 # file: backend/app/database.py
 
 import os
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.pool import NullPool, QueuePool # 👈 QueuePool도 임포트 유지
 from dotenv import load_dotenv
 
-load_dotenv() # .env 파일 로드
+load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set.")
 
-# FastAPI 애플리케이션용 Engine
-# 개발 환경의 `--reload` 모드 (multiprocessing 사용)에서는 QueuePool이 문제를 일으킬 수 있으므로,
-# 개발 시에는 NullPool을 사용하도록 설정하고, 프로덕션 배포 시에는 QueuePool로 변경하는 것을 고려합니다.
-# 현재는 `uvicorn --reload` 에서 안정적인 `NullPool`을 기본으로 사용합니다.
-engine_fastapi = create_engine(
+# 1. 비동기(Async) 엔진 생성
+#    - 연결 풀링: 기본적으로 제공되는 AsyncAdaptedQueuePool을 사용하여 효율적인 연결 관리
+#    - connect_args: 모든 연결의 타임존을 UTC로 강제하여 시간대 혼동 방지
+engine = create_async_engine(
     DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    poolclass=NullPool, # 👈 FastAPI 개발 서버 (reload 모드)에서도 NullPool 사용
-    connect_args={"options": "-c timezone=utc"},
+    pool_pre_ping=True,  # 연결 사용 전 유효성 검사
+    pool_recycle=3600,   # 1시간마다 연결 재활용
+    connect_args={
+        "server_settings": {
+            "timezone": "utc"
+        }
+    }
 )
 
-# Celery 워커용 Engine (NullPool 사용) - 기존과 동일
-engine_celery = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    poolclass=NullPool,
-    connect_args={"options": "-c timezone=utc"},
+# 2. 비동기 세션 생성기(Session Factory) 정의
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
 )
 
-
-# SessionLocal 클래스 - 기본적으로 FastAPI용 엔진에 바인딩
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_fastapi)
-
-# 모델의 Base 클래스
+# 3. 모델의 Base 클래스 (기존과 동일)
 class Base(DeclarativeBase):
     pass
 
-# DB 세션 의존성 주입 함수 (FastAPI 라우터용)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# 4. 비동기 DB 세션 의존성 주입 함수
+#    (이 함수는 dependencies.py로 옮겨 중앙 관리하는 것이 더 좋습니다)
+async def get_async_db() -> AsyncSession:
+    """
+    비동기 데이터베이스 세션을 생성하고 API 처리가 끝나면 자동으로 닫습니다.
+    """
+    async with AsyncSessionLocal() as session:
+        yield session

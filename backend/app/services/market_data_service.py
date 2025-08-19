@@ -1,6 +1,6 @@
 # file: backend/app/services/market_data_service.py
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from fastapi import HTTPException, status
 import logging
@@ -15,12 +15,12 @@ ALLOWED_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"]
 
 class MarketDataService:
     """
-    데이터베이스에서 OHLCV 시세 데이터를 조회하고 처리하는 역할을 담당하는 서비스 클래스.
+    데이터베이스에서 OHLCV 시세 데이터를 조회하고 처리하는 역할을 담당하는 비동기 서비스 클래스.
     """
 
-    def _fetch_ohlcv(
+    async def _fetch_ohlcv(
         self,
-        db: Session,
+        db: AsyncSession,
         ticker: str,
         timeframe: str,
         limit: int,
@@ -52,11 +52,12 @@ class MarketDataService:
         """)
         
         try:
-            result = db.execute(sql_query, query_params).mappings().all()
-            if not result:
+            result = await db.execute(sql_query, query_params)
+            rows = result.mappings().all()
+            if not rows:
                 return pd.DataFrame()
             
-            df = pd.DataFrame(result)
+            df = pd.DataFrame(rows)
             
             # 후속 처리를 위해 datetime 객체로 변환
             df['time_dt'] = pd.to_datetime(df['time'])
@@ -70,10 +71,10 @@ class MarketDataService:
 
     async def get_ohlcv_data(
         self,
-        db: Session,
+        db: AsyncSession,
         ticker: str,
         timeframe: str,
-        limit: int = 1000,
+        limit: int = 500,
         since: Optional[datetime] = None,
     ) -> pd.DataFrame:
         """
@@ -81,7 +82,7 @@ class MarketDataService:
         시간 오름차순으로 OHLCV 데이터를 조회합니다.
         """
         # 'since'가 없으면 최신 데이터를 가져오도록 order_desc=True로 설정
-        df = self._fetch_ohlcv(db, ticker, timeframe, limit, since, order_desc=not since)
+        df = await self._fetch_ohlcv(db, ticker, timeframe, limit, since, order_desc=not since)
         
         # 최신부터 가져왔을 경우(order_desc=True), 차트에 맞게 시간 오름차순으로 다시 정렬
         if not since:
@@ -89,9 +90,9 @@ class MarketDataService:
         
         return df
 
-    def get_latest_data(
+    async def get_latest_data(
         self,
-        db: Session,
+        db: AsyncSession,
         ticker: str,
         timeframe: str,
         limit: int = 1000,
@@ -100,7 +101,7 @@ class MarketDataService:
         가장 최신 시점부터 데이터를 조회한 후, 시간 오름차순으로 정렬하여 반환합니다. 
         실시간 신호 계산 등에서 명시적으로 사용됩니다.
         """
-        df = self._fetch_ohlcv(db, ticker, timeframe, limit, order_desc=True)
+        df = await self._fetch_ohlcv(db, ticker, timeframe, limit, order_desc=True)
         return df.sort_values(by='time', ascending=True).reset_index(drop=True)
 
 # 다른 서비스에서 쉽게 임포트하여 사용할 수 있도록 인스턴스 생성

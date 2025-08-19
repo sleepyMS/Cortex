@@ -1,151 +1,104 @@
 # file: backend/app/routers/live_bots.py
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from typing import List, Optional
 import uuid
 
-# dependencies에서 get_verified_live_bot를 import 합니다.
-from .. import schemas, models, security
-from ..dependencies import get_verified_live_bot
-from ..database import get_db
+from .. import schemas, models
+# ▼▼▼ [수정] 비동기 의존성 및 팩토리 함수 임포트 ▼▼▼
+from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.live_bot_service import live_bot_service
 from ..limiter import limiter
+# ▲▲▲ [수정] ▲▲▲
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/live_bots", tags=["Live Bots"])
+router = APIRouter(prefix="/live-bots", tags=["Live Bots"])
 
-# --- 라이브 봇 관련 엔드포인트 ---
+# ▼▼▼ [추가] 라우터 파일 내에서 필요한 의존성을 직접 생성 ▼▼▼
+get_verified_live_bot = create_owner_verifier(models.LiveBot)
+# ▲▲▲ [추가] ▲▲▲
 
-@router.post("/", response_model=schemas.LiveBot, status_code=status.HTTP_201_CREATED, summary="Deploy and start a new live trading bot")
-@limiter.limit("5/minute") 
+@router.post("/", response_model=schemas.LiveBot, status_code=status.HTTP_201_CREATED, summary="Deploy and start a new live bot")
+@limiter.limit("5/hour") # 봇 생성은 비교적 신중한 작업이므로 제한을 더 강하게 설정
 async def create_live_bot(
     live_bot_create: schemas.LiveBotCreate,
-    request: Request, 
-    current_user: models.User = Depends(security.get_current_active_user),
-    db: Session = Depends(get_db)
+    request: Request,
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
 ):
-    """
-    새로운 자동매매 봇을 배포하고 시작합니다.
-    플랜 제한, 전략/API 키 유효성 및 소유권 검사는 서비스 계층에서 모두 처리됩니다.
-    """
+    """새로운 자동매매 봇을 배포하고 시작합니다."""
     try:
-        # 서비스 함수 호출 부분은 기존 구조가 올바르므로 변경이 없습니다.
         new_bot = await live_bot_service.create_live_bot(db, current_user, live_bot_create)
-        
-        db.commit()
-        db.refresh(new_bot)
-        logger.info(f"Live bot (ID: {new_bot.id}) deployed for user {current_user.email}.")
+        await db.commit()
+        await db.refresh(new_bot)
+        logger.info(f"New live bot (ID: {new_bot.id}) created for user {current_user.email}.")
         return new_bot
     except HTTPException as e:
-        db.rollback()
-        logger.warning(f"Failed to create live bot for user {current_user.email}: {e.detail}")
+        await db.rollback()
         raise e
     except Exception as e:
-        db.rollback()
-        logger.error(f"An unexpected error occurred while creating live bot: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="라이브 봇 배포 중 서버 오류가 발생했습니다."
-        )
+        await db.rollback()
+        logger.error(f"Error creating live bot for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="자동매매 봇 생성 중 서버 오류가 발생했습니다.")
 
-# 현재 '로그인한 사용자'의 봇 목록을 가져오므로, 서비스 레이어에서 user_id로 필터링합니다.
-@router.get("/", response_model=List[schemas.LiveBot], summary="Get list of user's live trading bots")
+@router.get("/", response_model=List[schemas.LiveBot], summary="Get list of user's live bots")
 async def get_live_bots(
-    current_user: models.User = Depends(security.get_current_active_user),
-    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    status_filter: Optional[str] = Query(None, description="Filter by bot status"),
-    # 👇 [수정] strategy_id_filter의 타입도 uuid.UUID로 변경합니다.
-    strategy_id_filter: Optional[uuid.UUID] = Query(None, description="Filter by strategy ID")
+    limit: int = Query(100, ge=1, le=1000)
 ):
-    """
-    현재 로그인된 사용자의 실시간 자동매매 봇 목록을 조회합니다.
-    """
-    live_bots = live_bot_service.get_live_bots(
-        db,
-        user_id=current_user.id,
-        skip=skip,
-        limit=limit,
-        status_filter=status_filter,
-        strategy_id_filter=strategy_id_filter
-    )
-    logger.info(f"User {current_user.email} fetched {len(live_bots)} live bot records.")
-    return live_bots
+    """현재 사용자의 자동매매 봇 목록을 비동기로 조회합니다."""
+    bots = await live_bot_service.get_live_bots_by_user(db, current_user.id, skip, limit)
+    logger.info(f"User {current_user.email} fetched {len(bots)} live bots.")
+    return bots
 
-# 소유권 검증 로직을 의존성 주입으로 대체
-@router.get("/{bot_id}", response_model=schemas.LiveBot, summary="Get details of a specific live trading bot")
+@router.get("/{live_bot_id}", response_model=schemas.LiveBot, summary="Get details of a specific live bot")
 async def get_live_bot_by_id(
-    # ID를 직접 받는 대신, 'get_verified_live_bot'가 검증을 마친 LiveBot 객체를 주입해줍니다.
     live_bot: models.LiveBot = Depends(get_verified_live_bot)
 ):
-    """
-    특정 ID의 라이브 봇 상세 정보를 조회합니다. (소유권 자동 검증)
-    """
-    # 수동으로 하던 조회 및 권한 검사 로직이 모두 사라집니다.
+    """특정 자동매매 봇의 상세 정보를 조회합니다. (소유권 자동 검증)"""
     logger.info(f"User (ID: {live_bot.user_id}) accessed live bot: {live_bot.id}.")
     return live_bot
 
-# 소유권 검증 로직을 의존성 주입으로 대체
-@router.put("/{bot_id}", response_model=schemas.LiveBot, summary="Update status of a specific live trading bot")
+@router.put("/{live_bot_id}", response_model=schemas.LiveBot, summary="Update the status of a live bot")
 async def update_live_bot_status(
-    bot_update: schemas.LiveBotUpdate,
-    # 수정할 대상 객체(bot_to_update)를 의존성 주입으로 안전하게 가져옵니다.
-    bot_to_update: models.LiveBot = Depends(get_verified_live_bot),
-    db: Session = Depends(get_db)
+    live_bot_update: schemas.LiveBotUpdate,
+    live_bot_to_update: models.LiveBot = Depends(get_verified_live_bot),
+    db: AsyncSession = Depends(get_async_db)
 ):
-    """
-    특정 ID의 라이브 봇 상태를 업데이트합니다. (소유권 자동 검증)
-    """
-    if bot_update.status is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="업데이트할 상태를 제공해야 합니다.")
-
+    """특정 자동매매 봇의 상태(active, paused, stopped)를 업데이트합니다."""
     try:
-        # 서비스 레이어 함수는 이제 더 단순한 인자만 받게 됩니다.
-        updated_bot = live_bot_service.update_live_bot_status(db, bot_to_update, bot_update.status)
-        db.commit()
-        db.refresh(updated_bot)
-        logger.info(f"LiveBot {updated_bot.id} status updated to '{updated_bot.status}' by user (ID: {updated_bot.user_id}).")
+        updated_bot = await live_bot_service.update_bot_status(db, live_bot_to_update, live_bot_update.status)
+        await db.commit()
+        await db.refresh(updated_bot)
+        logger.info(f"Live bot ID {updated_bot.id} status updated to '{updated_bot.status}'.")
         return updated_bot
     except HTTPException as e:
-        db.rollback()
-        logger.warning(f"Failed to update status of LiveBot {bot_to_update.id} for user (ID: {bot_to_update.user_id}): {e.detail}")
+        await db.rollback()
         raise e
     except Exception as e:
-        db.rollback()
-        logger.error(f"An unexpected error occurred while updating LiveBot {bot_to_update.id} status for user (ID: {bot_to_update.user_id}): {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="봇 상태 업데이트 중 서버 오류가 발생했습니다."
-        )
+        await db.rollback()
+        logger.error(f"Error updating live bot {live_bot_to_update.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="봇 상태 업데이트 중 서버 오류가 발생했습니다.")
 
-# 소유권 검증 로직을 의존성 주입으로 대체
-@router.delete("/{bot_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a specific live trading bot")
+@router.delete("/{live_bot_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a live bot")
 async def delete_live_bot(
-    # 삭제할 대상 객체(bot_to_delete)를 의존성 주입으로 안전하게 가져옵니다.
-    bot_to_delete: models.LiveBot = Depends(get_verified_live_bot),
-    db: Session = Depends(get_db)
+    live_bot_to_delete: models.LiveBot = Depends(get_verified_live_bot),
+    db: AsyncSession = Depends(get_async_db)
 ):
-    """
-    특정 ID의 라이브 봇을 삭제합니다. (소유권 자동 검증)
-    """
+    """특정 자동매매 봇을 삭제합니다. (소유권 자동 검증)"""
     try:
-        # 서비스 레이어 함수도 더 단순해집니다.
-        live_bot_service.delete_live_bot(db, bot_to_delete)
-        # db.commit()은 서비스 레이어에서 처리될 수 있으므로, 서비스 로직에 따라 조절
-        logger.info(f"LiveBot ID {bot_to_delete.id} deleted by user (ID: {bot_to_delete.user_id}).")
-        return
+        await live_bot_service.delete_live_bot(db, live_bot_to_delete.id)
+        await db.commit()
+        logger.info(f"Live bot ID {live_bot_to_delete.id} deleted by user {live_bot_to_delete.user_id}.")
     except HTTPException as e:
-        db.rollback()
-        logger.warning(f"Failed to delete LiveBot {bot_to_delete.id} for user (ID: {bot_to_delete.user_id}): {e.detail}")
+        await db.rollback()
         raise e
     except Exception as e:
-        db.rollback()
-        logger.error(f"An unexpected error occurred while deleting LiveBot {bot_to_delete.id} for user (ID: {bot_to_delete.user_id}): {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="봇 삭제 중 서버 오류가 발생했습니다."
-        )
+        await db.rollback()
+        logger.error(f"Error deleting live bot {live_bot_to_delete.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="자동매매 봇 삭제 중 서버 오류가 발생했습니다.")

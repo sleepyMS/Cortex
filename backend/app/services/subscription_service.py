@@ -1,148 +1,175 @@
 # file: backend/app/services/subscription_service.py
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+from fastapi import HTTPException, status
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import uuid
+import os
 
 from .. import models, schemas
-from ..security import get_password_hash # 비밀번호 해싱 (필요 시)
-from ..security import verify_refresh_token_secret, hash_refresh_token_secret # 리프레시 토큰 해싱 (필요 시)
+from ..services.plan_service import plan_service
+from ..services.payment_gateway_service import payment_gateway_service
 
 logger = logging.getLogger(__name__)
 
 class SubscriptionService:
     """
-    사용자 구독 정보 조회 및 결제 웹훅 이벤트를 처리하여
-    Subscription 모델을 업데이트하는 서비스.
+    사용자 구독 정보 조회 및 결제 웹훅 이벤트를 처리하는 비동기 서비스.
     """
-    def get_user_subscription(self, db: Session, user_id: uuid.UUID) -> models.Subscription | None:
+
+    async def get_user_subscription_details(self, db: AsyncSession, user: models.User) -> Optional[schemas.SubscriptionSchema]:
         """
-        특정 사용자의 현재 구독 정보를 조회합니다.
+        특정 사용자의 현재 구독 정보를 Eager Loading하여 조회합니다.
+        활성 구독이 없으면 기본 'Basic' 플랜 정보를 반환합니다.
         """
-        subscription = db.query(models.Subscription).filter(models.Subscription.user_id == user_id).first()
-        if subscription:
-            # Plan 정보도 함께 로드되도록 joinload 사용 고려 (쿼리 최적화)
-            # subscription = db.query(models.Subscription).options(joinedload(models.Subscription.plan)).filter(...).first()
-            pass
+        query = (
+            select(models.Subscription)
+            .options(joinedload(models.Subscription.plan).joinedload(models.Plan.features))
+            .filter(models.Subscription.user_id == user.id)
+        )
+        result = await db.execute(query)
+        subscription = result.scalar_one_or_none()
+
+        if not subscription:
+            # 기본 Basic 플랜 정보를 찾아서 가상의 구독 객체를 만들어 반환
+            basic_plan_query = select(models.Plan).options(joinedload(models.Plan.features)).filter(models.Plan.name == models.PlanType.BASIC)
+            plan_result = await db.execute(basic_plan_query)
+            basic_plan = plan_result.scalar_one_or_none()
+            if not basic_plan:
+                raise HTTPException(status_code=500, detail="Default 'Basic' plan not found.")
+            
+            # Pydantic 스키마를 사용하여 가상 구독 객체 생성
+            return schemas.SubscriptionSchema.model_validate({
+                "id": uuid.uuid4(), # 임의의 ID
+                "user_id": user.id,
+                "plan_id": basic_plan.id,
+                "status": "active",
+                "current_period_end": None,
+                "plan": basic_plan
+            })
+        
         return subscription
 
-    def process_payment_event(self, db: Session, event_type: str, event_data: Dict[str, Any]) -> models.Subscription | None:
-        """
-        결제 게이트웨이 웹훅 이벤트를 처리하여 Subscription 모델을 업데이트합니다.
-        Idempotency(멱등성)를 보장해야 합니다.
-        """
-        # Stripe 웹훅 이벤트 처리 예시 (다른 게이트웨이별로 로직 분기)
-        if event_type == "checkout.session.completed":
-            # 새 구독 생성 또는 기존 구독 업데이트 (시험 결제 성공 시)
-            session_id = event_data["id"]
-            customer_email = event_data["customer_details"]["email"]
-            subscription_id_on_gateway = event_data["subscription"] # 결제 게이트웨이의 Subscription ID
-            plan_id = event_data["metadata"]["plan_id"] # 메타데이터에서 전달받은 plan_id
-            user_id = event_data["metadata"]["user_id"] # 메타데이터에서 전달받은 user_id
-            
-            user = db.query(models.User).filter(models.User.id == user_id).first()
-            if not user:
-                logger.error(f"Webhook: checkout.session.completed for non-existent user_id: {user_id}")
-                return None # 사용자 없음 오류
+    async def create_checkout_session(self, db: AsyncSession, user: models.User, plan_id: uuid.UUID) -> str:
+        """결제 세션을 생성하고 결제 페이지 URL을 반환합니다."""
+        target_plan = await plan_service.get_plan_by_id(db, plan_id)
 
-            plan = db.query(models.Plan).filter(models.Plan.id == plan_id).first()
-            if not plan:
-                logger.error(f"Webhook: checkout.session.completed for non-existent plan_id: {plan_id}")
-                return None # 플랜 없음 오류
+        if not target_plan:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 플랜을 찾을 수 없습니다.")
+        if target_plan.price == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="무료 플랜은 결제할 수 없습니다.")
 
-            # 기존 구독 조회 (Idempotency)
-            existing_subscription = db.query(models.Subscription).filter(
-                models.Subscription.user_id == user.id
-            ).first()
+        unit_amount = int(target_plan.price * 100)
+        currency = "usd" # 또는 다른 통화
 
-            # 구독 기간 계산 (예시: 한 달 구독)
-            # Stripe API의 경우, 'current_period_end'가 웹훅 이벤트에 포함될 수 있음
-            current_period_end_ts = event_data["current_period_end"] if "current_period_end" in event_data else (datetime.now(timezone.utc) + timedelta(days=30)).timestamp()
-            current_period_end = datetime.fromtimestamp(current_period_end_ts, tz=timezone.utc)
+        success_url = os.getenv("FRONTEND_SUCCESS_PAYMENT_URL", "http://localhost:3000/payment/success")
+        cancel_url = os.getenv("FRONTEND_CANCEL_PAYMENT_URL", "http://localhost:3000/payment/cancel")
+        
+        # payment_gateway_service를 통해 실제 결제 세션 생성 요청
+        checkout_url = await payment_gateway_service.create_checkout_session(
+            payment_gateway="stripe",
+            plan_name=target_plan.name.value,
+            unit_amount=unit_amount,
+            currency=currency,
+            user_email=user.email,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={"user_id": str(user.id), "plan_id": str(target_plan.id)}
+        )
+        return checkout_url
 
-            if existing_subscription:
-                # 기존 구독 업데이트
-                existing_subscription.plan_id = plan.id
-                existing_subscription.status = "active"
-                existing_subscription.current_period_end = current_period_end
-                existing_subscription.payment_gateway_sub_id = subscription_id_on_gateway
-                # refresh_token (만약 Stripe에서 웹훅으로 전달한다면)
-                # existing_subscription.refresh_token = event_data.get("refresh_token") # 예시
-                db.add(existing_subscription)
-                logger.info(f"Webhook: Updated existing subscription for user {user.email} to plan {plan.name}.")
-                return existing_subscription
+    async def handle_payment_webhook(self, db: AsyncSession, payment_gateway: str, payload: bytes, signature: Optional[str]):
+        """결제 게이트웨이 웹훅 이벤트를 검증하고 처리합니다."""
+        # 1. 웹훅 서명 검증 및 이벤트 데이터 파싱
+        try:
+            event_data = payment_gateway_service.handle_webhook(payload, signature, payment_gateway)
+            event_type = event_data.get("type")
+            logger.info(f"Webhook received. Gateway: {payment_gateway}, Event type: {event_type}")
+        except HTTPException as e:
+            logger.error(f"Webhook signature/parsing failed for {payment_gateway}. Detail: {e.detail}", exc_info=True)
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error during webhook validation for {payment_gateway}: {e}", exc_info=True)
+            raise HTTPException(status_code=400, detail="웹훅 검증 중 오류가 발생했습니다.")
+        
+        # 2. 파싱된 이벤트 타입에 따라 구독 상태 업데이트
+        try:
+            if event_type == "checkout.session.completed":
+                await self._process_checkout_completed(db, event_data)
+            elif event_type == "customer.subscription.updated":
+                await self._process_subscription_updated(db, event_data)
+            elif event_type == "customer.subscription.deleted":
+                await self._process_subscription_deleted(db, event_data)
             else:
-                # 새로운 구독 생성
-                new_subscription = models.Subscription(
-                    user_id=user.id,
-                    plan_id=plan.id,
-                    status="active",
-                    current_period_end=current_period_end,
-                    payment_gateway_sub_id=subscription_id_on_gateway,
-                    # refresh_token (만약 Stripe에서 웹훅으로 전달한다면)
-                    # refresh_token=event_data.get("refresh_token") # 예시
-                )
-                db.add(new_subscription)
-                logger.info(f"Webhook: Created new subscription for user {user.email} with plan {plan.name}.")
-                return new_subscription
+                logger.info(f"Webhook: Unhandled event type: {event_type}.")
+        except Exception as e:
+            logger.error(f"Error processing payment event '{event_type}': {e}", exc_info=True)
+            # DB 트랜잭션은 라우터 레벨에서 롤백됩니다.
+            raise HTTPException(status_code=500, detail=f"웹훅 이벤트({event_type}) 처리 중 서버 오류가 발생했습니다.")
 
-        elif event_type == "customer.subscription.updated":
-            # 구독 상태 변경 (갱신 성공, 플랜 변경 등)
-            subscription_id_on_gateway = event_data["id"]
-            user_id = event_data["metadata"].get("user_id") # Stripe 웹훅은 metadata를 포함함
+    async def _process_checkout_completed(self, db: AsyncSession, event_data: Dict[str, Any]):
+        """`checkout.session.completed` 이벤트를 처리하여 구독을 생성/업데이트합니다."""
+        metadata = event_data.get("metadata", {})
+        user_id = metadata.get("user_id")
+        plan_id = metadata.get("plan_id")
+        
+        if not user_id or not plan_id:
+            logger.error(f"Webhook Error: Missing user_id or plan_id in metadata for event: {event_data.get('id')}")
+            return
+        
+        query = select(models.Subscription).filter(models.Subscription.user_id == uuid.UUID(user_id))
+        result = await db.execute(query)
+        subscription = result.scalar_one_or_none()
 
-            subscription = db.query(models.Subscription).filter(
-                models.Subscription.payment_gateway_sub_id == subscription_id_on_gateway
-            ).first()
+        subscription_id_on_gateway = event_data.get("subscription")
+        current_period_end = datetime.fromtimestamp(event_data.get("current_period_end", 0), tz=timezone.utc)
 
-            if not subscription:
-                logger.warning(f"Webhook: customer.subscription.updated for unknown payment_gateway_sub_id: {subscription_id_on_gateway}")
-                return None
-
-            new_status = event_data["status"] # 'active', 'canceled', 'past_due'
-            current_period_end = datetime.fromtimestamp(event_data["current_period_end"], tz=timezone.utc)
-            
-            # 플랜 변경 이벤트 처리 (예: 플랜 ID가 달라진 경우)
-            new_plan_id_on_gateway = event_data["plan"]["id"] # Stripe plan ID
-            # 우리 시스템의 plan_id와 매핑하는 로직 필요
-            # new_plan = db.query(models.Plan).filter(models.Plan.gateway_plan_id == new_plan_id_on_gateway).first()
-            # if new_plan: subscription.plan_id = new_plan.id
-
-            subscription.status = new_status
+        if subscription: # 기존 구독이 있는 경우 (예: Basic -> Pro 업그레이드)
+            subscription.plan_id = uuid.UUID(plan_id)
+            subscription.status = "active"
             subscription.current_period_end = current_period_end
-            db.add(subscription)
-            logger.info(f"Webhook: Updated subscription status for user {subscription.user_id} to '{new_status}'.")
-            return subscription
+            subscription.payment_gateway_sub_id = subscription_id_on_gateway
+        else: # 신규 구독
+            subscription = models.Subscription(
+                user_id=uuid.UUID(user_id), plan_id=uuid.UUID(plan_id), status="active",
+                current_period_end=current_period_end, payment_gateway_sub_id=subscription_id_on_gateway
+            )
+        db.add(subscription)
+        logger.info(f"Webhook processed 'checkout.session.completed' for user_id: {user_id}")
+    
+    async def _process_subscription_updated(self, db: AsyncSession, event_data: Dict[str, Any]):
+        """`customer.subscription.updated` 이벤트를 처리하여 구독 상태를 갱신합니다."""
+        subscription_id_on_gateway = event_data.get("id")
+        query = select(models.Subscription).filter(models.Subscription.payment_gateway_sub_id == subscription_id_on_gateway)
+        result = await db.execute(query)
+        subscription = result.scalar_one_or_none()
 
-        elif event_type == "customer.subscription.deleted":
-            # 구독 취소 또는 만료
-            subscription_id_on_gateway = event_data["id"]
-            subscription = db.query(models.Subscription).filter(
-                models.Subscription.payment_gateway_sub_id == subscription_id_on_gateway
-            ).first()
+        if not subscription:
+            logger.warning(f"Webhook: Received update for unknown subscription ID: {subscription_id_on_gateway}")
+            return
 
-            if not subscription:
-                logger.warning(f"Webhook: customer.subscription.deleted for unknown payment_gateway_sub_id: {subscription_id_on_gateway}")
-                return None
+        subscription.status = event_data.get("status")
+        subscription.current_period_end = datetime.fromtimestamp(event_data.get("current_period_end", 0), tz=timezone.utc)
+        db.add(subscription)
+        logger.info(f"Webhook processed 'customer.subscription.updated' for subscription_id: {subscription.id}")
+
+    async def _process_subscription_deleted(self, db: AsyncSession, event_data: Dict[str, Any]):
+        """`customer.subscription.deleted` 이벤트를 처리하여 구독을 취소 상태로 변경합니다."""
+        subscription_id_on_gateway = event_data.get("id")
+        query = select(models.Subscription).filter(models.Subscription.payment_gateway_sub_id == subscription_id_on_gateway)
+        result = await db.execute(query)
+        subscription = result.scalar_one_or_none()
+
+        if not subscription:
+            logger.warning(f"Webhook: Received delete for unknown subscription ID: {subscription_id_on_gateway}")
+            return
             
-            subscription.status = "canceled"
-            # 만료된 구독이라면 current_period_end를 현재 시점으로 설정 고려
-            if subscription.current_period_end > datetime.now(timezone.utc):
-                 subscription.current_period_end = datetime.now(timezone.utc) # 즉시 만료 처리
-            
-            # 리프레시 토큰 무효화 (결제 게이트웨이 리프레시 토큰이 models.Subscription에 있다면)
-            # if subscription.refresh_token:
-            #     # 해당 리프레시 토큰을 무효화하는 로직 (예: DB에서 삭제 또는 플래그 설정)
-            #     subscription.refresh_token = None
-            db.add(subscription)
-            logger.info(f"Webhook: Canceled subscription for user {subscription.user_id}.")
-            return subscription
+        subscription.status = "canceled"
+        db.add(subscription)
+        logger.info(f"Webhook processed 'customer.subscription.deleted' for subscription_id: {subscription.id}")
 
-        else:
-            logger.info(f"Webhook: Unhandled event type: {event_type}. Event Data: {event_data}")
-            return None # 처리하지 않는 이벤트 타입
-
-# 서비스 인스턴스 생성
 subscription_service = SubscriptionService()

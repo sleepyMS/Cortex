@@ -3,16 +3,17 @@
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
 import os
 import logging
-from typing import Annotated
+from typing import Optional
 import secrets
 import string
 
-from . import models, schemas
-from .database import get_db
+from . import models
+from .database import AsyncSessionLocal  # 비동기 세션을 직접 사용해야 할 경우를 위해 임포트
 from passlib.context import CryptContext
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -42,7 +43,6 @@ def generate_random_password(length: int = 16) -> str:
     password = ''.join(secrets.choice(characters) for i in range(length))
     return password
 
-# [개선] Refresh Token 관련 해싱도 pwd_context를 사용하도록 통합
 def hash_refresh_token_secret(plain_secret: str) -> str:
     """리프레시 토큰의 비밀 부분을 해싱합니다."""
     return pwd_context.hash(plain_secret)
@@ -58,11 +58,14 @@ def verify_refresh_token_secret(plain_secret: str, hashed_secret: str) -> bool:
 # --- JWT 설정 ---
 SECRET_KEY = os.getenv("SECRET_KEY", "your_super_secret_jwt_key_that_is_at_least_32_chars_long")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
 
 # --- 암호화 키 설정 (Fernet) ---
 _ENCRYPTION_MASTER_KEY_ENV = os.getenv("ENCRYPTION_MASTER_KEY")
-# [개선] Salt 값을 환경 변수에서 불러옵니다.
 _ENCRYPTION_SALT_ENV = os.getenv("ENCRYPTION_SALT")
 
 fernet = None
@@ -104,53 +107,18 @@ def decrypt_data(encrypted_data: str) -> str:
             detail="데이터 처리 중 오류가 발생했습니다."
         )
 
-# --- 현재 사용자 가져오기 의존성 함수 ---
-async def get_current_user(
-    request: Request,
-    token: str = Depends(oauth2_scheme), 
-    db: Session = Depends(get_db)
-) -> models.User:
-    """
-    JWT 토큰을 검증하고 현재 사용자를 반환합니다.
-    사용자 기반 속도 제한을 위해 request.state에 user를 저장합니다.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="인증 정보를 확인할 수 없습니다.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        token_type: str = payload.get("type")
 
-        if email is None or token_type != "access":
-            raise credentials_exception
+# --- 사용자 인증 함수 (비동기) ---
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[models.User]:
+    """이메일과 비밀번호로 사용자를 인증합니다. (비동기 버전)"""
+    result = await db.execute(select(models.User).filter(models.User.email == email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return None
+    if not user.hashed_password: # 소셜 로그인 사용자 등 비밀번호가 없는 경우
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
         
-    except JWTError:
-        raise credentials_exception
-
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    
-    # [개선] request.state에 user 객체를 저장하여 사용자 기반 속도 제한 기능이 작동하도록 합니다.
-    request.state.user = user
-    
     return user
-
-def get_current_active_user(
-    current_user: Annotated[models.User, Depends(get_current_user)]
-) -> models.User:
-    """현재 사용자가 활성 상태인지 확인합니다."""
-    if not current_user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비활성화된 계정입니다.")
-    return current_user
-
-def get_current_admin_user(
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
-) -> models.User:
-    """현재 사용자가 관리자 권한을 가졌는지 확인합니다."""
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
-    return current_user
