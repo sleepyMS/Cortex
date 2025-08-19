@@ -119,38 +119,44 @@ export const PricingComparisonTable = () => {
     <div className="w-full overflow-x-auto">
       <div className="container mx-auto max-w-5xl py-12">
         {/* 테이블 헤더 - 데스크톱용 */}
-        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-gray-700 pb-4 sticky top-0 bg-background z-10">
-          <div className="text-gray-400">기능</div>
-          <div className="text-center">Basic</div>
-          <div className="text-center">Trader</div>
+        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-border pb-4 sticky top-0 bg-background z-10">
+          <div className="text-muted-foreground">기능</div>
+          <div className="text-center text-muted-foreground">Basic</div>
+          <div className="text-center text-muted-foreground">Trader</div>
           <div className="text-center text-primary">Pro</div>
         </div>
 
         {/* 기능별 목록 */}
         {featureCategories.map((category, catIndex) => (
           <div key={catIndex} className="mb-8">
-            <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-3 border-l-4 border-primary pl-4">
+            <h3 className="text-2xl font-bold text-foreground mb-4 flex items-center gap-3 border-l-4 border-primary pl-4">
               {category.icon} {category.category}
             </h3>
             <div className="space-y-2">
               {category.features.map((feature, featIndex) => (
                 <div
                   key={featIndex}
-                  className="grid grid-cols-[1fr] md:grid-cols-[2fr_1fr_1fr_1fr] items-center p-4 rounded-xl bg-white/5 border border-white/10"
+                  className="grid grid-cols-[1fr] md:grid-cols-[2fr_1fr_1fr_1fr] items-center p-4 rounded-xl bg-card border border-border"
                 >
-                  <div className="font-semibold text-gray-200">
+                  <div className="font-semibold text-foreground">
                     {feature.name}
                   </div>
-                  <div className="flex justify-between md:justify-center items-center md:text-center text-gray-400 md:col-span-1 border-t md:border-t-0 border-white/5 pt-2 md:pt-0">
-                    <span className="md:hidden font-bold">Basic:</span>
+                  <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
+                    <span className="md:hidden font-bold text-foreground">
+                      Basic:
+                    </span>
                     {renderValue(feature.basic)}
                   </div>
-                  <div className="flex justify-between md:justify-center items-center md:text-center text-gray-400 md:col-span-1 border-t md:border-t-0 border-white/5 pt-2 md:pt-0">
-                    <span className="md:hidden font-bold">Trader:</span>
+                  <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
+                    <span className="md:hidden font-bold text-foreground">
+                      Trader:
+                    </span>
                     {renderValue(feature.trader)}
                   </div>
-                  <div className="flex justify-between md:justify-center items-center md:text-center text-primary font-bold md:col-span-1 border-t md:border-t-0 border-white/5 pt-2 md:pt-0">
-                    <span className="md:hidden font-bold">Pro:</span>
+                  <div className="flex justify-between md:justify-center items-center md:text-center text-primary font-bold md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
+                    <span className="md:hidden font-bold text-foreground">
+                      Pro:
+                    </span>
                     {renderValue(feature.pro)}
                   </div>
                 </div>

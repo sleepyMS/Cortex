@@ -5,6 +5,7 @@
 import { motion } from "framer-motion";
 import { Check, Rocket, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useState, useEffect } from "react";
 
 interface PricingCardProps {
   planName: string;
@@ -23,24 +24,69 @@ export const PricingCard = ({
 }: PricingCardProps) => {
   const isTrader = planName === "Trader";
   const isPro = planName === "Pro";
+  const isBasic = planName === "Basic";
+
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // 마운트 시, 현재 HTML에 'dark' 클래스가 있는지 확인
+    setIsDark(document.documentElement.classList.contains("dark"));
+
+    // 테마 변경을 감지하는 옵저버 설정
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // 플랜별 네온 스타일을 결정하는 조건부 클래스
-  let cardStyles = "bg-white/5 border border-white/10 shadow-md"; // Basic 스타일 (기본)
-  let headerTextColor = "text-foreground";
-  let buttonStyle = "bg-white/10 text-foreground hover:bg-white/20";
+  let cardStyles = "";
+  let headerTextColor = "";
+  let buttonStyle = "";
 
-  if (isTrader) {
-    // Trader 스타일: 은은한 황금색 네온 효과
-    cardStyles =
-      "bg-gradient-to-br from-yellow-400/10 to-yellow-500/5 border border-yellow-400/30 shadow-[0_0_20px_rgba(255,215,0,0.2)]";
-    headerTextColor = "text-yellow-400";
-    buttonStyle = "bg-yellow-400 text-black hover:bg-yellow-400/80";
+  if (isBasic) {
+    if (!isDark) {
+      // 라이트 모드: 동갈색 스타일
+      cardStyles = `bg-gradient-to-br from-basic-secondary to-background border border-basic-primary/50 shadow-[0_0_15px_theme(colors.basic-primary)/30]`;
+      headerTextColor = "text-basic-primary";
+      buttonStyle = "bg-[#7B593C] text-white hover:bg-[#634830]";
+    } else {
+      // 다크 모드: 동색 네온 스타일
+      cardStyles =
+        "bg-gradient-to-br from-basic-primary/20 to-basic-secondary/10 border border-basic-primary/50 shadow-[0_0_25px_theme(colors.basic-primary)/30]";
+      headerTextColor = "text-basic-primary";
+      buttonStyle = "bg-[#664023] text-foreground hover:bg-[#80502b]";
+    }
+  } else if (isTrader) {
+    if (!isDark) {
+      cardStyles =
+        "bg-gradient-to-br from-trader-secondary to-background border border-trader-primary/50 shadow-[0_0_20px_theme(colors.trader-primary)/20]";
+      headerTextColor = "text-trader-primary";
+      buttonStyle = "bg-trader-primary text-black hover:bg-trader-primary/80";
+    } else {
+      cardStyles =
+        "bg-gradient-to-br from-yellow-400/10 to-yellow-500/5 border border-yellow-400/30 shadow-[0_0_20px_rgba(255,215,0,0.2)]";
+      headerTextColor = "text-yellow-400";
+      buttonStyle = "bg-yellow-400 text-black hover:bg-yellow-400/80";
+    }
   } else if (isPro) {
-    // Pro 스타일: 보라색 네온 효과 (기존대로 유지)
-    cardStyles =
-      "bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/50 shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)]";
-    headerTextColor = "text-primary";
-    buttonStyle = "bg-primary text-black hover:bg-primary/80";
+    if (!isDark) {
+      cardStyles =
+        "bg-gradient-to-br from-pro-secondary to-background border border-pro-primary/50 shadow-[0_0_40px_theme(colors.pro-primary)/50]";
+      headerTextColor = "text-pro-primary";
+      buttonStyle = "bg-pro-primary text-black hover:bg-pro-primary/80";
+    } else {
+      cardStyles =
+        "bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/50 shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)]";
+      headerTextColor = "text-primary";
+      buttonStyle = "bg-primary text-black hover:bg-primary/80";
+    }
   }
 
   return (
@@ -53,7 +99,13 @@ export const PricingCard = ({
       `}
     >
       {isTrader && (
-        <div className="absolute top-0 right-0 -mt-3 -mr-3 px-3 py-1 bg-yellow-400 text-black text-xs font-bold rounded-full rotate-6">
+        <div
+          className={`absolute top-0 right-0 -mt-3 -mr-3 px-3 py-1 text-xs font-bold rounded-full rotate-6 ${
+            isDark
+              ? "bg-yellow-400 text-black"
+              : "bg-trader-primary text-foreground"
+          }`}
+        >
           <Sparkles className="inline h-3 w-3 mr-1" /> 추천
         </div>
       )}

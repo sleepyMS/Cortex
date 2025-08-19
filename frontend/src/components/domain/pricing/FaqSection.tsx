@@ -34,7 +34,7 @@ export function FaqSection({ faqItems }: FaqSectionProps) {
           {faqItems.map((item, index) => (
             <div
               key={index}
-              className="border border-white/10 rounded-lg overflow-hidden bg-white/5 shadow-sm"
+              className="rounded-lg overflow-hidden shadow-sm dark:bg-white/5 border border-border dark:border-white/10"
             >
               {/* 질문 영역 */}
               <button

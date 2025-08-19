@@ -70,6 +70,7 @@ export const PricingHeroSection = ({
             isMonthlySelected={isMonthlySelected}
             onSelectPeriod={onSelectPeriod}
           />
+          <div className="p-1"></div>
         </motion.div>
       </motion.div>
     </section>

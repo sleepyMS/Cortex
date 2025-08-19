@@ -21,7 +21,11 @@ export const PricingToggle = ({
   return (
     <LayoutGroup>
       <div
-        className={`relative flex items-center rounded-full bg-white/5 p-1 border border-white/10 max-w-sm mx-auto shadow-md ${className}`}
+        className={`relative flex items-center rounded-full p-1 max-w-sm mx-auto shadow-md
+          bg-muted/50 border border-border
+          dark:bg-white/5 dark:border-white/10
+          ${className}
+        `}
       >
         {/* 애니메이션 슬라이더 - 버튼 아래에 위치하도록 z-index를 조정합니다. */}
         <motion.div
@@ -40,7 +44,7 @@ export const PricingToggle = ({
             ${
               isMonthlySelected
                 ? "text-primary-foreground"
-                : "text-gray-400 hover:text-white"
+                : "text-gray-400 dark:hover:text-white hover:text-foreground"
             }
           `}
         >
@@ -53,7 +57,7 @@ export const PricingToggle = ({
             ${
               !isMonthlySelected
                 ? "text-primary-foreground"
-                : "text-gray-400 hover:text-white"
+                : "text-gray-400 dark:hover:text-white hover:text-foreground"
             }
           `}
         >
