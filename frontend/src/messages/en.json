@@ -13,6 +13,7 @@
     "adminDashboard": "Admin Dashboard",
     "langKorean": "한국어",
     "langEnglish": "English",
+    "userMenu": "user menu",
     "dashboard": "dashboard",
     "settings": "settings",
     "upgradePlan": "Upgrade Plan"
@@ -369,6 +370,7 @@
     "hiddenBearish": "Hidden Bearish",
     "bullish": "Bullish",
     "bearish": "Bearish",
+    "selectSignal": "Select Signal",
     "any": "Any",
     "unknownLogicType": "Unknown Logic Type"
   },

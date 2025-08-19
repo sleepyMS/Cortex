@@ -18,6 +18,7 @@ import {
 import { useChartIndicatorManager } from "@/hooks/useChartIndicatorManager";
 import { LegendData } from "@/types/chart";
 import { PositionRules } from "@/types/strategy";
+import { SignalData } from "@/types/market";
 import { INDICATOR_METADATA } from "@/lib/indicators";
 import { parseRulesForIndicators } from "@/lib/strategyUtils";
 
@@ -38,6 +39,8 @@ interface StrategyChartProps {
     LineData<UTCTimestamp>[] | HistogramData<UTCTimestamp>[]
   >;
   isLoadingIndicators: boolean;
+  signalData?: SignalData; // 👈 [추가] 신호 데이터 prop
+  isLoadingSignals?: boolean; // 👈 [추가] 신호 데이터 로딩 상태 prop
 }
 
 // --- 메인 컴포넌트 ---
@@ -46,6 +49,8 @@ export default function StrategyChart({
   ohlcvData,
   indicatorData,
   isLoadingIndicators,
+  signalData, // 👈 [추가]
+  isLoadingSignals, // 👈 [추가]
 }: StrategyChartProps) {
   // --- Refs ---
   const mainChartContainerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +107,7 @@ export default function StrategyChart({
     getPaneContainer,
     ohlcvData,
     indicatorData,
+    signalData,
     resolvedTheme,
     setLegendData,
   });
@@ -112,9 +118,9 @@ export default function StrategyChart({
       <ChartLegend legendData={legendData} />
 
       {/* 지표 로딩 시 스피너 오버레이 */}
-      {isLoadingIndicators && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted">
-          <Spinner />
+      {(isLoadingIndicators || isLoadingSignals) && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm rounded-lg">
+          <Spinner size="lg" />
         </div>
       )}
 

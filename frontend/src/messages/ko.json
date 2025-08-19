@@ -13,6 +13,7 @@
     "adminDashboard": "관리자 대시보드",
     "langKorean": "한국어",
     "langEnglish": "영어",
+    "userMenu": "사용자 메뉴",
     "dashboard": "대시보드",
     "settings": "설정",
     "upgradePlan": "플랜 업그레이드"
@@ -369,6 +370,7 @@
     "hiddenBearish": "히든 하락",
     "bullish": "상승",
     "bearish": "하락",
+    "selectSignal": "신호 선택",
     "any": "상관없음",
     "unknownLogicType": "알 수 없는 로직 타입"
   },

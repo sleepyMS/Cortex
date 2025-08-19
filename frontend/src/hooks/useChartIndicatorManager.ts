@@ -1,3 +1,5 @@
+// file: frontend/src/hooks/useChartIndicatorManager.ts
+
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
@@ -23,9 +25,13 @@ import {
   LineSeriesOptions,
   HistogramSeriesOptions,
   IRange,
+  SeriesMarker,
+  ISeriesMarkers,
+  createSeriesMarkers,
 } from "lightweight-charts";
 import { INDICATOR_METADATA } from "@/lib/indicators";
 import { LegendData } from "@/types/chart";
+import { SignalData } from "@/types/market";
 
 // =================================================================================
 // #region 유틸리티 및 상수
@@ -124,7 +130,7 @@ const createBaseChartOptions = (
   rightPriceScale: { borderVisible: false },
   timeScale: {
     borderVisible: false,
-    rightOffset: 50,
+    rightOffset: 12,
     fixRightEdge: true,
     tickMarkFormatter: dynamicTickMarkFormatter,
   },
@@ -152,7 +158,6 @@ const getThemeOptions = (resolvedTheme?: string): DeepPartial<ChartOptions> => {
 
 // #endregion
 
-// [수정] 새로운 통합 상태 관리 타입
 interface IndicatorState {
   paneChart: IChartApi | null;
   series: Map<string, ISeriesApi<SeriesType>>;
@@ -164,6 +169,7 @@ interface ChartManagerProps {
   getPaneContainer: (key: string) => HTMLDivElement | null | undefined;
   ohlcvData?: CandlestickData<UTCTimestamp>[];
   indicatorData?: Record<string, (LineData | HistogramData)[]>;
+  signalData?: SignalData;
   resolvedTheme?: string;
   setLegendData: (data: LegendData) => void;
   mainChartHeight?: number;
@@ -176,6 +182,7 @@ export function useChartIndicatorManager({
   getPaneContainer,
   ohlcvData,
   indicatorData,
+  signalData,
   resolvedTheme,
   setLegendData,
   mainChartHeight = 400,
@@ -183,9 +190,7 @@ export function useChartIndicatorManager({
 }: ChartManagerProps) {
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  // [수정] 여러 개로 분리되었던 ref를 단일 관리 객체로 통합
   const indicatorManagerRef = useRef<Map<string, IndicatorState>>(new Map());
-
   const ohlcvCacheRef = useRef<Map<number, CandlestickData<UTCTimestamp>>>(
     new Map()
   );
@@ -195,6 +200,7 @@ export function useChartIndicatorManager({
       Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
     >
   >(new Map());
+  const markersPluginRef = useRef<ISeriesMarkers<Time> | null>(null);
 
   const setupChart = useCallback(
     (container: HTMLElement, options: DeepPartial<ChartOptions>): IChartApi => {
@@ -208,7 +214,6 @@ export function useChartIndicatorManager({
               from: timeToSeconds(range.from) as UTCTimestamp,
               to: timeToSeconds(range.to) as UTCTimestamp,
             };
-            // [수정] 통합된 indicatorManagerRef를 순회하여 모든 차트에 적용
             const allCharts = [
               chartRef.current,
               ...Array.from(indicatorManagerRef.current.values()).map(
@@ -241,8 +246,6 @@ export function useChartIndicatorManager({
             time: timeSec as UTCTimestamp,
           };
         }
-
-        // [수정] 통합된 indicatorManagerRef를 순회하여 범례 데이터 수집
         indicatorManagerRef.current.forEach((indicatorState) => {
           indicatorState.series.forEach((series, key) => {
             const indicatorPoint = indicatorCacheRef.current
@@ -290,9 +293,13 @@ export function useChartIndicatorManager({
       if (width > 0) mainChart.resize(width, mainChartHeight);
     });
     resizeObserver.observe(container);
+
     return () => {
       resizeObserver.disconnect();
-      // [수정] 컴포넌트 파괴 시 모든 지표 상태를 정리
+      if (markersPluginRef.current) {
+        markersPluginRef.current.detach();
+        markersPluginRef.current = null;
+      }
       indicatorManagerRef.current.forEach((state) => {
         state.series.forEach((series) => state.paneChart?.removeSeries(series));
         state.paneChart?.remove();
@@ -313,12 +320,16 @@ export function useChartIndicatorManager({
 
   // Effect 3: 데이터 업데이트 및 캐싱
   useEffect(() => {
+    const mainChart = chartRef.current;
+    if (!mainChart) return;
+
     if (ohlcvData) {
       const cache = new Map<number, CandlestickData<UTCTimestamp>>();
       ohlcvData.forEach((d) => cache.set(timeToSeconds(d.time), d));
       ohlcvCacheRef.current = cache;
       candlestickSeriesRef.current?.setData(ohlcvData);
     }
+
     if (indicatorData) {
       const cache = new Map<
         string,
@@ -339,50 +350,37 @@ export function useChartIndicatorManager({
       });
       indicatorCacheRef.current = cache;
     }
-  }, [ohlcvData, indicatorData]);
-
-  // [수정] Effect 4: 지표의 생성/제거를 통합된 상태 관리 로직으로 재작성
-  useEffect(() => {
-    const mainChart = chartRef.current;
-    if (!mainChart) return;
 
     const manager = indicatorManagerRef.current;
     const newSeriesKeys = new Set(
       indicatorData ? Object.keys(indicatorData) : []
     );
     const currentIndicatorBaseKeys = new Set(manager.keys());
-
-    // --- 1. 파괴 (Cleanup) 단계 ---
     currentIndicatorBaseKeys.forEach((baseKey) => {
       const state = manager.get(baseKey)!;
       let hasActiveSeries = false;
-      state.series.forEach((_, fullKey) => {
+      state.series.forEach((series, fullKey) => {
         if (newSeriesKeys.has(fullKey)) {
           hasActiveSeries = true;
+          series.setData(indicatorData?.[fullKey] || []);
         } else {
-          state.paneChart?.removeSeries(state.series.get(fullKey)!);
+          state.paneChart?.removeSeries(series);
           state.series.delete(fullKey);
         }
       });
-
-      // 해당 지표 그룹에 속한 시리즈가 하나도 없으면 보조 차트(Pane)도 제거
       if (!hasActiveSeries) {
         state.paneChart?.remove();
         manager.delete(baseKey);
       }
     });
 
-    // --- 2. 생성 (Setup) 단계 ---
     if (indicatorData) {
       Object.entries(indicatorData).forEach(([fullSeriesKey, data], index) => {
         const metadata = INDICATOR_METADATA.find((ind) =>
           fullSeriesKey.toUpperCase().startsWith(ind.key.toUpperCase())
         );
         if (!metadata || !data || data.length === 0) return;
-
         const baseKey = metadata.key;
-
-        // 새로운 지표 그룹이면 상태 객체를 먼저 생성
         if (!manager.has(baseKey)) {
           let paneChart: IChartApi | null = null;
           if (paneIndicators.includes(baseKey)) {
@@ -402,15 +400,11 @@ export function useChartIndicatorManager({
           }
           manager.set(baseKey, { paneChart, series: new Map() });
         }
-
         const indicatorState = manager.get(baseKey)!;
-
-        // 해당 시리즈가 아직 없으면 생성
         if (!indicatorState.series.has(fullSeriesKey)) {
           const targetChart = indicatorState.paneChart || mainChart;
           const isHistogram = fullSeriesKey.toLowerCase().includes("histogram");
           let newSeries: ISeriesApi<SeriesType>;
-
           if (isHistogram) {
             const options: DeepPartial<HistogramSeriesOptions> = {
               color: "#26a69a",
@@ -431,7 +425,10 @@ export function useChartIndicatorManager({
         }
       });
     }
+
+    mainChart.timeScale().fitContent();
   }, [
+    ohlcvData,
     indicatorData,
     paneIndicators,
     getPaneContainer,
@@ -439,4 +436,53 @@ export function useChartIndicatorManager({
     resolvedTheme,
     setupChart,
   ]);
+
+  // Effect 5: 신호 데이터를 받아 마커를 렌더링
+  useEffect(() => {
+    const series = candlestickSeriesRef.current;
+    if (!series) return;
+
+    const signals = signalData?.signals || [];
+
+    const markers: SeriesMarker<Time>[] = signals.map((signal) => {
+      let position: "aboveBar" | "belowBar" = "aboveBar";
+      let color = "#ef5350";
+      let shape: "arrowUp" | "arrowDown" = "arrowDown";
+      let text = "Signal";
+
+      switch (signal.signalType) {
+        case "long_entry":
+          position = "belowBar";
+          color = "#26a69a";
+          shape = "arrowUp";
+          text = "L-Entry";
+          break;
+        case "long_exit":
+          position = "aboveBar";
+          color = "#f57c00";
+          shape = "arrowDown";
+          text = "L-Exit";
+          break;
+        case "short_entry":
+          position = "aboveBar";
+          color = "#ef5350";
+          shape = "arrowDown";
+          text = "S-Entry";
+          break;
+        case "short_exit":
+          position = "belowBar";
+          color = "#2962ff";
+          shape = "arrowUp";
+          text = "S-Exit";
+          break;
+      }
+      return { time: signal.time, position, color, shape, text };
+    });
+
+    if (!markersPluginRef.current) {
+      markersPluginRef.current = createSeriesMarkers(series, markers);
+    } else {
+      markersPluginRef.current.setMarkers(markers);
+    }
+  }, [signalData, ohlcvData]);
 }

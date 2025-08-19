@@ -465,7 +465,7 @@ class LikeResponse(CamelCaseModel):
     status: bool = True
 
 # ==============================================================================
-# 4. 시장 데이터 관련 스키마 
+# 4. 시장 데이터 및 신호 계산 관련 스키마
 # ==============================================================================
 
 class OHLCVData(CamelCaseModel):
@@ -498,3 +498,22 @@ class IndicatorCalculationResponse(CamelCaseModel):
     """지표 계산 결과 응답 스키마"""
     # Key: "SMA_20", Value: [IndicatorDataPoint, ...]
     results: Dict[str, List[IndicatorDataPoint]]
+
+class SignalDataPoint(CamelCaseModel):
+    """단일 신호 데이터 포인트"""
+    time: int  # UTCTimestamp
+    signal_type: Literal["long_entry", "long_exit", "short_entry", "short_exit"]
+
+class SignalCalculationRequest(CamelCaseModel):
+    """실시간 신호 계산 요청을 위한 스키마"""
+    ticker: str = Field("BTC/USDT", description="대상 티커")
+    timeframe: str = Field("1h", description="대상 타임프레임")
+    # 사용자가 편집 중인 규칙을 그대로 받습니다.
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    
+class SignalCalculationResponse(CamelCaseModel):
+    """신호 계산 결과 응답 스키마"""
+    signals: List[SignalDataPoint] = Field(default_factory=list)

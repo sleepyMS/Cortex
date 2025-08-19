@@ -106,7 +106,7 @@ const fetchOHLCVData = async (
   timeframe: string
 ): Promise<CandlestickData<UTCTimestamp>[]> => {
   const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
-    params: { ticker, timeframe, limit: 500 },
+    params: { ticker, timeframe, limit: 1000 },
   });
   return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
 };
@@ -117,7 +117,7 @@ const fetchIndicatorData = async (
   indicatorConfigs: any[]
 ) => {
   if (indicatorConfigs.length === 0) return null;
-  const { data } = await apiClient.post("/market/calculate-indicators", {
+  const { data } = await apiClient.post("/strategies/calculate-indicators", {
     ticker,
     timeframe,
     indicators: indicatorConfigs,

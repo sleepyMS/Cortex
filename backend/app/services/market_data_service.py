@@ -1,132 +1,107 @@
-# 파일 경로: backend/app/services/market_data_service.py (최종 수정 버전)
+# file: backend/app/services/market_data_service.py
 
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi import HTTPException, status
 import logging
-from typing import List, Optional, Dict
+from typing import Optional
 from datetime import datetime
 import pandas as pd
-import pandas_ta as ta
-
-from .. import schemas
 
 logger = logging.getLogger(__name__)
 
-# 허용된 타임프레임 목록
+# 허용된 타임프레임 목록 (SQL 인젝션 방지용)
 ALLOWED_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"]
 
-# (핵심 수정) 프론트엔드 key를 pandas-ta의 kind로 변환하는 규칙
-INDICATOR_KIND_MAP = {
-    "STOCHASTIC": "stoch",
-    "PARABOLICSAR": "psar",
-    "KELTNERCHANNEL": "kc",
-    # key와 kind가 동일한 경우(예: "RSI": "rsi")는 여기에 추가할 필요 없음
-}
+class MarketDataService:
+    """
+    데이터베이스에서 OHLCV 시세 데이터를 조회하고 처리하는 역할을 담당하는 서비스 클래스.
+    """
 
-# 출력 컬럼을 찾기 위한 접두사 규칙
-OUTPUT_PREFIX_MAP = {
-    "SMA": ["SMA"], "EMA": ["EMA"], "HMA": ["HMA"],
-    "MACD": ["MACD", "MACDH", "MACDS"],
-    "PARABOLICSAR": ["PSARL", "PSARS"],
-    "SUPERTREND": ["SUPERT", "SUPERTD", "SUPERTL", "SUPERTS"],
-    "ICHIMOKU": ["ITS", "IKS", "ISA", "ISB", "ICS"],
-    "ADX": ["ADX", "DMP", "DMN"],
-    "RSI": ["RSI"],
-    "STOCHASTIC": ["STOCHK", "STOCHD"],
-    "CCI": ["CCI"],
-    "RVI": ["RVI", "RVIS"],
-    "BBANDS": ["BBU", "BBM", "BBL", "BBB", "BBP"],
-    "ATR": ["ATR"],
-    "KELTNERCHANNEL": ["KCBE", "KCLE", "KCUE"],
-    "OBV": ["OBV"],
-    "VWAP": ["VWAP"],
-}
+    def _fetch_ohlcv(
+        self,
+        db: Session,
+        ticker: str,
+        timeframe: str,
+        limit: int,
+        since: Optional[datetime] = None,
+        order_desc: bool = False
+    ) -> pd.DataFrame:
+        """
+        OHLCV 데이터 조회의 핵심 로직을 담당하는 내부 헬퍼 함수.
+        """
+        if timeframe not in ALLOWED_TIMEFRAMES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported timeframe.")
 
-def get_ohlcv_data(
-    db: Session,
-    ticker: str,
-    timeframe: str,
-    limit: int = 500,
-    since: Optional[datetime] = None,
-) -> pd.DataFrame:
-    """[데이터 조회 함수] OHLCV 데이터를 조회하여 Pandas DataFrame으로 반환합니다."""
-    if timeframe not in ALLOWED_TIMEFRAMES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported timeframe.")
-    
-    table_name = f"ohlcv_{timeframe}"
-    
-    query_params = {"ticker": ticker, "limit": limit}
-    since_clause = ""
-    if since:
-        since_clause = "AND time >= :since"
-        query_params["since"] = since
+        table_name = f"ohlcv_{timeframe}"
+        
+        query_params = {"ticker": ticker, "limit": limit}
+        since_clause = ""
+        if since:
+            since_clause = "AND time >= :since"
+            query_params["since"] = since
 
-    sql_query = text(f"""
-        SELECT time, open, high, low, close, volume
-        FROM {table_name} WHERE ticker = :ticker {since_clause} ORDER BY time ASC LIMIT :limit
-    """)
-    
-    try:
-        result = db.execute(sql_query, query_params)
-        df = pd.DataFrame(result.mappings())
-        if df.empty:
+        order_clause = "DESC" if order_desc else "ASC"
+
+        sql_query = text(f"""
+            SELECT time, open, high, low, close, volume
+            FROM {table_name}
+            WHERE ticker = :ticker {since_clause}
+            ORDER BY time {order_clause}
+            LIMIT :limit
+        """)
+        
+        try:
+            result = db.execute(sql_query, query_params).mappings().all()
+            if not result:
+                return pd.DataFrame()
+            
+            df = pd.DataFrame(result)
+            
+            # 후속 처리를 위해 datetime 객체로 변환
+            df['time_dt'] = pd.to_datetime(df['time'])
+            # API 응답 및 신호 계산을 위한 Unix timestamp (초) 컬럼 추가
+            df['time'] = df['time_dt'].astype('int64') // 10**9
+            
             return df
-            
-        df.set_index(pd.to_datetime(df['time']), inplace=True)
-        df['time'] = (df.index.astype('int64') // 10**9).astype('int')
-        df.rename(columns=str.lower, inplace=True)
+        except Exception as e:
+            logger.error(f"Error fetching OHLCV data for {ticker} ({timeframe}): {e}", exc_info=True)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error fetching market data.")
+
+    async def get_ohlcv_data(
+        self,
+        db: Session,
+        ticker: str,
+        timeframe: str,
+        limit: int = 1000,
+        since: Optional[datetime] = None,
+    ) -> pd.DataFrame:
+        """
+        과거 특정 시점부터(since가 있는 경우) 또는 가장 최신 데이터부터(since가 없는 경우)
+        시간 오름차순으로 OHLCV 데이터를 조회합니다.
+        """
+        # 'since'가 없으면 최신 데이터를 가져오도록 order_desc=True로 설정
+        df = self._fetch_ohlcv(db, ticker, timeframe, limit, since, order_desc=not since)
+        
+        # 최신부터 가져왔을 경우(order_desc=True), 차트에 맞게 시간 오름차순으로 다시 정렬
+        if not since:
+            return df.sort_values(by='time', ascending=True).reset_index(drop=True)
+        
         return df
-    except Exception as e:
-        logger.error(f"Error fetching OHLCV data for {ticker} ({timeframe}): {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error fetching OHLCV data.")
 
-def calculate_indicators(
-    db: Session, 
-    request: schemas.IndicatorCalculationRequest, 
-    limit: int = 500
-) -> Dict[str, List[schemas.IndicatorDataPoint]]:
-    """[지표 계산 함수] 요청된 지표들의 '모든' 관련 데이터를 계산하여 반환합니다."""
-    df = get_ohlcv_data(db, request.ticker, request.timeframe, limit=limit)
-    if df.empty:
-        return {}
+    def get_latest_data(
+        self,
+        db: Session,
+        ticker: str,
+        timeframe: str,
+        limit: int = 1000,
+    ) -> pd.DataFrame:
+        """
+        가장 최신 시점부터 데이터를 조회한 후, 시간 오름차순으로 정렬하여 반환합니다. 
+        실시간 신호 계산 등에서 명시적으로 사용됩니다.
+        """
+        df = self._fetch_ohlcv(db, ticker, timeframe, limit, order_desc=True)
+        return df.sort_values(by='time', ascending=True).reset_index(drop=True)
 
-    non_indicator_keys = ['open', 'high', 'low', 'close', 'volume']
-    
-    strategy_list = []
-    for indicator in request.indicators:
-        indicator_key_lower = indicator.indicator_key.lower()
-        if indicator_key_lower not in non_indicator_keys:
-            key_upper = indicator.indicator_key.upper()
-            
-            # (핵심 수정) KIND_MAP에서 실제 함수 이름을 찾고, 없으면 key를 그대로 사용
-            kind_name = INDICATOR_KIND_MAP.get(key_upper, indicator_key_lower)
-            
-            strategy_list.append(
-                {"kind": kind_name, **indicator.values}
-            )
-    
-    if strategy_list:
-        df.ta.strategy(ta.Strategy(name="CustomStrategy", ta=strategy_list), unknown_params="drop")
-
-    results = {}
-    processed_columns = set()
-    
-    for indicator_config in request.indicators:
-        indicator_key_upper = indicator_config.indicator_key.upper()
-        known_prefixes = OUTPUT_PREFIX_MAP.get(indicator_key_upper, [])
-        if not known_prefixes:
-            continue
-            
-        for col_name in df.columns:
-            if col_name in processed_columns:
-                continue
-            
-            if any(col_name.upper().startswith(p + '_') for p in known_prefixes):
-                series = df[[col_name, 'time']].dropna()
-                results[col_name] = [
-                    schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
-                    for _, row in series.iterrows()
-                ]
-                processed_columns.add(col_name)
-    return results
+# 다른 서비스에서 쉽게 임포트하여 사용할 수 있도록 인스턴스 생성
+market_data_service = MarketDataService()

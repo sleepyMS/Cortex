@@ -1,6 +1,8 @@
+// file: frontend/src/app/[locale]/strategies/[strategyId]/edit/page.tsx
+
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react"; // React 임포트
 import { useTranslations } from "next-intl";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +28,7 @@ import {
   IndicatorValue,
   LogicOperator,
 } from "@/types/strategy";
-import { OHLCVData } from "@/types/market";
+import { OHLCVData, SignalData } from "@/types/market";
 import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
@@ -85,7 +87,6 @@ const formSchema = z.object({
   atrTakeProfitMultiplier: z.number().min(0.1).optional().nullable(),
   atrPeriod: z.number().int().min(1).optional().nullable(),
 });
-
 type StrategyFormValues = z.infer<typeof formSchema>;
 
 // --- API 페이로드 타입 정의 ---
@@ -107,7 +108,7 @@ const fetchOHLCVData = async (
   timeframe: string
 ): Promise<CandlestickData<UTCTimestamp>[]> => {
   const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
-    params: { ticker, timeframe, limit: 500 },
+    params: { ticker, timeframe, limit: 1000 },
   });
   return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
 };
@@ -117,16 +118,32 @@ const fetchIndicatorData = async (
   indicatorConfigs: any[]
 ) => {
   if (indicatorConfigs.length === 0) return null;
-  const { data } = await apiClient.post("/market/calculate-indicators", {
+  const { data } = await apiClient.post("/strategies/calculate-indicators", {
     ticker,
     timeframe,
     indicators: indicatorConfigs,
   });
   return data.results;
 };
+const fetchSignalData = async (
+  ticker: string,
+  timeframe: string,
+  rules: any
+): Promise<SignalData> => {
+  const { data } = await apiClient.post("/strategies/calculate-signals", {
+    ticker,
+    timeframe,
+    ...rules,
+  });
+  return data;
+};
 
 // --- 1. 실제 폼 UI와 로직을 담당할 내부 컴포넌트 ---
-function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
+const StrategyEditForm = React.memo(function StrategyEditForm({
+  initialStrategy,
+}: {
+  initialStrategy: Strategy;
+}) {
   const t = useTranslations("StrategyBuilder");
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -195,6 +212,7 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
     queryFn: () => fetchOHLCVData(chartTicker, chartTimeframe),
     staleTime: 300000,
   });
+
   const indicatorConfigs = useMemo(
     () =>
       parseRulesForIndicators({
@@ -203,7 +221,6 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
         shortEntry: strategyState.shortEntryRules,
         shortExit: strategyState.shortExitRules,
       }),
-    // 종속성 배열은 개별 값으로 분리하여 불필요한 재계산을 방지합니다.
     [
       strategyState.longEntryRules,
       strategyState.longExitRules,
@@ -211,12 +228,48 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
       strategyState.shortExitRules,
     ]
   );
+
   const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
     queryFn: () =>
       fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs),
     enabled: !!ohlcvData && indicatorConfigs.length > 0,
   });
+
+  // ▼▼▼ [핵심 수정] useMemo로 queryKey를 안정화하여 무한 루프 해결 ▼▼▼
+  const stableRulesKey = useMemo(
+    () =>
+      JSON.stringify({
+        longEntryRules: strategyState.longEntryRules,
+        longExitRules: strategyState.longExitRules,
+        shortEntryRules: strategyState.shortEntryRules,
+        shortExitRules: strategyState.shortExitRules,
+      }),
+    [
+      strategyState.longEntryRules,
+      strategyState.longExitRules,
+      strategyState.shortEntryRules,
+      strategyState.shortExitRules,
+    ]
+  );
+
+  const { data: signalData, isLoading: isLoadingSignals } = useQuery({
+    queryKey: ["signals", chartTicker, chartTimeframe, stableRulesKey], // 👈 안정화된 key 사용
+    queryFn: () => {
+      return fetchSignalData(
+        chartTicker,
+        chartTimeframe,
+        JSON.parse(stableRulesKey)
+      );
+    },
+    enabled:
+      !!ohlcvData &&
+      (!!strategyState.longEntryRules || !!strategyState.shortEntryRules),
+    staleTime: Infinity, // 규칙이 바뀌기 전까지는 절대 다시 호출하지 않도록 설정
+    refetchOnWindowFocus: false, // 창에 다시 포커스해도 refetch 방지
+    refetchOnReconnect: false, // 네트워크 재연결 시 refetch 방지
+  });
+
   const handleAddTopLevelRule = (ruleType: StrategyType) => {
     setCurrentTarget({ type: "top-level", ruleType });
     setHubSelectionMode("full");
@@ -270,11 +323,9 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
     setIsHubOpen(false);
     setCurrentTarget(null);
   };
-
   const updateStrategyMutation = useMutation({
     mutationFn: async (values: StrategyFormValues) => {
       let tpslLogic: TpslLogic | null = null;
-
       if (
         tpslMode === "percentage" &&
         (values.takeProfitPct || values.stopLossPct)
@@ -300,7 +351,6 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
           atrPeriod: values.atrPeriod || null,
         };
       }
-
       const payload: Partial<StrategyUpdatePayload> = {
         name: values.name,
         description: values.description,
@@ -334,12 +384,10 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
   });
 
   const onSubmit = (values: StrategyFormValues) => {
-    if (!strategyState.longEntryRules && !strategyState.shortEntryRules) {
+    if (!strategyState.longEntryRules && !strategyState.shortEntryRules)
       return toast.error(t("form.rulesRequired"));
-    }
-    if (strategyState.targetCoins.length === 0) {
+    if (strategyState.targetCoins.length === 0)
       return toast.error(t("targetCoinForm.noTickerError"));
-    }
     updateStrategyMutation.mutate(values);
   };
 
@@ -364,8 +412,7 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                 onClick={() => router.back()}
                 disabled={updateStrategyMutation.isPending}
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t("form.goBackButton")}
+                <ArrowLeft className="mr-2 h-4 w-4" /> {t("form.goBackButton")}
               </Button>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-center">
                 {t("editTitle")}
@@ -498,17 +545,21 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                     {(error as Error).message}
                   </div>
                 ) : (
-                  <DynamicStrategyChart
-                    rules={{
-                      longEntry: strategyState.longEntryRules,
-                      longExit: strategyState.longExitRules,
-                      shortEntry: strategyState.shortEntryRules,
-                      shortExit: strategyState.shortExitRules,
-                    }}
-                    ohlcvData={ohlcvData}
-                    indicatorData={indicatorData}
-                    isLoadingIndicators={isLoadingIndicators}
-                  />
+                  <>
+                    <DynamicStrategyChart
+                      rules={{
+                        longEntry: strategyState.longEntryRules,
+                        longExit: strategyState.longExitRules,
+                        shortEntry: strategyState.shortEntryRules,
+                        shortExit: strategyState.shortExitRules,
+                      }}
+                      ohlcvData={ohlcvData}
+                      indicatorData={indicatorData}
+                      isLoadingIndicators={isLoadingIndicators}
+                      signalData={signalData}
+                      isLoadingSignals={isLoadingSignals}
+                    />
+                  </>
                 )}
               </div>
             </div>
@@ -525,8 +576,8 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
                 onAddTopLevelRule={handleAddTopLevelRule}
                 onTriggerNestedAddRule={handleTriggerNestedAddRule}
                 onTriggerOperandHub={handleTriggerOperandHub}
-                onUpdateRule={(ruleType, id, updater) =>
-                  strategyState.updateRule(ruleType, id, updater)
+                onUpdateRule={(ruleType, id, newBlock) =>
+                  strategyState.updateRule(ruleType, id, newBlock)
                 }
                 onDeleteRule={(ruleType, id) =>
                   strategyState.deleteRule(ruleType, id)
@@ -538,9 +589,9 @@ function StrategyEditForm({ initialStrategy }: { initialStrategy: Strategy }) {
       </div>
     </>
   );
-}
+});
 
-// --- 2. 페이지의 최상위 컴포넌트: 데이터 로딩만 책임 ---
+// --- 2. 페이지의 최상위 컴포넌트 ---
 export default function EditStrategyPage({
   params,
 }: {
