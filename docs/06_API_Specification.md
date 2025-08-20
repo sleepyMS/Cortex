@@ -3,6 +3,7 @@
 이 문서는 'Project: Cortex'의 모든 API 엔드포인트와 데이터 형식을 정의합니다.
 
 - **Base URL:** `/api`
+- **Data Types:** 모든 ID 필드는 `string (UUID)` 형식입니다.
 - **Content-Type:** `application/json`
 - **Authorization:** 인증이 필요한 모든 요청은 `Authorization` 헤더에 `Bearer <access_token>` 을 포함해야 합니다.
 
@@ -127,15 +128,15 @@
 - **Request Body:**
   ```json
   {
-    "strategy_id": "integer",
-    "ticker": "string",
-    "interval": "string",
-    "start_date": "string",
-    "end_date": "string",
-    "initial_balance": "float"
+    "strategy_id": "string(uuid)",
+    "start_date": "string(datetime)",
+    "end_date": "string(datetime)",
+    "initial_capital": "float"
   }
   ```
-- **Success Response (202 Accepted):** `json { "id": "integer", "user_id": "integer", "strategy_id": "integer", "status": "string", "created_at": "datetime" } `
+- **Success Response (2022 Accepted):** `json { "id": "string(uuid)", ... }`
+
+---
 
 ### `GET /backtests`
 
@@ -204,6 +205,42 @@
 - **Authorization:** `Required (User)`
 - **Path Parameters:** `strategy_id`: `integer`
 - **Success Response (204 No Content):** (No content)
+
+### `POST /strategies/calculate-indicators`
+
+- **Description:** 전략 편집기 차트에 표시할 기술적 지표들을 계산합니다.
+- **Authorization:** `Required (User)`
+- **Request Body:**
+  ```json
+  {
+    "ticker": "string",
+    "timeframe": "string",
+    "indicators": [
+      {
+        "indicatorKey": "string",
+        "values": "object",
+        "outputs": ["string"]
+      }
+    ]
+  }
+  ```
+- **Success Response (200 OK):**
+  ```json
+  {
+    "results": {
+      "EMA_20": [{ "time": "integer", "value": "float" }, ...],
+      "RSI_14": [{ "time": "integer", "value": "float" }, ...]
+    },
+    "ohlcv": [{ "time": "integer", "open": "float", ... }, ...]
+  }
+  ```
+
+### `POST /strategies/calculate-signals`
+
+- **Description:** 전략 편집기 차트에 표시할 매매 신호를 실시간으로 계산합니다.
+- **Authorization:** `Required (User)`
+- **Request Body:** `json { "ticker": "string", "timeframe": "string", "longEntryRules": "object", ... }`
+- **Success Response (200 OK):** `json { "signals": [ { "time": "integer", "signalType": "string" }, ... ] }`
 
 ---
 

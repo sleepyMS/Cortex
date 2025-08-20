@@ -50,7 +50,10 @@
   - `UserDashboardClient` (일반 사용자용): 개인 포트폴리오, 봇 현황, 최근 활동 요약
   - `PortfolioOverview`: 자산 현황 요약
   - `ActiveBotCard`: 실행 중인 봇 목록
-  - 최근 백테스팅 결과 바로가기
+  - `SubscriptionStatusCard`: 현재 구독 플랜 및 남은 기간 표시
+  - `UsageStatsWidget`: 일일 백테스트 사용량, 활성 봇 개수 등 표시
+  - 최근 백테스팅 결과 바로가기 목록
+  - 최근 실행된 자동매매 봇 목록
 
 ### **백테스팅 페이지 (`/backtester`)**
 
@@ -66,21 +69,24 @@
 
 ### **나의 전략 목록 페이지 (`/strategies`)**
 
-- **개발 단계:** `[Phase 3+]`
+- **개발 단계:** `[Phase 2]`
 - **역할:** 사용자가 생성 및 저장한 모든 커스텀 전략을 관리합니다.
 - **주요 기능 및 컴포넌트:**
   - `StrategyCard`: 저장된 전략 목록
   - 새 전략 만들기 버튼
   - 검색, 필터링, 정렬 컨트롤
+  - 고급 필터링 컨트롤 (지표, 공개여부 등)
 
 ### **전략 빌더 페이지 (`/strategies/new` 또는 `/strategies/:id/edit`)**
 
-- **개발 단계:** `[Phase 3+]`
+- **개발 단계:** `[Phase 2]`
 - **역할:** 사용자가 코딩 없이 전략을 생성하고 수정하는 비주얼 편집기입니다.
 - **주요 기능 및 컴포넌트:**
-  - `StrategyBuilderCanvas`: 전략 규칙 편집기
   - `IndicatorHub`: 지표 선택 모달
   - `ParameterPopover`: 지표 파라미터 설정
+  - `StrategyBuilderCanvas`: 시각적 전략 규칙 편집기
+  - `DynamicStrategyChart`: 실시간 신호 피드백 기능이 포함된 인터랙티브 차트
+  - `TargetCoinForm`, `TpslForm`
   - **수정 페이지 기능**: 기존 전략 데이터 로딩 및 폼 채우기, `StrategyBacktestHistory` 컴포넌트 통합
 
 ---

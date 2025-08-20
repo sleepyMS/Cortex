@@ -27,7 +27,7 @@
 > **목표:** 사용자가 회원가입/로그인 후, 기본 제공 전략으로 백테스팅을 실행하고 결과를 확인할 수 있다.
 
 - **Pages**
-  - [ ] **랜딩 페이지 (`/`)**: 서비스의 핵심 가치를 소개하는 첫 화면.
+  - [x] **랜딩 페이지 (`/`)**: 서비스의 핵심 가치를 소개하는 첫 화면.
   - [x] **회원가입 페이지 (`/signup`)**: 신규 사용자 등록.
   - [x] **로그인 페이지 (`/login`)**: 기존 사용자 로그인.
   - [ ] **백테스팅 페이지 (`/backtester`)**
@@ -67,7 +67,7 @@
   - [x] `StrategyCard` (일부 기능은 Phase 3에 포함)
 - **Backend & Infrastructure**
   - [x] **구독 시스템**: `plans`, `subscriptions` DB 테이블 설계 및 로직 구현 (`plans.py`, `subscriptions.py` 완료)
-  - [x] **결제 게이트웨이**: Stripe 또는 아임포트 연동 및 Webhook 처리 (백엔드 `payment_gateway_service.py` 완료, 프론트엔드 연동 필요)
+  - [ ] **결제 게이트웨이**: Stripe 또는 아임포트 연동 및 Webhook 처리 (백엔드 `payment_gateway_service.py` 완료, 프론트엔드 연동 필요)
   - [x] **권한 관리**: 플랜별 기능 접근을 제어하는 미들웨어 구현 (백엔드 `plan_service.py` 및 라우터에서 적용 완료)
   - [x] **기본 자동매매**: 저장된 전략으로 자동매매를 실행하는 V1 엔진 개발 (`live_bots.py` 및 서비스/태스크 스텁 구현 완료)
   - [x] **API 키 관리**: `api_keys.py` 라우터 및 서비스 구현 완료
@@ -79,10 +79,10 @@
   - [x] **다국어 지원 (i18n)**: 영어/한국어 전환 기능 구현 (`next-intl` 설정, `messages` 파일, 언어 전환 스위치 컴포넌트 개발 - 설정 완료, 컴포넌트 필요)
     - [x] `next-intl` 라이브러리 설정 (위치, `timeZone` 오류 해결)
     - [x] `messages` 파일 (en.json, ko.json) 작성
-    - [ ] 언어 전환 스위치 컴포넌트 개발
+    - [x] 언어 전환 스위치 컴포넌트 개발
   - [x] **다크/라이트 모드 지원**: 전체 테마 전환 기능 구현 (`tailwind.config.js` 설정, `globals.css` 개선 완료)
     - [x] `tailwind.config.js`에 다크 모드 설정 추가
-    - [ ] 테마 전환 토글 버튼 컴포넌트 개발
+    - [x] 테마 전환 토글 버튼 컴포넌트 개발
 
 ---
 
@@ -100,12 +100,12 @@
 - **Core Components**
   - [x] `StrategyBuilder` (가장 핵심적인 복합 컴포넌트)
   - [x] `StrategyCard` (호버/클릭 효과, 액션 드롭다운 포함)
-  - [x] `StrategyBacktestHistory` (전략별 백테스트 기록 표시)
+  - [ ] `StrategyBacktestHistory` (전략별 백테스트 기록 표시)
   - [ ] `SharedResultCard`
   - [ ] `CommentSection`
 - **Backend & Infrastructure**
-  - [x] **커스텀 전략 엔진**: JSON 기반의 전략 규칙을 해석하고 실행하는 V2 엔진 개발 (데이터 직렬화/역직렬화 및 유효성 검사 로직 구현)
-  - [x] **커뮤니티 기능**: 공유, 댓글, 좋아요 관련 DB 스키마 및 API 개발 (백엔드 구현 완료)
+  - [ ] **커스텀 전략 엔진**: JSON 기반의 전략 규칙을 해석하고 실행하는 V2 엔진 개발 (데이터 직렬화/역직렬화 및 유효성 검사 로직 구현)
+  - [ ] **커뮤니티 기능**: 공유, 댓글, 좋아요 관련 DB 스키마 및 API 개발 (백엔드 구현 완료)
   - [ ] **백테스팅 엔진 고도화**: Long/Short 포지션, 레버리지, 고급 성과 지표(샤프 지수 등) 계산 로직 추가 (Placeholder)
 
 ---

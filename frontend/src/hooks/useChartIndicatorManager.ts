@@ -322,7 +322,6 @@ export function useChartIndicatorManager({
       indicatorManagerRef.current.clear(); // Map을 비움
       markersPluginRef.current = null;
     };
-    // ▲▲▲ [핵심 수정] ▲▲▲
   }, [mainChartContainerRef, mainChartHeight, setupChart, resolvedTheme]);
 
   // Effect 2: 테마 변경 적용
@@ -460,7 +459,7 @@ export function useChartIndicatorManager({
     setupChart,
   ]);
 
-  // Effect 5: 신호 데이터를 받아 마커를 렌더링
+  // Effect 4: 신호 데이터를 받아 마커를 렌더링
   useEffect(() => {
     const series = candlestickSeriesRef.current;
     if (!series) return;

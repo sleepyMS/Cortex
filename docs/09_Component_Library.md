@@ -69,9 +69,14 @@
 
 ### 4.3. 전략 (Strategy)
 
-- **`StrategyBuilderCanvas.tsx`**, **`IndicatorHub.tsx`**
-- **`ParameterPopover.tsx`**, **`RuleBlock.tsx`**
-- **`StrategyCard.tsx`**, **`StrategyBacktestHistory.tsx`**
+- **`StrategyBuilderCanvas.tsx`**: 사용자가 규칙 블록을 조합하여 전략을 시각적으로 구성하는 메인 편집 영역입니다.
+- **`RuleBlock.tsx`**: 단일 전략 규칙(예: "EMA(20) > SMA(50)")을 표시하고 상호작용하는 기본 단위 컴포넌트입니다.
+- **`IndicatorHub.tsx`**: 사용자가 전략 규칙에 사용할 지표를 검색하고 선택하는 모달 또는 팝오버입니다.
+- **`ParameterPopover.tsx`**: 선택된 지표의 상세 파라미터(기간, 값 등)를 수정하는 UI를 제공합니다.
+- **`StrategyCard.tsx`**: 저장된 전략의 요약 정보를 표시하는 카드 UI입니다.
+- **`DynamicStrategyChart.tsx`:** `lightweight-charts`를 클라이언트 사이드에서만 렌더링하고, 페이지로부터 받은 **모든 차트 데이터(OHLCV, Indicators, Signals)**를 `StrategyChart`로 전달하는 고차 컴포넌트(HOC)입니다.
+- **`StrategyChart.tsx`:** `useChartIndicatorManager` 훅을 사용하여, 전달받은 데이터를 기반으로 메인 차트와 보조 지표 패널의 전체적인 레이아웃을 구성합니다.
+- **`MarkersPrimitive.ts`:** `lightweight-charts` v5의 프리미티브 API를 사용하여, 차트 위에 매수/매도 신호 마커(화살표)를 직접 그리는 역할을 담당하는 핵심 클래스입니다.
 
 ### 4.4. 커뮤니티 (Community)
 
@@ -106,15 +111,12 @@
 
 - **`useHasHydrated.ts`**  
   클라이언트가 hydration 완료됐는지를 판단하여 CSR 조건부 렌더링에 활용.
-
 - **`useReAuth.ts`**  
   액세스 토큰 만료 시 자동으로 갱신하거나 리프레시하는 인증 유지 훅. `Providers.tsx`에서 초기 진입 시 실행됩니다.
-
-- **`useStrategyState.ts`**  
-  전략 편집기(StrategyBuilder)에서 사용되는 상태를 전역적으로 관리.
-
 - **`useUserSubscription.ts`**  
   유저의 구독 상태 및 플랜 정보를 가져오고 캐싱합니다. 요금제 변경 로직에도 연동 가능.
+  - **`useChartIndicatorManager.ts`:** `StrategyChart`의 모든 복잡한 로직을 담당하는 핵심 훅입니다. 차트 생성/제거, 테마 적용, 데이터 동기화뿐만 아니라, **모든 지표 시리즈와 신호 마커 프리미티브의 전체 생명주기(생성, 업데이트, 삭제)를 관리**합니다.
+- **`useStrategyState.ts`**: 전략 편집기(StrategyBuilder)에서 사용되는 상태(모든 규칙, 타겟 코인 등)를 `Zustand`를 통해 전역적으로 관리합니다.
 
 ---
 
