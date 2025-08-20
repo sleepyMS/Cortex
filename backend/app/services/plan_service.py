@@ -15,60 +15,34 @@ logger = logging.getLogger(__name__)
 
 class PlanService:
     """
-    사용자 구독 플랜과 관련된 정보 (허용 타임프레임, 백테스트 제한, 동시 봇 제한 등)를 제공하는 서비스.
+    사용자 구독 플랜과 관련된 정보 및 기능을 제공하는 비동기 서비스.
     """
 
     async def seed_initial_plans(self, db: AsyncSession):
-        """
-        초기 구독 플랜을 데이터베이스에 생성합니다. (서버 시작 시 한 번만 실행)
-        """
+        """초기 구독 플랜을 데이터베이스에 생성합니다. (서버 시작 시 한 번만 실행)"""
         plans_to_seed = {
             PlanType.BASIC: {
-                "name": PlanType.BASIC,
-                "price": 0.0,
+                "name": PlanType.BASIC, "price": 0.0,
                 "features": {
-                    "max_strategies": 3,
-                    "max_coins_per_backtest": 1,
-                    "live_bots_limit": 0,
-                    "daily_backtest_count": 10,
-                    "max_backtest_duration_years": 1,
-                    "supported_timeframes": "1h",
-                    "community_access": False,
-                    "telegram_alerts": False,
-                    "advanced_features_access": False,
-                    "portfolio_backtest_access": False
+                    "max_strategies": 3, "max_coins_per_backtest": 1, "live_bots_limit": 0,
+                    "daily_backtest_count": 10, "max_backtest_duration_years": 1, "supported_timeframes": "1h,4h,1d",
+                    "community_access": True, "telegram_alerts": False, "advanced_features_access": False, "portfolio_backtest_access": False
                 }
             },
             PlanType.TRADER: {
-                "name": PlanType.TRADER,
-                "price": 49.99,
+                "name": PlanType.TRADER, "price": 49.99,
                 "features": {
-                    "max_strategies": 20,
-                    "max_coins_per_backtest": 5,
-                    "live_bots_limit": 3,
-                    "daily_backtest_count": 100,
-                    "max_backtest_duration_years": 3,
-                    "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
-                    "community_access": True,
-                    "telegram_alerts": True,
-                    "advanced_features_access": False,
-                    "portfolio_backtest_access": False
+                    "max_strategies": 20, "max_coins_per_backtest": 5, "live_bots_limit": 3,
+                    "daily_backtest_count": 100, "max_backtest_duration_years": 5, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d",
+                    "community_access": True, "telegram_alerts": True, "advanced_features_access": True, "portfolio_backtest_access": True
                 }
             },
             PlanType.PRO: {
-                "name": PlanType.PRO,
-                "price": 129.99,
+                "name": PlanType.PRO, "price": 129.99,
                 "features": {
-                    "max_strategies": 100,
-                    "max_coins_per_backtest": 10,
-                    "live_bots_limit": 10,
-                    "daily_backtest_count": 9999,
-                    "max_backtest_duration_years": None,
-                    "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
-                    "community_access": True,
-                    "telegram_alerts": True,
-                    "advanced_features_access": True,
-                    "portfolio_backtest_access": True
+                    "max_strategies": 100, "max_coins_per_backtest": 20, "live_bots_limit": 10,
+                    "daily_backtest_count": 9999, "max_backtest_duration_years": None, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
+                    "community_access": True, "telegram_alerts": True, "advanced_features_access": True, "portfolio_backtest_access": True
                 }
             }
         }
@@ -92,23 +66,43 @@ class PlanService:
 
     async def get_user_plan_level(self, user: models.User, db: AsyncSession) -> PlanType:
         """사용자의 현재 플랜 등급을 비동기로 반환합니다."""
-        if not user.subscription:
-             # 구독 정보가 로드되지 않았을 수 있으므로 DB에서 다시 조회
-            result = await db.execute(select(models.Subscription).filter(models.Subscription.user_id == user.id))
-            subscription = result.scalar_one_or_none()
-            if not subscription: return PlanType.BASIC
+        features = await self.get_user_plan_features(user, db)
+        # PlanFeature 모델에는 Plan과의 관계가 설정되어 있어야 합니다.
+        # Plan 모델의 name 필드를 통해 PlanType Enum 값을 반환합니다.
+        plan_result = await db.execute(select(models.Plan).filter(models.Plan.id == features.plan_id))
+        plan = plan_result.scalar_one_or_none()
+        return plan.name if plan else PlanType.BASIC
+
+    async def get_user_plan_features(self, user: models.User, db: AsyncSession) -> models.PlanFeature:
+        """사용자의 플랜에 해당하는 모든 기능 제한 정보를 비동기로 반환합니다."""
+        # User 객체에 subscription 관계가 로드되었는지 확인
+        if not hasattr(user, 'subscription') or not user.subscription:
+             # 로드되지 않았다면 DB에서 직접 조회
+            sub_result = await db.execute(
+                select(models.Subscription).options(joinedload(models.Subscription.plan).joinedload(models.Plan.features))
+                .filter(models.Subscription.user_id == user.id)
+            )
+            subscription = sub_result.scalar_one_or_none()
         else:
             subscription = user.subscription
         
-        # plan 정보가 lazy-loaded 될 수 있으므로 명시적으로 로드
-        plan_result = await db.execute(select(models.Plan).filter(models.Plan.id == subscription.plan_id))
-        plan = plan_result.scalar_one_or_none()
-
-        return plan.name if plan else PlanType.BASIC
+        # 구독 정보가 있다면 해당 플랜의 기능 반환, 없다면 Basic 플랜 기능 반환
+        if subscription and hasattr(subscription, 'plan') and subscription.plan and hasattr(subscription.plan, 'features') and subscription.plan.features:
+            return subscription.plan.features
+        else:
+            # Basic 플랜 기능 조회
+            feature_result = await db.execute(
+                select(models.PlanFeature).join(models.Plan).filter(models.Plan.name == PlanType.BASIC)
+            )
+            basic_features = feature_result.scalar_one_or_none()
+            if not basic_features:
+                logger.error("Default 'Basic' plan features not found in the database.")
+                raise HTTPException(status_code=500, detail="서버 오류: 기본 플랜 기능 설정이 누락되었습니다.")
+            return basic_features
 
     def get_timeframe_level(self, timeframe: str) -> PlanType:
         """주어진 타임프레임이 요구하는 최소 플랜 등급을 결정합니다."""
-        if timeframe in ["1m", "5m", "15m", "30m"]:
+        if timeframe in ["1m", "5m", "15m", "30m", "4h", "1d", "1M"]:
             return PlanType.TRADER
         return PlanType.BASIC
 

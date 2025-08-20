@@ -8,6 +8,7 @@ import logging
 import numpy as np
 from functools import reduce
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from .. import schemas
 from ..services.market_data_service import market_data_service
@@ -23,12 +24,15 @@ class SignalService:
 
     async def calculate_indicators(
         self,
-        db: Session,
+        db: AsyncSession,
         request: schemas.IndicatorCalculationRequest
     ) -> Dict[str, List[schemas.IndicatorDataPoint]]:
-        """주어진 설정에 따라 기술적 지표를 계산하여 차트 표시용으로 반환합니다."""
-        df = market_data_service.get_latest_data(db=db, ticker=request.ticker, timeframe=request.timeframe, limit=1000)
-        
+        """
+        주어진 DataFrame과 지표 설정에 따라 기술적 지표를 계산하여 차트 표시용으로 반환합니다.
+        """
+        df = await market_data_service.get_latest_data(
+            db=db, ticker=request.ticker, timeframe=request.timeframe, limit=1000
+        )
         if df.empty:
             return {}
         
@@ -46,12 +50,16 @@ class SignalService:
             df.columns = df.columns.str.lower()
 
         results = {}
+        if 'time' not in df.columns or not pd.api.types.is_integer_dtype(df['time']):
+             df['time'] = pd.to_datetime(df.get('time_dt', df.index)).astype('int64') // 10**9
+
         for col_name in df.columns:
             if col_name not in ['time_dt']:
-                series = df[[col_name, 'time']].dropna()
+                series_data = df[[col_name, 'time']].dropna()
+                
                 results[col_name] = [
                     schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
-                    for _, row in series.iterrows()
+                    for row in series_data.to_dict('records')
                 ]
         return results
 
@@ -212,10 +220,11 @@ class SignalService:
 
         return {"timeframes": sorted(list(timeframes), key=timeframe_to_minutes), "indicators": indicators_by_tf}
 
-    def _get_resampled_dataframe(self, db: Session, ticker: str, configs: Dict[str, Any]) -> pd.DataFrame:
+    async def _get_resampled_dataframe(self, db: AsyncSession, ticker: str, configs: Dict[str, Any]) -> pd.DataFrame:
         """추출된 설정을 기반으로 모든 타임프레임의 데이터를 가져와 리샘플링하고 병합합니다."""
         base_tf = configs['timeframes'][0]
-        base_df = market_data_service.get_latest_data(db, ticker, base_tf, limit=1000)
+        
+        base_df = await market_data_service.get_latest_data(db, ticker, base_tf, limit=1000)
         if base_df.empty: return base_df
         
         base_df['time_dt'] = pd.to_datetime(base_df['time'], unit='s', utc=True)
@@ -225,7 +234,7 @@ class SignalService:
             base_df.ta.strategy(ta.Strategy(name=f"strat_{base_tf}", ta=configs['indicators'][base_tf]), append=True)
 
         for tf in configs['timeframes'][1:]:
-            df_higher_tf = market_data_service.get_latest_data(db, ticker, tf, limit=1000)
+            df_higher_tf = await market_data_service.get_latest_data(db, ticker, tf, limit=1000)
             if df_higher_tf.empty: continue
             
             df_higher_tf['time_dt'] = pd.to_datetime(df_higher_tf['time'], unit='s', utc=True)
@@ -243,10 +252,10 @@ class SignalService:
         base_df.columns = base_df.columns.str.lower()
         return base_df.dropna()
 
-    def generate_signals(self, db: Session, request: schemas.SignalCalculationRequest) -> schemas.SignalCalculationResponse:
+    async def generate_signals(self, db: Session, request: schemas.SignalCalculationRequest) -> schemas.SignalCalculationResponse:
         """다중 타임프레임을 고려하여 최종 신호 목록을 생성합니다."""
         configs = self._get_required_timeframes_and_indicators(request)
-        df_merged = self._get_resampled_dataframe(db, request.ticker, configs)
+        df_merged = await self._get_resampled_dataframe(db, request.ticker, configs)
         if df_merged.empty: return schemas.SignalCalculationResponse(signals=[])
         
         final_signals: List[schemas.SignalDataPoint] = []
