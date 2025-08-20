@@ -28,7 +28,7 @@ class SignalService:
         request: schemas.IndicatorCalculationRequest
     ) -> Dict[str, List[schemas.IndicatorDataPoint]]:
         """
-        요청된 기술적 지표만 정확히 계산하여 반환합니다.
+        요청된 기술적 지표를 계산하고, 기본 OHLCV 값도 함께 반환합니다.
         """
         df = await market_data_service.get_latest_data(
             db=db, ticker=request.ticker, timeframe=request.timeframe, limit=1000
@@ -38,44 +38,48 @@ class SignalService:
         
         df.columns = df.columns.str.lower()
 
-        # 1. 계산할 지표 목록만 추출 (기존과 동일)
+        # ▼▼▼ [핵심 수정] ▼▼▼
         indicators_to_calc = []
+        # 요청된 지표 중, 실제 '계산'이 필요한 기술적 지표만 필터링합니다.
+        base_ohlcv_keys = {'open', 'high', 'low', 'close', 'volume'}
+
         for indicator in request.indicators:
-            kind = INDICATOR_KIND_MAP.get(indicator.indicator_key.upper(), indicator.indicator_key.lower())
-            indicators_to_calc.append({"kind": kind, **indicator.values})
+            if indicator.indicator_key.lower() not in base_ohlcv_keys:
+                kind = INDICATOR_KIND_MAP.get(indicator.indicator_key.upper(), indicator.indicator_key.lower())
+                indicators_to_calc.append({"kind": kind, **indicator.values})
         
-        # 2. 지표 계산
+        # 계산이 필요한 지표가 있을 경우에만 pandas-ta 실행
         if indicators_to_calc:
             df.ta.strategy(ta.Strategy(name="indicator_calc", ta=indicators_to_calc), append=True)
             df.columns = df.columns.str.lower()
 
-        # 3. 결과 포맷팅
         results = {}
         if 'time' not in df.columns or not pd.api.types.is_integer_dtype(df['time']):
              df['time'] = pd.to_datetime(df.get('time_dt', df.index)).astype('int64') // 10**9
 
-        # 모든 컬럼이 아닌, '계산된 지표 컬럼'만 결과에 포함
-        # 원본 OHLCV 컬럼 목록
-        original_cols = {'time', 'open', 'high', 'low', 'close', 'volume', 'time_dt'}
-        
-        # 순수하게 계산을 통해 추가된 지표 컬럼들만 필터링
-        calculated_columns = [col for col in df.columns if col not in original_cols]
-
-        for col_name in calculated_columns:
-            series_data = df[[col_name, 'time']].dropna()
-            results[col_name] = [
-                schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
-                for row in series_data.to_dict('records')
-            ]
-        
-        # 만약 프론트엔드가 명시적으로 'Volume'을 요청했다면, 결과에 포함
-        if any(ind.indicator_key == "Volume" for ind in request.indicators):
-            if 'volume' in df.columns:
-                series_data = df[['volume', 'time']].dropna()
-                results['volume'] = [
-                    schemas.IndicatorDataPoint(time=row['time'], value=row['volume'])
-                    for row in series_data.to_dict('records')
-                ]
+        # 요청된 모든 'indicatorKey'에 대해 결과를 담습니다.
+        for indicator_config in request.indicators:
+            col_name = indicator_config.indicator_key.lower()
+            
+            # 1. 요청된 것이 OHLCV 기본값인 경우
+            if col_name in base_ohlcv_keys:
+                if col_name in df.columns:
+                    series_data = df[[col_name, 'time']].dropna()
+                    results[col_name] = [
+                        schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
+                        for row in series_data.to_dict('records')
+                    ]
+            # 2. 요청된 것이 계산된 지표인 경우 (가장 가능성 높은 컬럼 이름 탐색)
+            else:
+                # _get_indicator_column_name 헬퍼를 사용하여, 복잡한 출력 컬럼명(예: macds_12_26_9) 탐색
+                full_col_name = self._get_indicator_column_name(df.columns, indicator_config)
+                if full_col_name and isinstance(full_col_name, str) and full_col_name in df.columns:
+                    series_data = df[[full_col_name, 'time']].dropna()
+                    # 프론트엔드가 예측하기 쉽도록, 요청된 키(예: 'ema_20')로 결과를 저장
+                    results[full_col_name] = [
+                        schemas.IndicatorDataPoint(time=row['time'], value=row[full_col_name])
+                        for row in series_data.to_dict('records')
+                    ]
         
         return results
 
