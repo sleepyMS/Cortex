@@ -181,12 +181,6 @@
               "basic": "기본 지표 (10종)",
               "trader": "모든 지표 (50+종)",
               "pro": "모든 지표 (50+종)"
-            },
-            {
-              "name": "전략 마켓플레이스 이용",
-              "basic": "조회만 가능",
-              "trader": "구매/판매 가능",
-              "pro": "구매/판매 가능"
             }
           ]
         },
@@ -194,33 +188,17 @@
           "category": "백테스팅",
           "features": [
             {
-              "name": "사용 가능 타임프레임",
-              "basic": "1시간(1h) 봉만",
-              "trader": "모든 타임프레임",
-              "pro": "모든 타임프레임"
+              "name": "데이터 히스토리 기간",
+              "basic": "최근 1년",
+              "trader": "최근 5년",
+              "pro": "전체 기간"
             },
             {
               "name": "일일 백테스팅 횟수",
               "basic": "10회",
               "trader": "100회",
               "pro": "무제한"
-            }
-          ]
-        },
-        {
-          "category": "자동매매",
-          "features": [
-            {
-              "name": "라이브 봇 (실거래) 개수",
-              "basic": false,
-              "trader": "3개",
-              "pro": "10개"
-            }
-          ]
-        },
-        {
-          "category": "고급 기능",
-          "features": [
+            },
             {
               "name": "워크 포워드 & 몬테카를로",
               "basic": false,
@@ -232,7 +210,46 @@
               "basic": false,
               "trader": false,
               "pro": true
+            }
+          ]
+        },
+        {
+          "category": "자동매매",
+          "features": [
+            {
+              "name": "클라우드 봇 개수",
+              "basic": false,
+              "trader": "3개",
+              "pro": "10개"
             },
+            {
+              "name": "페이퍼 트레이딩",
+              "basic": false,
+              "trader": true,
+              "pro": true
+            }
+          ]
+        },
+        {
+          "category": "커뮤니티",
+          "features": [
+            {
+              "name": "리더보드 & 공개 프로필",
+              "basic": "조회만 가능",
+              "trader": "참여 가능",
+              "pro": "참여 가능"
+            },
+            {
+              "name": "전략 마켓플레이스 이용",
+              "basic": "조회만 가능",
+              "trader": "구매 및 판매 가능",
+              "pro": "구매 및 판매 가능"
+            }
+          ]
+        },
+        {
+          "category": "고급 기능",
+          "features": [
             {
               "name": "고급 자금 관리 모델",
               "basic": false,
@@ -246,7 +263,7 @@
               "pro": "무제한 사용"
             },
             {
-              "name": "Optuna 기반 전략 최적화 쿠폰",
+              "name": "AI 기반 전략 최적화 쿠폰",
               "basic": false,
               "trader": "3회 기본 제공",
               "pro": "10회 기본 제공"
@@ -256,17 +273,6 @@
               "basic": false,
               "trader": "수익률, 샤프지수",
               "pro": "수익률, 샤프지수"
-            }
-          ]
-        },
-        {
-          "category": "커뮤니티",
-          "features": [
-            {
-              "name": "리더보드 & 공개 프로필",
-              "basic": "조회만 가능",
-              "trader": "참여 가능",
-              "pro": "참여 가능"
             }
           ]
         }

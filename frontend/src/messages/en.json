@@ -148,45 +148,39 @@
     },
     "comparison": {
       "title": "Full Plan Comparison",
-      "basicLabel": "Basic",
+      "basicLabel": "Basic (Free)",
       "traderLabel": "Trader",
       "proLabel": "Pro",
       "tableHeader": {
-        "features": "Features"
+        "features": "Feature Name"
       },
       "categories": [
         {
           "category": "Strategy Building",
           "features": [
             {
-              "name": "Number of assets per strategy",
+              "name": "Number of Assets per Strategy",
               "basic": "1 (Single Asset)",
               "trader": "Up to 5 (Asset Allocation)",
               "pro": "Unlimited (Portfolio)"
             },
             {
               "name": "TP/SL (Take Profit/Stop Loss) Method",
-              "basic": "Fixed % only",
-              "trader": "Fixed % + ATR based",
-              "pro": "Fixed % + ATR based"
+              "basic": "Fixed % Only",
+              "trader": "Fixed % + ATR Based",
+              "pro": "Fixed % + ATR Based"
             },
             {
-              "name": "Number of saved strategies",
+              "name": "Number of Strategies Saved",
               "basic": "3",
               "trader": "20",
               "pro": "Unlimited"
             },
             {
               "name": "Available Indicators",
-              "basic": "Basic indicators (10 types)",
-              "trader": "All indicators (50+ types)",
-              "pro": "All indicators (50+ types)"
-            },
-            {
-              "name": "Strategy Marketplace Access",
-              "basic": "View only",
-              "trader": "Buy/Sell",
-              "pro": "Buy/Sell"
+              "basic": "Basic Indicators (10 types)",
+              "trader": "All Indicators (50+ types)",
+              "pro": "All Indicators (50+ types)"
             }
           ]
         },
@@ -194,35 +188,19 @@
           "category": "Backtesting",
           "features": [
             {
-              "name": "Available Timeframes",
-              "basic": "1-hour only",
-              "trader": "All timeframes",
-              "pro": "All timeframes"
+              "name": "Data History Period",
+              "basic": "Recent 1 year",
+              "trader": "Recent 5 years",
+              "pro": "All-time"
             },
             {
-              "name": "Daily backtests",
-              "basic": "10",
-              "trader": "100",
+              "name": "Daily Backtest Count",
+              "basic": "10 times",
+              "trader": "100 times",
               "pro": "Unlimited"
-            }
-          ]
-        },
-        {
-          "category": "Automated Trading",
-          "features": [
+            },
             {
-              "name": "Live Bots (Real-time Trading)",
-              "basic": false,
-              "trader": "3",
-              "pro": "10"
-            }
-          ]
-        },
-        {
-          "category": "Advanced Features",
-          "features": [
-            {
-              "name": "Walk-Forward & Monte Carlo",
+              "name": "Walk Forward & Monte Carlo",
               "basic": false,
               "trader": false,
               "pro": true
@@ -232,7 +210,46 @@
               "basic": false,
               "trader": false,
               "pro": true
+            }
+          ]
+        },
+        {
+          "category": "Live Trading",
+          "features": [
+            {
+              "name": "Number of Live Bots (Real Trading)",
+              "basic": false,
+              "trader": "3",
+              "pro": "10"
             },
+            {
+              "name": "Paper Trading",
+              "basic": false,
+              "trader": true,
+              "pro": true
+            }
+          ]
+        },
+        {
+          "category": "Community",
+          "features": [
+            {
+              "name": "Leaderboard & Public Profile",
+              "basic": "View Only",
+              "trader": "Participate",
+              "pro": "Participate"
+            },
+            {
+              "name": "Strategy Marketplace Access",
+              "basic": "View Only",
+              "trader": "Purchase/Sell Supported",
+              "pro": "Purchase/Sell Supported"
+            }
+          ]
+        },
+        {
+          "category": "Advanced Features",
+          "features": [
             {
               "name": "Advanced Money Management Models",
               "basic": false,
@@ -242,31 +259,20 @@
             {
               "name": "Advanced Notifications (Telegram, Discord)",
               "basic": false,
-              "trader": "Limited use",
-              "pro": "Unlimited use"
+              "trader": "Limited Use",
+              "pro": "Unlimited Use"
             },
             {
-              "name": "Optuna-based Strategy Optimization Coupons",
+              "name": "AI-based Strategy Optimization Coupons",
               "basic": false,
-              "trader": "3 coupons included",
-              "pro": "10 coupons included"
+              "trader": "3 Included",
+              "pro": "10 Included"
             },
             {
               "name": "Optimization Options",
               "basic": false,
-              "trader": "Return, Sharpe Ratio",
-              "pro": "Return, Sharpe Ratio"
-            }
-          ]
-        },
-        {
-          "category": "Community",
-          "features": [
-            {
-              "name": "Leaderboards & Public Profile",
-              "basic": "View only",
-              "trader": "Participate",
-              "pro": "Participate"
+              "trader": "Return Rate, Sharpe Ratio",
+              "pro": "Return Rate, Sharpe Ratio"
             }
           ]
         }

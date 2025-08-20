@@ -38,7 +38,7 @@ export const PricingComparisonTable = () => {
     <div className="w-full overflow-x-auto">
       <div className="container mx-auto max-w-5xl py-12">
         {/* 테이블 헤더 - 데스크톱용 */}
-        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-border pb-4 sticky top-0 bg-background z-10">
+        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-border pb-4 sticky top-0 z-10">
           <div className="text-muted-foreground">
             {t("tableHeader.features")}
           </div>
