@@ -28,7 +28,7 @@ export function FaqSection({ faqItems }: FaqSectionProps) {
     <section className="bg-background py-16">
       <div className="container mx-auto max-w-5xl px-4">
         <h2 className="text-3xl font-bold text-center mb-10 text-foreground">
-          {t("faq.title")}
+          {t("data.faq.title")}
         </h2>
         <div className="space-y-4">
           {faqItems.map((item, index) => (

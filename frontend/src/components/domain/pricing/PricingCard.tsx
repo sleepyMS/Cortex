@@ -3,13 +3,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Rocket, Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl"; // 언어팩 사용을 위해 추가
 
 interface PricingCardProps {
   planName: string;
   price: string;
+  tagline: string; // 👈 추가
   features: string[];
   isHighlighted?: boolean;
   isFree?: boolean;
@@ -18,10 +20,12 @@ interface PricingCardProps {
 export const PricingCard = ({
   planName,
   price,
+  tagline, // 👈 추가
   features,
   isHighlighted = false,
   isFree = false,
 }: PricingCardProps) => {
+  const t = useTranslations("Pricing.card"); // 'Pricing.card' 네임스페이스 사용
   const isTrader = planName === "Trader";
   const isPro = planName === "Pro";
   const isBasic = planName === "Basic";
@@ -29,10 +33,8 @@ export const PricingCard = ({
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // 마운트 시, 현재 HTML에 'dark' 클래스가 있는지 확인
     setIsDark(document.documentElement.classList.contains("dark"));
 
-    // 테마 변경을 감지하는 옵저버 설정
     const observer = new MutationObserver(() => {
       setIsDark(document.documentElement.classList.contains("dark"));
     });
@@ -45,23 +47,20 @@ export const PricingCard = ({
     return () => observer.disconnect();
   }, []);
 
-  // 플랜별 네온 스타일을 결정하는 조건부 클래스
   let cardStyles = "";
   let headerTextColor = "";
   let buttonStyle = "";
 
   if (isBasic) {
     if (!isDark) {
-      // 라이트 모드: 동갈색 스타일
       cardStyles = `bg-gradient-to-br from-basic-secondary to-background border border-basic-primary/50 shadow-[0_0_15px_theme(colors.basic-primary)/30]`;
       headerTextColor = "text-basic-primary";
-      buttonStyle = "bg-[#7B593C] text-white hover:bg-[#634830]";
+      buttonStyle = "bg-brown-500 text-white hover:bg-brown-500/80";
     } else {
-      // 다크 모드: 동색 네온 스타일
       cardStyles =
         "bg-gradient-to-br from-basic-primary/20 to-basic-secondary/10 border border-basic-primary/50 shadow-[0_0_25px_theme(colors.basic-primary)/30]";
       headerTextColor = "text-basic-primary";
-      buttonStyle = "bg-[#664023] text-foreground hover:bg-[#80502b]";
+      buttonStyle = "bg-brown-600 text-foreground hover:bg-brown-600/80";
     }
   } else if (isTrader) {
     if (!isDark) {
@@ -106,7 +105,7 @@ export const PricingCard = ({
               : "bg-trader-primary text-foreground"
           }`}
         >
-          <Sparkles className="inline h-3 w-3 mr-1" /> 추천
+          <Sparkles className="inline h-3 w-3 mr-1" /> {t("recommendation")}
         </div>
       )}
 
@@ -115,17 +114,10 @@ export const PricingCard = ({
           <h3 className={`text-4xl font-bold ${headerTextColor}`}>
             {planName}
           </h3>
-          <p className="text-xl font-medium text-muted-foreground">
-            퀀트 투자의{" "}
-            {planName === "Basic"
-              ? "시작"
-              : planName === "Trader"
-              ? "성장"
-              : "완성"}
-          </p>
+          <p className="text-xl font-medium text-muted-foreground">{tagline}</p>
           <div className="mt-2 text-3xl font-extrabold text-foreground">
             {isFree ? (
-              "Free"
+              price
             ) : (
               <>
                 {price}
@@ -154,7 +146,7 @@ export const PricingCard = ({
           ${buttonStyle}
         `}
       >
-        {isFree ? "시작하기" : "구독하기"}
+        {isFree ? t("button.start") : t("button.subscribe")}
       </Button>
     </motion.div>
   );

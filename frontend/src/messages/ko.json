@@ -58,6 +58,221 @@
       }
     }
   },
+  "Pricing": {
+    "hero": {
+      "title": "당신의 잠재력을 깨울 플랜",
+      "subtitle": "모두를 위한 다양한 플랜으로, Cortex와 함께 투자 여정을 시작하고 확장하세요."
+    },
+    "toggle": {
+      "monthly": "월간",
+      "yearly": "연간"
+    },
+    "card": {
+      "recommendation": "추천",
+      "button": {
+        "start": "시작하기",
+        "subscribe": "구독하기"
+      }
+    },
+    "data": {
+      "plans": {
+        "basic": {
+          "planName": "Basic",
+          "tagline": "퀀트 투자의 시작",
+          "features": [
+            "기본 백테스팅 (10회/일)",
+            "단일 자산 전략 (1개)",
+            "기본 지표 (10종)",
+            "고정 % 손익절"
+          ],
+          "price": {
+            "monthly": "Free",
+            "yearly": "Free"
+          }
+        },
+        "trader": {
+          "planName": "Trader",
+          "tagline": "퀀트 투자의 성장",
+          "features": [
+            "고급 백테스팅 (100회/일)",
+            "자산 분배 전략 (최대 5개)",
+            "모든 지표 (50+종)",
+            "ATR 기반 손익절",
+            "라이브 봇 3개",
+            "전략 마켓플레이스 참여"
+          ],
+          "price": {
+            "monthly": "$49.99",
+            "yearly": "$499.99"
+          }
+        },
+        "pro": {
+          "planName": "Pro",
+          "tagline": "퀀트 투자의 완성",
+          "features": [
+            "무제한 백테스팅",
+            "포트폴리오 전략 (무제한)",
+            "모든 지표 (50+종)",
+            "ATR 기반 손익절",
+            "무제한 라이브 봇",
+            "전략 마켓플레이스 참여",
+            "우선순위 기술 지원"
+          ],
+          "price": {
+            "monthly": "$129.99",
+            "yearly": "$1299.99"
+          }
+        }
+      },
+      "faq": {
+        "title": "자주 묻는 질문",
+        "items": [
+          {
+            "question": "구독 플랜은 어떻게 변경하나요?",
+            "answer": "로그인 후 '구독 관리' 페이지에서 언제든지 플랜을 변경하거나 취소할 수 있습니다."
+          },
+          {
+            "question": "월간 결제와 연간 결제의 차이점은 무엇인가요?",
+            "answer": "월간 결제는 매월 자동으로 청구되며, 연간 결제는 12개월분 요금을 한 번에 결제하여 월 단위 결제보다 할인된 가격으로 이용할 수 있습니다."
+          },
+          {
+            "question": "무료 플랜은 기간 제한이 있나요?",
+            "answer": "아니요, 무료 플랜은 기간 제한 없이 계속 사용할 수 있습니다. 다만, 일부 기능에 제한이 있습니다."
+          },
+          {
+            "question": "결제는 어떻게 이루어지나요?",
+            "answer": "저희 서비스는 Stripe(해외) 또는 아임포트(국내)와 같은 결제 게이트웨이를 통해 안전하게 결제를 처리합니다."
+          }
+        ]
+      }
+    },
+    "comparison": {
+      "title": "플랜별 전체 기능 비교",
+      "basicLabel": "Basic",
+      "traderLabel": "Trader",
+      "proLabel": "Pro",
+      "tableHeader": {
+        "features": "기능"
+      },
+      "categories": [
+        {
+          "category": "전략 구성",
+          "features": [
+            {
+              "name": "전략당 투자 가능 코인 수",
+              "basic": "1개 (단일 자산)",
+              "trader": "최대 5개 (자산 분배)",
+              "pro": "무제한 (포트폴리오)"
+            },
+            {
+              "name": "TP/SL (손익절) 방식",
+              "basic": "고정 %만 가능",
+              "trader": "고정 % + ATR 기반",
+              "pro": "고정 % + ATR 기반"
+            },
+            {
+              "name": "저장 가능한 전략 개수",
+              "basic": "3개",
+              "trader": "20개",
+              "pro": "무제한"
+            },
+            {
+              "name": "사용 가능 지표",
+              "basic": "기본 지표 (10종)",
+              "trader": "모든 지표 (50+종)",
+              "pro": "모든 지표 (50+종)"
+            },
+            {
+              "name": "전략 마켓플레이스 이용",
+              "basic": "조회만 가능",
+              "trader": "구매/판매 가능",
+              "pro": "구매/판매 가능"
+            }
+          ]
+        },
+        {
+          "category": "백테스팅",
+          "features": [
+            {
+              "name": "사용 가능 타임프레임",
+              "basic": "1시간(1h) 봉만",
+              "trader": "모든 타임프레임",
+              "pro": "모든 타임프레임"
+            },
+            {
+              "name": "일일 백테스팅 횟수",
+              "basic": "10회",
+              "trader": "100회",
+              "pro": "무제한"
+            }
+          ]
+        },
+        {
+          "category": "자동매매",
+          "features": [
+            {
+              "name": "라이브 봇 (실거래) 개수",
+              "basic": false,
+              "trader": "3개",
+              "pro": "10개"
+            }
+          ]
+        },
+        {
+          "category": "고급 기능",
+          "features": [
+            {
+              "name": "워크 포워드 & 몬테카를로",
+              "basic": false,
+              "trader": false,
+              "pro": true
+            },
+            {
+              "name": "포트폴리오 백테스팅",
+              "basic": false,
+              "trader": false,
+              "pro": true
+            },
+            {
+              "name": "고급 자금 관리 모델",
+              "basic": false,
+              "trader": false,
+              "pro": true
+            },
+            {
+              "name": "고급 알림 (텔레그램, 디스코드)",
+              "basic": false,
+              "trader": "제한적 사용",
+              "pro": "무제한 사용"
+            },
+            {
+              "name": "Optuna 기반 전략 최적화 쿠폰",
+              "basic": false,
+              "trader": "3회 기본 제공",
+              "pro": "10회 기본 제공"
+            },
+            {
+              "name": "최적화 옵션",
+              "basic": false,
+              "trader": "수익률, 샤프지수",
+              "pro": "수익률, 샤프지수"
+            }
+          ]
+        },
+        {
+          "category": "커뮤니티",
+          "features": [
+            {
+              "name": "리더보드 & 공개 프로필",
+              "basic": "조회만 가능",
+              "trader": "참여 가능",
+              "pro": "참여 가능"
+            }
+          ]
+        }
+      ]
+    }
+  },
   "Auth": {
     "signupTitle": "Cortex 시작하기",
     "signupSubtitle": "계정을 만들고 데이터 기반 투자를 경험하세요.",

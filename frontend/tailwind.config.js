@@ -33,6 +33,18 @@ module.exports = {
         "trader-secondary": "hsl(var(--trader-secondary))",
         "pro-primary": "hsl(var(--pro-primary))",
         "pro-secondary": "hsl(var(--pro-secondary))",
+        brown: {
+          50: "#fdf8f6",
+          100: "#f2e8e1",
+          200: "#eaddd7",
+          300: "#e0cec7",
+          400: "#d1b9b0",
+          500: "#a37e56", // 동색과 유사한 갈색
+          600: "#926a4c",
+          700: "#7d523a",
+          800: "#683f2a",
+          900: "#583625",
+        },
       },
     },
   },
