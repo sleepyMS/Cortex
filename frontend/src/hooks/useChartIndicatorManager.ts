@@ -295,18 +295,34 @@ export function useChartIndicatorManager({
     resizeObserver.observe(container);
 
     return () => {
-      resizeObserver.disconnect();
-      if (markersPluginRef.current) {
-        markersPluginRef.current.detach();
-        markersPluginRef.current = null;
-      }
+      // 1. indicatorManager의 모든 차트와 시리즈를 먼저 제거
       indicatorManagerRef.current.forEach((state) => {
-        state.series.forEach((series) => state.paneChart?.removeSeries(series));
-        state.paneChart?.remove();
+        state.series.forEach((series) => {
+          try {
+            (state.paneChart || chartRef.current)?.removeSeries(series);
+          } catch (e) {
+            /* 이미 제거된 경우 무시 */
+          }
+        });
+        try {
+          state.paneChart?.remove();
+        } catch (e) {
+          /* 이미 제거된 경우 무시 */
+        }
       });
-      mainChart.remove();
+
+      // 2. 메인 차트를 마지막에 제거
+      if (chartRef.current) {
+        chartRef.current.remove();
+      }
+
+      // 3. 모든 ref를 명시적으로 초기화하여 '유령' 객체 방지
       chartRef.current = null;
+      candlestickSeriesRef.current = null;
+      indicatorManagerRef.current.clear(); // Map을 비움
+      markersPluginRef.current = null;
     };
+    // ▲▲▲ [핵심 수정] ▲▲▲
   }, [mainChartContainerRef, mainChartHeight, setupChart, resolvedTheme]);
 
   // Effect 2: 테마 변경 적용
@@ -319,22 +335,34 @@ export function useChartIndicatorManager({
   }, [resolvedTheme]);
 
   // Effect 3: 데이터 업데이트 및 캐싱
+  // Effect 3-1: OHLCV 데이터 동기화
+  useEffect(() => {
+    if (ohlcvData && candlestickSeriesRef.current) {
+      const cache = new Map<number, CandlestickData<UTCTimestamp>>();
+      ohlcvData.forEach((d) => cache.set(timeToSeconds(d.time), d));
+      ohlcvCacheRef.current = cache;
+      candlestickSeriesRef.current.setData(ohlcvData);
+      // 데이터 로드 후 차트 뷰 자동 조정
+      chartRef.current?.timeScale().fitContent();
+    }
+  }, [ohlcvData]);
+
+  // Effect 3-2: 지표 데이터 및 시리즈 동기화
   useEffect(() => {
     const mainChart = chartRef.current;
     if (!mainChart) return;
 
-    if (ohlcvData) {
-      const cache = new Map<number, CandlestickData<UTCTimestamp>>();
-      ohlcvData.forEach((d) => cache.set(timeToSeconds(d.time), d));
-      ohlcvCacheRef.current = cache;
-      candlestickSeriesRef.current?.setData(ohlcvData);
-    }
+    const manager = indicatorManagerRef.current;
+    const newSeriesKeys = new Set(
+      indicatorData ? Object.keys(indicatorData) : []
+    );
 
+    // 1. 캐시 업데이트
+    const newIndicatorCache = new Map<
+      string,
+      Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
+    >();
     if (indicatorData) {
-      const cache = new Map<
-        string,
-        Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
-      >();
       Object.entries(indicatorData).forEach(([key, dataPoints]) => {
         const innerMap = new Map<
           number,
@@ -346,25 +374,20 @@ export function useChartIndicatorManager({
             time: timeToSeconds(p.time) as UTCTimestamp,
           })
         );
-        cache.set(key, innerMap);
+        newIndicatorCache.set(key, innerMap);
       });
-      indicatorCacheRef.current = cache;
     }
+    indicatorCacheRef.current = newIndicatorCache;
 
-    const manager = indicatorManagerRef.current;
-    const newSeriesKeys = new Set(
-      indicatorData ? Object.keys(indicatorData) : []
-    );
-    const currentIndicatorBaseKeys = new Set(manager.keys());
-    currentIndicatorBaseKeys.forEach((baseKey) => {
-      const state = manager.get(baseKey)!;
+    // 2. 기존 시리즈 순회: 더 이상 필요없는 시리즈는 제거, 있는 시리즈는 데이터 업데이트
+    manager.forEach((state, baseKey) => {
       let hasActiveSeries = false;
       state.series.forEach((series, fullKey) => {
         if (newSeriesKeys.has(fullKey)) {
           hasActiveSeries = true;
-          series.setData(indicatorData?.[fullKey] || []);
+          series.setData(indicatorData?.[fullKey] || []); // 데이터 업데이트
         } else {
-          state.paneChart?.removeSeries(series);
+          (state.paneChart || mainChart).removeSeries(series);
           state.series.delete(fullKey);
         }
       });
@@ -374,6 +397,7 @@ export function useChartIndicatorManager({
       }
     });
 
+    // 3. 새로운 지표 시리즈 생성
     if (indicatorData) {
       Object.entries(indicatorData).forEach(([fullSeriesKey, data], index) => {
         const metadata = INDICATOR_METADATA.find((ind) =>
@@ -381,6 +405,8 @@ export function useChartIndicatorManager({
         );
         if (!metadata || !data || data.length === 0) return;
         const baseKey = metadata.key;
+
+        // baseKey 자체가 없으면 새로 pane과 상태를 만듬
         if (!manager.has(baseKey)) {
           let paneChart: IChartApi | null = null;
           if (paneIndicators.includes(baseKey)) {
@@ -400,6 +426,7 @@ export function useChartIndicatorManager({
           }
           manager.set(baseKey, { paneChart, series: new Map() });
         }
+
         const indicatorState = manager.get(baseKey)!;
         if (!indicatorState.series.has(fullSeriesKey)) {
           const targetChart = indicatorState.paneChart || mainChart;
@@ -411,7 +438,6 @@ export function useChartIndicatorManager({
               priceFormat: { type: "volume" },
             };
             newSeries = targetChart.addSeries(HistogramSeries, options);
-            newSeries.setData(data as HistogramData<UTCTimestamp>[]);
           } else {
             const options: DeepPartial<LineSeriesOptions> = {
               color:
@@ -419,16 +445,13 @@ export function useChartIndicatorManager({
               lineWidth: 2,
             };
             newSeries = targetChart.addSeries(LineSeries, options);
-            newSeries.setData(data as LineData<UTCTimestamp>[]);
           }
+          newSeries.setData(data as any);
           indicatorState.series.set(fullSeriesKey, newSeries);
         }
       });
     }
-
-    mainChart.timeScale().fitContent();
   }, [
-    ohlcvData,
     indicatorData,
     paneIndicators,
     getPaneContainer,

@@ -15,7 +15,29 @@ from ..services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
 
-INDICATOR_KIND_MAP = { "STOCHASTIC": "stoch", "PARABOLICSAR": "psar", "KELTNERCHANNEL": "kc" }
+INDICATOR_KIND_MAP = {
+    "STOCHASTIC": "stoch",
+    "PARABOLICSAR": "psar",
+    "KELTNERCHANNEL": "kc",
+}
+
+OUTPUT_PREFIX_MAP = {
+    "SMA": ["SMA"], "EMA": ["EMA"], "HMA": ["HMA"],
+    "MACD": ["MACD", "MACDH", "MACDS"],
+    "PARABOLICSAR": ["PSARL", "PSARS"],
+    "SUPERTREND": ["SUPERT", "SUPERTD", "SUPERTL", "SUPERTS"],
+    "ICHIMOKU": ["ITS", "IKS", "ISA", "ISB", "ICS"],
+    "ADX": ["ADX", "DMP", "DMN"],
+    "RSI": ["RSI"],
+    "STOCHASTIC": ["STOCHK", "STOCHD"],
+    "CCI": ["CCI"],
+    "RVI": ["RVI", "RVIS"],
+    "BBANDS": ["BBU", "BBM", "BBL", "BBB", "BBP"],
+    "ATR": ["ATR"],
+    "KELTNERCHANNEL": ["KCBE", "KCLE", "KCUE"],
+    "OBV": ["OBV"],
+    "VWAP": ["VWAP"],
+}
 
 class SignalService:
     """
@@ -28,7 +50,7 @@ class SignalService:
         request: schemas.IndicatorCalculationRequest
     ) -> Dict[str, List[schemas.IndicatorDataPoint]]:
         """
-        요청된 기술적 지표를 계산하고, 기본 OHLCV 값도 함께 반환합니다.
+        요청된 기술적 지표와 관련된 모든 출력값을 계산하여 반환합니다.
         """
         df = await market_data_service.get_latest_data(
             db=db, ticker=request.ticker, timeframe=request.timeframe, limit=1000
@@ -38,48 +60,58 @@ class SignalService:
         
         df.columns = df.columns.str.lower()
 
-        # ▼▼▼ [핵심 수정] ▼▼▼
+        # 1. 계산할 지표 목록 생성
         indicators_to_calc = []
-        # 요청된 지표 중, 실제 '계산'이 필요한 기술적 지표만 필터링합니다.
         base_ohlcv_keys = {'open', 'high', 'low', 'close', 'volume'}
-
         for indicator in request.indicators:
             if indicator.indicator_key.lower() not in base_ohlcv_keys:
                 kind = INDICATOR_KIND_MAP.get(indicator.indicator_key.upper(), indicator.indicator_key.lower())
                 indicators_to_calc.append({"kind": kind, **indicator.values})
         
-        # 계산이 필요한 지표가 있을 경우에만 pandas-ta 실행
+        # 2. 지표 계산
         if indicators_to_calc:
             df.ta.strategy(ta.Strategy(name="indicator_calc", ta=indicators_to_calc), append=True)
-            df.columns = df.columns.str.lower()
 
+        # 3. 결과 포맷팅
         results = {}
+        processed_columns = set()
+        
         if 'time' not in df.columns or not pd.api.types.is_integer_dtype(df['time']):
              df['time'] = pd.to_datetime(df.get('time_dt', df.index)).astype('int64') // 10**9
 
-        # 요청된 모든 'indicatorKey'에 대해 결과를 담습니다.
+        # ▼▼▼ [핵심 개선 로직] ▼▼▼
+        # 요청된 각 지표에 대해, OUTPUT_PREFIX_MAP을 사용하여 모든 관련 컬럼을 찾아 결과에 추가합니다.
         for indicator_config in request.indicators:
-            col_name = indicator_config.indicator_key.lower()
+            key_upper = indicator_config.indicator_key.upper()
+            key_lower = indicator_config.indicator_key.lower()
             
-            # 1. 요청된 것이 OHLCV 기본값인 경우
-            if col_name in base_ohlcv_keys:
-                if col_name in df.columns:
+            # OHLCV 기본값 직접 처리
+            if key_lower in base_ohlcv_keys:
+                if key_lower in df.columns:
+                    series_data = df[[key_lower, 'time']].dropna()
+                    results[key_lower] = [
+                        schemas.IndicatorDataPoint(time=row['time'], value=row[key_lower])
+                        for row in series_data.to_dict('records')
+                    ]
+                continue
+            
+            # 계산된 지표 처리
+            known_prefixes = OUTPUT_PREFIX_MAP.get(key_upper, [])
+            if not known_prefixes:
+                continue
+
+            for col_name in df.columns:
+                if col_name in processed_columns:
+                    continue
+                
+                # 컬럼 이름이 알려진 접두사 중 하나로 시작하는지 확인 (대소문자 무시)
+                if any(col_name.upper().startswith(p + '_') or col_name.upper() == p for p in known_prefixes):
                     series_data = df[[col_name, 'time']].dropna()
-                    results[col_name] = [
+                    results[col_name.lower()] = [
                         schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
                         for row in series_data.to_dict('records')
                     ]
-            # 2. 요청된 것이 계산된 지표인 경우 (가장 가능성 높은 컬럼 이름 탐색)
-            else:
-                # _get_indicator_column_name 헬퍼를 사용하여, 복잡한 출력 컬럼명(예: macds_12_26_9) 탐색
-                full_col_name = self._get_indicator_column_name(df.columns, indicator_config)
-                if full_col_name and isinstance(full_col_name, str) and full_col_name in df.columns:
-                    series_data = df[[full_col_name, 'time']].dropna()
-                    # 프론트엔드가 예측하기 쉽도록, 요청된 키(예: 'ema_20')로 결과를 저장
-                    results[full_col_name] = [
-                        schemas.IndicatorDataPoint(time=row['time'], value=row[full_col_name])
-                        for row in series_data.to_dict('records')
-                    ]
+                    processed_columns.add(col_name)
         
         return results
 
