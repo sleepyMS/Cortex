@@ -28,7 +28,7 @@ class SignalService:
         request: schemas.IndicatorCalculationRequest
     ) -> Dict[str, List[schemas.IndicatorDataPoint]]:
         """
-        주어진 DataFrame과 지표 설정에 따라 기술적 지표를 계산하여 차트 표시용으로 반환합니다.
+        요청된 기술적 지표만 정확히 계산하여 반환합니다.
         """
         df = await market_data_service.get_latest_data(
             db=db, ticker=request.ticker, timeframe=request.timeframe, limit=1000
@@ -37,30 +37,46 @@ class SignalService:
             return {}
         
         df.columns = df.columns.str.lower()
-        
+
+        # 1. 계산할 지표 목록만 추출 (기존과 동일)
         indicators_to_calc = []
-        non_indicator_keys = {'open', 'high', 'low', 'close', 'volume'}
         for indicator in request.indicators:
-            if indicator.indicator_key.lower() not in non_indicator_keys:
-                kind = INDICATOR_KIND_MAP.get(indicator.indicator_key.upper(), indicator.indicator_key.lower())
-                indicators_to_calc.append({"kind": kind, **indicator.values})
+            kind = INDICATOR_KIND_MAP.get(indicator.indicator_key.upper(), indicator.indicator_key.lower())
+            indicators_to_calc.append({"kind": kind, **indicator.values})
         
+        # 2. 지표 계산
         if indicators_to_calc:
             df.ta.strategy(ta.Strategy(name="indicator_calc", ta=indicators_to_calc), append=True)
             df.columns = df.columns.str.lower()
 
+        # 3. 결과 포맷팅
         results = {}
         if 'time' not in df.columns or not pd.api.types.is_integer_dtype(df['time']):
              df['time'] = pd.to_datetime(df.get('time_dt', df.index)).astype('int64') // 10**9
 
-        for col_name in df.columns:
-            if col_name not in ['time_dt']:
-                series_data = df[[col_name, 'time']].dropna()
-                
-                results[col_name] = [
-                    schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
+        # 모든 컬럼이 아닌, '계산된 지표 컬럼'만 결과에 포함
+        # 원본 OHLCV 컬럼 목록
+        original_cols = {'time', 'open', 'high', 'low', 'close', 'volume', 'time_dt'}
+        
+        # 순수하게 계산을 통해 추가된 지표 컬럼들만 필터링
+        calculated_columns = [col for col in df.columns if col not in original_cols]
+
+        for col_name in calculated_columns:
+            series_data = df[[col_name, 'time']].dropna()
+            results[col_name] = [
+                schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
+                for row in series_data.to_dict('records')
+            ]
+        
+        # 만약 프론트엔드가 명시적으로 'Volume'을 요청했다면, 결과에 포함
+        if any(ind.indicator_key == "Volume" for ind in request.indicators):
+            if 'volume' in df.columns:
+                series_data = df[['volume', 'time']].dropna()
+                results['volume'] = [
+                    schemas.IndicatorDataPoint(time=row['time'], value=row['volume'])
                     for row in series_data.to_dict('records')
                 ]
+        
         return results
 
     def _get_indicator_column_name(
