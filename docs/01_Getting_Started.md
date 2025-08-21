@@ -72,8 +72,8 @@ docker-compose up -d
 
 # 4. Celery 워커 실행
 # (main.py가 아닌, celery 인스턴스가 있는 파일 경로를 지정해야 합니다. 예: celery_app.py)
-#
-celery -A backend.app.celery_app:celery_app worker -l info --pool=eventlet
+# 실제 배포시에는 eventlet과 같은 다중 비동기로 변경
+celery -A backend.app.celery_app:celery_app worker -l info --pool=solo
 
 # 5. Celery Beat 실행 (별도 터미널에서)
 celery -A backend.app.celery_app:celery_app beat -l info
