@@ -278,7 +278,6 @@ class SignalService:
         parent_true_count = parent_series.sum() if parent_series is not None else 0
         logger.debug(f"{indent} -> 부모 블록 자체 조건 만족 횟수: {parent_true_count} / {len(df)}")
 
-
         # 2. 자식 블록이 있는지 확인하고, 그에 따라 최종 결과를 조합합니다.
         if block.children and len(block.children) > 0:
             # ▼▼▼ [새로운 디버깅 로그] 아래 4줄을 여기에 추가해주세요 ▼▼▼
@@ -288,12 +287,12 @@ class SignalService:
             logger.debug(f"{indent}블록의 모든 속성(dict): {block.__dict__}")
             # ▲▲▲ 여기까지 추가 ▲▲▲
 
-            logger.debug(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logicOperator})")
+            logger.debug(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logic_operator})")
             children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1) for child in block.children]
             
             all_series_in_group = [parent_series] + children_series_list
             
-            op_func = np.logical_and if block.logicOperator == "AND" else np.logical_or
+            op_func = np.logical_and if block.logic_operator == "AND" else np.logical_or
             final_series = reduce(op_func, all_series_in_group)
         else:
             final_series = parent_series

@@ -118,12 +118,18 @@ export const useStrategyState = create<StrategyState & StrategyActions>()(
         const ruleset = state[rulesetKey];
         if (ruleset) {
           findAndModifyBlock(ruleset.blocks, blockId, (blocks, index) => {
-            // 👇 [핵심 수정] 기존 객체와 새 객체를 병합하여 children 유실을 방지합니다.
             const originalBlock = blocks[index];
+
+            // [핵심 수정] 기존 객체와 새 객체를 단순히 합치지 않고,
+            // ID와 children만 보존한 채 새로운 객체로 완전히 교체합니다.
+            // 이렇게 하면 'operandA'와 같은 과거의 찌꺼기 데이터가 남지 않습니다.
             blocks[index] = {
-              ...originalBlock, // 1. 기존 블록의 모든 프로퍼티를 가져옵니다 (children 포함).
-              ...newBlock, // 2. 새로운 블록의 프로퍼티로 덮어씁니다.
-              id: originalBlock.id, // 3. id는 절대 변경되지 않도록 보장합니다.
+              ...newBlock, // 1. 새로운 규칙의 속성을 먼저 가져옵니다.
+              id: originalBlock.id, // 2. ID는 기존의 것을 유지합니다.
+              children: originalBlock.children, // 3. 자식(children)이 있다면 그대로 보존합니다.
+              logicOperator: originalBlock.children
+                ? originalBlock.logicOperator
+                : undefined, // 4. 자식이 있을 때만 logicOperator를 보존합니다.
             };
           });
         }
