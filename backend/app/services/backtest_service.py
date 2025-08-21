@@ -13,7 +13,7 @@ from .. import models, schemas
 from ..services.plan_service import plan_service
 from ..services.strategy_service import strategy_service
 from ..celery_app import celery_app
-from ..tasks import run_backtest_task
+from ..tasks import run_backtest
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class BacktestService:
         backtest_create: schemas.BacktestCreate
     ) -> models.Backtest:
         """새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다."""
-        # 1. 플랜 기반 일일 백테스팅 횟수 제한 검사
+        # 1. 플랜 기반 제한 검사 (기존과 동일)
         user_features = await self.plan_service.get_user_plan_features(user, db)
         max_backtests = user_features.daily_backtest_count
         
@@ -62,10 +62,15 @@ class BacktestService:
         db.add(db_backtest)
         await db.flush()
         
-        # 3. Celery 태스크 전송
+        # 3. Celery 태스크 전송 및 Task ID 저장
         try:
-            run_backtest_task.delay(db_backtest.id)
-            logger.info(f"Celery task dispatched for Backtest ID: {db_backtest.id}.")
+            # [수정] 변경된 함수 이름으로 호출하고, 인자는 str 타입으로 전달
+            async_result = run_backtest.delay(backtest_id=str(db_backtest.id))
+            
+            # [수정] Celery가 부여한 Task ID를 DB에 저장
+            db_backtest.celery_task_id = async_result.id
+            
+            logger.info(f"Celery task dispatched for Backtest ID: {db_backtest.id} with Celery Task ID: {async_result.id}.")
         except Exception as e:
             logger.error(f"Failed to dispatch Celery task for Backtest ID {db_backtest.id}: {e}", exc_info=True)
             db_backtest.status = 'failed_dispatch'
@@ -111,18 +116,21 @@ class BacktestService:
 
     async def cancel_backtest_job(self, db: AsyncSession, backtest_to_cancel: models.Backtest):
         """진행 중인 백테스팅 작업을 취소합니다."""
-        if backtest_to_cancel.status in ['completed', 'failed', 'canceled']:
+        if backtest_to_cancel.status not in ['pending', 'running']:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"백테스트가 이미 '{backtest_to_cancel.status}' 상태이므로 취소할 수 없습니다.")
 
-        try:
-            # TODO: Celery Task ID를 DB에 저장하고, 해당 ID로 작업을 취소하는 것이 더 안정적입니다.
-            celery_app.control.revoke(str(backtest_to_cancel.id), terminate=True)
+        # [수정] DB에 저장된 Celery Task ID로 작업을 취소
+        if backtest_to_cancel.celery_task_id:
+            try:
+                celery_app.control.revoke(backtest_to_cancel.celery_task_id, terminate=True)
+                backtest_to_cancel.status = 'canceled'
+                logger.info(f"Backtest ID {backtest_to_cancel.id} (Task ID: {backtest_to_cancel.celery_task_id}) cancellation requested.")
+            except Exception as e:
+                logger.error(f"Failed to send cancellation command for task {backtest_to_cancel.celery_task_id}: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="백테스트 취소 명령에 실패했습니다.")
+        else:
+            # Task ID가 없는 경우 (예: dispatch 실패)
             backtest_to_cancel.status = 'canceled'
-            db.add(backtest_to_cancel)
-            await db.flush()
-            logger.info(f"Backtest ID {backtest_to_cancel.id} cancellation requested and status updated.")
-        except Exception as e:
-            logger.error(f"Failed to send cancellation command for backtest {backtest_to_cancel.id}: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="백테스트 취소 명령에 실패했습니다.")
+            logger.warning(f"Backtest ID {backtest_to_cancel.id} has no Celery Task ID but was marked as canceled.")
 
 backtest_service = BacktestService()

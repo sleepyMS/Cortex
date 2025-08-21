@@ -7,19 +7,15 @@ from typing import List, Optional
 import uuid
 
 from .. import schemas, models
-# ▼▼▼ [수정] 비동기 의존성 및 팩토리 함수 임포트 ▼▼▼
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.live_bot_service import live_bot_service
 from ..limiter import limiter
-# ▲▲▲ [수정] ▲▲▲
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/live-bots", tags=["Live Bots"])
 
-# ▼▼▼ [추가] 라우터 파일 내에서 필요한 의존성을 직접 생성 ▼▼▼
 get_verified_live_bot = create_owner_verifier(models.LiveBot)
-# ▲▲▲ [추가] ▲▲▲
 
 @router.post("/", response_model=schemas.LiveBot, status_code=status.HTTP_201_CREATED, summary="Deploy and start a new live bot")
 @limiter.limit("5/hour") # 봇 생성은 비교적 신중한 작업이므로 제한을 더 강하게 설정

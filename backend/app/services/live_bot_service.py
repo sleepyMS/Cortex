@@ -1,7 +1,7 @@
 # file: backend/app/services/live_bot_service.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload, selectinload
 from fastapi import HTTPException, status
 from typing import List, Optional, Literal
@@ -14,7 +14,7 @@ from ..services.plan_service import plan_service
 from ..services.strategy_service import strategy_service
 from ..services.api_key_service import api_key_service
 from ..celery_app import celery_app
-from ..tasks import run_live_bot_task
+from ..tasks import run_live_bot
 
 logger = logging.getLogger(__name__)
 
@@ -74,17 +74,26 @@ class LiveBotService:
             timeframe=strategy.target_coins[0].timeframe if strategy.target_coins else "1h" # 예시
         )
         db.add(db_live_bot)
-        await db.flush()
+        await db.flush() # ID가 생성되도록 flush
         
-        # 4. Celery 태스크 전송
+        # 4. Celery 태스크 전송 및 Task ID 저장
         try:
-            run_live_bot_task.delay(db_live_bot.id)
-            logger.info(f"Celery task dispatched for LiveBot ID: {db_live_bot.id}.")
+            # 태스크 호출 결과를 변수에 할당하여 ID를 받습니다.
+            async_result = run_live_bot.delay(str(db_live_bot.id))
+            
+            # Celery가 부여한 Task ID를 DB에 저장
+            db_live_bot.celery_task_id = async_result.id
+            db.add(db_live_bot) # db_live_bot을 다시 세션에 추가
+            await db.commit() # 최종 커밋
+            
+            logger.info(f"Celery task dispatched for LiveBot ID: {db_live_bot.id} with Celery Task ID: {async_result.id}.")
         except Exception as e:
             logger.error(f"Failed to dispatch Celery task for LiveBot ID {db_live_bot.id}: {e}", exc_info=True)
+            # 태스크 전송 실패 시, 봇 상태를 'error'로 변경
             db_live_bot.status = 'error'
             db_live_bot.stopped_at = datetime.now(timezone.utc)
             db.add(db_live_bot)
+            await db.commit()
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="라이브 봇 시작에 실패했습니다.")
 
         return db_live_bot
@@ -104,19 +113,22 @@ class LiveBotService:
     async def update_bot_status(
         self, db: AsyncSession, bot_to_update: models.LiveBot, new_status: Literal["active", "paused", "stopped"]
     ) -> models.LiveBot:
-        """라이브 봇의 상태를 업데이트합니다."""
+        """라이브 봇의 상태를 업데이트하고, 필요시 Celery 태스크를 제어합니다."""
         if bot_to_update.status == new_status:
             return bot_to_update
         
         if bot_to_update.status in ['stopped', 'error']:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"'{bot_to_update.status}' 상태의 봇은 제어할 수 없습니다.")
-
-        # Celery 태스크 제어는 동기적으로 작동할 수 있음
+        
         if new_status == "stopped":
-            # TODO: Celery 태스크를 실제로 취소하는 로직 구현 필요 (예: revoke)
-            # celery_app.control.revoke(str(bot_to_update.celery_task_id), terminate=True)
-            bot_to_update.stopped_at = datetime.now(timezone.utc)
-            logger.info(f"LiveBot ID {bot_to_update.id} received 'stop' command.")
+            if bot_to_update.celery_task_id:
+                # Celery 태스크를 중지시키는 핵심 로직
+                celery_app.control.revoke(str(bot_to_update.celery_task_id), terminate=True)
+                bot_to_update.stopped_at = datetime.now(timezone.utc)
+                logger.info(f"LiveBot ID {bot_to_update.id} (Task ID: {bot_to_update.celery_task_id}) received 'stop' command.")
+            else:
+                # Task ID가 없는 경우
+                logger.warning(f"LiveBot ID {bot_to_update.id} has no Celery Task ID but was marked as stopped.")
         
         bot_to_update.status = new_status
         db.add(bot_to_update)
@@ -134,9 +146,11 @@ class LiveBotService:
         if bot_to_delete.status in ['active', 'paused', 'initializing']:
             logger.info(f"LiveBot ID {bot_to_delete.id} is active. Stopping before deletion.")
             try:
+                # update_bot_status를 호출하여 봇 상태를 'stopped'로 변경하고 Celery 태스크를 중지시킵니다.
                 await self.update_bot_status(db, bot_to_delete, "stopped")
             except Exception as e:
                 logger.error(f"Failed to stop LiveBot {bot_to_delete.id} before deletion: {e}", exc_info=True)
+                # 이 경우 봇 레코드가 삭제되지 않고 함수가 예외를 발생시킵니다.
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="봇 삭제 전 중지 실패. 먼저 수동으로 봇을 중지해주세요.")
         
         await db.delete(bot_to_delete)

@@ -45,6 +45,9 @@
     --trader-secondary: 38 90% 90%;
     --pro-primary: 259 92% 66%;
     --pro-secondary: 259 92% 95%;
+
+    --brown-500: 32 37% 55%;
+    --brown-600: 32 37% 45%;
   }
 
   .dark {
@@ -85,6 +88,9 @@
     --trader-secondary: 45 100% 20%;
     --pro-primary: 259 92% 66%;
     --pro-secondary: 259 92% 20%;
+
+    --brown-500: 32 37% 55%; /* 다크 모드에 맞는 HSL 값으로 조정 */
+    --brown-600: 32 37% 45%; /* 다크 모드에 맞는 HSL 값으로 조정 */
   }
 }
 

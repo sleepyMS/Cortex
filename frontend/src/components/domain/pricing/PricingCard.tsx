@@ -72,7 +72,7 @@ export const PricingCard = ({
       cardStyles =
         "bg-gradient-to-br from-yellow-400/10 to-yellow-500/5 border border-yellow-400/30 shadow-[0_0_20px_rgba(255,215,0,0.2)]";
       headerTextColor = "text-yellow-400";
-      buttonStyle = "bg-yellow-400 text-black hover:bg-yellow-400/80";
+      buttonStyle = "bg-yellow-500 text-black hover:bg-yellow-500/80";
     }
   } else if (isPro) {
     if (!isDark) {
@@ -142,8 +142,8 @@ export const PricingCard = ({
       </div>
 
       <Button
-        className={`w-full mt-10 text-lg font-semibold
-          ${buttonStyle}
+        className={`w-full mt-10 text-lg font-semibold 
+          ${buttonStyle} 
         `}
       >
         {isFree ? t("button.start") : t("button.subscribe")}

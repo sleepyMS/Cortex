@@ -7,6 +7,7 @@ from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Float, JSON,
     ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text
 )
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import UUID 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -137,7 +138,7 @@ class Strategy(Base):
     short_exit_rules = Column(JSON, nullable=True)
     tpsl_logic = Column(JSON, nullable=True)
     
-    target_coins = Column(JSON, nullable=False, default=[])
+    target_coins = Column(JSON, nullable=False, server_default=text("'[]'"))
 
     is_public = Column(Boolean, default=False, nullable=False)
     paid_feature_level = Column(String(50), default=PlanType.BASIC, nullable=False)
@@ -155,6 +156,9 @@ class Backtest(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
+
+    celery_task_id = Column(String, index=True, nullable=True)
+    
     status = Column(String(50), nullable=False, default='pending')
     parameters = Column(JSON, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -235,6 +239,9 @@ class LiveBot(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
     api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
+
+    celery_task_id = Column(String, index=True, nullable=True)
+    
     status = Column(String(50), default='active', nullable=False)
     started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     stopped_at = Column(DateTime(timezone=True), nullable=True)
