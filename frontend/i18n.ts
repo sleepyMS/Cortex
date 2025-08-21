@@ -19,7 +19,7 @@ export const pathnames = {
   "/dashboard": "/dashboard",
   "/backtester": "/backtester",
   "/backtester/[backtestId]": "/backtester/[backtestId]",
-  "/strategies/new": "/strategies/new",
+  "/strategies/[strategyId]": "/strategies/[strategyId]",
   "/strategies": "/strategies",
   "/settings/profile": "/settings/profile",
   "/settings/subscription": "/settings/subscription",

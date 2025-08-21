@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/Button";
 import { RuleBlock } from "./RuleBlock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 
-// 👈 1. props 인터페이스 이름 변경
 interface StrategyBuilderCanvasProps {
   longEntryRules: PositionRules | null;
   longExitRules: PositionRules | null;

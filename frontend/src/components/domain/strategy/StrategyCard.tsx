@@ -191,7 +191,7 @@ export function StrategyCard({
       <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem
-        onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+        onClick={() => router.push(`/strategies/${strategy.id}`)}
       >
         <Edit className="mr-2 h-4 w-4" />
         {t("editStrategy")}
@@ -291,7 +291,7 @@ export function StrategyCard({
     return (
       <Card className="flex items-center w-full p-3 transition-all duration-200 ease-in-out border border-border hover:border-primary/50 hover:shadow-md">
         <Link
-          href={`/strategies/${strategy.id}/edit`}
+          href={`/strategies/${strategy.id}`}
           className="flex items-center gap-4 flex-grow truncate"
         >
           <div className="flex-grow truncate">
@@ -364,7 +364,7 @@ export function StrategyCard({
   return (
     <Card className="flex flex-col justify-between h-full transition-all duration-200 ease-in-out border border-border hover:border-primary hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring">
       <Link
-        href={`/strategies/${strategy.id}/edit`}
+        href={`/strategies/${strategy.id}`}
         className="flex flex-col flex-grow h-full p-6"
       >
         <CardHeader className="p-0 mb-4">

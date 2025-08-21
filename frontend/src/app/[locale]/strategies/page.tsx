@@ -226,10 +226,9 @@ export default function StrategiesPage() {
             </SelectContent>
           </Select>
 
-          {/* ▼▼▼ [수정] 지표 필터를 다른 필터와 함께 배치 + 버그 수정 ▼▼▼ */}
           <Select
             value={indicatorFilter}
-            onValueChange={(v: any) => setIndicatorFilter(v)} // 👈 [버그 수정] onValueValueChange -> onValueChange
+            onValueChange={(v: any) => setIndicatorFilter(v)}
           >
             <SelectTrigger>
               <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
@@ -259,7 +258,6 @@ export default function StrategiesPage() {
             </SelectContent>
           </Select>
         </div>
-        {/* ▲▲▲ 필터 레이아웃 수정 및 버그 수정 완료 ▲▲▲ */}
 
         {renderContent()}
 

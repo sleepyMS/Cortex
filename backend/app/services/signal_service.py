@@ -56,7 +56,7 @@ class SignalService:
         요청된 기술적 지표와 관련된 모든 출력값을 계산하여 반환합니다.
         """
         df = await market_data_service.get_latest_data(
-            db=db, ticker=request.ticker, timeframe=request.timeframe, limit=1000
+            db=db, ticker=request.ticker, timeframe=request.timeframe, limit=500
         )
         if df.empty:
             return {}
