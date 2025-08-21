@@ -1,12 +1,18 @@
+# file: backend/app/schemas.py 
+
+from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
-from .models import PlanType
 import uuid
+import logging # 로깅 추가
 
 from .models import PlanType
 from .sanitizers import sanitize_html
+
+logger = logging.getLogger(__name__)
+logger.critical("<<<<< [SCHEMAS.PY] FINAL VERSION v4 LOADED >>>>>") # 증명용 로그
 
 
 # --- 모든 모델의 기반이 될 CamelCaseModel 생성 ---
@@ -184,9 +190,16 @@ class CheckoutRequest(CamelCaseModel):
 class CheckoutResponse(CamelCaseModel):
     checkout_url: str
 
+# file: backend/app/schemas.py
+
 # ==============================================================================
-# 2. 전략, 백테스팅, 자동매매 관련 스키마
+# 2. 전략, 백테스팅, 자동매매 관련 스키마 (최종 완성본)
 # ==============================================================================
+
+# --- [STEP 1] 필요한 타입과 기본 모델을 먼저 정의합니다. ---
+from typing import Annotated # Annotated 임포트 추가
+
+LogicOperator = Literal["AND", "OR"]
 
 class IndicatorValue(CamelCaseModel):
     indicator_key: str
@@ -194,31 +207,34 @@ class IndicatorValue(CamelCaseModel):
     values: Dict[str, Any]
     timeframe: str
 
+# --- [STEP 2] 모든 규칙 블록이 상속할 'BaseLogicBlock'을 정의합니다. ---
 class BaseLogicBlock(CamelCaseModel):
     id: str
-    type: str
-    children: Optional[List['LogicBlock']] = Field(None, description="Nested AND conditions")
-    logic_operator: Optional[Literal["AND", "OR"]] = Field(None, description="Operator for children blocks")
+    children: Optional[List['LogicBlock']] = None
+    logic_operator: LogicOperator = Field('OR', alias='logicOperator')
 
 
+# --- [STEP 3] 각각의 구체적인 규칙 스키마가 'BaseLogicBlock'을 상속받도록 합니다. ---
 class ComparisonLogic(BaseLogicBlock):
-    type: Literal["comparison"]
-    operand_a: Union[IndicatorValue, float, int, None] = None
+    type: Literal['comparison']
+    operand_a: Union[IndicatorValue, float, int, None] = Field(None, alias='operandA')
     operator: str
-    operand_b: Union[IndicatorValue, float, int, None] = None
+    operand_b: Union[IndicatorValue, float, int, None] = Field(None, alias='operandB')
 
 class CrossoverLogic(BaseLogicBlock):
-    type: Literal["crossover"]
-    main_line: Union[IndicatorValue, float, int, None] = None
-    signal_line: Union[IndicatorValue, float, int, None] = None
-    cross_direction: Literal["above", "below"]
+    type: Literal['crossover']
+    main_line: Union[IndicatorValue, float, int, None] = Field(None, alias='mainLine')
+    signal_line: Union[IndicatorValue, float, int, None] = Field(None, alias='signalLine')
+    cross_direction: Literal['above', 'below'] = Field(alias='crossDirection')
 
+# ... (StateLogic, TrendSignalLogic 등 다른 모든 규칙 스키마는 동일하게 BaseLogicBlock을 상속)
+# (이하 생략된 다른 규칙 스키마들은 기존 정의를 그대로 유지하시면 됩니다.)
 class StateLogic(BaseLogicBlock):
     type: Literal["state"]
     indicator: Optional[IndicatorValue] = None
-    lower_bound: Optional[float] = None
-    upper_bound: Optional[float] = None
-    state_action: Literal["enter", "exit", "within"]
+    lower_bound: Optional[float] = Field(None, alias='lowerBound')
+    upper_bound: Optional[float] = Field(None, alias='upperBound')
+    state_action: Literal["enter", "exit", "within"] = Field(alias='stateAction')
 
 class TrendSignalLogic(BaseLogicBlock):
     type: Literal["trend_signal"]
@@ -228,28 +244,40 @@ class TrendSignalLogic(BaseLogicBlock):
 class ChannelLogic(BaseLogicBlock):
     type: Literal["channel"]
     indicator: Optional[IndicatorValue] = None
-    channel_zone: Literal["upper", "middle", "lower", "kumo"]
+    channel_zone: Literal["upper", "middle", "lower", "kumo"] = Field(alias='channelZone')
     action: Literal["enter", "exit", "within"]
 
 class DivergenceLogic(BaseLogicBlock):
     type: Literal["divergence"]
     indicator: Optional[IndicatorValue] = None
-    divergence_type: Literal["bullish", "bearish", "hidden_bullish", "hidden_bearish"]
+    divergence_type: Literal["bullish", "bearish", "hidden_bullish", "hidden_bearish"] = Field(alias='divergenceType')
     
 class PatternLogic(BaseLogicBlock):
     type: Literal["pattern"]
-    pattern_key: str
+    pattern_key: str = Field(alias='patternKey')
     direction: Literal["bullish", "bearish", "any"]
 
-LogicBlock = Union[
-    ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, ChannelLogic, DivergenceLogic, PatternLogic
-]
-AnnotatedLogicBlock = Field(..., discriminator='type')
 
+# --- [STEP 4] [오류 해결의 핵심] 'type' 필드를 판별자로 사용하는 Union 타입을 정의합니다. ---
+LogicBlock = Annotated[
+    Union[
+        ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, ChannelLogic, DivergenceLogic, PatternLogic
+    ],
+    Field(discriminator='type')
+]
+
+
+# --- [STEP 5] 최상위 규칙 컨테이너인 'PositionRules'를 정의합니다. ---
 class PositionRules(CamelCaseModel):
-    logic_operator: Literal["AND", "OR"] = "OR"
+    logic_operator: LogicOperator = Field('OR', alias='logicOperator')
     blocks: List[LogicBlock] = Field(default_factory=list)
 
+
+# --- [STEP 6] 재귀 모델의 타입 참조를 해결하기 위해 모델을 재빌드합니다. ---
+BaseLogicBlock.model_rebuild()
+
+
+# --- [나머지 스키마 정의] ---
 class TpslLogic(CamelCaseModel):
     take_profit_pct: Optional[float] = None
     stop_loss_pct: Optional[float] = None
@@ -320,7 +348,6 @@ class Strategy(CamelCaseModel):
     paid_feature_level: PlanType = PlanType.BASIC
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
 
-    # 👈 [개선 4] DB에서 target_coins가 NULL일 경우에도 항상 list를 반환하도록 보장
     @field_validator('target_coins', mode='before')
     @classmethod
     def validate_target_coins(cls, v):

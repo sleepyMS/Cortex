@@ -15,6 +15,9 @@ from ..services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
 
+logger.critical("<<<<< [SIGNAL SERVICE] 최신 버전 signal_service.py 로드 완료 >>>>>")
+
+
 INDICATOR_KIND_MAP = {
     "STOCHASTIC": "stoch",
     "PARABOLICSAR": "psar",
@@ -278,6 +281,13 @@ class SignalService:
 
         # 2. 자식 블록이 있는지 확인하고, 그에 따라 최종 결과를 조합합니다.
         if block.children and len(block.children) > 0:
+            # ▼▼▼ [새로운 디버깅 로그] 아래 4줄을 여기에 추가해주세요 ▼▼▼
+            logger.debug(f"{indent}--- 객체 검사 시작 ---")
+            logger.debug(f"{indent}블록 ID: {block.id}")
+            logger.debug(f"{indent}블록의 실제 타입: {type(block)}")
+            logger.debug(f"{indent}블록의 모든 속성(dict): {block.__dict__}")
+            # ▲▲▲ 여기까지 추가 ▲▲▲
+
             logger.debug(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logicOperator})")
             children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1) for child in block.children]
             
@@ -295,55 +305,51 @@ class SignalService:
         return final_series.fillna(False)
 
     def _get_required_timeframes_and_indicators(self, request: schemas.SignalCalculationRequest) -> Dict[str, Any]:
-        """전략 규칙을 재귀적으로 분석하여, 필요한 모든 타임프레임과 지표 목록을 안정적으로 추출합니다."""
+        """전략 규칙을 재귀적으로 분석하여, '계산이 필요한' 모든 지표 목록을 안정적으로 추출합니다."""
         
-        # indicatorKey를 식별자로 사용하여 중복 지표 요청을 방지하기 위한 집합
         unique_indicators = set()
         
-        # 재귀적으로 순회하며 IndicatorValue 객체를 찾는 내부 함수
         def find_indicators_recursively(obj: Any):
-            # pydantic 모델일 경우, 속성을 순회
-            if isinstance(obj, schemas.LogicBlock):
-                # 지표를 담을 수 있는 속성 이름 목록
+            # --- [핵심 수정] --- 복잡한 Union(LogicBlock) 대신, 공통 부모 클래스(BaseLogicBlock)로 타입 체크
+            if isinstance(obj, schemas.BaseLogicBlock):
                 indicator_fields = ['operand_a', 'operand_b', 'main_line', 'signal_line', 'indicator']
                 for field in indicator_fields:
                     if hasattr(obj, field):
                         find_indicators_recursively(getattr(obj, field))
-                # 자식 블록도 재귀적으로 탐색
                 if obj.children:
                     for child in obj.children:
                         find_indicators_recursively(child)
             
-            # IndicatorValue 객체를 발견했을 때 처리
             elif isinstance(obj, schemas.IndicatorValue):
-                # 식별자 생성 (예: "EMA_1h_{'length': 20}")
                 identifier = f"{obj.indicator_key}_{obj.timeframe}_{json.dumps(obj.values, sort_keys=True)}"
                 unique_indicators.add(identifier)
 
-        # 정의된 모든 규칙 세트를 순회하며 탐색 시작
         rules_sets = [request.long_entry_rules, request.long_exit_rules, request.short_entry_rules, request.short_exit_rules]
         for rules in rules_sets:
             if rules:
                 for block in rules.blocks:
                     find_indicators_recursively(block)
 
-        # 최종적으로 필요한 타임프레임과 지표 목록을 정리
         timeframes = set([request.timeframe])
         indicators_by_tf = {request.timeframe: {}}
+        
+        base_ohlcv_keys = {'open', 'high', 'low', 'close', 'volume'}
 
         for indicator_str in unique_indicators:
             key, tf, values_str = indicator_str.split('_', 2)
+            
+            if key.lower() in base_ohlcv_keys:
+                continue
+                
             values = json.loads(values_str)
             
             timeframes.add(tf)
             if tf not in indicators_by_tf:
                 indicators_by_tf[tf] = {}
             
-            # pandas-ta가 사용할 형식으로 변환
             kind = INDICATOR_KIND_MAP.get(key.upper(), key.lower())
             indicator_config = {"kind": kind, **values}
             
-            # 동일한 설정의 지표가 중복 추가되는 것을 방지
             config_identifier = json.dumps(indicator_config, sort_keys=True)
             if config_identifier not in indicators_by_tf[tf]:
                  indicators_by_tf[tf][config_identifier] = indicator_config
@@ -351,7 +357,6 @@ class SignalService:
         for tf in indicators_by_tf:
             indicators_by_tf[tf] = list(indicators_by_tf[tf].values())
 
-        # 타임프레임 문자열을 분, 시간, 일 단위로 변환하여 정렬하기 위한 헬퍼
         def timeframe_to_minutes(tf_str):
             if 'm' in tf_str: return int(tf_str.replace('m', ''))
             if 'h' in tf_str: return int(tf_str.replace('h', '')) * 60

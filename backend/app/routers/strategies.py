@@ -150,6 +150,8 @@ async def calculate_realtime_signals(
     db: AsyncSession = Depends(get_async_db)
 ):
     """전략 편집기 차트에 표시할 매매 신호를 실시간으로 계산합니다."""
+    logger.critical("<<<<< [STRATEGIES ROUTER] /calculate-signals API CALLED >>>>>")
+
     try:
         response = await signal_service.generate_signals(db, payload)
         logger.info(f"User {current_user.email} calculated {len(response.signals)} signals for {payload.ticker}.")
