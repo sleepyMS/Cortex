@@ -1,35 +1,29 @@
-// frontend/src/components/domain/backtester/BacktestSetupForm.tsx
+// file: frontend/src/components/domain/backtesting/BacktestSetupForm.tsx
 
 "use client";
 
-import React from "react";
+import * as React from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
-import { format } from "date-fns";
-import { Loader2 } from "lucide-react"; // CalendarIcon은 DatePickerCustom에서 사용되므로 여기서 제거
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@/i18n/navigation";
+import { toast } from "sonner";
+import { addDays, startOfDay } from "date-fns";
+import { DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils";
 import apiClient from "@/lib/apiClient";
-import { Button } from "@/components/ui/Button";
-// 👈 Calendar 대신 DatePickerCustom 임포트
-import { DatePickerCustom } from "@/components/ui/DatePickerCustom";
+import { Strategy } from "@/types/strategy";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/Form";
-import { Input } from "@/components/ui/Input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/Popover"; // Popover는 DatePickerCustom에서 사용됨
 import {
   Select,
   SelectContent,
@@ -37,311 +31,180 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
-import { toast } from "sonner";
-import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { DatePickerCustom } from "@/components/ui/DatePickerCustom"; // DateRangePicker는 이 이름으로 가정
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Loader2 } from "lucide-react";
 
-// --- 폼 스키마 정의 (Zod) ---
-const formSchema = z.object({
-  strategy_id: z.coerce
-    .number()
-    .int()
-    .positive({ message: "전략을 선택해주세요." }),
-  ticker: z
-    .string()
-    .min(1, { message: "거래 쌍을 입력해주세요." })
-    .max(20, { message: "거래 쌍이 너무 깁니다." }),
-  start_date: z.date({ required_error: "시작 날짜를 선택해주세요." }),
-  end_date: z.date({ required_error: "종료 날짜를 선택해주세요." }),
-  initial_capital: z.coerce
-    .number()
-    .min(1, { message: "초기 자본을 1 이상 입력해주세요." }),
-  commission_rate: z.coerce
-    .number()
-    .min(0)
-    .max(0.1, { message: "수수료율은 0%에서 10% 사이여야 합니다." })
-    .optional(),
-});
+// --- Form Validation Schema (Zod) ---
+const formSchema = z
+  .object({
+    strategyId: z.string().uuid({ message: "전략을 선택해주세요." }),
+    dateRange: z.object({
+      from: z.date({ required_error: "시작일을 선택해주세요." }),
+      to: z.date({ required_error: "종료일을 선택해주세요." }),
+    }),
+    initialCapital: z.coerce
+      .number()
+      .min(1, "초기 자본금은 1 이상이어야 합니다."),
+  })
+  .refine((data) => data.dateRange.from < data.dateRange.to, {
+    message: "종료일은 시작일보다 이후여야 합니다.",
+    path: ["dateRange"],
+  });
 
-type BacktestFormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
-// --- API 데이터 타입 정의 ---
-interface StrategyResponse {
-  id: number;
-  name: string;
-  description?: string;
-  is_public: boolean;
-  rules: any;
-  author_id: number;
-  created_at: string;
-  updated_at?: string;
-}
-
-interface BacktestCreatedResponse {
-  id: number;
-  user_id: number;
-  strategy_id: number;
-  status: string;
-  parameters: Record<string, any>;
-  created_at: string;
-  updated_at?: string;
-  completed_at?: string;
-}
-
-interface BacktestSetupFormProps {
-  onBacktestStarted?: () => void;
-}
-
-export function BacktestSetupForm({
-  onBacktestStarted,
-}: BacktestSetupFormProps) {
+export function BacktestSetupForm() {
   const t = useTranslations("BacktestSetupForm");
+  const router = useRouter();
   const queryClient = useQueryClient();
 
-  const form = useForm<BacktestFormValues>({
+  // --- Data Fetching for Strategy Select ---
+  const { data: strategies, isLoading: isLoadingStrategies } = useQuery<
+    Strategy[]
+  >({
+    queryKey: ["userStrategiesForSetup"],
+    queryFn: async () => (await apiClient.get("/strategies?limit=1000")).data,
+  });
+
+  // --- Form Hook Setup ---
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      strategy_id: 0,
-      ticker: "BTC/USDT",
-      start_date: new Date(2023, 0, 1),
-      end_date: new Date(),
-      initial_capital: 10000,
-      commission_rate: 0.001,
+      initialCapital: 10000,
+      dateRange: {
+        from: startOfDay(addDays(new Date(), -365)),
+        to: startOfDay(new Date()),
+      },
     },
   });
 
-  const { data: strategies, isLoading: isLoadingStrategies } = useQuery<
-    StrategyResponse[],
-    Error
-  >({
-    queryKey: ["userStrategies"],
-    queryFn: async () => {
-      const { data } = await apiClient.get("/strategies");
-      return data;
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const createBacktestMutation = useMutation<
-    BacktestCreatedResponse,
-    Error,
-    BacktestFormValues
-  >({
-    mutationFn: async (newBacktest: BacktestFormValues) => {
+  // --- Mutation for Submitting Backtest Job ---
+  const createBacktestMutation = useMutation({
+    mutationFn: (data: FormValues) => {
       const payload = {
-        strategy_id: newBacktest.strategy_id,
-        ticker: newBacktest.ticker,
-        start_date: newBacktest.start_date.toISOString(),
-        end_date: newBacktest.end_date.toISOString(),
-        initial_capital: newBacktest.initial_capital,
-        additional_parameters: {
-          commission_rate: newBacktest.commission_rate,
-        },
+        strategy_id: data.strategyId,
+        start_date: data.dateRange.from.toISOString(),
+        end_date: data.dateRange.to.toISOString(),
+        initial_capital: data.initialCapital,
       };
-      const { data } = await apiClient.post("/backtests", payload);
-      return data;
+      return apiClient.post("/backtests", payload);
     },
     onSuccess: () => {
-      toast.success(t("backtestStartedSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["userBacktests"] });
-      form.reset();
-      onBacktestStarted?.();
+      toast.success(t("submitSuccess"));
+      // 목록 페이지의 캐시를 무효화하여 다음 방문 시 최신 데이터를 불러오게 함
+      queryClient.invalidateQueries({ queryKey: ["backtests"] });
+      // 목록 페이지로 리디렉션하여 사용자가 방금 시작한 작업을 바로 확인하게 함
+      router.push("/backtester");
     },
-    onError: (error) => {
-      const apiErrorDetail = (error as any).response?.data?.detail;
-      const errorMessage = apiErrorDetail || error.message;
-      toast.error(t("backtestStartedError", { error: errorMessage }));
-      console.error("Backtest submission failed:", errorMessage, error);
-    },
+    onError: (error: any) =>
+      toast.error(
+        t("submitError", {
+          error: error?.response?.data?.detail || error.message,
+        })
+      ),
   });
 
-  const onSubmit = (values: BacktestFormValues) => {
-    if (values.start_date > values.end_date) {
-      form.setError("end_date", {
-        type: "manual",
-        message: t("endDateBeforeStartDateError"),
-      });
-      return;
-    }
+  // --- [확장 포인트] 사용자 구독 플랜에 따른 기간 제한 로직 ---
+  // const { data: subscription } = useQuery(...);
+  // const maxDaysAllowed = subscription?.plan === 'PRO' ? 365 * 5 : 365;
+  // const disabledDate = (date) => date > new Date() || date < addDays(new Date(), -maxDaysAllowed);
 
+  const onSubmit = (values: FormValues) => {
     createBacktestMutation.mutate(values);
   };
 
   return (
-    <Card className="p-6">
-      <h2 className="mb-4 text-2xl font-bold text-foreground">{t("title")}</h2>
-      <p className="mb-6 text-muted-foreground">{t("description")}</p>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* 전략 선택 */}
-          <FormField
-            control={form.control}
-            name="strategy_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("strategyLabel")}</FormLabel>
-                <Select
-                  onValueChange={(value) => field.onChange(parseInt(value))}
-                  value={field.value ? String(field.value) : ""}
-                  disabled={
-                    isLoadingStrategies || createBacktestMutation.isPending
-                  }
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={t("selectStrategyPlaceholder")}
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {isLoadingStrategies ? (
-                      <SelectItem value="loading" disabled>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        {t("loadingStrategies")}
-                      </SelectItem>
-                    ) : strategies?.length === 0 ? (
-                      <SelectItem value="no-strategies" disabled>
-                        {t("noStrategiesAvailable")}
-                      </SelectItem>
-                    ) : (
-                      strategies?.map((strategy) => (
-                        <SelectItem
-                          key={strategy.id}
-                          value={String(strategy.id)}
-                        >
-                          {strategy.name}
+    <Card className="max-w-3xl mx-auto">
+      <CardHeader>
+        <CardTitle>{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="strategyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("strategyLabel")}</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isLoadingStrategies}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        {isLoadingStrategies ? (
+                          t("strategyLoading")
+                        ) : (
+                          <SelectValue placeholder={t("strategyPlaceholder")} />
+                        )}
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {strategies?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
                         </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* 거래 쌍 (Ticker) */}
-          <FormField
-            control={form.control}
-            name="ticker"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("tickerLabel")}</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="BTC/USDT"
-                    {...field}
-                    disabled={createBacktestMutation.isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* 날짜 범위 선택 (DatePickerCustom 사용) */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>{t("startDateLabel")}</FormLabel>
-                  <FormControl>
-                    <DatePickerCustom
-                      selectedDate={field.value}
-                      onSelectDate={field.onChange}
-                      disabled={createBacktestMutation.isPending}
-                      maxDate={form.getValues("end_date")} // 시작 날짜는 종료 날짜보다 늦을 수 없음
-                      placeholder={t("pickADate")}
-                    />
-                  </FormControl>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>{t("strategyDescription")}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
-              name="end_date"
+              name="dateRange"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>{t("endDateLabel")}</FormLabel>
-                  <FormControl>
-                    <DatePickerCustom
-                      selectedDate={field.value}
-                      onSelectDate={field.onChange}
-                      disabled={createBacktestMutation.isPending}
-                      minDate={form.getValues("start_date")} // 종료 날짜는 시작 날짜보다 빠를 수 없음
-                      maxDate={new Date()} // 오늘 날짜 이후는 비활성화
-                      placeholder={t("pickADate")}
-                    />
-                  </FormControl>
+                  <FormLabel>{t("dateRangeLabel")}</FormLabel>
+                  <DatePickerCustom
+                    date={field.value}
+                    setDate={(range?: DateRange) => field.onChange(range)}
+                    // disabled={disabledDate} // 향후 플랜 연동 시 활성화
+                  />
+                  <FormDescription>{t("dateRangeDescription")}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
 
-          {/* 초기 자본 */}
-          <FormField
-            control={form.control}
-            name="initial_capital"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("initialCapitalLabel")}</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="10000"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    disabled={createBacktestMutation.isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="initialCapital"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("initialCapitalLabel")}</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 10000" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    {t("initialCapitalDescription")}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* 추가 파라미터: 수수료율 (예시) */}
-          <FormField
-            control={form.control}
-            name="commission_rate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("commissionRateLabel")}</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    placeholder="0.001"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    disabled={createBacktestMutation.isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={createBacktestMutation.isPending}
-          >
-            {createBacktestMutation.isPending ? (
-              <>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={createBacktestMutation.isPending}
+            >
+              {createBacktestMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t("startingBacktest")}
-              </>
-            ) : (
-              t("runBacktestButton")
-            )}
-          </Button>
-        </form>
-      </Form>
+              )}
+              {t("submitButton")}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
     </Card>
   );
 }

@@ -376,6 +376,8 @@
   },
   "Navigation": {
     "strategies": "Strategies",
+
+    "backtester": "Backtest",
     "community": "Community"
   },
   "BacktestSetupForm": {

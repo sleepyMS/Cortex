@@ -193,7 +193,7 @@ export default function BacktesterPage() {
 
   return (
     <AuthGuard>
-      <div className="container mx-auto max-w-screen-2xl px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
           <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
           <Link href="/backtester/new">

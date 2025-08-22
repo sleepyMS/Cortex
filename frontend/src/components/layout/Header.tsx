@@ -41,6 +41,9 @@ export function Header() {
                 <Link href="/strategies">
                   <Button variant="ghost">{tNav("strategies")}</Button>
                 </Link>
+                <Link href="/backtester">
+                  <Button variant="ghost">{tNav("backtester")}</Button>
+                </Link>
                 <Link href="/community">
                   <Button variant="ghost">{tNav("community")}</Button>
                 </Link>

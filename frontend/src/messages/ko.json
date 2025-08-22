@@ -376,6 +376,7 @@
   },
   "Navigation": {
     "strategies": "전략",
+    "backtester": "백테스트",
     "community": "커뮤니티"
   },
   "BacktestSetupForm": {
