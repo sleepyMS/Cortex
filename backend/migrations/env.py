@@ -10,27 +10,27 @@ from sqlalchemy import engine_from_config, pool
 
 # --- 1. 경로 설정 및 .env 파일 로드 ---
 # __file__은 현재 파일(env.py)의 경로입니다.
-#これを基準にプロジェクトのルートディレクトリのパスを計算します。
-# os.getcwd()よりはるかに安定した方法です。
+# 이를 기준으로 프로젝트 루트 디렉토리의 경로를 계산합니다.
+# os.getcwd() 보다 훨씬 안정적인 방법입니다.
 MIGRATIONS_DIR = os.path.dirname(__file__)
 BACKEND_DIR = os.path.abspath(os.path.join(MIGRATIONS_DIR, '..'))
-sys.path.insert(0, BACKEND_DIR) # sys.pathの最も前にプロジェクトのルートを追加します。
+sys.path.insert(0, BACKEND_DIR) # sys.path 가장 앞에 프로젝트 경로를 추가합니다.
 
-# .envファイルをロードします。
+# .env 파일을 로드합니다.
 dotenv_path = os.path.join(BACKEND_DIR, '.env')
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
 
-# Alembic設定オブジェクトをロードします。これはalembic.iniファイルの設定を含んでいます。
+# Alembic 설정 객체를 로드합니다. 이는 alembic.ini 파일 설정을 포함하고 있습니다.
 config = context.config
 
-# Pythonロギングを設定します。
+# Python 로깅을 설정합니다.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# --- 2. SQLAlchemyモデルをインポートし、target_metadataを設定します。 ---
-# Alembicがテーブルの変更を自動的に検出できるように、
-# Baseを継承するすべてのモデルをインポートする必要があります。
+# --- 2. SQL Allchemy 모델을 가져오고 target_metadata를 설정합니다. ---
+# Alembic이 테이블의 변경을 자동으로 검출할 수 있도록,
+# Base를 상속하는 모든 모델을 가져와야 합니다.
 try:
     from app.database import Base
     import app.models  # 이 임포트를 통해 모든 모델이 Base.metadata에 등록됩니다.
@@ -42,9 +42,9 @@ except (ImportError, AttributeError) as e:
 
 
 # --- 3. (핵심) Alembic 실행을 위한 동기 DB URL 설정 ---
-# FastAPIアプリケーションは非同期ドライバ(asyncpg)を使用しますが、
-# Alembicは同期的に実行されるため、同期ドライバ(psycopg2)が必要です。
-# .envから非同期URLを読み込み、Alembic用に同期URLに変換します。
+# Fast API 어플리케이션은 비동기 드라이버(asyncpg)를 사용하는데,
+# Alembic은 동기적으로 실행되기 때문에 동기 드라이버(psycopg2)가 필요합니다.
+# .env에서 비동기 URL을 불러와 Alembic용으로 동기화 URL로 변환합니다.
 db_url = os.getenv("DATABASE_URL")
 if not db_url:
     raise ValueError("DATABASE_URL 환경 변수가 설정되지 않았습니다.")
