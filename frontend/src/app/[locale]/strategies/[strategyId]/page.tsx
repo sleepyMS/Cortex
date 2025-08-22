@@ -1,3 +1,5 @@
+// file: frontend/src/app/[locale]]/strategies/[strategyId]/page.tsx
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -10,7 +12,6 @@ import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
-// import { debounce } from "lodash";
 
 // --- 커스텀 훅, 타입, 유틸리티 임포트 ---
 import { useStrategyState } from "@/hooks/useStrategyState";

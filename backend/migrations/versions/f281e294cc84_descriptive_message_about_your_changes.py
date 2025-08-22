@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: cb62262c04c3
+Revision ID: f281e294cc84
 Revises: 
-Create Date: 2025-08-12 23:28:17.359949
+Create Date: 2025-08-22 10:24:27.887778
 
 """
 from typing import Sequence, Union
@@ -12,11 +12,10 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'cb62262c04c3'
+revision: str = 'f281e294cc84'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
-
 
 TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"]
 
@@ -48,6 +47,7 @@ def upgrade() -> None:
         op.create_index(f'idx_{table_name}_ticker_time_desc', table_name, ['ticker', sa.text('time DESC')])
 
         print(f"Table '{table_name}' created and converted to hypertable.")
+
     op.create_table('plans',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Enum('BASIC', 'TRADER', 'PRO', name='plantype'), nullable=False),
@@ -162,7 +162,7 @@ def upgrade() -> None:
     sa.Column('short_entry_rules', sa.JSON(), nullable=True),
     sa.Column('short_exit_rules', sa.JSON(), nullable=True),
     sa.Column('tpsl_logic', sa.JSON(), nullable=True),
-    sa.Column('target_coins', sa.JSON(), nullable=False),
+    sa.Column('target_coins', sa.JSON(), server_default=sa.text("'[]'"), nullable=False),
     sa.Column('is_public', sa.Boolean(), nullable=False),
     sa.Column('paid_feature_level', sa.String(length=50), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -190,6 +190,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('strategy_id', sa.UUID(), nullable=False),
+    sa.Column('celery_task_id', sa.String(), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('parameters', sa.JSON(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -199,11 +200,13 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_backtests_celery_task_id'), 'backtests', ['celery_task_id'], unique=False)
     op.create_table('live_bots',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('strategy_id', sa.UUID(), nullable=False),
     sa.Column('api_key_id', sa.UUID(), nullable=False),
+    sa.Column('celery_task_id', sa.String(), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('stopped_at', sa.DateTime(timezone=True), nullable=True),
@@ -216,6 +219,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_live_bots_celery_task_id'), 'live_bots', ['celery_task_id'], unique=False)
     op.create_table('backtest_results',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('backtest_id', sa.UUID(), nullable=False),
@@ -295,7 +299,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_community_posts_created_at'), table_name='community_posts')
     op.drop_table('community_posts')
     op.drop_table('backtest_results')
+    op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
     op.drop_table('live_bots')
+    op.drop_index(op.f('ix_backtests_celery_task_id'), table_name='backtests')
     op.drop_table('backtests')
     op.drop_table('subscriptions')
     op.drop_table('strategies')

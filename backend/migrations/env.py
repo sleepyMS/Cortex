@@ -1,81 +1,71 @@
-from logging.config import fileConfig
-import os
-from dotenv import load_dotenv
+# backend/migrations/env.py
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+import os
+import sys
+from logging.config import fileConfig
 
 from alembic import context
+from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
 
-# --- 디버깅 시작 ---
-print(f"DEBUG: 현재 작업 디렉토리: {os.getcwd()}")
-dotenv_path = os.path.join(os.getcwd(), '.env') # .env 경로 수정 확인
-print(f"DEBUG: .env 파일 경로 시도: {dotenv_path}")
+# --- 1. 경로 설정 및 .env 파일 로드 ---
+# __file__은 현재 파일(env.py)의 경로입니다.
+#これを基準にプロジェクトのルートディレクトリのパスを計算します。
+# os.getcwd()よりはるかに安定した方法です。
+MIGRATIONS_DIR = os.path.dirname(__file__)
+BACKEND_DIR = os.path.abspath(os.path.join(MIGRATIONS_DIR, '..'))
+sys.path.insert(0, BACKEND_DIR) # sys.pathの最も前にプロジェクトのルートを追加します。
 
+# .envファイルをロードします。
+dotenv_path = os.path.join(BACKEND_DIR, '.env')
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
-    print("DEBUG: .env 파일 로드 성공.")
-    print(f"DEBUG: DATABASE_URL 환경 변수: {os.getenv('DATABASE_URL')}")
-else:
-    print("DEBUG: .env 파일 찾을 수 없음. 경로를 다시 확인하세요.")
 
-# target_metadata를 임포트할 모델의 Base로 설정
-import sys
+# Alembic設定オブジェクトをロードします。これはalembic.iniファイルの設定を含んでいます。
+config = context.config
 
-app_path = os.path.join(os.getcwd(), 'app')
-print(f"DEBUG: sys.path에 추가할 경로: {app_path}")
-if app_path not in sys.path:
-    sys.path.append(app_path)
-    print(f"DEBUG: {app_path}를 sys.path에 추가했습니다.")
-else:
-    print(f"DEBUG: {app_path}는 이미 sys.path에 있습니다.")
+# Pythonロギングを設定します。
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
 
+# --- 2. SQLAlchemyモデルをインポートし、target_metadataを設定します。 ---
+# Alembicがテーブルの変更を自動的に検出できるように、
+# Baseを継承するすべてのモデルをインポートする必要があります。
 try:
     from app.database import Base
-    # 중요: app.models 모듈을 명시적으로 임포트하여 SQLAlchemy 모델들이 Base.metadata에 등록되도록 합니다.
-    import app.models # 이 줄을 추가!
-
-    print(f"DEBUG: app.database.Base 임포트 성공. Base 객체: {Base}")
-    print(f"DEBUG: app.models 임포트 성공.")
-
-
-    # Base.metadata에 등록된 테이블 확인
-    if Base.metadata.tables:
-        print("DEBUG: Base.metadata에 등록된 테이블:")
-        for table_name, table_obj in Base.metadata.tables.items():
-            print(f" - {table_name}")
-    else:
-        print("DEBUG: Base.metadata.tables에 등록된 테이블이 없습니다. (문제 예상 지점)")
-
+    import app.models  # 이 임포트를 통해 모든 모델이 Base.metadata에 등록됩니다.
     target_metadata = Base.metadata
-    print(f"DEBUG: target_metadata 설정 완료. 실제 target_metadata: {target_metadata}")
+except (ImportError, AttributeError) as e:
+    print(f"모델 임포트 오류: {e}")
+    print("BACKEND_DIR 경로 또는 app/models/__init__.py 설정을 확인하세요.")
+    target_metadata = None
 
-except ImportError as e:
-    print(f"ERROR: app.database.Base 또는 app.models 임포트 실패: {e}")
-    target_metadata = None
-except Exception as e:
-    print(f"ERROR: Base.metadata 처리 중 오류 발생: {e}")
-    target_metadata = None
-# --- 디버깅 끝 ---
+
+# --- 3. (핵심) Alembic 실행을 위한 동기 DB URL 설정 ---
+# FastAPIアプリケーションは非同期ドライバ(asyncpg)を使用しますが、
+# Alembicは同期的に実行されるため、同期ドライバ(psycopg2)が必要です。
+# .envから非同期URLを読み込み、Alembic用に同期URLに変換します。
+db_url = os.getenv("DATABASE_URL")
+if not db_url:
+    raise ValueError("DATABASE_URL 환경 변수가 설정되지 않았습니다.")
+
+# 'postgresql+asyncpg://' -> 'postgresql://' 로 변경합니다.
+# SQLAlchemy는 드라이버가 명시되지 않으면 psycopg2를 기본으로 사용합니다.
+if db_url.startswith("postgresql+asyncpg://"):
+    sync_db_url = db_url.replace("+asyncpg", "")
+    # Alembic 설정의 sqlalchemy.url 값을 덮어씁니다.
+    config.set_main_option('sqlalchemy.url', sync_db_url)
+else:
+    # 이미 동기 URL인 경우 그대로 사용합니다.
+    config.set_main_option('sqlalchemy.url', db_url)
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
-    url = os.getenv("DATABASE_URL")
+    """'오프라인' 모드에서 마이그레이션을 실행합니다."""
     if target_metadata is None:
-        raise Exception("target_metadata가 로드되지 않았습니다. env.py를 확인하세요.")
+        raise Exception("target_metadata가 로드되지 않았습니다.")
     context.configure(
-        url=url,
+        url=config.get_main_option("sqlalchemy.url"), # 수정된 동기 URL 사용
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -86,28 +76,25 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    # config.get_section에서 sqlalchemy.url을 직접 사용하지 않고,
-    # offline 모드와 동일하게 os.getenv("DATABASE_URL")을 사용하도록 변경
-    # 이는 alembic.ini의 %(DATABASE_URL)s 변수 대체가 실패할 때의 우회책입니다.
+    """'온라인' 모드에서 마이그레이션을 실행합니다."""
     if target_metadata is None:
-        raise Exception("target_metadata가 로드되지 않았습니다. env.py를 확인하세요.")
+        raise Exception("target_metadata가 로드되지 않았습니다.")
+
+    # alembic.ini 파일의 설정과 위에서 수정한 sqlalchemy.url을 사용하여
+    # DB 엔진에 연결합니다.
     connectable = engine_from_config(
-        {"sqlalchemy.url": os.getenv("DATABASE_URL")},
+        config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
     with connectable.connect() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata
         )
+
         with context.begin_transaction():
-            context.run_migrations()    
+            context.run_migrations()
 
 
 if context.is_offline_mode():
