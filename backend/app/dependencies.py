@@ -1,6 +1,5 @@
 # file: backend/app/dependencies.py
 
-import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Annotated, Optional, Type, TypeVar, AsyncGenerator
@@ -12,33 +11,32 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import models, schemas, security 
-from .database import AsyncSessionLocal, Base # 비동기 세션 임포트
+# --- 1. 중앙 설정 및 모듈 임포트 ---
+from . import models
+from .config import settings  
+from .database import AsyncSessionLocal, Base
 
-# 환경 변수 및 OAuth2 설정 (변경 없음)
-SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+# OAuth2 스킴 설정
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
-# --- 비동기 DB 세션 의존성 ---
-async def get_async_db() -> AsyncGenerator[AsyncSession, None]: 
+
+# ==============================================================================
+# 섹션 1: 데이터베이스 의존성
+# ==============================================================================
+
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """비동기 데이터베이스 세션을 생성하고 API 처리가 끝나면 자동으로 닫습니다."""
     async with AsyncSessionLocal() as session:
         yield session
 
-# --- 인증 관련 유틸리티 및 의존성 ---
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    # 이 함수는 DB I/O가 없으므로 동기(def)를 유지합니다.
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+# ==============================================================================
+# 섹션 2: 인증 및 권한 부여 의존성
+# ==============================================================================
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme), 
-    db: AsyncSession = Depends(get_async_db)
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_async_db)]
 ) -> models.User:
     """JWT 토큰을 검증하고 DB에서 사용자 정보를 조회합니다. (비활성 사용자 포함)"""
     credentials_exception = HTTPException(
@@ -47,14 +45,14 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
+        # 설정값을 settings 객체에서 가져옵니다.
+        payload = jwt.decode(token, settings.AUTH.SECRET_KEY, algorithms=[settings.AUTH.ALGORITHM])
+        email: Optional[str] = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
-    # 비동기 쿼리 실행
+
     query = (
         select(models.User)
         .options(joinedload(models.User.subscription).joinedload(models.Subscription.plan).joinedload(models.Plan.features))
@@ -62,49 +60,55 @@ async def get_current_user(
     )
     result = await db.execute(query)
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         raise credentials_exception
     return user
 
-def get_current_active_user(current_user: Annotated[models.User, Depends(get_current_user)]) -> models.User:
+
+def get_current_active_user(
+    current_user: Annotated[models.User, Depends(get_current_user)]
+) -> models.User:
     """현재 로그인된 사용자가 활성 상태인지 확인합니다."""
     if not current_user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비활성 사용자입니다.")
     return current_user
 
-def get_current_active_admin_user(current_user: models.User = Depends(get_current_active_user)):
+
+def get_current_admin_user(
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+) -> models.User:
     """현재 사용자가 관리자 권한을 가졌는지 확인합니다."""
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
     return current_user
 
 
-# --- 소유권 검증 의존성 팩토리 ---
+# ==============================================================================
+# 섹션 3: 소유권 검증 의존성 (Owner Verification)
+# ==============================================================================
 
 ModelType = TypeVar("ModelType", bound=Base)
 
 def create_owner_verifier(
-    model: Type[ModelType], 
-    owner_field: str = "user_id" # 대부분 user_id를 사용하므로 기본값 설정
+    model: Type[ModelType],
+    owner_field: str = "user_id"
 ):
     """
     지정된 모델의 소유권을 검증하는 FastAPI 의존성을 동적으로 생성하는 팩토리 함수.
-    경로 파라미터 이름은 'strategy_id', 'backtest_id'처럼 '{model_name}_id' 형식으로 가정합니다.
+    경로 파라미터 이름은 '{model_name}_id' 형식으로 가정합니다. (예: strategy_id)
     """
     async def verifier(
         request: Request,
-        db: AsyncSession = Depends(get_async_db),
-        current_user: models.User = Depends(get_current_active_user),
+        db: Annotated[AsyncSession, Depends(get_async_db)],
+        current_user: Annotated[models.User, Depends(get_current_active_user)],
     ) -> ModelType:
-        
         model_name = model.__name__.lower()
         id_field_name = f"{model_name}_id"
-        
         model_id_str = request.path_params.get(id_field_name)
+
         if not model_id_str:
             raise HTTPException(status_code=500, detail=f"Path parameter '{id_field_name}' not found.")
-        
         try:
             model_id = uuid.UUID(model_id_str)
         except ValueError:
@@ -118,7 +122,7 @@ def create_owner_verifier(
             raise HTTPException(status_code=404, detail=f"{model_name.capitalize()} not found.")
         
         instance_owner_id = getattr(instance, owner_field, None)
-        if instance_owner_id != current_user.id:
+        if instance_owner_id != current_user.id and current_user.role != "admin":
             raise HTTPException(status_code=403, detail="이 리소스에 접근할 권한이 없습니다.")
             
         return instance
@@ -198,49 +202,3 @@ async def get_existing_post(
     if not post:
         raise HTTPException(status_code=404, detail="댓글을 작성할 게시물을 찾을 수 없습니다.")
     return post
-
-# --- 현재 사용자 가져오기 의존성 함수 ---
-async def get_current_user(
-    token: str = Depends(oauth2_scheme), 
-    db: AsyncSession = Depends(get_async_db)
-) -> models.User:
-    """JWT 토큰을 검증하고 DB에서 사용자 정보를 조회합니다."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="인증 정보를 확인할 수 없습니다.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    result = await db.execute(
-        select(models.User)
-        .options(joinedload(models.User.subscription).joinedload(models.Subscription.plan).joinedload(models.Plan.features))
-        .filter(models.User.email == email)
-    )
-    user = result.scalar_one_or_none()
-    
-    if user is None:
-        raise credentials_exception
-    return user
-
-def get_current_active_user(
-    current_user: Annotated[models.User, Depends(get_current_user)]
-) -> models.User:
-    """현재 로그인된 사용자가 활성 상태인지 확인합니다."""
-    if not current_user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비활성화된 계정입니다.")
-    return current_user
-
-def get_current_admin_user(
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
-) -> models.User:
-    """현재 사용자가 관리자 권한을 가졌는지 확인합니다."""
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
-    return current_user

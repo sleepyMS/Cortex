@@ -6,7 +6,6 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
-import os
 import logging
 from typing import Optional
 import secrets
@@ -14,6 +13,7 @@ import string
 
 from . import models
 from .database import AsyncSessionLocal  # 비동기 세션을 직접 사용해야 할 경우를 위해 임포트
+from .config import settings
 from passlib.context import CryptContext
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -24,6 +24,17 @@ logger = logging.getLogger(__name__)
 
 # --- 비밀번호 해싱 설정 (Passlib Bcrypt) ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """JWT 액세스 토큰을 생성합니다."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.AUTH.ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.AUTH.SECRET_KEY, algorithm=settings.AUTH.ALGORITHM)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """평문 비밀번호와 해싱된 비밀번호를 비교하여 유효성을 검증합니다."""
@@ -56,17 +67,17 @@ def verify_refresh_token_secret(plain_secret: str, hashed_secret: str) -> bool:
         return False
 
 # --- JWT 설정 ---
-SECRET_KEY = os.getenv("SECRET_KEY", "your_super_secret_jwt_key_that_is_at_least_32_chars_long")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+SECRET_KEY = settings.AUTH.SECRET_KEY
+ALGORITHM = settings.AUTH.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = int(settings.AUTH.ACCESS_TOKEN_EXPIRE_MINUTES)
+REFRESH_TOKEN_EXPIRE_DAYS = int(settings.AUTH.REFRESH_TOKEN_EXPIRE_DAYS)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 # --- 암호화 키 설정 (Fernet) ---
-_ENCRYPTION_MASTER_KEY_ENV = os.getenv("ENCRYPTION_MASTER_KEY")
-_ENCRYPTION_SALT_ENV = os.getenv("ENCRYPTION_SALT")
+_ENCRYPTION_MASTER_KEY_ENV = settings.APP.ENCRYPTION_MASTER_KEY
+_ENCRYPTION_SALT_ENV = settings.APP.ENCRYPTION_SALT
 
 fernet = None
 if not _ENCRYPTION_MASTER_KEY_ENV or not _ENCRYPTION_SALT_ENV:

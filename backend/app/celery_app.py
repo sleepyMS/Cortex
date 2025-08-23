@@ -1,29 +1,51 @@
 # file: backend/app/celery_app.py
-# import eventlet
-# eventlet.monkey_patch()  # 👈 이 두 줄을 반드시 주석 처리하거나 삭제합니다.
+
 import os
-from celery import Celery
+import uuid
+from celery import Celery, Task
+import asyncio
 
-CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+# --- 1. (변경) config.py에서 설정 객체를 임포트합니다. ---
+from backend.app.config import settings
+from backend.app.database import SyncSessionLocal
+from backend.app.models import Backtest
+from sqlalchemy import update
 
-# Celery 인스턴스 생성
+# --- 2. (개선) 중앙화된 오류 처리를 위한 커스텀 Task 클래스 ---
+class DatabaseTask(Task):
+    """
+    태스크 실패 시 DB 상태를 업데이트하는 공통 로직을 포함하는 커스텀 Task 클래스
+    """
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        print(f"Task {self.name}[{task_id}] failed: {exc}")
+        if self.name == 'run_backtest' and args:
+            backtest_id_str = args[0]
+            try:
+                with SyncSessionLocal() as session:
+                    backtest_uuid = uuid.UUID(backtest_id_str)
+                    stmt = update(Backtest).where(Backtest.id == backtest_uuid).values(status='failed')
+                    session.execute(stmt)
+                    session.commit()
+                    print(f"Successfully updated backtest {backtest_id_str} status to 'failed'.")
+            except Exception as e:
+                print(f"CRITICAL: Could not update backtest status for {backtest_id_str}: {e}")
+        super().on_failure(exc, task_id, args, kwargs, einfo)
+
+# --- 3. (변경) settings 객체를 사용하여 Celery 앱 설정 ---
+# os.getenv() 대신 중앙 설정 객체인 settings를 사용합니다.
 celery_app = Celery(
     'cortex_worker',
-    broker=CELERY_BROKER_URL,
-    backend=CELERY_RESULT_BACKEND,
-    include=['backend.app.tasks']
+    broker=settings.DB.REDIS_URL,
+    backend=settings.DB.REDIS_URL,
+    include=['backend.app.tasks', 'backend.app.celery_beat'],
+    task_cls=DatabaseTask
 )
 
-# 비동기 Celery 워커 설정 추가
+# 꼭 필요한 설정만 남겨 간소화합니다.
 celery_app.conf.update(
     task_track_started=True,
     broker_connection_retry_on_startup=True,
-    worker_prefetch_multiplier=1,
-    # ❗️ worker_concurrency 설정은 CPU 코어 수나 작업 특성에 맞게 조절할 수 있습니다.
-    #    비동기 워커는 단일 프로세스에서 여러 I/O 바운드 작업을 효율적으로 처리할 수 있습니다.
-    #    일단은 주석 처리하거나, 필요 시 값을 조절하여 사용합니다.
-    # worker_concurrency=1, 
+    worker_prefetch_multiplier=1
 )
 
 celery_app.conf.timezone = 'UTC'

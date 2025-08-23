@@ -50,36 +50,62 @@ class UserService:
     async def get_or_create_social_user(
         self, db: AsyncSession, provider: str, social_id: str, email: str, username: Optional[str]
     ) -> models.User:
-        """소셜 계정 정보를 바탕으로 사용자를 찾거나 생성하고 SocialAccount와 연결합니다."""
-        query = select(models.SocialAccount).options(joinedload(models.SocialAccount.user)).filter_by(provider=provider, provider_user_id=social_id)
-        result = await db.execute(query)
-        social_account = result.scalar_one_or_none()
-        if social_account and social_account.user:
-            return social_account.user
-
-        user = await self.get_user_by_email(db, email)
-        if user:
-            new_social_account = models.SocialAccount(user_id=user.id, provider=provider, provider_user_id=social_id)
-            db.add(new_social_account)
-            await db.flush()
-            return user
+        """
+        소셜 계정 정보를 바탕으로 사용자를 찾거나 생성하고 SocialAccount와 연결합니다.
+        로직을 세 가지 시나리오에 따라 명확하게 분리하여 가독성을 높였습니다.
+        """
+        # Case 1: 가장 흔한 경우. 기존 소셜 로그인 사용자인지 확인합니다.
+        query = select(models.SocialAccount).options(
+            joinedload(models.SocialAccount.user).joinedload(models.User.subscription)
+        ).filter_by(provider=provider, provider_user_id=social_id)
         
-        final_username = await self._generate_unique_username(db, username, email)
-        new_user = models.User(
-            email=email, username=final_username, hashed_password=None,
-            is_active=True, role="user", is_email_verified=True
+        result = await db.execute(query)
+        existing_social_account = result.scalar_one_or_none()
+        
+        if existing_social_account and existing_social_account.user:
+            logger.info(f"Existing social user found: {email} ({provider})")
+            return existing_social_account.user
+
+        # Case 2: 소셜 계정은 없지만, 동일 이메일의 기존 사용자인지 확인합니다.
+        user = await self.get_user_by_email(db, email)
+
+        if not user:
+            # Case 3: 완전히 새로운 사용자입니다. 신규 사용자와 구독을 생성합니다.
+            logger.info(f"Creating a new user for social login: {email} ({provider})")
+            final_username = await self._generate_unique_username(db, username, email)
+            user = models.User(
+                email=email,
+                username=final_username,
+                hashed_password=None, # 소셜 로그인이므로 비밀번호는 없음
+                is_active=True,
+                role="user",
+                is_email_verified=True # 소셜 제공자가 이메일을 보증하므로 바로 인증 처리
+            )
+            db.add(user)
+            await db.flush()  # user.id를 확정하기 위해 flush
+            
+            # 신규 사용자에게 기본 플랜을 할당합니다.
+            await self._assign_basic_plan(db, user)
+
+        # 이제 user 객체는 반드시 존재합니다 (Case 2에서 찾았거나 Case 3에서 생성됨).
+        # 이 사용자에게 새로운 소셜 계정 정보를 연결합니다.
+        logger.info(f"Linking new social account ({provider}) to user: {email}")
+        new_social_account = models.SocialAccount(
+            user_id=user.id,
+            provider=provider,
+            provider_user_id=social_id
         )
-        db.add(new_user)
+        db.add(new_social_account)
         await db.flush()
 
-        new_social_account = models.SocialAccount(user_id=new_user.id, provider=provider, provider_user_id=social_id)
-        db.add(new_social_account)
-        await self._assign_basic_plan(db, new_user)
+        # 최종적으로 모든 정보가 포함된 사용자 객체를 다시 조회하여 반환합니다.
+        # 이렇게 하면 어떤 경우든 일관된 형태의 객체를 반환할 수 있습니다.
+        created_or_found_user = await self.get_user_by_id_with_subscription(db, user.id)
+        if not created_or_found_user:
+            # 이 에러는 발생해서는 안되지만, 만약을 위한 방어 코드입니다.
+            raise HTTPException(status_code=500, detail="소셜 사용자 처리 후 조회에 실패했습니다.")
         
-        created_user = await self.get_user_by_id_with_subscription(db, new_user.id)
-        if not created_user:
-             raise HTTPException(status_code=500, detail="소셜 사용자 생성 후 조회에 실패했습니다.")
-        return created_user
+        return created_or_found_user
 
     async def list_users(
         self, db: AsyncSession, skip: int, limit: int, is_active: Optional[bool],
@@ -169,6 +195,12 @@ class UserService:
         ]
         results = await asyncio.gather(*tasks)
         
+        # scalar_one()은 결과가 없으면 에러를 발생시키므로, scalar()를 사용하고 기본값을 제공하는 것이 더 안전합니다.
+        total_backtests = results[0].scalar() or 0
+        successful_backtests = results[1].scalar() or 0
+        total_bots = results[2].scalar() or 0
+        active_bots = results[3].scalar() or 0
+        
         return schemas.UserDashboardSummary(
             email=user.email, username=user.username, user_id=user.id, created_at=user.created_at,
             is_email_verified=user.is_email_verified, current_plan_name=sub.plan.name.value,
@@ -177,10 +209,10 @@ class UserService:
             max_backtests_per_day=features.daily_backtest_count,
             concurrent_bots_limit=features.live_bots_limit,
             allowed_timeframes=features.supported_timeframes.split(','),
-            total_backtests_run_by_user=results[0].scalar_one(),
-            successful_backtests_by_user=results[1].scalar_one(),
-            total_live_bots_by_user=results[2].scalar_one(),
-            active_live_bots_by_user=results[3].scalar_one()
+            total_backtests_run_by_user=total_backtests,
+            successful_backtests_by_user=successful_backtests,
+            total_live_bots_by_user=total_bots,
+            active_live_bots_by_user=active_bots
         )
         
     async def admin_update_user(self, db: AsyncSession, user_id: uuid.UUID, user_admin_update: schemas.UserAdminUpdate) -> models.User:
@@ -228,6 +260,7 @@ class UserService:
             raise HTTPException(status_code=500, detail="서버 오류: 기본 플랜 설정이 누락되었습니다.")
         new_subscription = models.Subscription(
             user_id=user.id, plan_id=basic_plan.id, status="active",
+            # 기본 플랜은 만료되지 않으므로, 만료일을 최댓값으로 설정하여 '무제한'을 표현합니다.
             current_period_end=datetime.max.replace(tzinfo=timezone.utc)
         )
         db.add(new_subscription)

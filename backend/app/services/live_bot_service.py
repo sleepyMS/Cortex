@@ -14,7 +14,6 @@ from ..services.plan_service import plan_service
 from ..services.strategy_service import strategy_service
 from ..services.api_key_service import api_key_service
 from ..celery_app import celery_app
-from ..tasks import run_live_bot
 
 logger = logging.getLogger(__name__)
 
@@ -76,25 +75,8 @@ class LiveBotService:
         db.add(db_live_bot)
         await db.flush() # ID가 생성되도록 flush
         
-        # 4. Celery 태스크 전송 및 Task ID 저장
-        try:
-            # 태스크 호출 결과를 변수에 할당하여 ID를 받습니다.
-            async_result = run_live_bot.delay(str(db_live_bot.id))
-            
-            # Celery가 부여한 Task ID를 DB에 저장
-            db_live_bot.celery_task_id = async_result.id
-            db.add(db_live_bot) # db_live_bot을 다시 세션에 추가
-            await db.commit() # 최종 커밋
-            
-            logger.info(f"Celery task dispatched for LiveBot ID: {db_live_bot.id} with Celery Task ID: {async_result.id}.")
-        except Exception as e:
-            logger.error(f"Failed to dispatch Celery task for LiveBot ID {db_live_bot.id}: {e}", exc_info=True)
-            # 태스크 전송 실패 시, 봇 상태를 'error'로 변경
-            db_live_bot.status = 'error'
-            db_live_bot.stopped_at = datetime.now(timezone.utc)
-            db.add(db_live_bot)
-            await db.commit()
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="라이브 봇 시작에 실패했습니다.")
+        # 4. Celery 태스크 전송 
+        await db.commit() # 최종 커밋
 
         return db_live_bot
 

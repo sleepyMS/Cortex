@@ -1,14 +1,16 @@
 # file: backend/app/services/payment_gateway_service.py
 
-import os
 import httpx
 import logging
 import json
-from typing import Dict, Any, Union
-from datetime import datetime, timezone
+from typing import Dict, Any
+
 from fastapi import HTTPException, status
 
-# Stripe SDK (필요 시 설치: pip install stripe)
+# --- (변경) 중앙 설정 객체 임포트 ---
+from ..config import settings
+
+# Stripe SDK (필요 시 주석 해제)
 # import stripe
 
 logger = logging.getLogger(__name__)
@@ -16,20 +18,19 @@ logger = logging.getLogger(__name__)
 class PaymentGatewayService:
     """
     Stripe, I'mport 등 외부 결제 게이트웨이와의 통신 및 웹훅 처리를 담당하는 서비스.
-    실제 운영 시에는 각 게이트웨이별로 구체적인 구현이 필요합니다.
     """
     def __init__(self):
-        # Stripe 설정 (예시)
-        self.stripe_api_key = os.getenv("STRIPE_SECRET_KEY")
-        self.stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-        self.stripe_base_url = "https://api.stripe.com/v1" # Stripe API Base URL
+        # --- (변경) 모든 설정을 settings 객체에서 가져옴 ---
+        payment_settings = settings.PAYMENT
         
-        # 아임포트 설정 (예시)
-        self.iamport_api_key = os.getenv("IAMPORT_API_KEY")
-        self.iamport_api_secret = os.getenv("IAMPORT_API_SECRET")
-        self.iamport_base_url = "https://api.iamport.kr" # 아임포트 API Base URL
+        self.stripe_api_key = payment_settings.STRIPE_SECRET_KEY
+        self.stripe_webhook_secret = payment_settings.STRIPE_WEBHOOK_SECRET
+        self.stripe_base_url = payment_settings.STRIPE_API_BASE_URL
+        
+        self.iamport_api_key = payment_settings.IAMPORT_API_KEY
+        self.iamport_api_secret = payment_settings.IAMPORT_API_SECRET
+        self.iamport_base_url = payment_settings.IAMPORT_API_BASE_URL
 
-        # 환경 변수 설정 여부 확인
         self.is_stripe_configured = all([self.stripe_api_key, self.stripe_webhook_secret])
         self.is_iamport_configured = all([self.iamport_api_key, self.iamport_api_secret])
 
@@ -38,41 +39,32 @@ class PaymentGatewayService:
         if not self.is_iamport_configured:
             logger.warning("I'mport payment gateway is not fully configured.")
 
-        # stripe.api_key = self.stripe_api_key # Stripe SDK 사용 시 초기화
+        # stripe.api_key = self.stripe_api_key
 
     async def create_checkout_session(
         self,
         payment_gateway: str,
-        plan_name: str, # 플랜 이름 (결제 게이트웨이에 전달)
-        unit_amount: int, # 센트/원 단위의 금액 (정수)
-        currency: str, # 통화 (USD, KRW)
+        plan_name: str,
+        unit_amount: int,
+        currency: str,
         user_email: str,
         success_url: str,
         cancel_url: str,
-        # 메타데이터 등 추가 정보
         metadata: Dict[str, Any]
-    ) -> str: # 결제 페이지 URL 반환
-        """
-        지정된 결제 게이트웨이를 통해 결제 세션을 생성하고 결제 페이지 URL을 반환합니다.
-        """
+    ) -> str:
+        """지정된 결제 게이트웨이를 통해 결제 세션을 생성하고 결제 페이지 URL을 반환합니다."""
         if payment_gateway == "stripe":
             if not self.is_stripe_configured:
-                logger.error("Stripe is not configured to create checkout session.")
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="결제 서비스가 설정되지 않았습니다.")
             
             try:
-                # Stripe Checkout Session 생성 로직 예시
-                # 실제 Stripe SDK 사용을 권장하지만, 여기서는 httpx를 통한 API 호출 예시
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         f"{self.stripe_base_url}/checkout/sessions",
-                        headers={
-                            "Authorization": f"Bearer {self.stripe_api_key}",
-                            "Content-Type": "application/x-www-form-urlencoded" # Stripe는 이 형식 선호
-                        },
+                        headers={"Authorization": f"Bearer {self.stripe_api_key}"},
                         data={
                             "payment_method_types[]": "card",
-                            "line_items[][price_data][currency]": currency,
+                            "line_items[][price_data][currency]": currency.lower(),
                             "line_items[][price_data][unit_amount]": unit_amount,
                             "line_items[][price_data][product_data][name]": plan_name,
                             "line_items[][quantity]": 1,
@@ -80,23 +72,27 @@ class PaymentGatewayService:
                             "customer_email": user_email,
                             "success_url": success_url,
                             "cancel_url": cancel_url,
-                            "metadata[user_id]": metadata.get("user_id"), # 사용자 ID 등 메타데이터
-                            "metadata[plan_id]": metadata.get("plan_id"),
+                            "metadata[user_id]": str(metadata.get("user_id")),
+                            "metadata[plan_id]": str(metadata.get("plan_id")),
                         },
                         timeout=10.0
                     )
                     response.raise_for_status()
-                    session_url = response.json().get("url")
+                    session_data = response.json()
+                    session_url = session_data.get("url")
+                    
                     if not session_url:
+                        logger.error(f"Stripe session URL not found in response: {session_data}")
                         raise ValueError("Stripe did not return a valid session URL.")
+                        
                     logger.info(f"Stripe checkout session created for {user_email}, plan: {plan_name}")
                     return session_url
             except httpx.HTTPStatusError as e:
-                logger.error(f"Stripe HTTP error creating checkout session: {e.response.status_code} - {e.response.text}", exc_info=True)
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"결제 세션 생성 실패: {e.response.text}")
+                logger.error(f"Stripe HTTP error: {e.response.text}", exc_info=True)
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="결제 세션 생성에 실패했습니다.")
             except Exception as e:
-                logger.error(f"Unexpected error creating Stripe checkout session: {e}", exc_info=True)
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="결제 세션 생성 중 오류가 발생했습니다.")
+                logger.error(f"Unexpected error creating Stripe session: {e}", exc_info=True)
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="결제 세션 생성 중 오류 발생.")
         
         elif payment_gateway == "iamport":
             if not self.is_iamport_configured:

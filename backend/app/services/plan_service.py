@@ -25,7 +25,7 @@ class PlanService:
                 "name": PlanType.BASIC, "price": 0.0,
                 "features": {
                     "max_strategies": 3, "max_coins_per_backtest": 1, "live_bots_limit": 0,
-                    "daily_backtest_count": 10, "max_backtest_duration_years": 1, "supported_timeframes": "1h,4h,1d",
+                    "daily_backtest_count": 5, "max_backtest_duration_years": 1, "supported_timeframes": "1h,4h,1d",
                     "community_access": True, "telegram_alerts": False, "advanced_features_access": False, "portfolio_backtest_access": False
                 }
             },
@@ -33,7 +33,7 @@ class PlanService:
                 "name": PlanType.TRADER, "price": 49.99,
                 "features": {
                     "max_strategies": 20, "max_coins_per_backtest": 5, "live_bots_limit": 3,
-                    "daily_backtest_count": 100, "max_backtest_duration_years": 5, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d",
+                    "daily_backtest_count": 100, "max_backtest_duration_years": 5, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
                     "community_access": True, "telegram_alerts": True, "advanced_features_access": True, "portfolio_backtest_access": True
                 }
             },

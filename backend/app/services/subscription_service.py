@@ -8,11 +8,11 @@ import logging
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 import uuid
-import os
 
 from .. import models, schemas
 from ..services.plan_service import plan_service
 from ..services.payment_gateway_service import payment_gateway_service
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +64,12 @@ class SubscriptionService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="무료 플랜은 결제할 수 없습니다.")
 
         unit_amount = int(target_plan.price * 100)
-        currency = "usd" # 또는 다른 통화
+        currency = "usd"
 
-        success_url = os.getenv("FRONTEND_SUCCESS_PAYMENT_URL", "http://localhost:3000/payment/success")
-        cancel_url = os.getenv("FRONTEND_CANCEL_PAYMENT_URL", "http://localhost:3000/payment/cancel")
+        # --- settings 객체에서 URL 가져오기 ---
+        success_url = settings.PAYMENT.FRONTEND_SUCCESS_PAYMENT_URL
+        cancel_url = settings.PAYMENT.FRONTEND_CANCEL_PAYMENT_URL
         
-        # payment_gateway_service를 통해 실제 결제 세션 생성 요청
         checkout_url = await payment_gateway_service.create_checkout_session(
             payment_gateway="stripe",
             plan_name=target_plan.name.value,

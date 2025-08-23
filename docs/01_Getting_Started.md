@@ -51,6 +51,10 @@ SECRET_KEY="<[https://random-string-generator.com/](https://random-string-genera
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 
+cd backend
+.\venv\Scripts\activate
+cd ..
+docker-compose up -d
 # 4. FastAPI 웹 서버 실행 (Cortex 루트 경로에서)
 uvicorn backend.main:app --reload
 ```
@@ -73,10 +77,18 @@ docker-compose up -d
 # 4. Celery 워커 실행
 # (main.py가 아닌, celery 인스턴스가 있는 파일 경로를 지정해야 합니다. 예: celery_app.py)
 # 실제 배포시에는 eventlet과 같은 다중 비동기로 변경
-celery -A backend.app.celery_app:celery_app worker -l info --pool=solo
+cd backend
+.\venv\Scripts\activate
+cd ..
+celery -A backend.app.celery_app worker -l info -P gevent
+# 실제 리눅스 등의 서버에 올릴때는 -P gevent 옵션을 제거하여 Celery의 기본 프로세스 기반 워커를 사용합니다.
+celery -A backend.app.celery_app worker -l info
 
 # 5. Celery Beat 실행 (별도 터미널에서)
-celery -A backend.app.celery_app:celery_app beat -l info
+cd backend
+.\venv\Scripts\activate
+cd ..
+celery -A backend.app.celery_app beat -l info
 ```
 
 - **확인:** 터미널에 Celery 로고와 함께 `[tasks]` 목록이 보이고 `ready` 상태가 되면 성공입니다. 이 터미널은 계속 실행 상태로 두어야 합니다.
