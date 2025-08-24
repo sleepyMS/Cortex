@@ -3,15 +3,13 @@
 import os
 import uuid
 from celery import Celery, Task
-import asyncio
 
-# --- 1. (변경) config.py에서 설정 객체를 임포트합니다. ---
-from backend.app.config import settings
+from .config import settings
 from backend.app.database import SyncSessionLocal
 from backend.app.models import Backtest
 from sqlalchemy import update
 
-# --- 2. (개선) 중앙화된 오류 처리를 위한 커스텀 Task 클래스 ---
+# --- 1. 중앙화된 오류 처리를 위한 커스텀 Task 클래스 ---
 class DatabaseTask(Task):
     """
     태스크 실패 시 DB 상태를 업데이트하는 공통 로직을 포함하는 커스텀 Task 클래스
@@ -31,21 +29,38 @@ class DatabaseTask(Task):
                 print(f"CRITICAL: Could not update backtest status for {backtest_id_str}: {e}")
         super().on_failure(exc, task_id, args, kwargs, einfo)
 
-# --- 3. (변경) settings 객체를 사용하여 Celery 앱 설정 ---
-# os.getenv() 대신 중앙 설정 객체인 settings를 사용합니다.
+# --- 2. Celery 앱 설정 (설정 객체 사용) ---
 celery_app = Celery(
     'cortex_worker',
     broker=settings.DB.REDIS_URL,
     backend=settings.DB.REDIS_URL,
     include=['backend.app.tasks', 'backend.app.celery_beat'],
-    task_cls=DatabaseTask
+    task_cls=DatabaseTask  # 커스텀 오류 처리 클래스 적용
 )
 
-# 꼭 필요한 설정만 남겨 간소화합니다.
+# --- 3. 작업 분리를 위한 큐와 라우팅 규칙 정의 ---
+
+# 3-1. 두 종류의 작업 큐(우체통)를 정의합니다.
+celery_app.conf.task_queues = {
+    'cpu_bound_queue': {'exchange': 'cpu_bound', 'routing_key': 'cpu.task'},
+    'io_bound_queue': {'exchange': 'io_bound', 'routing_key': 'io.task'},
+}
+
+# 3-2. 어떤 작업을 어떤 큐로 보낼지(우편물 분류) 결정하는 규칙을 정의합니다.
+celery_app.conf.task_routes = {
+    # 백테스팅과 최적화는 'cpu_bound_queue'로 보냅니다.
+    'run_backtest': {'queue': 'cpu_bound_queue'},
+    'run_parameter_optimization': {'queue': 'cpu_bound_queue'}, # 향후 최적화 기능용
+
+    # 자동매매 봇과 데이터 수집은 'io_bound_queue'로 보냅니다.
+    'run_all_active_bots': {'queue': 'io_bound_queue'},
+    'fetch_and_store_ohlcv': {'queue': 'io_bound_queue'},
+}
+
+# --- 4. 기타 설정 ---
 celery_app.conf.update(
     task_track_started=True,
     broker_connection_retry_on_startup=True,
-    worker_prefetch_multiplier=1
+    worker_prefetch_multiplier=1, # CPU 바운드 작업은 한 번에 하나씩 처리하도록 설정
+    timezone='UTC',
 )
-
-celery_app.conf.timezone = 'UTC'
