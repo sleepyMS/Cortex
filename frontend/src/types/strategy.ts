@@ -27,7 +27,7 @@ export interface IndicatorMetadata {
   category: string; // "Momentum", "Trend"
   parameters: IndicatorParameter[];
   outputs: IndicatorOutput[];
-  supported_logics: LogicBlock["type"][]; // 지원하는 로직 타입 배열 (e.g., ["comparison", "state"])
+  supportedLogics: LogicBlock["type"][]; // 지원하는 로직 타입 배열 (e.g., ["comparison", "state"])
   supportedTimeframes: string[]; // 지원하는 타임프레임 배열 (e.g., ["1m", "5m", "1h"])
 }
 

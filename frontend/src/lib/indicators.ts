@@ -35,7 +35,7 @@ export interface IndicatorMetadata {
   parameters: ParameterDefinition[];
   outputs: OutputDefinition[];
   supportedTimeframes: string[];
-  supported_logics: (
+  supportedLogics: (
     | "comparison"
     | "crossover"
     | "state"
@@ -70,7 +70,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
   {
     key: "Open",
@@ -91,7 +91,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
   {
     key: "High",
@@ -112,7 +112,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
   {
     key: "Low",
@@ -133,7 +133,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
 
   // =================================
@@ -160,7 +160,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover"],
+    supportedLogics: ["comparison", "crossover"],
   },
   {
     key: "EMA",
@@ -183,7 +183,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover"],
+    supportedLogics: ["comparison", "crossover"],
   },
   {
     key: "HMA",
@@ -206,7 +206,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover"],
+    supportedLogics: ["comparison", "crossover"],
   },
   {
     key: "MACD",
@@ -241,7 +241,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover", "divergence"],
+    supportedLogics: ["comparison", "crossover", "divergence"],
   },
   {
     key: "ParabolicSAR",
@@ -282,7 +282,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "trend_signal"],
+    supportedLogics: ["comparison", "trend_signal"],
   },
   {
     key: "SuperTrend",
@@ -318,7 +318,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "trend_signal"],
+    supportedLogics: ["comparison", "trend_signal"],
   },
   {
     key: "Ichimoku",
@@ -367,7 +367,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover", "channel"],
+    supportedLogics: ["comparison", "crossover", "channel"],
   },
 
   // =================================
@@ -394,7 +394,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "state", "divergence"],
+    supportedLogics: ["comparison", "state", "divergence"],
   },
   {
     key: "Stochastic",
@@ -429,7 +429,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover", "state"],
+    supportedLogics: ["comparison", "crossover", "state"],
   },
   {
     key: "CCI",
@@ -452,7 +452,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "state"],
+    supportedLogics: ["comparison", "state"],
   },
   {
     key: "RVI",
@@ -478,7 +478,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover"],
+    supportedLogics: ["comparison", "crossover"],
   },
   {
     key: "ADX",
@@ -505,7 +505,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
 
   // =================================
@@ -544,7 +544,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover", "channel"],
+    supportedLogics: ["comparison", "crossover", "channel"],
   },
   {
     key: "ATR",
@@ -567,7 +567,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
   {
     key: "KeltnerChannel",
@@ -615,7 +615,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover", "channel"],
+    supportedLogics: ["comparison", "crossover", "channel"],
   },
 
   // =================================
@@ -640,7 +640,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
   {
     key: "OBV",
@@ -661,7 +661,7 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison"],
+    supportedLogics: ["comparison"],
   },
   {
     key: "VWAP",
@@ -682,6 +682,6 @@ export const INDICATOR_METADATA: IndicatorMetadata[] = [
       "1w",
       "1M",
     ],
-    supported_logics: ["comparison", "crossover", "channel"],
+    supportedLogics: ["comparison", "crossover", "channel"],
   },
 ];

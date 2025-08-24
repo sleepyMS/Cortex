@@ -2,17 +2,18 @@
 """
 Cortex 프로젝트의 모든 Celery 백그라운드 작업을 정의합니다.
 
-이 파일은 두 가지 주요 아키텍처 패턴을 사용합니다:
-1.  순수 동기(Synchronous) 태스크:
-    - 대상: 백테스팅, 데이터 수집 등 안정성이 최우선인 작업.
-    - 구현: Celery 태스크를 일반적인 동기 함수(def)로 작성하고, 동기 DB 세션(SyncSessionLocal)을 사용합니다.
-    - 장점: Celery/OS 호환성 문제로부터 자유로우며, 코드가 단순하고 예측 가능합니다.
+이 파일은 CPU 바운드 작업과 I/O 바운드 작업을 분리하여 처리하는
+고성능 아키텍처를 따릅니다. 각 작업은 지정된 전용 큐에서 실행됩니다.
 
-2.  하이브리드(Hybrid) 비동기 태스크 (`run_all_active_bots`):
-    - 대상: 다수의 자동매매 봇을 동시에 처리해야 하는, 높은 I/O 동시성이 필수적인 작업.
-    - 구현: Celery 태스크 자체는 동기(def)로 정의하여 안정성을 확보하고,
-             내부에서 `asyncio.run()`과 `asyncio.gather`를 사용하여 실제 로직을 비동기적으로 동시에 처리합니다.
-    - 장점: Celery 자체의 안정성을 유지하면서, 특정 태스크에 한해 비동기의 성능 이점을 안전하게 활용합니다.
+- CPU-Bound Tasks (run_backtest):
+  - 'cpu_bound_queue'에서 실행됩니다.
+  - 무거운 계산(백테스팅 시뮬레이션)을 담당하며, 멀티코어 활용을 위해
+    별도의 프로세스 기반 워커에서 처리됩니다.
+
+- I/O-Bound Tasks (run_all_active_bots, fetch_and_store_ohlcv):
+  - 'io_bound_queue'에서 실행됩니다.
+  - 네트워크 통신, DB 조회 등 대기 시간이 긴 작업을 담당하며,
+    단일 프로세스 내 수많은 동시성을 처리하기 위해 eventlet/gevent 기반 워커에서 처리됩니다.
 """
 
 import asyncio
@@ -24,17 +25,24 @@ import ccxt
 import ccxt.async_support as ccxt_async
 from celery.utils.log import get_task_logger
 from sqlalchemy import select, text, update
-from sqlalchemy.orm import joinedload, Session
+from sqlalchemy.orm import joinedload
 
+# --- 1. 필요한 모듈 및 서비스 임포트 ---
 from .celery_app import celery_app
 from .database import AsyncSessionLocal, SyncSessionLocal
 from . import models
+# [신규] 아키텍처의 핵심 구성요소 임포트
+from .engine.backtesting_engine import BacktestingEngine
+from .utils.communication import WebSocketManager, EventPublisher
+from .services.market_data_service import market_data_service
+from .services.signal_service import signal_service
+
 
 logger = get_task_logger(__name__)
 
 
 # ==============================================================================
-# Part 1: 자동매매 봇을 위한 하이브리드 아키텍처
+# Part 1: I/O-Bound Tasks (자동매매, 데이터 수집 등)
 # ==============================================================================
 
 async def _run_single_bot_cycle_async(bot: models.LiveBot) -> dict:
@@ -43,16 +51,9 @@ async def _run_single_bot_cycle_async(bot: models.LiveBot) -> dict:
     이 함수는 오직 run_all_active_bots 내부의 asyncio.run() 세상에서만 사용됩니다.
     """
     try:
-        # bot 객체에 이미 api_key와 strategy 관계가 로드되어 있어야 합니다.
         logger.info(f"Bot ID {bot.id}: [ASYNC] Starting trading logic cycle for strategy '{bot.strategy.name}'.")
-
+        
         # TODO: 여기에 실제 비동기 자동매매 로직을 구현합니다.
-        # api_key = bot.api_key.get_decrypted_api_key() # 암호화된 키 복호화
-        # secret = bot.api_key.get_decrypted_secret_key()
-        # exchange = ccxt_async.binance({'apiKey': api_key, 'secret': secret})
-        # ticker = await exchange.fetch_ticker('BTC/USDT')
-        # ... 로직 ...
-        # await exchange.close()
         await asyncio.sleep(1)  # 예시: 네트워크 I/O 대기 시간 1초
 
         async with AsyncSessionLocal() as session:
@@ -65,17 +66,16 @@ async def _run_single_bot_cycle_async(bot: models.LiveBot) -> dict:
         logger.error(f"Bot ID {bot.id}: [ASYNC] Cycle failed: {e}", exc_info=True)
         return {"bot_id": bot.id, "status": "failed", "error": str(e)}
 
-@celery_app.task(name="run_all_active_bots")
+@celery_app.task(name="run_all_active_bots", queue="io_bound_queue")
 def run_all_active_bots():
     """
-    [하이브리드 디스패처] DB에서 모든 활성 봇을 찾아 비동기적으로 동시에 실행합니다.
+    [하이브리드 디스패처] 모든 활성 봇을 찾아 비동기적으로 동시에 실행합니다.
     """
     logger.info("Dispatcher Task: Starting to run all active bots.")
 
     async def _run_all_concurrently():
         bots_to_run = []
         with SyncSessionLocal() as session:
-            # 'active'와 'initializing' 상태의 봇을 모두 가져옵니다.
             result = session.execute(
                 select(models.LiveBot)
                 .options(joinedload(models.LiveBot.strategy), joinedload(models.LiveBot.api_key))
@@ -86,15 +86,12 @@ def run_all_active_bots():
             if not bots_to_run:
                 return "No active or initializing bots to run."
             
-            # 상태 변경 로직: 'initializing' 봇을 'active'로 변경하고 DB에 커밋합니다.
-            # 이 코드가 없으면 새로 생성된 봇은 절대 실행되지 않습니다.
             for bot in bots_to_run:
                 if bot.status == 'initializing':
                     bot.status = 'active'
                     session.add(bot)
             session.commit()
 
-        # 이제 'active' 상태가 된 봇들을 비동기적으로 실행합니다.
         bot_tasks = [_run_single_bot_cycle_async(bot) for bot in bots_to_run]
         results = await asyncio.gather(*bot_tasks, return_exceptions=True)
 
@@ -106,13 +103,9 @@ def run_all_active_bots():
     return asyncio.run(_run_all_concurrently())
 
 
-# ==============================================================================
-# Part 2: 그 외의 모든 작업을 위한 순수 동기(Synchronous) 태스크
-# ==============================================================================
-
-@celery_app.task(bind=True, name="fetch_and_store_ohlcv")
+@celery_app.task(bind=True, name="fetch_and_store_ohlcv", queue="io_bound_queue")
 def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, limit: int = 500):
-    """[동기] OHLCV 데이터 수집 태스크"""
+    """[동기] OHLCV 데이터 수집 태스크 (네트워크 I/O 위주)"""
     try:
         with SyncSessionLocal() as session:
             exchange = ccxt.binance()
@@ -144,48 +137,104 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
             logger.info(success_message)
             return success_message
     except ccxt.NetworkError as e:
-        logger.error(f"CCXT Network Error for {ticker}. Retrying in 60s...", exc_info=False)
+        logger.warning(f"CCXT Network Error for {ticker}. Retrying in 60s...", exc_info=False)
         self.retry(exc=e, countdown=60)
     except Exception as e:
         logger.error(f"Unhandled exception in fetch_and_store_ohlcv: {e}", exc_info=True)
-        raise
+        raise self.retry(exc=e)
 
-@celery_app.task(bind=True, default_retry_delay=300, max_retries=3, name="run_backtest")
+
+# ==============================================================================
+# Part 2: CPU-Bound Tasks (백테스팅, 최적화 등)
+# ==============================================================================
+
+@celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue")
 def run_backtest(self, backtest_id: str):
-    """[동기] 백테스팅 실행 태스크 (견고한 예외 처리 포함)"""
-    try:
-        with SyncSessionLocal() as session:
-            backtest_uuid = uuid.UUID(backtest_id)
-            result = session.execute(select(models.Backtest).filter(models.Backtest.id == backtest_uuid))
-            backtest = result.scalar_one_or_none()
+    """
+    [오케스트레이터] 백테스팅의 전체 과정을 조율합니다.
+    데이터 로드 -> 신호 생성 -> 시뮬레이션 -> 결과 저장 -> 이벤트 발행
+    """
+    logger.info(f"Starting backtest orchestration for ID: {backtest_id}")
+    backtest_uuid = uuid.UUID(backtest_id)
 
-            if not backtest or backtest.status in ['completed', 'failed', 'canceled']:
-                return f"Backtest {backtest_id} is already finished, canceled, or does not exist."
+    try:
+        # --- 단계 1: 초기 설정 및 상태 업데이트 ---
+        WebSocketManager.send_status_update(backtest_id, "running", "백테스트를 시작합니다.", 5)
+        with SyncSessionLocal() as session:
+            backtest = session.query(models.Backtest).options(
+                joinedload(models.Backtest.strategy)
+            ).filter(models.Backtest.id == backtest_uuid).one_or_none()
+            
+            if not backtest or backtest.status != 'pending':
+                logger.warning(f"Backtest {backtest_id} is not in pending state. Aborting.")
+                return f"Backtest {backtest_id} not pending."
 
             backtest.status = 'running'
-            backtest.updated_at = datetime.now(timezone.utc)
+            session.commit()
+            
+            parameters = backtest.parameters
+            strategy = backtest.strategy
+
+        # --- 단계 2: 데이터 로드 ---
+        WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터를 로드하고 있습니다...", 15)
+        # (가정) market_data_service에 동기 방식의 데이터 조회 함수가 필요합니다.
+        ohlcv_df = market_data_service.get_historical_data_sync(
+            ticker=strategy.target_coins[0].ticker,
+            timeframe=parameters.get('timeframe', '1h'),
+            start_date=parameters['startDate'],
+            end_date=parameters['endDate']
+        )
+        if ohlcv_df.empty:
+            raise ValueError("시세 데이터를 로드할 수 없습니다. 기간이나 티커를 확인해주세요.")
+
+        # --- 단계 3: 신호 생성 ---
+        WebSocketManager.send_status_update(backtest_id, "running", "전략에 따른 매매 신호를 생성 중입니다...", 40)
+        # (가정) signal_service에 동기 방식의 신호 생성 함수가 필요합니다.
+        signals_df = signal_service.generate_signals_sync(
+            ohlcv_df, 
+            strategy, 
+            parameters.get('parameters', {}).get('overrides')
+        )
+
+        # --- 단계 4: 백테스팅 엔진 실행 ---
+        WebSocketManager.send_status_update(backtest_id, "running", "거래를 시뮬레이션하고 있습니다...", 65)
+        engine = BacktestingEngine(ohlcv_df, signals_df, parameters)
+        summary, trade_logs = engine.run()
+
+        # --- 단계 5: 결과 저장 ---
+        WebSocketManager.send_status_update(backtest_id, "running", "분석 결과를 데이터베이스에 저장 중입니다...", 90)
+        with SyncSessionLocal() as session:
+            session.query(models.BacktestResult).filter_by(backtest_id=backtest_uuid).delete()
+            session.query(models.TradeLog).filter_by(backtest_id=backtest_uuid).delete()
+
+            new_result = models.BacktestResult(backtest_id=backtest_uuid, **summary)
+            session.add(new_result)
+            
+            log_objects = [models.TradeLog(backtest_id=backtest_uuid, **log) for log in trade_logs]
+            session.add_all(log_objects)
+
+            backtest_to_update = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one()
+            backtest_to_update.status = 'completed'
+            backtest_to_update.completed_at = datetime.now(timezone.utc)
             session.commit()
 
-            logger.info(f"Simulating backtest ID {backtest_id}...")
-            # TODO: 여기에 실제 백테스팅 시뮬레이션 로직 구현 (CPU-bound)
-            time.sleep(10)
+        # --- 단계 6: 완료 알림 ---
+        EventPublisher.publish_backtest_event(
+            "BacktestCompleted", 
+            {"backtest_id": backtest_id, "user_id": str(backtest.user_id)}
+        )
+        WebSocketManager.send_status_update(backtest_id, "completed", "백테스트가 성공적으로 완료되었습니다.", 100)
 
-            backtest.status = 'completed'
-            backtest.completed_at = datetime.now(timezone.utc)
-            session.commit()
+        logger.info(f"Backtest {backtest_id} completed successfully.")
+        return f"Backtest ID {backtest_id} completed successfully."
 
-            return f"Backtest ID {backtest_id} completed successfully."
     except Exception as exc:
-        logger.error(f"Unhandled exception in run_backtest for ID {backtest_id}: {exc}", exc_info=True)
-        # 재시도하기 전에 실패 상태를 먼저 DB에 기록합니다.
-        try:
-            with SyncSessionLocal() as fail_session:
-                backtest_uuid = uuid.UUID(backtest_id)
-                stmt = update(models.Backtest).where(models.Backtest.id == backtest_uuid).values(status='failed')
-                fail_session.execute(stmt)
-                fail_session.commit()
-        except Exception as db_exc:
-            logger.error(f"CRITICAL: Failed to update backtest status to 'failed' for ID {backtest_id}: {db_exc}")
+        logger.error(f"Exception in run_backtest for ID {backtest_id}: {exc}", exc_info=True)
         
-        # 재시도를 요청합니다. 모든 재시도가 실패하면, on_failure 핸들러(celery_app.py)가 호출될 수 있습니다.
-        self.retry(exc=exc)
+        EventPublisher.publish_backtest_event(
+            "BacktestFailed", 
+            {"backtest_id": backtest_id, "error": str(exc)}
+        )
+        WebSocketManager.send_status_update(backtest_id, "failed", f"오류가 발생했습니다: {str(exc)}", 100)
+        
+        raise self.retry(exc=exc, countdown=60, max_retries=2)

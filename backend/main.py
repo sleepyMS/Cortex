@@ -16,7 +16,7 @@ from .app.limiter import limiter
 from .app.services.plan_service import plan_service
 from .app.routers import (
     auth, users, backtests, strategies, api_keys,
-    plans, subscriptions, live_bots, community, admin, market_data
+    plans, subscriptions, live_bots, community, admin, market_data, websockets
 )
 
 # .env 파일 로드
@@ -92,6 +92,7 @@ app.include_router(subscriptions.router, prefix=API_PREFIX, tags=["Subscriptions
 app.include_router(market_data.router, prefix=API_PREFIX, tags=["Market Data"])
 app.include_router(community.router, prefix=API_PREFIX, tags=["Community"])
 app.include_router(admin.router, prefix=API_PREFIX, tags=["Admin"])
+app.include_router(websockets.router, prefix=API_PREFIX, tags=["WebSocket"])
 
 
 @app.get(f"{API_PREFIX}/health", tags=["Health Check"])

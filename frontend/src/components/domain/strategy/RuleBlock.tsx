@@ -114,7 +114,7 @@ export function RuleBlock({
     const metadata = INDICATOR_METADATA.find(
       (ind) => ind.key === currentIndicator.indicatorKey
     );
-    return metadata ? metadata.supported_logics : [];
+    return metadata ? metadata.supportedLogics : [];
   }, [item]);
 
   const handleUpdateField = (field: AllLogicBlockKeys, value: any) => {

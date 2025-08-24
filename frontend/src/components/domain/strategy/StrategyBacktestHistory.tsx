@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 // 백테스트 응답 타입 (BacktestList에서 재사용)
 interface BacktestResponse {
   id: number;
-  user_id: number;
-  strategy_id: number;
+  userId: number;
+  strategyId: number;
   status:
     | "pending"
     | "running"
@@ -29,16 +29,16 @@ interface BacktestResponse {
     | "failed_dispatch"
     | "initializing";
   parameters: Record<string, any>;
-  created_at: string;
-  updated_at?: string;
-  completed_at?: string;
+  createdAt: string;
+  updatedAt?: string;
+  completedAt?: string;
 
   result?: {
-    total_return_pct?: number;
-    mdd_pct?: number;
-    sharpe_ratio?: number;
-    win_rate_pct?: number;
-    pnl_curve_json?: any; // any로 두거나 PnlCurveDataPoint[]로 구체화
+    totalReturnPct?: number;
+    mddPct?: number;
+    sharpeRatio?: number;
+    winRatePct?: number;
+    pnlCurveJson?: any; // any로 두거나 PnlCurveDataPoint[]로 구체화
   };
   strategy?: {
     id: number;
@@ -147,30 +147,30 @@ export function StrategyBacktestHistory({
                 className="text-lg font-semibold text-primary hover:underline flex items-center"
               >
                 {t("backtestRun")}{" "}
-                {format(new Date(backtest.created_at), "yyyy-MM-dd HH:mm")}
+                {format(new Date(backtest.createdAt), "yyyy-MM-dd HH:mm")}
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Link>
               <p className="text-sm text-muted-foreground">
                 {t("parameters")}:{" "}
                 {backtest.parameters.ticker || backtest.parameters.symbol} |{" "}
-                {t("capital")}: {backtest.parameters.initial_capital || 0}
-                {backtest.parameters.commission_rate !== undefined &&
+                {t("capital")}: {backtest.parameters.initialCapital || 0}
+                {backtest.parameters.commissionRate !== undefined &&
                   ` | ${t(
                     "commission"
-                  )}: ${backtest.parameters.commission_rate.toFixed(3)}`}
+                  )}: ${backtest.parameters.commissionRate.toFixed(3)}`}
               </p>
             </div>
             <div className="flex flex-col items-end space-y-2 sm:space-y-0 sm:flex-row sm:space-x-2">
-              {backtest.result?.total_return_pct !== undefined && (
+              {backtest.result?.totalReturnPct !== undefined && (
                 <span
                   className={cn(
                     "font-bold text-lg",
-                    backtest.result.total_return_pct >= 0
+                    backtest.result.totalReturnPct >= 0
                       ? "text-green-500"
                       : "text-red-500"
                   )}
                 >
-                  {backtest.result.total_return_pct.toFixed(2)}%{" "}
+                  {backtest.result.totalReturnPct.toFixed(2)}%{" "}
                   {t("totalReturnShort")}
                 </span>
               )}

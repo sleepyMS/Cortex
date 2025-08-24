@@ -12,12 +12,12 @@ import {
 
 // API 응답 데이터의 타입을 명확히 정의 (DB 스키마 참조)
 interface BacktestResult {
-  total_return_pct: number | null;
-  mdd_pct: number | null;
-  win_rate_pct: number | null;
-  sharpe_ratio?: number | null; // Optional properties
-  profit_factor?: number | null;
-  total_trades?: number | null;
+  totalReturnPct: number | null;
+  mddPct: number | null;
+  winRatePct: number | null;
+  sharpeRatio?: number | null; // Optional properties
+  profitFactor?: number | null;
+  totalTrades?: number | null;
 }
 
 interface BacktestResultSummaryProps {
@@ -32,17 +32,17 @@ const statsConfig = (t: any) => [
     key: "totalReturn",
     title: t("totalReturn"),
     getValue: (r: BacktestResult) =>
-      `${r.total_return_pct?.toFixed(2) ?? "N/A"}%`,
+      `${r.totalReturnPct?.toFixed(2) ?? "N/A"}%`,
     Icon: (r: BacktestResult) =>
-      r.total_return_pct == null
+      r.totalReturnPct == null
         ? Percent
-        : r.total_return_pct >= 0
+        : r.totalReturnPct >= 0
         ? ArrowUpRight
         : ArrowDownRight,
     colorClass: (r: BacktestResult) =>
-      r.total_return_pct == null
+      r.totalReturnPct == null
         ? ""
-        : r.total_return_pct >= 0
+        : r.totalReturnPct >= 0
         ? "text-emerald-500"
         : "text-rose-500",
     description: t("totalReturnDesc"),
@@ -50,7 +50,7 @@ const statsConfig = (t: any) => [
   {
     key: "mdd",
     title: t("mdd"),
-    getValue: (r: BacktestResult) => `${r.mdd_pct?.toFixed(2) ?? "N/A"}%`,
+    getValue: (r: BacktestResult) => `${r.mddPct?.toFixed(2) ?? "N/A"}%`,
     Icon: () => ArrowDownRight,
     colorClass: () => "text-rose-500",
     description: t("mddDesc"),
@@ -58,28 +58,28 @@ const statsConfig = (t: any) => [
   {
     key: "winRate",
     title: t("winRate"),
-    getValue: (r: BacktestResult) => `${r.win_rate_pct?.toFixed(1) ?? "N/A"}%`,
+    getValue: (r: BacktestResult) => `${r.winRatePct?.toFixed(1) ?? "N/A"}%`,
     Icon: () => Target,
     description: t("winRateDesc"),
   },
   {
     key: "sharpeRatio",
     title: t("sharpeRatio"),
-    getValue: (r: BacktestResult) => r.sharpe_ratio?.toFixed(2) ?? "N/A",
+    getValue: (r: BacktestResult) => r.sharpeRatio?.toFixed(2) ?? "N/A",
     Icon: () => ShieldCheck,
     description: t("sharpeRatioDesc"),
   },
   {
     key: "profitFactor",
     title: t("profitFactor"),
-    getValue: (r: BacktestResult) => r.profit_factor?.toFixed(2) ?? "N/A",
+    getValue: (r: BacktestResult) => r.profitFactor?.toFixed(2) ?? "N/A",
     Icon: () => Percent,
     description: t("profitFactorDesc"),
   },
   {
     key: "totalTrades",
     title: t("totalTrades"),
-    getValue: (r: BacktestResult) => r.total_trades?.toString() ?? "N/A",
+    getValue: (r: BacktestResult) => r.totalTrades?.toString() ?? "N/A",
     Icon: () => BarChartHorizontal,
     description: t("totalTradesDesc"),
   },

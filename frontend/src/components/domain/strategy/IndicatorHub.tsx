@@ -74,10 +74,10 @@ export function IndicatorHub({
 
   const handleIndicatorClick = (indicator: IndicatorMetadata) => {
     if (selectionMode === "indicatorOnly") {
-      onSelect(indicator, indicator.supported_logics[0]);
+      onSelect(indicator, indicator.supportedLogics[0]);
     } else {
-      if (indicator.supported_logics.length === 1) {
-        onSelect(indicator, indicator.supported_logics[0]);
+      if (indicator.supportedLogics.length === 1) {
+        onSelect(indicator, indicator.supportedLogics[0]);
       } else {
         setSelectedIndicator({ indicator });
       }
@@ -181,7 +181,7 @@ export function IndicatorHub({
           ) : (
             <div className="px-6 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {selectedIndicator.indicator.supported_logics.map((logic) => (
+                {selectedIndicator.indicator.supportedLogics.map((logic) => (
                   <div
                     key={logic}
                     className="p-3 border rounded-md hover:bg-accent hover:border-primary cursor-pointer transition-colors group bg-card"

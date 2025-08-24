@@ -166,8 +166,8 @@ class Backtest(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="backtests")
-    strategy = relationship("Strategy", back_populates="backtests")
-    result = relationship("BacktestResult", back_populates="backtest", uselist=False, cascade="all, delete-orphan")
+    strategy = relationship("Strategy", back_populates="backtests", lazy="joined")
+    result = relationship("BacktestResult", back_populates="backtest", uselist=False, cascade="all, delete-orphan", lazy="joined")
     trade_logs = relationship("TradeLog", back_populates="backtest", cascade="all, delete-orphan")
     community_post = relationship("CommunityPost", back_populates="backtest", uselist=False, cascade="all, delete-orphan")
 

@@ -6,5 +6,5 @@ export interface TradeLog {
   quantity: number;
   pnl: number | null;
   commission: number;
-  current_balance: number;
+  currentBalance: number;
 }
