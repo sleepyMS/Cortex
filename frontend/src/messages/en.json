@@ -380,24 +380,6 @@
     "backtester": "Backtest",
     "community": "Community"
   },
-  "BacktestSetupForm": {
-    "title": "Set Up Your Backtest",
-    "description": "Configure the parameters to simulate your trading strategy's performance.",
-    "strategyLabel": "Strategy",
-    "selectStrategyPlaceholder": "Select a strategy",
-    "loadingStrategies": "Loading strategies...",
-    "tickerLabel": "Trading Pair",
-    "startDateLabel": "Start Date",
-    "endDateLabel": "End Date",
-    "pickADate": "Pick a date",
-    "initialCapitalLabel": "Initial Capital",
-    "commissionRateLabel": "Commission Rate",
-    "runBacktestButton": "Run Backtest",
-    "startingBacktest": "Starting backtest...",
-    "backtestStartedSuccess": "Backtest started successfully! Check the list below for status updates.",
-    "backtestStartedError": "Failed to start backtest: {error}",
-    "endDateBeforeStartDateError": "End date cannot be before start date."
-  },
   "BacktesterPage": {
     "title": "Strategy Backtester"
   },
@@ -418,42 +400,6 @@
     "startedAt": "Started At",
     "totalReturn": "Total Return",
     "cancelBacktest": "Cancel"
-  },
-  "BacktestResultSummary": {
-    "title": "Backtest Performance Summary",
-    "totalReturn": "Total Return",
-    "mdd": "Max Drawdown (MDD)",
-    "sharpeRatio": "Sharpe Ratio",
-    "winRate": "Win Rate",
-    "noResultsAvailable": "No results available yet. Backtest may still be running or has failed."
-  },
-  "EquityChart": {
-    "title": "Equity Curve",
-    "notEnoughData": "Not enough data to display the chart (at least 2 data points required).",
-    "chartDataError": "Error loading chart data: {errorDetail}",
-    "checkBacktestResults": "Please check your backtest results. Data might be incomplete or malformed."
-  },
-  "TradeLogTable": {
-    "title": "Trade Log",
-    "header": {
-      "timestamp": "Timestamp",
-      "side": "Side",
-      "price": "Price",
-      "quantity": "Quantity",
-      "fee": "Fee",
-      "pnl": "P&L",
-      "currentBalance": "Balance"
-    },
-    "side": {
-      "buy": "BUY",
-      "sell": "SELL"
-    },
-    "noTradeLogsAvailable": "No trade logs available for this backtest. It might still be running or has no trades.",
-    "noResults": "No results.",
-    "pagination": {
-      "previous": "Previous",
-      "next": "Next"
-    }
   },
   "BacktestDetailPage": {
     "title": "Backtest Results for",
@@ -669,5 +615,101 @@
     "capital": "Capital",
     "commission": "Commission",
     "totalReturnShort": "Return"
+  },
+  "BacktesterPage": {
+    "title": "My Backtests",
+    "createNewBacktest": "Create New Backtest",
+    "filterStatusPlaceholder": "Filter by status",
+    "filterStatusAll": "All Statuses",
+    "filterStatusRunning": "Running",
+    "filterStatusPending": "Pending",
+    "filterStatusCompleted": "Completed",
+    "filterStatusFailed": "Failed",
+    "filterStatusCanceled": "Canceled",
+    "filterStrategyPlaceholder": "Filter by strategy",
+    "filterStrategyAll": "All Strategies",
+    "fetchError": "An error occurred while fetching the backtest list.",
+    "cancelSuccess": "The backtest job has been canceled successfully.",
+    "cancelError": "Failed to cancel job: {error}",
+    "deleteSuccess": "The backtest record has been deleted.",
+    "deleteError": "Failed to delete record: {error}",
+    "noMoreResults": "No more results to load.",
+    "empty": {
+      "title": "No Backtests Run Yet",
+      "description": "Create your first backtest to validate your investment strategy with data.",
+      "createButton": "Create First Backtest"
+    }
+  },
+  "NewBacktestPage": {
+    "title": "Create New Backtest",
+    "description": "Set up the parameters to test your strategy's past performance and validate your ideas by simulating various scenarios."
+  },
+  "BacktestSetupForm": {
+    "submitSuccess": "Backtest request submitted successfully.",
+    "submitError": "Failed to start backtest: {error}",
+    "submitButton": "Run Backtest",
+    "tabs": {
+      "standard": "Standard",
+      "walkForward": "Walk-Forward",
+      "monteCarlo": "Monte Carlo"
+    },
+    "standard": {
+      "title": "Standard Backtest",
+      "description": "Simulate strategy performance over a single period.",
+      "strategyLabel": "Select Strategy",
+      "strategyLoading": "Loading strategies...",
+      "strategyPlaceholder": "Select a strategy to run",
+      "noStrategiesFound": "No strategies found.",
+      "goToCreateStrategy": "Create a new strategy",
+      "dateRangeLabel": "Backtest Period",
+      "initialCapitalLabel": "Initial Capital",
+      "leverageLabel": "Leverage",
+      "feePctLabel": "Trading Fee (%)"
+    },
+    "summary": {
+      "title": "Summary",
+      "description": "Review your settings before running the backtest.",
+      "selectStrategyPrompt": "Please select a strategy from the left.",
+      "noDescription": "No description provided.",
+      "targetCoins": "Target Coins",
+      "notSet": "Not Set",
+      "tpsl": "TP/SL Logic",
+      "tpslTypes": {
+        "percentage": "Percentage",
+        "atr": "ATR Based"
+      },
+      "preflightCheck": {
+        "title": "Pre-flight Check",
+        "strategy": "Strategy selected",
+        "period": "Period set"
+      },
+      "estimate": "Estimated time: {duration}"
+    }
+  },
+  "BacktestCard": {
+    "Status": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "runningMessage": "Calculating results...",
+    "noResultMessage": "No performance data to display.",
+    "actions": "Actions",
+    "viewResult": "View Result",
+    "cloneAndRun": "Clone and Run",
+    "cancelJob": "Cancel Job",
+    "deleteJob": "Delete Record"
+  },
+  "EquityChart": {
+    "title": "Equity Curve"
+  },
+  "BacktestResultSummary": {
+    "title": "Performance Summary"
+  },
+  "TradeLogTable": {
+    "title": "Trade Logs",
+    "moreTrades": "... and {count} more trades"
   }
 }

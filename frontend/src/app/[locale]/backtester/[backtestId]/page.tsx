@@ -1,26 +1,126 @@
-// file: frontend/src/app/[locale]/backtester/[backtestId]/page.tsx
-
 "use client";
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { useRouter } from "@/i18n/navigation";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import {
+  Loader2,
+  Info,
+  TriangleAlert,
+  Calendar,
+  DollarSign,
+  Repeat,
+  Share2,
+} from "lucide-react";
+
 import apiClient from "@/lib/apiClient";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { Backtest } from "@/components/domain/backtesting/BacktestCard"; // 이전 단계에서 만든 타입 재사용
-import { TradeLog } from "@/types/tradelog"; // 이 타입은 새로 정의해야 할 수 있습니다.
+import { Backtest } from "@/components/domain/backtesting/BacktestCard";
+import { TradeLog } from "@/types/tradelog";
 
-// --- Child Components (Placeholders) ---
-// 실제 구현은 각 파일에서 진행해야 합니다. 여기서는 Props 정의와 구조만 보여줍니다.
+// --- 최종 분석 컴포넌트 임포트 ---
 import { BacktestResultSummary } from "@/components/domain/backtesting/BacktestResultSummary";
-import { EquityChart } from "@/components/domain/backtesting/EquityChart";
+import { DynamicEquityChart } from "@/components/domain/backtesting/DynamicEquityChart";
+import { MonthlyPerformance } from "@/components/domain/backtesting/MonthlyPerformance";
 import { TradeLogTable } from "@/components/domain/backtesting/TradeLogTable";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
-import { Loader2, Info, TriangleAlert, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import Link from "next/link";
 
-// --- Main Page Component ---
+// --- UI 컴포넌트 ---
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+
+// --- 페이지 헤더 ---
+const PageHeader = ({ backtest }: { backtest: Backtest }) => {
+  const t = useTranslations("BacktestDetailPage.Header");
+  const router = useRouter();
+
+  const handleRerun = () => {
+    const params = new URLSearchParams({
+      strategyId: backtest.strategy.id,
+      startDate: backtest.parameters.startDate,
+      endDate: backtest.parameters.endDate,
+      initialCapital: backtest.parameters.initialCapital.toString(),
+    });
+    router.push(`/backtester/new?${params.toString()}`);
+  };
+
+  const handleShare = () => {
+    toast.info(t("shareWip"));
+  };
+
+  return (
+    <Card className="mb-8">
+      <CardHeader>
+        <div className="flex flex-wrap justify-between items-start gap-4">
+          <div>
+            <p className="text-sm font-medium text-primary">{t("strategy")}</p>
+            <CardTitle className="text-2xl font-bold text-foreground">
+              <Link
+                href={`/strategies/${backtest.strategy.id}`}
+                className="hover:underline"
+              >
+                {backtest.strategy.name}
+              </Link>
+            </CardTitle>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleRerun}>
+              <Repeat className="mr-2 h-4 w-4" />
+              {t("rerun")}
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleShare}
+              disabled={backtest.status !== "completed"}
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              {t("share")}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex items-center gap-6 text-sm text-muted-foreground pt-4 border-t">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          <span>
+            {format(new Date(backtest.parameters.startDate), "yyyy.MM.dd")} ~{" "}
+            {format(new Date(backtest.parameters.endDate), "yyyy.MM.dd")}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          <span>
+            {t("initialCapital", {
+              amount: backtest.parameters.initialCapital.toLocaleString(),
+            })}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// --- 로딩 상태 스켈레톤 UI ---
+const LoadingSkeleton = () => (
+  <div className="space-y-8">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-24 w-full" />
+      ))}
+    </div>
+    <Skeleton className="h-96 w-full" />
+    <Skeleton className="h-64 w-full" />
+  </div>
+);
+
+// --- 메인 페이지 컴포넌트 ---
 export default function BacktestDetailPage({
   params,
 }: {
@@ -32,7 +132,6 @@ export default function BacktestDetailPage({
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["backtestDetail", backtestId],
     queryFn: async () => {
-      // 백테스트 결과와 거래 로그를 병렬로 동시에 요청하여 로딩 속도 최적화
       const [backtestRes, tradeLogsRes] = await Promise.all([
         apiClient.get(`/backtests/${backtestId}`),
         apiClient.get(`/backtests/${backtestId}/trade_logs`),
@@ -42,25 +141,17 @@ export default function BacktestDetailPage({
         tradeLogs: tradeLogsRes.data as TradeLog[],
       };
     },
-    // 백테스트가 진행 중일 경우, 완료될 때까지 5초마다 자동 리프레시
     refetchInterval: (query) => {
-      const data = query.state.data as
-        | { backtest: Backtest; tradeLogs: TradeLog[] }
-        | undefined;
-      const status = data?.backtest?.status;
+      const status = (query.state.data as { backtest: Backtest })?.backtest
+        ?.status;
       return status === "running" || status === "pending" ? 5000 : false;
     },
-    retry: false, // 404 등 에러 발생 시 재시도 안 함
+    retry: false,
   });
 
   const renderContent = () => {
     if (isLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">{t("loading")}</p>
-        </div>
-      );
+      return <LoadingSkeleton />;
     }
 
     if (isError) {
@@ -72,11 +163,6 @@ export default function BacktestDetailPage({
             {t("errorMessage", {
               error: (error as any)?.response?.data?.detail || error.message,
             })}
-            <div className="mt-4">
-              <Link href="/backtester">
-                <Button variant="outline">{t("goToList")}</Button>
-              </Link>
-            </div>
           </AlertDescription>
         </Alert>
       );
@@ -84,7 +170,6 @@ export default function BacktestDetailPage({
 
     const { backtest, tradeLogs } = data;
 
-    // --- 상태별 UI 분기 처리 ---
     switch (backtest.status) {
       case "pending":
       case "running":
@@ -104,11 +189,30 @@ export default function BacktestDetailPage({
           return <Alert variant="destructive">{t("noResultData")}</Alert>;
         }
         return (
-          <div className="space-y-6">
-            <BacktestResultSummary result={backtest.result} />
-            <EquityChart result={backtest.result} />
-            <TradeLogTable tradeLogs={tradeLogs} />
-          </div>
+          <Tabs defaultValue="summary" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsTrigger value="summary">{t("Tabs.summary")}</TabsTrigger>
+              <TabsTrigger value="chart">{t("Tabs.chart")}</TabsTrigger>
+              <TabsTrigger value="monthly">{t("Tabs.monthly")}</TabsTrigger>
+              <TabsTrigger value="logs">{t("Tabs.logs")}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="summary">
+              <BacktestResultSummary result={backtest.result} />
+            </TabsContent>
+            <TabsContent value="chart">
+              <DynamicEquityChart
+                pnlData={backtest.result.pnlCurveJson || []}
+              />
+            </TabsContent>
+            <TabsContent value="monthly">
+              <MonthlyPerformance
+                pnlData={backtest.result.pnlCurveJson || []}
+              />
+            </TabsContent>
+            <TabsContent value="logs">
+              <TradeLogTable tradeLogs={tradeLogs} />
+            </TabsContent>
+          </Tabs>
         );
       case "failed":
       case "canceled":
@@ -120,11 +224,6 @@ export default function BacktestDetailPage({
             </AlertTitle>
             <AlertDescription>
               {t("jobNotCompletedMessage", { status: backtest.status })}
-              <div className="mt-4">
-                <Link href="/backtester">
-                  <Button variant="outline">{t("goToList")}</Button>
-                </Link>
-              </div>
             </AlertDescription>
           </Alert>
         );
@@ -136,14 +235,9 @@ export default function BacktestDetailPage({
   return (
     <AuthGuard>
       <div className="container mx-auto max-w-screen-xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
-          {data?.backtest && (
-            <p className="text-muted-foreground mt-2">
-              {t("subtitle", { strategyName: data.backtest.strategy.name })}
-            </p>
-          )}
-        </div>
+        {!isLoading && data?.backtest && (
+          <PageHeader backtest={data.backtest} />
+        )}
         {renderContent()}
       </div>
     </AuthGuard>

@@ -11,7 +11,7 @@ celery_app.conf.beat_schedule = {
     },
     'fetch-btc-usdt-15m-every-15-mins': {
         'task': 'fetch_and_store_ohlcv',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(minute='*/15'),
         'args': ('BTC/USDT', '15m'),
     },
     # --- 자동매매 봇 관리를 위한 스케줄 추가 ---

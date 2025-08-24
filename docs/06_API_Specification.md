@@ -6,6 +6,7 @@
 - **Data Types:** 모든 ID 필드는 `string (UUID)` 형식입니다.
 - **Content-Type:** `application/json`
 - **Authorization:** 인증이 필요한 모든 요청은 `Authorization` 헤더에 `Bearer <access_token>` 을 포함해야 합니다.
+- **데이터 명명 규칙 (Data Naming Convention):** 백엔드 소스코드 및 DB는 `snake_case`를 사용하지만, **모든 API 응답의 JSON Key는 `camelCase`로 자동 변환**되어 전달됩니다. 따라서 모든 프론트엔드 코드는 `camelCase`를 기준으로 데이터를 처리해야 합니다.
 
 ---
 

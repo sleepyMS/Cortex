@@ -1,17 +1,14 @@
-// file: frontend/src/components/domain/backtesting/BacktestCard.tsx
-
 "use client";
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useRouter } from "@/i18n/navigation";
 import { format, formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import {
   MoreHorizontal,
-  Edit,
   Trash2,
-  BarChart2,
   Eye,
   XCircle,
   Clock,
@@ -21,8 +18,8 @@ import {
   Zap,
   ShieldCheck,
   CalendarDays,
-  FileText,
 } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -47,11 +44,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/Progress";
 
-// --- Data Types ---
-// API 명세와 DB 스키마를 기반으로 Backtest 타입을 정의합니다.
-// 이 타입은 나중에 중앙화된 types 폴더로 이동할 수 있습니다.
+// --- 데이터 타입 정의 (다른 파일과 공유 가능) ---
 interface BacktestResultSummary {
   total_return_pct: number | null;
   win_rate_pct: number | null;
@@ -66,7 +60,7 @@ interface StrategyInfo {
 export interface Backtest {
   id: string;
   status: "pending" | "running" | "completed" | "failed" | "canceled";
-  createdAt: string; // ISO 8601 string
+  createdAt: string;
   parameters: {
     start_date: string;
     end_date: string;
@@ -76,7 +70,6 @@ export interface Backtest {
   result: BacktestResultSummary | null;
 }
 
-// --- Component Props ---
 interface BacktestCardProps {
   backtest: Backtest;
   onCancel: (backtestId: string) => void;
@@ -85,7 +78,7 @@ interface BacktestCardProps {
   isDeleting?: boolean;
 }
 
-// --- Sub-components for better readability ---
+// --- 가독성을 위한 서브 컴포넌트 ---
 
 const StatusBadge = ({ status }: { status: Backtest["status"] }) => {
   const t = useTranslations("BacktestCard.Status");
@@ -93,40 +86,36 @@ const StatusBadge = ({ status }: { status: Backtest["status"] }) => {
     pending: {
       icon: Clock,
       label: t("pending"),
-      className:
-        "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300/50",
+      className: "bg-amber-100 text-amber-800",
     },
     running: {
       icon: Loader2,
       label: t("running"),
-      className:
-        "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/50 animate-pulse",
+      className: "bg-blue-100 text-blue-800 animate-pulse",
     },
     completed: {
       icon: CheckCircle2,
       label: t("completed"),
-      className:
-        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300/50",
+      className: "bg-emerald-100 text-emerald-800",
     },
     failed: {
       icon: XCircle,
       label: t("failed"),
-      className:
-        "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/50",
+      className: "bg-rose-100 text-rose-800",
     },
     canceled: {
       icon: XCircle,
       label: t("canceled"),
-      className:
-        "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300/50",
+      className: "bg-slate-100 text-slate-800",
     },
   };
-
   const config = statusConfig[status];
   const Icon = config.icon;
-
   return (
-    <Badge className={cn("flex items-center gap-1.5", config.className)}>
+    <Badge
+      variant="outline"
+      className={cn("gap-1.5 border-none font-semibold", config.className)}
+    >
       <Icon
         className={cn("h-3.5 w-3.5", status === "running" && "animate-spin")}
       />
@@ -136,21 +125,21 @@ const StatusBadge = ({ status }: { status: Backtest["status"] }) => {
 };
 
 const PerformanceBadges = ({ result }: { result: BacktestResultSummary }) => {
-  const t = useTranslations("StrategyCard"); // 'StrategyCard'의 번역을 재사용
+  const t = useTranslations("BacktestCard");
   const { total_return_pct, win_rate_pct } = result;
   const isProfitable = total_return_pct !== null && total_return_pct >= 0;
-
   return (
     <TooltipProvider delayDuration={100}>
       <div className="flex items-center gap-2">
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger>
             <Badge
+              variant="outline"
               className={cn(
-                "flex items-center gap-1.5 cursor-help",
+                "gap-1.5 cursor-help",
                 isProfitable
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300/50"
-                  : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/50"
+                  ? "text-emerald-500 border-emerald-500/50"
+                  : "text-rose-500 border-rose-500/50"
               )}
             >
               <Zap className="h-3.5 w-3.5" />
@@ -162,11 +151,8 @@ const PerformanceBadges = ({ result }: { result: BacktestResultSummary }) => {
           </TooltipContent>
         </Tooltip>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              variant="secondary"
-              className="flex items-center gap-1.5 cursor-help"
-            >
+          <TooltipTrigger>
+            <Badge variant="secondary" className="gap-1.5 cursor-help">
               <ShieldCheck className="h-3.5 w-3.5" />
               <span>{win_rate_pct?.toFixed(1) ?? "N/A"}%</span>
             </Badge>
@@ -180,8 +166,18 @@ const PerformanceBadges = ({ result }: { result: BacktestResultSummary }) => {
   );
 };
 
-// --- Main Component ---
+const RunningIndicator = () => {
+  const t = useTranslations("BacktestCard");
+  return (
+    <div className="flex items-center justify-center h-[26px] bg-blue-50 dark:bg-blue-900/20 rounded-md px-4">
+      <div className="w-full bg-blue-200 rounded-full h-1.5 dark:bg-blue-700 overflow-hidden">
+        <div className="bg-blue-600 h-1.5 rounded-full animate-[loading_2s_ease-in-out_infinite]"></div>
+      </div>
+    </div>
+  );
+};
 
+// --- 메인 컴포넌트 ---
 export function BacktestCard({
   backtest,
   onCancel,
@@ -190,56 +186,66 @@ export function BacktestCard({
   isDeleting,
 }: BacktestCardProps) {
   const t = useTranslations("BacktestCard");
+  const router = useRouter();
 
-  const isActionable =
-    backtest.status === "pending" || backtest.status === "running";
+  const isActionable = ["pending", "running"].includes(backtest.status);
   const isTerminal = ["completed", "failed", "canceled"].includes(
     backtest.status
   );
 
+  // '복제 후 실행' 핸들러
+  const handleCloneAndRun = () => {
+    const params = new URLSearchParams({
+      strategyId: backtest.strategy.id,
+      startDate: backtest.parameters.start_date,
+      endDate: backtest.parameters.end_date,
+      initialCapital: backtest.parameters.initial_capital.toString(),
+    });
+    router.push(`/backtester/new?${params.toString()}`);
+  };
+
+  const renderCardContent = () => {
+    switch (backtest.status) {
+      case "running":
+        return <RunningIndicator />;
+      case "completed":
+        return backtest.result ? (
+          <PerformanceBadges result={backtest.result} />
+        ) : null;
+      default:
+        return null; // pending, failed, canceled 상태에서는 content 없음
+    }
+  };
+
   return (
-    <Card className="flex flex-col justify-between h-full transition-all duration-200 ease-in-out border border-border hover:border-primary/80 hover:shadow-md">
-      <CardHeader className="p-4 flex-row items-start justify-between gap-4">
-        <div className="flex-grow">
-          <CardTitle className="text-base font-bold text-foreground mb-1">
-            <Link
-              href={`/strategies/${backtest.strategy.id}`}
-              className="hover:underline"
-            >
-              {backtest.strategy.name}
-            </Link>
-          </CardTitle>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            <span>
-              {format(new Date(backtest.parameters.start_date), "yy.MM.dd")} -{" "}
-              {format(new Date(backtest.parameters.end_date), "yy.MM.dd")}
-            </span>
+    <Card className="flex flex-col justify-between h-full transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/50">
+      <CardHeader className="p-4">
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-grow">
+            <CardTitle className="text-base font-bold text-foreground mb-1.5">
+              <Link
+                href={`/strategies/${backtest.strategy.id}`}
+                className="hover:underline"
+              >
+                {backtest.strategy.name}
+              </Link>
+            </CardTitle>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>
+                {format(new Date(backtest.parameters.start_date), "yy.MM.dd")} -{" "}
+                {format(new Date(backtest.parameters.end_date), "yy.MM.dd")}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="flex-shrink-0">
-          <StatusBadge status={backtest.status} />
+          <div className="flex-shrink-0">
+            <StatusBadge status={backtest.status} />
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 pt-0">
-        {backtest.status === "running" && (
-          <div className="space-y-1">
-            <Progress value={33} className="h-1 animate-pulse" />
-            <p className="text-xs text-blue-500 text-center">
-              {t("runningMessage")}
-            </p>
-          </div>
-        )}
-        {backtest.status === "completed" && backtest.result ? (
-          <PerformanceBadges result={backtest.result} />
-        ) : backtest.status !== "running" ? (
-          <div className="flex items-center justify-center h-[26px] bg-slate-100 dark:bg-slate-800/50 rounded-md">
-            <p className="text-xs text-muted-foreground">
-              {t("noResultMessage")}
-            </p>
-          </div>
-        ) : null}
+      <CardContent className="p-4 pt-0 h-[42px] flex flex-col justify-center">
+        {renderCardContent()}
       </CardContent>
 
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
@@ -249,52 +255,58 @@ export function BacktestCard({
             locale: ko,
           })}
         </p>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+        <div className="flex items-center gap-2">
+          {/* --- 완료 상태일 때 '결과 보기' 버튼을 직접 노출 --- */}
+          {backtest.status === "completed" && (
             <Link href={`/backtester/${backtest.id}`} passHref legacyBehavior>
-              <DropdownMenuItem disabled={backtest.status !== "completed"}>
+              <Button size="sm" variant="outline">
                 <Eye className="mr-2 h-4 w-4" />
                 {t("viewResult")}
-              </DropdownMenuItem>
+              </Button>
             </Link>
-            <DropdownMenuItem disabled>
-              <Copy className="mr-2 h-4 w-4" />
-              {t("cloneAndRun")}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onCancel(backtest.id)}
-              disabled={!isActionable || isCanceling}
-              className="text-amber-600 focus:text-amber-700"
-            >
-              {isCanceling ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <XCircle className="mr-2 h-4 w-4" />
-              )}
-              {t("cancelJob")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(backtest.id)}
-              disabled={!isTerminal || isDeleting}
-              className="text-destructive focus:text-destructive"
-            >
-              {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              {t("deleteJob")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleCloneAndRun}>
+                <Copy className="mr-2 h-4 w-4" />
+                {t("cloneAndRun")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onCancel(backtest.id)}
+                disabled={!isActionable || isCanceling}
+                className="text-amber-600 focus:text-amber-700"
+              >
+                {isCanceling ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="mr-2 h-4 w-4" />
+                )}
+                {t("cancelJob")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDelete(backtest.id)}
+                disabled={!isTerminal || isDeleting}
+                className="text-destructive focus:text-destructive"
+              >
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                {t("deleteJob")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </CardFooter>
     </Card>
   );

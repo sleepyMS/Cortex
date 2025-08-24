@@ -13,6 +13,11 @@
 - **Styling: Tailwind CSS**
   - **이유:** 유틸리티 우선 접근 방식은 빠른 개발 속도와 일관된 디자인 시스템 구축을 용이하게 합니다.
 
+### API 데이터 핸들링
+
+- **명명 규칙:** 백엔드 API로부터 받는 모든 데이터는 **`camelCase`** 형식입니다. 따라서 `interface`, `type` 등 모든 타입 정의와 데이터 속성 접근은 `camelCase`를 사용해야 합니다. (예: `result.totalReturnPct`)
+- **타입 정의:** API 응답에 대한 타입은 `src/types` 폴더 내에 명확히 정의하여 사용합니다.
+
 ### State & Data Fetching
 
 - **State Management: Zustand & TanStack Query**

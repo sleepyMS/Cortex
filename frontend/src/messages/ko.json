@@ -379,24 +379,6 @@
     "backtester": "백테스트",
     "community": "커뮤니티"
   },
-  "BacktestSetupForm": {
-    "title": "백테스트 설정",
-    "description": "투자 전략의 과거 성과를 시뮬레이션하기 위한 파라미터를 설정합니다.",
-    "strategyLabel": "전략",
-    "selectStrategyPlaceholder": "전략을 선택하세요",
-    "loadingStrategies": "전략 불러오는 중...",
-    "tickerLabel": "거래 쌍",
-    "startDateLabel": "시작 날짜",
-    "endDateLabel": "종료 날짜",
-    "pickADate": "날짜 선택",
-    "initialCapitalLabel": "초기 자본",
-    "commissionRateLabel": "수수료율",
-    "runBacktestButton": "백테스트 실행",
-    "startingBacktest": "백테스트 시작 중...",
-    "backtestStartedSuccess": "백테스트가 성공적으로 시작되었습니다! 아래 목록에서 상태를 확인하세요.",
-    "backtestStartedError": "백테스트 시작 실패: {error}",
-    "endDateBeforeStartDateError": "종료 날짜는 시작 날짜보다 빠를 수 없습니다."
-  },
   "BacktestList": {
     "title": "백테스트 기록",
     "description": "과거 실행했던 백테스트 시뮬레이션의 상태와 결과를 확인하세요.",
@@ -415,23 +397,6 @@
     "totalReturn": "총 수익률",
     "cancelBacktest": "취소"
   },
-  "BacktesterPage": {
-    "title": "전략 백테스터"
-  },
-  "BacktestResultSummary": {
-    "title": "백테스트 성과 요약",
-    "totalReturn": "총 수익률",
-    "mdd": "최대 낙폭 (MDD)",
-    "sharpeRatio": "샤프 지수",
-    "winRate": "승률",
-    "noResultsAvailable": "아직 결과가 없습니다. 백테스트가 실행 중이거나 실패했을 수 있습니다."
-  },
-  "EquityChart": {
-    "title": "자산 변화 곡선",
-    "notEnoughData": "차트를 표시하기에 데이터가 부족합니다 (최소 2개 이상의 데이터 포인트 필요).",
-    "chartDataError": "차트 데이터 로딩 오류: {errorDetail}",
-    "checkBacktestResults": "백테스트 결과를 확인해주세요. 데이터가 불완전하거나 형식이 잘못되었을 수 있습니다."
-  },
   "BacktestDetailPage": {
     "title": "백테스트 결과",
     "subtitle": "백테스트 ID: {backtestId} 상세 정보",
@@ -443,28 +408,6 @@
     "fetchError": "백테스트 데이터 불러오기 실패: {errorDetail}. 다시 시도해주세요.",
     "retryLoad": "다시 시도",
     "unknownStrategy": "알 수 없는 전략"
-  },
-  "TradeLogTable": {
-    "title": "거래 내역",
-    "header": {
-      "timestamp": "거래 일시",
-      "side": "구분",
-      "price": "가격",
-      "quantity": "수량",
-      "fee": "수수료",
-      "pnl": "손익",
-      "currentBalance": "잔고"
-    },
-    "side": {
-      "buy": "매수",
-      "sell": "매도"
-    },
-    "noTradeLogsAvailable": "이 백테스트에 대한 거래 내역이 없습니다. 백테스트가 실행 중이거나 거래가 발생하지 않았을 수 있습니다.",
-    "noResults": "결과 없음.",
-    "pagination": {
-      "previous": "이전",
-      "next": "다음"
-    }
   },
   "StrategyBuilder": {
     "title": "새로운 전략 생성",
@@ -478,8 +421,8 @@
     "addTopLevelCondition": "최상위 조건 추가",
     "noConditionsYet": "아직 설정된 조건이 없습니다.",
     "addFirstCondition": "첫 번째 조건 추가",
-    "orOperator": "또는 (OR)",
-    "andOperator": "그리고 (AND)",
+    "orOperator": "OR",
+    "andOperator": "AND",
     "indicatorHubTitle": "지표 허브",
     "indicatorHubDescription": "전략에 사용할 지표를 선택하세요.",
     "logicHubTitle": "로직 선택",
@@ -668,5 +611,101 @@
     "capital": "자본금",
     "commission": "수수료",
     "totalReturnShort": "수익률"
+  },
+  "BacktesterPage": {
+    "title": "나의 백테스트",
+    "createNewBacktest": "새 백테스트 생성",
+    "filterStatusPlaceholder": "상태로 필터링",
+    "filterStatusAll": "모든 상태",
+    "filterStatusRunning": "실행중",
+    "filterStatusPending": "대기중",
+    "filterStatusCompleted": "완료",
+    "filterStatusFailed": "실패",
+    "filterStatusCanceled": "취소됨",
+    "filterStrategyPlaceholder": "전략으로 필터링",
+    "filterStrategyAll": "모든 전략",
+    "fetchError": "백테스트 목록을 불러오는 중 오류가 발생했습니다.",
+    "cancelSuccess": "백테스트 작업이 성공적으로 취소되었습니다.",
+    "cancelError": "작업 취소 실패: {error}",
+    "deleteSuccess": "백테스트 기록이 삭제되었습니다.",
+    "deleteError": "기록 삭제 실패: {error}",
+    "noMoreResults": "더 이상 불러올 결과가 없습니다.",
+    "empty": {
+      "title": "아직 실행된 백테스트가 없습니다",
+      "description": "첫 백테스트를 생성하여 당신의 투자 전략을 데이터로 검증해보세요.",
+      "createButton": "첫 백테스트 생성하기"
+    }
+  },
+  "NewBacktestPage": {
+    "title": "새 백테스트 생성",
+    "description": "전략의 과거 성과를 테스트하기 위한 조건을 설정하고, 다양한 시나리오를 시뮬레이션하여 아이디어를 검증하세요."
+  },
+  "BacktestSetupForm": {
+    "submitSuccess": "백테스트 요청이 성공적으로 접수되었습니다.",
+    "submitError": "백테스트 요청 실패: {error}",
+    "submitButton": "백테스트 실행 요청",
+    "tabs": {
+      "standard": "표준",
+      "walkForward": "워크 포워드",
+      "monteCarlo": "몬테카를로"
+    },
+    "standard": {
+      "title": "표준 백테스트",
+      "description": "단일 기간에 대한 전략 성과를 시뮬레이션합니다.",
+      "strategyLabel": "전략 선택",
+      "strategyLoading": "전략 목록 로딩 중...",
+      "strategyPlaceholder": "실행할 전략을 선택하세요",
+      "noStrategiesFound": "생성된 전략이 없습니다.",
+      "goToCreateStrategy": "전략 생성하러 가기",
+      "dateRangeLabel": "백테스트 기간",
+      "initialCapitalLabel": "초기 자본금",
+      "leverageLabel": "레버리지",
+      "feePctLabel": "거래 수수료 (%)"
+    },
+    "summary": {
+      "title": "설정 요약",
+      "description": "백테스트 실행 전 설정을 최종 확인하세요.",
+      "selectStrategyPrompt": "좌측에서 테스트할 전략을 선택해주세요.",
+      "noDescription": "설명이 없습니다.",
+      "targetCoins": "대상 코인",
+      "notSet": "미설정",
+      "tpsl": "손익절 로직",
+      "tpslTypes": {
+        "percentage": "Percentage",
+        "atr": "ATR Based"
+      },
+      "preflightCheck": {
+        "title": "사전 점검",
+        "strategy": "전략 선택 완료",
+        "period": "기간 설정 완료"
+      },
+      "estimate": "예상 소요 시간: {duration}"
+    }
+  },
+  "BacktestCard": {
+    "Status": {
+      "pending": "대기중",
+      "running": "실행중",
+      "completed": "완료",
+      "failed": "실패",
+      "canceled": "취소됨"
+    },
+    "runningMessage": "결과를 계산하는 중입니다...",
+    "noResultMessage": "표시할 성과 데이터가 없습니다.",
+    "actions": "작업",
+    "viewResult": "결과 보기",
+    "cloneAndRun": "복제하여 실행",
+    "cancelJob": "작업 취소",
+    "deleteJob": "기록 삭제"
+  },
+  "EquityChart": {
+    "title": "자산 곡선 (Equity Curve)"
+  },
+  "BacktestResultSummary": {
+    "title": "성과 요약 (Summary)"
+  },
+  "TradeLogTable": {
+    "title": "거래 기록 (Trade Logs)",
+    "moreTrades": "... 그 외 {count}개의 거래 기록 더 보기"
   }
 }

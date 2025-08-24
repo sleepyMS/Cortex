@@ -7,19 +7,15 @@ from typing import List, Optional
 import uuid
 
 from .. import schemas, models, security
-# ▼▼▼ [수정] 비동기 의존성 및 팩토리 함수 임포트 ▼▼▼
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.backtest_service import backtest_service
 from ..limiter import limiter
-# ▲▲▲ [수정] ▲▲▲
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/backtests", tags=["Backtesting"])
 
-# ▼▼▼ [추가] 라우터 파일 내에서 필요한 의존성을 직접 생성 ▼▼▼
 get_verified_backtest = create_owner_verifier(models.Backtest)
-# ▲▲▲ [추가] ▲▲▲
 
 @router.post("/", response_model=schemas.Backtest, status_code=status.HTTP_202_ACCEPTED, summary="Request a new backtest job")
 @limiter.limit("5/minute")
