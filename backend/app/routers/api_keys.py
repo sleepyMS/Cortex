@@ -7,11 +7,9 @@ from typing import List
 import uuid
 
 from .. import schemas, models
-# ▼▼▼ [수정] 비동기 의존성 및 팩토리 함수 임포트 ▼▼▼
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.api_key_service import api_key_service
 from ..limiter import limiter
-# ▲▲▲ [수정] ▲▲▲
 
 logger = logging.getLogger(__name__)
 

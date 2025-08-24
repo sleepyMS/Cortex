@@ -380,9 +380,6 @@
     "backtester": "Backtest",
     "community": "Community"
   },
-  "BacktesterPage": {
-    "title": "Strategy Backtester"
-  },
   "BacktestList": {
     "title": "Your Backtest History",
     "description": "View the status and results of your past backtest simulations.",
@@ -400,18 +397,6 @@
     "startedAt": "Started At",
     "totalReturn": "Total Return",
     "cancelBacktest": "Cancel"
-  },
-  "BacktestDetailPage": {
-    "title": "Backtest Results for",
-    "subtitle": "Details for Backtest ID: {backtestId}",
-    "loadingResults": "Loading backtest results...",
-    "backtestNotFoundTitle": "Backtest Not Found",
-    "backtestNotFoundMessage": "The backtest record you are looking for does not exist or you do not have permission to view it.",
-    "backToBacktestList": "Back to Backtest List",
-    "errorLoadingResultsTitle": "Error Loading Results",
-    "fetchError": "Failed to load backtest data: {errorDetail}. Please try again.",
-    "retryLoad": "Retry",
-    "unknownStrategy": "Unknown Strategy"
   },
   "StrategyBuilder": {
     "title": "Create New Strategy",
@@ -644,72 +629,169 @@
     "title": "Create New Backtest",
     "description": "Set up the parameters to test your strategy's past performance and validate your ideas by simulating various scenarios."
   },
+  "EquityChart": {
+    "title": "Equity Curve"
+  },
+  "TradeLogTable": {
+    "title": "Trade Logs",
+    "moreTrades": "... and {count} more trades"
+  },
+  "BacktestCard": {
+    "status": {
+      "completed": "Completed",
+      "running": "Running",
+      "pending": "Pending",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "runAt": "Run at {date}",
+    "noDateInfo": "No date info",
+    "totalReturn": "Total Return",
+    "totalReturnTooltip": "The cumulative return over the backtesting period.",
+    "winRate": "Win Rate",
+    "winRateTooltip": "The percentage of profitable trades out of all trades.",
+    "simulating": "Simulation in progress...",
+    "actions": {
+      "cancel": "Cancel Run",
+      "delete": "Delete Record"
+    }
+  },
+  "BacktestResultSummary": {
+    "title": "Performance Summary",
+    "totalReturn": "Total Return",
+    "totalReturnDesc": "The total cumulative return for the period.",
+    "mdd": "Max Drawdown (MDD)",
+    "mddDesc": "The largest peak-to-trough decline in portfolio value. A key indicator for risk management.",
+    "winRate": "Win Rate",
+    "winRateDesc": "The percentage of trades that resulted in a profit.",
+    "sharpeRatio": "Sharpe Ratio",
+    "sharpeRatioDesc": "Measures return per unit of risk. A higher value indicates a more stable investment.",
+    "profitFactor": "Profit Factor",
+    "profitFactorDesc": "The gross profit divided by the gross loss. A value greater than 1 is profitable.",
+    "totalTrades": "Total Trades",
+    "totalTradesDesc": "The total number of trades that occurred during the backtesting period."
+  },
   "BacktestSetupForm": {
     "submitSuccess": "Backtest request submitted successfully.",
-    "submitError": "Failed to start backtest: {error}",
+    "submitError": "Failed to submit backtest: {error}",
     "submitButton": "Run Backtest",
+    "submitButtonLoading": "Submitting...",
     "tabs": {
       "standard": "Standard",
       "walkForward": "Walk-Forward",
       "monteCarlo": "Monte Carlo"
     },
     "standard": {
-      "title": "Standard Backtest",
+      "title": "Standard Backtest Setup",
       "description": "Simulate strategy performance over a single period.",
-      "strategyLabel": "Select Strategy",
+      "strategyLabel": "Strategy",
       "strategyLoading": "Loading strategies...",
-      "strategyPlaceholder": "Select a strategy to run",
-      "noStrategiesFound": "No strategies found.",
-      "goToCreateStrategy": "Create a new strategy",
-      "dateRangeLabel": "Backtest Period",
+      "strategyPlaceholder": "Select a strategy to test",
+      "noStrategiesFound": "No strategies have been created.",
+      "goToCreateStrategy": "Create a Strategy",
+      "dateRangeLabel": "Period",
       "initialCapitalLabel": "Initial Capital",
       "leverageLabel": "Leverage",
       "feePctLabel": "Trading Fee (%)"
     },
+    "wip": {
+      "title": "This Feature is Coming Soon",
+      "description": "We are working hard on this. Please stay tuned for updates."
+    },
     "summary": {
-      "title": "Summary",
-      "description": "Review your settings before running the backtest.",
-      "selectStrategyPrompt": "Please select a strategy from the left.",
+      "title": "Configuration Summary",
+      "selectStrategyPrompt": "Please select a strategy to test from the left.",
       "noDescription": "No description provided.",
       "targetCoins": "Target Coins",
-      "notSet": "Not Set",
+      "notSet": "Not set",
       "tpsl": "TP/SL Logic",
       "tpslTypes": {
-        "percentage": "Percentage",
+        "percentage": "Fixed Percentage",
         "atr": "ATR Based"
       },
+      "tpslSet": "Set",
       "preflightCheck": {
         "title": "Pre-flight Check",
         "strategy": "Strategy selected",
-        "period": "Period set"
-      },
-      "estimate": "Estimated time: {duration}"
+        "period": "Period configured"
+      }
     }
   },
-  "BacktestCard": {
-    "Status": {
-      "pending": "Pending",
-      "running": "Running",
-      "completed": "Completed",
-      "failed": "Failed",
-      "canceled": "Canceled"
+  "ParameterTreeView": {
+    "title": "Parameter Overrides",
+    "description": "Easily modify parameter values for testing while keeping the rule structure intact.",
+    "orOperator": "OR",
+    "andOperator": "AND",
+    "sections": {
+      "longEntry": "Long Entry Rules",
+      "longExit": "Long Exit Rules",
+      "shortEntry": "Short Entry Rules",
+      "shortExit": "Short Exit Rules"
+    }
+  },
+  "BacktestDetailPage": {
+    "Header": {
+      "strategy": "Strategy",
+      "rerun": "Rerun",
+      "share": "Share to Community",
+      "shareWip": "Sharing feature is currently in development.",
+      "loadingDate": "Loading date...",
+      "initialCapital": "Initial Capital: ${amount}"
     },
-    "runningMessage": "Calculating results...",
-    "noResultMessage": "No performance data to display.",
-    "actions": "Actions",
-    "viewResult": "View Result",
-    "cloneAndRun": "Clone and Run",
-    "cancelJob": "Cancel Job",
-    "deleteJob": "Delete Record"
-  },
-  "EquityChart": {
-    "title": "Equity Curve"
-  },
-  "BacktestResultSummary": {
-    "title": "Performance Summary"
-  },
-  "TradeLogTable": {
-    "title": "Trade Logs",
-    "moreTrades": "... and {count} more trades"
+    "errorTitle": "Error Loading Results",
+    "errorMessage": "Failed to load data: {error}",
+    "noDataTitle": "No Data",
+    "noDataMessage": "There is no backtest data to display.",
+    "processingTitle": "Analyzing Results",
+    "processingMessage": "The backtest is running. Results will update automatically shortly.",
+    "noResultData": "The backtest is complete, but there is no result data to display.",
+    "jobNotCompletedTitle": "{status, select, failed {Backtest Failed} canceled {Backtest Canceled} other {Job Not Completed}}",
+    "jobNotCompletedMessage": "This backtest did not complete successfully.",
+    "unknownStatus": "Unknown backtest status.",
+    "Tabs": {
+      "summary": "Summary",
+      "chart": "Equity Curve",
+      "monthly": "Monthly Performance",
+      "logs": "Trade Logs"
+    },
+    "MonthlyPerformance": {
+      "title": "Monthly Performance",
+      "description": "Review monthly return fluctuations to understand your strategy's seasonal strengths and weaknesses.",
+      "year": "Year",
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ]
+    },
+    "TradeLogTable": {
+      "title": "Detailed Trade Logs",
+      "description": "Review all individual trade records in chronological order.",
+      "noResults": "No trade records found.",
+      "totalTrades": "Total {total} trades",
+      "rowsPerPage": "Rows per page",
+      "pageInfo": "Page {page} of {totalPages}",
+      "columns": {
+        "timestamp": "Timestamp",
+        "side": "Side",
+        "price": "Price",
+        "quantity": "Quantity",
+        "pnl": "PNL",
+        "currentBalance": "Balance"
+      },
+      "sides": {
+        "buy": "Buy",
+        "sell": "Sell"
+      }
+    }
   }
 }
