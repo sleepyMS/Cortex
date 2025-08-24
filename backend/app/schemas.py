@@ -342,13 +342,23 @@ class ApiKeyResponse(CamelCaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
+class ParameterOverride(CamelCaseModel):
+    """단일 파라미터 오버라이드를 위한 스키마"""
+    path: str
+    value: Any
+
+class BacktestExecutionParameters(CamelCaseModel):
+    """백테스트 실행에 필요한 모든 상세 파라미터를 그룹화"""
+    leverage: float = Field(1.0, gt=0, description="레버리지 배율")
+    fee: float = Field(0.04, ge=0, description="거래 수수료 (%)")
+    overrides: Optional[List[ParameterOverride]] = Field(None, description="전략의 기본값을 덮어쓰는 파라미터 목록")
+
 class BacktestCreate(CamelCaseModel):
     strategy_id: uuid.UUID
-    ticker: str = Field(..., description="Trading pair ticker, e.g., 'BTC/USDT'")
     start_date: datetime = Field(..., description="Start date for backtest period (UTC)")
     end_date: datetime = Field(..., description="End date for backtest period (UTC)")
     initial_capital: float = Field(10000.0, ge=1.0, description="Initial capital for backtest")
-    additional_parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameters: BacktestExecutionParameters
 
 class TradeLogEntry(CamelCaseModel):
     timestamp: datetime

@@ -75,7 +75,7 @@ def run_all_active_bots():
     async def _run_all_concurrently():
         bots_to_run = []
         with SyncSessionLocal() as session:
-            # (수정) 'active'와 'initializing' 상태의 봇을 모두 가져옵니다.
+            # 'active'와 'initializing' 상태의 봇을 모두 가져옵니다.
             result = session.execute(
                 select(models.LiveBot)
                 .options(joinedload(models.LiveBot.strategy), joinedload(models.LiveBot.api_key))

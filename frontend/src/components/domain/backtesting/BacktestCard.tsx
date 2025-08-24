@@ -62,8 +62,8 @@ export interface Backtest {
   status: "pending" | "running" | "completed" | "failed" | "canceled";
   createdAt: string;
   parameters: {
-    start_date: string;
-    end_date: string;
+    startDate: string;
+    endDate: string;
     initial_capital: number;
   };
   strategy: StrategyInfo;
@@ -197,9 +197,9 @@ export function BacktestCard({
   const handleCloneAndRun = () => {
     const params = new URLSearchParams({
       strategyId: backtest.strategy.id,
-      startDate: backtest.parameters.start_date,
-      endDate: backtest.parameters.end_date,
-      initialCapital: backtest.parameters.initial_capital.toString(),
+      startDate: backtest.parameters.startDate,
+      endDate: backtest.parameters.endDate,
+      initialCapital: backtest.parameters.initialCapital.toString(),
     });
     router.push(`/backtester/new?${params.toString()}`);
   };
@@ -233,8 +233,8 @@ export function BacktestCard({
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
               <span>
-                {format(new Date(backtest.parameters.start_date), "yy.MM.dd")} -{" "}
-                {format(new Date(backtest.parameters.end_date), "yy.MM.dd")}
+                {format(new Date(backtest.parameters.startDate), "yy.MM.dd")} -{" "}
+                {format(new Date(backtest.parameters.endDate), "yy.MM.dd")}
               </span>
             </div>
           </div>
