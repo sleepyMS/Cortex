@@ -184,6 +184,7 @@ class BacktestResult(Base):
     sharpe_ratio = Column(Float, nullable=True)
     win_rate_pct = Column(Float, nullable=True)
     pnl_curve_json = Column(JSON, nullable=True)
+    drawdown_curve_json = Column(JSON, nullable=True)
     trade_summary_json = Column(JSON, nullable=True)
     executed_at = Column(DateTime(timezone=True), nullable=True)
     profit_factor = Column(Float, nullable=True)

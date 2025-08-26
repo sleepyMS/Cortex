@@ -319,8 +319,8 @@ class BacktestingEngine:
         if not self.equity_curve:
             return {} # 거래가 없으면 빈 dict 반환
 
-        equity_df = pd.DataFrame(self.equity_curve).set_index('time')
-        equity_df.index = pd.to_datetime(equity_df.index)
+        equity_df = pd.DataFrame(self.equity_curve).sort_values('time').set_index('time')
+        equity_df.index = pd.to_datetime(equity_df.index, unit='s')
         
         # 기본 지표
         final_equity = equity_df['value'].iloc[-1]
@@ -329,6 +329,11 @@ class BacktestingEngine:
         peak = equity_df['value'].expanding(min_periods=1).max()
         drawdown = (equity_df['value'] - peak) / peak
         mdd_pct = drawdown.min() * 100 if not drawdown.empty else 0.0
+        drawdown_curve = (drawdown * 100).round(2) # 퍼센티지로 변환
+        drawdown_curve_json = [
+            {'time': int(idx.timestamp()), 'value': val} 
+            for idx, val in drawdown_curve.items()
+        ]
         
         total_trades = self.winning_trades + self.losing_trades
         win_rate_pct = (self.winning_trades / total_trades) * 100 if total_trades > 0 else 0.0
@@ -377,4 +382,5 @@ class BacktestingEngine:
             "losing_trades": self.losing_trades,
             "pnl_curve_json": self.equity_curve,
             "sharpe_ratio": round(sharpe_ratio, 2),
+            "drawdown_curve_json": drawdown_curve_json,
         }

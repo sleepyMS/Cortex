@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 3ac0909b8379
+Revision ID: 96363f5801c1
 Revises: 
-Create Date: 2025-08-26 18:45:09.503245
+Create Date: 2025-08-27 00:58:12.217664
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '3ac0909b8379'
+revision: str = '96363f5801c1'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -229,6 +229,7 @@ def upgrade() -> None:
     sa.Column('sharpe_ratio', sa.Float(), nullable=True),
     sa.Column('win_rate_pct', sa.Float(), nullable=True),
     sa.Column('pnl_curve_json', sa.JSON(), nullable=True),
+    sa.Column('drawdown_curve_json', sa.JSON(), nullable=True),
     sa.Column('trade_summary_json', sa.JSON(), nullable=True),
     sa.Column('executed_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('profit_factor', sa.Float(), nullable=True),

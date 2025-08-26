@@ -17,7 +17,8 @@ export interface BacktestResult {
   totalTrades?: number | null;
   winningTrades?: number | null;
   losingTrades?: number | null;
-  pnlCurveJson: { time: string; value: number }[] | null;
+  pnlCurveJson: { time: number; value: number }[] | null;
+  drawdownCurveJson?: { time: number; value: number }[] | null;
 }
 
 /**

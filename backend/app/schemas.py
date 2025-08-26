@@ -381,6 +381,7 @@ class BacktestResultSummary(CamelCaseModel):
     sharpe_ratio: Optional[float] = None
     win_rate_pct: Optional[float] = None
     pnl_curve_json: Optional[List[Dict[str, Any]]] = None
+    drawdown_curve_json: Optional[List[Dict[str, Any]]] = None
     trade_summary_json: Optional[Dict[str, Any]] = None
     executed_at: Optional[datetime] = None
 
