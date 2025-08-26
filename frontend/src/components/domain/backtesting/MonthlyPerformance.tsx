@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { ChartDataPoint } from "./EquityChart";
-import { getYear, getMonth, parseISO } from "date-fns";
+import { getYear, getMonth, fromUnixTime } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface MonthlyPerformanceProps {
@@ -29,31 +29,52 @@ interface MonthlyPerformanceProps {
 const calculateMonthlyReturns = (pnlData: ChartDataPoint[]) => {
   if (!pnlData || pnlData.length < 2) return {};
 
-  const monthlyValues: { [key: string]: { start: number; end: number } } = {};
+  const monthlyValues: {
+    [key: string]: { start: number; end: number; firstTime: number };
+  } = {};
 
   pnlData.forEach((d) => {
-    const date = parseISO(d.time);
+    // UNIX 타임스탬프(초 단위)를 Date 객체로 올바르게 변환합니다.
+    const date = fromUnixTime(d.time);
+    // ▲▲▲ [수정 완료] ▲▲▲
     const year = getYear(date);
     const month = getMonth(date);
     const key = `${year}-${month}`;
 
     if (!monthlyValues[key]) {
-      monthlyValues[key] = { start: d.value, end: d.value };
+      // 월의 첫 번째 데이터 포인트를 시작 값으로 기록
+      monthlyValues[key] = { start: d.value, end: d.value, firstTime: d.time };
     } else {
+      // 월의 마지막 데이터 포인트를 종료 값으로 기록 (시간순으로 정렬되어 있다고 가정)
       monthlyValues[key].end = d.value;
     }
   });
 
+  // 월별 수익률 계산 시, 이전 달의 종가를 사용하여 더 정확하게 계산
+  const sortedMonths = Object.keys(monthlyValues).sort(
+    (a, b) => monthlyValues[a].firstTime - monthlyValues[b].firstTime
+  );
+  let lastMonthEndValue: number | null = null;
+
   const returns: { [year: number]: (number | null)[] } = {};
-  Object.keys(monthlyValues).forEach((key) => {
+  sortedMonths.forEach((key, index) => {
     const [year, month] = key.split("-").map(Number);
     const { start, end } = monthlyValues[key];
-    const monthlyReturn = ((end - start) / start) * 100;
+
+    // 첫 달은 (월말 값 / 월초 값) - 1 로 계산
+    const startValue =
+      index === 0 || lastMonthEndValue === null ? start : lastMonthEndValue;
+
+    if (startValue === 0) return; // 분모가 0이 되는 경우 방지
+
+    const monthlyReturn = ((end - startValue) / startValue) * 100;
 
     if (!returns[year]) {
       returns[year] = Array(12).fill(null);
     }
     returns[year][month] = monthlyReturn;
+
+    lastMonthEndValue = end;
   });
 
   return returns;

@@ -1,32 +1,34 @@
-// EquityChart.tsx
+// file: frontend/src/components/domain/backtesting/EquityChart.tsx
+
 import React, { useEffect, useRef } from "react";
 import {
   createChart,
   ColorType,
   PriceScaleMode,
   LineStyle,
+  // v5에서는 SeriesToken을 직접 임포트합니다.
   AreaSeries,
   LineSeries,
+  type UTCTimestamp,
   type IChartApi,
   type ISeriesApi,
   type AreaData,
   type LineData,
 } from "lightweight-charts";
 
-type Props = {
-  /** 영역(면적) 시리즈 데이터: { time, value } */
-  data: AreaData[];
-  /** 벤치마크 라인 시리즈(선택): { time, value } */
-  benchmark?: LineData[];
-  /** 외부 컨테이너가 넓이 100%일 때 내부 리사이즈 처리 */
-  height?: number;
-  /** 다크 모드 여부 */
-  dark?: boolean;
-};
+export type ChartDataPoint = AreaData<UTCTimestamp>;
+export type BenchmarkDataPoint = LineData<UTCTimestamp>;
 
-const EquityChart: React.FC<Props> = ({
-  data,
-  benchmark,
+interface EquityChartProps {
+  pnlData: ChartDataPoint[]; // AreaData[] 대신 더 명확한 타입 사용
+  benchmarkData?: BenchmarkDataPoint[];
+  height?: number;
+  dark?: boolean;
+}
+
+const EquityChart: React.FC<EquityChartProps> = ({
+  pnlData,
+  benchmarkData,
   height = 320,
   dark = false,
 }) => {
@@ -36,18 +38,16 @@ const EquityChart: React.FC<Props> = ({
   const benchRef = useRef<ISeriesApi<"Line"> | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
+  // 차트 생성 및 옵션 설정을 담당하는 useEffect
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // 기존 차트 정리
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
-      areaRef.current = null;
-      benchRef.current = null;
-    }
+    // ▼▼▼ [핵심 수정] ▼▼▼
+    // "Object is disposed" 에러를 유발하는 상단의 정리 로직을 완전히 제거합니다.
+    // 차트 정리는 오직 useEffect의 return 클린업 함수에서만 처리합니다.
+    // if (chartRef.current) { ... } 블록 삭제
+    // ▲▲▲ [수정 완료] ▲▲▲
 
-    // 차트 생성 (v5 레이아웃/스케일 옵션)
     const chart = createChart(containerRef.current, {
       height,
       layout: {
@@ -65,10 +65,7 @@ const EquityChart: React.FC<Props> = ({
           color: dark ? "rgba(42,46,57,0.3)" : "rgba(197,203,206,0.3)",
         },
       },
-      rightPriceScale: {
-        mode: PriceScaleMode.Normal,
-        borderVisible: false,
-      },
+      rightPriceScale: { mode: PriceScaleMode.Normal, borderVisible: false },
       timeScale: {
         rightOffset: 8,
         barSpacing: 6,
@@ -80,10 +77,9 @@ const EquityChart: React.FC<Props> = ({
         horzLine: { width: 1, style: LineStyle.Dashed, labelVisible: true },
       },
     });
-
     chartRef.current = chart;
 
-    // v5: 시리즈 추가는 addSeries(SeriesToken, options)
+    // 사용자의 올바른 v5 시리즈 추가 구문
     const area = chart.addSeries(AreaSeries, {
       lineColor: dark ? "rgba(129,140,248,1)" : "#2563EB",
       topColor: dark ? "rgba(129,140,248,0.40)" : "rgba(37,99,235,0.40)",
@@ -95,58 +91,49 @@ const EquityChart: React.FC<Props> = ({
     });
     areaRef.current = area;
 
-    if (benchmark && benchmark.length) {
-      const bench = chart.addSeries(LineSeries, {
-        color: dark ? "rgba(234,179,8,1)" : "#F59E0B",
-        lineWidth: 2,
-        lineStyle: LineStyle.Solid,
-        priceLineVisible: false,
-        lastValueVisible: true,
-        title: "Benchmark",
-      });
-      benchRef.current = bench;
-      bench.setData(benchmark);
-    }
+    const bench = chart.addSeries(LineSeries, {
+      color: dark ? "rgba(234,179,8,1)" : "#F59E0B",
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: "Benchmark",
+    });
+    benchRef.current = bench;
 
-    // 초기 데이터 세팅
-    if (data && data.length > 0) {
-      area.setData(data);
-    }
-
-    // 컨테이너 리사이즈 대응 (width 자동)
-    const handleResize = () => {
-      if (!containerRef.current || !chartRef.current) return;
-      const { width } = containerRef.current.getBoundingClientRect();
-      chartRef.current.applyOptions({ width: Math.max(0, Math.floor(width)) });
-      chartRef.current.timeScale().fitContent();
-    };
-
-    const ro = new ResizeObserver(handleResize);
-    resizeObserverRef.current = ro;
+    // 리사이즈 옵저버 설정
+    const ro = new ResizeObserver(() => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth });
+      }
+    });
     ro.observe(containerRef.current);
-    handleResize();
 
+    // 올바른 정리(cleanup) 함수
     return () => {
       ro.disconnect();
       chart.remove();
+      chartRef.current = null; // 참조도 정리
     };
-  }, [height, dark]);
+  }, [height, dark]); // 이 useEffect는 차트의 기본 옵션이 변경될 때만 재실행
 
-  // 데이터/벤치마크 업데이트
+  // 데이터 업데이트만 담당하는 useEffect
   useEffect(() => {
-    if (areaRef.current) {
-      areaRef.current.setData(data);
+    if (areaRef.current && pnlData) {
+      areaRef.current.setData(pnlData);
       chartRef.current?.timeScale().fitContent();
     }
     if (benchRef.current) {
-      if (benchmark && benchmark.length) {
-        benchRef.current.setData(benchmark);
+      if (benchmarkData && benchmarkData.length > 0) {
+        benchRef.current.setData(benchmarkData);
+        benchRef.current.applyOptions({ visible: true });
       } else {
-        // 벤치마크 제거가 필요하면 시리즈를 숨김 처리
+        // 데이터가 없으면 시리즈를 숨김
+        benchRef.current.setData([]);
         benchRef.current.applyOptions({ visible: false });
       }
     }
-  }, [data, benchmark]);
+  }, [pnlData, benchmarkData]); // 이 useEffect는 데이터가 변경될 때만 재실행
 
   return (
     <div

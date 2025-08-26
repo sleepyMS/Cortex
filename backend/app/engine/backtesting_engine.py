@@ -308,7 +308,10 @@ class BacktestingEngine:
 
         # 총자산 = 현재 보유 현금 + 투입된 원금 + 현재 미실현 손익
         equity = self.balance + self.invested_capital + unrealized_pnl
-        self.equity_curve.append({'time': timestamp.isoformat(), 'value': equity})
+        
+        # timestamp는 pandas의 Timestamp 객체이므로 .timestamp() 메서드를 사용하고 정수(int)로 변환합니다.
+        unix_timestamp = int(timestamp.timestamp())
+        self.equity_curve.append({'time': unix_timestamp, 'value': equity})
 
 
     def _calculate_summary_stats(self) -> Dict:
