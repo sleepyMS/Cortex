@@ -30,8 +30,8 @@ from sqlalchemy.orm import joinedload
 # --- 1. 필요한 모듈 및 서비스 임포트 ---
 from .celery_app import celery_app
 from .database import AsyncSessionLocal, SyncSessionLocal
-from . import models
-# [신규] 아키텍처의 핵심 구성요소 임포트
+
+from . import models, schemas
 from .engine.backtesting_engine import BacktestingEngine
 from .utils.communication import WebSocketManager, EventPublisher
 from .services.market_data_service import market_data_service
@@ -151,77 +151,119 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
 @celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue")
 def run_backtest(self, backtest_id: str):
     """
-    [오케스트레이터] 백테스팅의 전체 과정을 조율합니다.
-    데이터 로드 -> 신호 생성 -> 시뮬레이션 -> 결과 저장 -> 이벤트 발행
+    [최종 오케스트레이터] '전략 스냅샷' 기반 백테스팅의 전체 과정을 조율합니다.
     """
     logger.info(f"Starting backtest orchestration for ID: {backtest_id}")
     backtest_uuid = uuid.UUID(backtest_id)
+    session = None
 
     try:
         # --- 단계 1: 초기 설정 및 상태 업데이트 ---
         WebSocketManager.send_status_update(backtest_id, "running", "백테스트를 시작합니다.", 5)
-        with SyncSessionLocal() as session:
-            backtest = session.query(models.Backtest).options(
-                joinedload(models.Backtest.strategy)
-            ).filter(models.Backtest.id == backtest_uuid).one_or_none()
-            
-            if not backtest or backtest.status != 'pending':
-                logger.warning(f"Backtest {backtest_id} is not in pending state. Aborting.")
-                return f"Backtest {backtest_id} not pending."
+        
+        session = SyncSessionLocal()
 
-            backtest.status = 'running'
-            session.commit()
+        # 경합 조건을 해결하기 위한 재시도 로직 추가
+        backtest = None
+        max_retries = 5
+        for attempt in range(max_retries):
+            backtest = session.query(models.Backtest).filter(
+                models.Backtest.id == backtest_uuid
+            ).one_or_none()
             
-            parameters = backtest.parameters
-            strategy = backtest.strategy
+            if backtest:
+                logger.info(f"Backtest {backtest_id} found in DB on attempt {attempt + 1}.")
+                break # 객체를 찾았으면 루프 탈출
+            
+            logger.warning(f"Backtest {backtest_id} not found on attempt {attempt + 1}/{max_retries}. Retrying in 1 second...")
+            time.sleep(1) # 1초 대기 후 재시도
+        
+        if not backtest:
+            # 최종적으로 객체를 찾지 못한 경우에만 에러 발생
+            logger.error(f"Backtest {backtest_id} not found in database after {max_retries} retries.")
+            raise ValueError(f"Backtest {backtest_id} not found.")
 
-        # --- 단계 2: 데이터 로드 ---
+        if backtest.status != 'pending':
+            logger.warning(f"Backtest {backtest_id} is not in pending state (current: {backtest.status}). Aborting.")
+            # return f"Backtest {backtest_id} not pending."
+            # finally 블록을 위해 return 대신 세션을 닫고 함수를 종료합니다.
+            session.close()
+            return
+            
+        backtest.status = 'running'
+        session.commit()
+        
+        # 모든 파라미터와 전략 규칙은 backtest 객체에서 가져옵니다.
+        execution_params = backtest.parameters
+        # Pydantic 스키마를 사용해 스냅샷의 유효성을 검증하고 객체화합니다.
+        # 이것이 이번 백테스트에서 사용할 '절대적인 최종 전략'입니다.
+        
+        # SignalCalculationRequest 대신, 스냅샷의 전체 구조와 일치하는
+        # StrategyCreate 스키마를 사용하여 모든 정보를 올바르게 불러옵니다.
+        snapshot_as_strategy = schemas.StrategyCreate(**backtest.strategy_snapshot)
+
+        # --- 단계 2: 시세 데이터 로드 ---
         WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터를 로드하고 있습니다...", 15)
-        # (가정) market_data_service에 동기 방식의 데이터 조회 함수가 필요합니다.
+        
+        # 이제 snapshot_as_strategy 객체에서 target_coins를 안전하게 가져올 수 있습니다.
+        ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTC/USDT"
+        
+        # timeframe 정보도 스냅샷에 포함되어야 합니다.
+        # (만약 없다면 schemas.StrategyCreate에 timeframe 필드를 추가해야 합니다.)
+        # 여기서는 execution_params에서 가져오는 것으로 유지합니다.
+        timeframe = execution_params.get('parameters', {}).get('timeframe', '1h')
+        
         ohlcv_df = market_data_service.get_historical_data_sync(
-            ticker=strategy.target_coins[0].ticker,
-            timeframe=parameters.get('timeframe', '1h'),
-            start_date=parameters['startDate'],
-            end_date=parameters['endDate']
+            ticker=ticker,
+            timeframe=timeframe,
+            start_date=datetime.fromisoformat(execution_params['start_date']),
+            end_date=datetime.fromisoformat(execution_params['end_date'])  
         )
+
         if ohlcv_df.empty:
             raise ValueError("시세 데이터를 로드할 수 없습니다. 기간이나 티커를 확인해주세요.")
 
-        # --- 단계 3: 신호 생성 ---
+        # --- 단계 3: 매매 신호 생성 ---
         WebSocketManager.send_status_update(backtest_id, "running", "전략에 따른 매매 신호를 생성 중입니다...", 40)
-        # (가정) signal_service에 동기 방식의 신호 생성 함수가 필요합니다.
-        signals_df = signal_service.generate_signals_sync(
-            ohlcv_df, 
-            strategy, 
-            parameters.get('parameters', {}).get('overrides')
+        
+        # signal_service에 완전한 전략 객체를 전달합니다.
+        signals_df = asyncio.run(
+            signal_service.generate_signals(
+                request=snapshot_as_strategy
+            )
         )
-
+        
         # --- 단계 4: 백테스팅 엔진 실행 ---
         WebSocketManager.send_status_update(backtest_id, "running", "거래를 시뮬레이션하고 있습니다...", 65)
-        engine = BacktestingEngine(ohlcv_df, signals_df, parameters)
+        engine = BacktestingEngine(ohlcv_df, signals_df, execution_params)
         summary, trade_logs = engine.run()
 
         # --- 단계 5: 결과 저장 ---
         WebSocketManager.send_status_update(backtest_id, "running", "분석 결과를 데이터베이스에 저장 중입니다...", 90)
-        with SyncSessionLocal() as session:
-            session.query(models.BacktestResult).filter_by(backtest_id=backtest_uuid).delete()
-            session.query(models.TradeLog).filter_by(backtest_id=backtest_uuid).delete()
+        
+        # 기존 결과를 삭제하고 새로운 결과를 저장합니다.
+        session.query(models.BacktestResult).filter_by(backtest_id=backtest_uuid).delete(synchronize_session=False)
+        session.query(models.TradeLog).filter_by(backtest_id=backtest_uuid).delete(synchronize_session=False)
+        session.flush()
 
-            new_result = models.BacktestResult(backtest_id=backtest_uuid, **summary)
-            session.add(new_result)
-            
+        new_result = models.BacktestResult(backtest_id=backtest_uuid, **summary)
+        session.add(new_result)
+        
+        if trade_logs:
             log_objects = [models.TradeLog(backtest_id=backtest_uuid, **log) for log in trade_logs]
             session.add_all(log_objects)
 
-            backtest_to_update = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one()
-            backtest_to_update.status = 'completed'
-            backtest_to_update.completed_at = datetime.now(timezone.utc)
-            session.commit()
+        backtest_to_update = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one()
+        backtest_to_update.status = 'completed'
+        backtest_to_update.completed_at = datetime.now(timezone.utc)
+        session.commit()
 
         # --- 단계 6: 완료 알림 ---
+        # backtest 객체에서 user_id를 가져와야 합니다.
+        user_id_str = str(backtest_to_update.user_id)
         EventPublisher.publish_backtest_event(
             "BacktestCompleted", 
-            {"backtest_id": backtest_id, "user_id": str(backtest.user_id)}
+            {"backtest_id": backtest_id, "user_id": user_id_str}
         )
         WebSocketManager.send_status_update(backtest_id, "completed", "백테스트가 성공적으로 완료되었습니다.", 100)
 
@@ -231,10 +273,32 @@ def run_backtest(self, backtest_id: str):
     except Exception as exc:
         logger.error(f"Exception in run_backtest for ID {backtest_id}: {exc}", exc_info=True)
         
+        # 실패 시에도 user_id를 가져오기 위해 backtest 객체를 다시 조회하거나,
+        # try 블록 시작 시 user_id를 변수에 저장해둡니다.
+        user_id_on_fail = "unknown"
+        if 'backtest' in locals() and backtest:
+             user_id_on_fail = str(backtest.user_id)
+
         EventPublisher.publish_backtest_event(
             "BacktestFailed", 
-            {"backtest_id": backtest_id, "error": str(exc)}
+            {"backtest_id": backtest_id, "user_id": user_id_on_fail, "error": str(exc)}
         )
         WebSocketManager.send_status_update(backtest_id, "failed", f"오류가 발생했습니다: {str(exc)}", 100)
         
+        # 실패 상태를 DB에 기록합니다.
+        if session:
+            try:
+                failed_backtest = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one_or_none()
+                if failed_backtest:
+                    failed_backtest.status = 'failed'
+                    session.commit()
+            except Exception as db_exc:
+                 logger.error(f"Failed to update backtest status to 'failed' for {backtest_id}: {db_exc}")
+
+        # Celery의 기본 재시도 메커니즘을 활용합니다.
         raise self.retry(exc=exc, countdown=60, max_retries=2)
+
+    finally:
+        # 작업이 성공하든 실패하든 DB 세션을 항상 닫아줍니다.
+        if session:
+            session.close()

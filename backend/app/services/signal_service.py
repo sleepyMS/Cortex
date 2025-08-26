@@ -11,6 +11,8 @@ from functools import reduce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from .. import schemas
+from ..database import AsyncSessionLocal # [추가] 비동기 세션을 직접 생성하기 위해 임포트
+
 from ..services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
@@ -303,7 +305,7 @@ class SignalService:
         
         return final_series.fillna(False)
 
-    def _get_required_timeframes_and_indicators(self, request: schemas.SignalCalculationRequest) -> Dict[str, Any]:
+    def _get_required_timeframes_and_indicators(self, request: Union[schemas.SignalCalculationRequest, schemas.StrategyCreate], base_timeframe: str) -> Dict[str, Any]:
         """전략 규칙을 재귀적으로 분석하여, '계산이 필요한' 모든 지표 목록을 안정적으로 추출합니다."""
         
         unique_indicators = set()
@@ -329,8 +331,8 @@ class SignalService:
                 for block in rules.blocks:
                     find_indicators_recursively(block)
 
-        timeframes = set([request.timeframe])
-        indicators_by_tf = {request.timeframe: {}}
+        timeframes = set([base_timeframe])
+        indicators_by_tf = {base_timeframe: {}}
         
         base_ohlcv_keys = {'open', 'high', 'low', 'close', 'volume'}
 
@@ -368,70 +370,105 @@ class SignalService:
         """추출된 설정을 기반으로 모든 타임프레임의 데이터를 가져와 리샘플링하고 병합합니다."""
         base_tf = configs['timeframes'][0]
         
+        # market_data_service는 이제 'time'을 인덱스로 사용하는 DataFrame을 반환합니다.
         base_df = await market_data_service.get_latest_data(db, ticker, base_tf, limit=1000)
-        if base_df.empty: return base_df
+        if base_df.empty: 
+            return base_df
         
-        base_df['time_dt'] = pd.to_datetime(base_df['time'], unit='s', utc=True)
-        base_df = base_df.set_index('time_dt')
+        # ▼▼▼ [핵심 수정] ▼▼▼
+        # base_df에는 이미 DatetimeIndex가 적용되어 있으므로,
+        # 'time' 컬럼을 참조하는 아래 두 줄은 더 이상 필요 없습니다.
+        # base_df['time_dt'] = pd.to_datetime(base_df['time'], unit='s', utc=True)
+        # base_df = base_df.set_index('time_dt')
+        # ▲▲▲ [수정 완료] ▲▲▲
 
         if configs['indicators'].get(base_tf):
             base_df.ta.strategy(ta.Strategy(name=f"strat_{base_tf}", ta=configs['indicators'][base_tf]), append=True)
 
         for tf in configs['timeframes'][1:]:
             df_higher_tf = await market_data_service.get_latest_data(db, ticker, tf, limit=1000)
-            if df_higher_tf.empty: continue
+            if df_higher_tf.empty: 
+                continue
             
-            df_higher_tf['time_dt'] = pd.to_datetime(df_higher_tf['time'], unit='s', utc=True)
-            df_higher_tf = df_higher_tf.set_index('time_dt')
-            
+            # df_higher_tf도 'time'을 인덱스로 가집니다.
             if configs['indicators'].get(tf):
                 df_higher_tf.ta.strategy(ta.Strategy(name=f"strat_{tf}", ta=configs['indicators'][tf]), append=True)
             
-            indicator_cols = [col for col in df_higher_tf.columns if col.lower() not in ['open', 'high', 'low', 'close', 'volume', 'time', 'time_dt']]
+            indicator_cols = [col for col in df_higher_tf.columns if col.lower() not in ['open', 'high', 'low', 'close', 'volume']]
             if indicator_cols:
+                # [수정] reindex는 두 DataFrame의 인덱스를 기준으로 동작하므로 올바르게 작동합니다.
                 resampled_indicators = df_higher_tf[indicator_cols].reindex(base_df.index, method='ffill')
                 base_df = base_df.join(resampled_indicators)
         
+        # [수정] 인덱스를 리셋하고 컬럼을 소문자로 바꾸는 로직을 조정합니다.
+        # 'time' 컬럼은 UNIX 타임스탬프로 유지해야 하므로, 인덱스를 리셋하여 'time' 컬럼으로 되돌립니다.
         base_df = base_df.reset_index()
         base_df.columns = base_df.columns.str.lower()
-        return base_df.dropna()
-
-    async def generate_signals(self, db: AsyncSession, request: schemas.SignalCalculationRequest) -> schemas.SignalCalculationResponse:
-        """다중 타임프레임을 고려하여 최종 신호 목록을 생성합니다."""
-        # --- [로그 추가 1] --- 함수 시작 및 요청 정보 로깅
-        logger.debug(f"--- 신호 생성 시작: Ticker={request.ticker}, Timeframe={request.timeframe} ---")
-        logger.debug(f"요청된 규칙: long_entry_rules={'존재' if request.long_entry_rules else '없음'}, long_exit_rules={'존재' if request.long_exit_rules else '없음'}")
-
-        configs = self._get_required_timeframes_and_indicators(request)
-        df_merged = await self._get_resampled_dataframe(db, request.ticker, configs)
+        base_df['time'] = (base_df['time'].astype('int64') // 10**9) # UNIX 타임스탬프로 변환
         
-        # --- [로그 추가 2] --- 데이터프레임 상태 로깅
+        # dropna() 전에 필요한 컬럼들이 모두 있는지 확인하는 것이 좋습니다.
+        required_cols = ['time', 'open', 'high', 'low', 'close', 'volume']
+        
+        # 지표 계산 후 NaN이 생긴 행들을 제거
+        return base_df.dropna(subset=required_cols)
+
+    async def generate_signals(
+        self, request: Union[schemas.SignalCalculationRequest, schemas.StrategyCreate]
+    ) -> pd.DataFrame:
+        """
+        [최종 개선 버전]
+        전략 규칙(스냅샷 또는 실시간 요청)을 기반으로 매매 신호 DataFrame을 생성합니다.
+        - DB 세션을 내부에서 직접 생성하고 관리합니다.
+        - BacktestingEngine이 요구하는 형식의 DataFrame을 반환합니다.
+        """
+        # --- 1. 요청 객체에서 기본 정보 추출 ---
+        # StrategyCreate에는 ticker 필드가 없으므로 target_coins를 사용합니다.
+        if isinstance(request, schemas.StrategyCreate) and request.target_coins:
+            ticker = request.target_coins[0].ticker
+        else:
+            ticker = getattr(request, 'ticker', "BTC/USDT")
+
+        # BacktestingEngine에 전달된 파라미터에서 timeframe을 가져오는 것이 더 안정적입니다.
+        # 여기서는 request에 timeframe이 있다고 가정하고, 없으면 기본값을 사용합니다.
+        timeframe = getattr(request, 'timeframe', '1h')
+        
+        logger.debug(f"--- 신호 생성 시작: Ticker={ticker}, Timeframe={timeframe} ---")
+
+        # --- 2. 비동기 DB 세션 생성 및 데이터 처리 ---
+        async with AsyncSessionLocal() as db:
+            # 2-1. 전략 규칙을 분석하여 필요한 모든 지표와 타임프레임을 추출합니다.
+            configs = self._get_required_timeframes_and_indicators(request, base_timeframe=timeframe)
+            
+            # 2-2. 여러 타임프레임의 데이터를 가져와 병합하고 모든 지표를 계산합니다.
+            df_merged = await self._get_resampled_dataframe(db, ticker, configs)
+
+        # --- 3. 데이터 부재 시 예외 처리 ---
         if df_merged.empty:
-            logger.warning("DB에서 데이터를 가져오지 못했거나 지표 계산 후 데이터프레임이 비어있습니다.")
-            return schemas.SignalCalculationResponse(signals=[])
-        
-        logger.debug(f"데이터프레임 정보: {df_merged.shape[0]}개의 행, {df_merged.shape[1]}개의 열")
-        logger.debug(f"데이터프레임 컬럼 목록: {df_merged.columns.tolist()}")
-        logger.debug("데이터프레임 상위 5개 행:\n" + df_merged.head().to_string())
-        logger.debug("데이터프레임 하위 5개 행:\n" + df_merged.tail().to_string())
-        
-        final_signals: List[schemas.SignalDataPoint] = []
-        def process_rules(rules: Optional[schemas.PositionRules], signal_type: str):
-            if not rules or not rules.blocks: return
+            logger.warning(f"{ticker} ({timeframe}) 시세 데이터를 가져오지 못했거나 지표 계산 후 데이터가 없습니다.")
+            # 엔진이 오류를 일으키지 않도록 빈 'signal' 컬럼을 가진 DataFrame을 반환합니다.
+            return pd.DataFrame(columns=['signal'])
 
-            # --- [로그 추가 3] --- 어떤 규칙을 처리하는지 로깅
+        # --- 4. 규칙 기반 신호 생성 ---
+        final_signals: List[schemas.SignalDataPoint] = []
+
+        def process_rules(rules: Optional[schemas.PositionRules], signal_type: str):
+            if not rules or not rules.blocks:
+                return
+
             logger.debug(f"--- '{signal_type}' 규칙 처리 시작 ---")
             
             block_results = [self._parse_logic_block_to_series(df_merged, block) for block in rules.blocks]
-            op = all if rules.logic_operator == "AND" else any
+            
+            # OR 조건일 경우 any, AND 조건일 경우 all을 사용합니다.
+            op = any if rules.logic_operator == "OR" else all
             final_series = pd.DataFrame(block_results).transpose().apply(op, axis=1)
 
-            # --- [로그 추가 4] --- 최종 조건 만족 횟수 로깅
             true_count = final_series.sum()
             logger.debug(f"'{signal_type}' 규칙의 최종 조건 만족 횟수: {true_count} / {len(df_merged)}")
 
             signal_points = df_merged[final_series]
             for _, row in signal_points.iterrows():
+                # df_merged의 'time' 컬럼은 UNIX 타임스탬프입니다.
                 final_signals.append(schemas.SignalDataPoint(time=int(row['time']), signal_type=signal_type))
 
         process_rules(request.long_entry_rules, "long_entry")
@@ -439,9 +476,22 @@ class SignalService:
         process_rules(request.short_entry_rules, "short_entry")
         process_rules(request.short_exit_rules, "short_exit")
 
-        # --- [로그 추가 5] --- 최종 생성된 신호 개수 로깅
         logger.debug(f"--- 신호 생성 완료: 총 {len(final_signals)}개의 신호 생성됨 ---")
         
-        return schemas.SignalCalculationResponse(signals=sorted(final_signals, key=lambda x: x.time))
+        # --- 5. 최종 DataFrame 형식 변환 ---
+        if not final_signals:
+            return pd.DataFrame(columns=['signal'])
+
+        # BacktestingEngine이 요구하는 형식으로 가공합니다.
+        signals_df = pd.DataFrame([s.model_dump() for s in final_signals])
+        signals_df['time_dt'] = pd.to_datetime(signals_df['time'], unit='s', utc=True)
+        signals_df = signals_df.set_index('time_dt')
+        signals_df = signals_df.rename(columns={'signal_type': 'signal'})
+        
+        # 중복된 인덱스(동일 시간)에 여러 신호가 발생할 경우, 첫 번째 신호만 유지합니다.
+        # 또는 비즈니스 로직에 따라 다르게 처리할 수 있습니다. (e.g., 진입 신호 우선)
+        signals_df = signals_df[~signals_df.index.duplicated(keep='first')]
+
+        return signals_df[['signal']]
 
 signal_service = SignalService()

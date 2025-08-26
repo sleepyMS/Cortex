@@ -56,7 +56,7 @@ cd backend
 cd ..
 docker-compose up -d
 # 4. FastAPI 웹 서버 실행 (Cortex 루트 경로에서)
-uvicorn backend.main:app --reload
+uvicorn main:app --reload
 ```
 
 - **확인:** 브라우저에서 `http://127.0.0.1:8000` 접속 시 "Hello World" 또는 API 문서가 보이면 성공입니다.
@@ -79,21 +79,18 @@ docker-compose up -d
 # 실제 배포시에는 eventlet과 같은 다중 비동기로 변경
 cd backend
 .\venv\Scripts\activate
-cd ..
-celery -A backend.app.celery_app worker -l info -Q io_bound_queue -P eventlet -c 1000
+celery -A app.celery_app worker -l info -Q io_bound_queue -P eventlet -c 1000
 
 cd backend
 .\venv\Scripts\activate
-cd ..
-celery -A backend.app.celery_app worker -l info -Q cpu_bound_queue -P solo
+celery -A app.celery_app worker -l info -Q cpu_bound_queue -P solo
 # 실제 리눅스 등의 서버에 올릴때는 -P solo 옵션을 제거하여 Celery의 기본 프로세스 기반 워커를 사용합니다.
 # celery -A backend.app.celery_app worker -l info -Q cpu_bound_queue -c 4
 
 # 5. Celery Beat 실행 (별도 터미널에서)
 cd backend
 .\venv\Scripts\activate
-cd ..
-celery -A backend.app.celery_app beat -l info
+celery -A app.celery_app beat -l info
 ```
 
 - **확인:** 터미널에 Celery 로고와 함께 `[tasks]` 목록이 보이고 `ready` 상태가 되면 성공입니다. 이 터미널은 계속 실행 상태로 두어야 합니다.

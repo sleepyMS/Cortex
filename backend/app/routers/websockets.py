@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis as AsyncRedis
 
-from backend.app.config import settings
+from app.config import settings
 
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
 

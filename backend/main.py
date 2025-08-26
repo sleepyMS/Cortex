@@ -11,10 +11,10 @@ from slowapi.errors import RateLimitExceeded
 
 # --- 1. 애플리케이션 모듈 임포트 ---
 # engine -> async_engine으로 이름을 변경하여 명확성을 높입니다.
-from .app.database import async_engine, Base, AsyncSessionLocal
-from .app.limiter import limiter
-from .app.services.plan_service import plan_service
-from .app.routers import (
+from app.database import async_engine, Base, AsyncSessionLocal
+from app.limiter import limiter
+from app.services.plan_service import plan_service
+from app.routers import (
     auth, users, backtests, strategies, api_keys,
     plans, subscriptions, live_bots, community, admin, market_data, websockets
 )

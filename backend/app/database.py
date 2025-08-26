@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-from backend.app.config import settings
+from app.config import settings
 
 # 모든 모델이 상속받을 Base 클래스
 class Base(DeclarativeBase):

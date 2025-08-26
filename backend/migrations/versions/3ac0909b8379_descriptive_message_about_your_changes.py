@@ -1,21 +1,22 @@
 """Descriptive message about your changes
 
-Revision ID: f281e294cc84
+Revision ID: 3ac0909b8379
 Revises: 
-Create Date: 2025-08-22 10:24:27.887778
+Create Date: 2025-08-26 18:45:09.503245
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'f281e294cc84'
+revision: str = '3ac0909b8379'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
 
 TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"]
 
@@ -47,7 +48,6 @@ def upgrade() -> None:
         op.create_index(f'idx_{table_name}_ticker_time_desc', table_name, ['ticker', sa.text('time DESC')])
 
         print(f"Table '{table_name}' created and converted to hypertable.")
-
     op.create_table('plans',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Enum('BASIC', 'TRADER', 'PRO', name='plantype'), nullable=False),
@@ -193,6 +193,7 @@ def upgrade() -> None:
     sa.Column('celery_task_id', sa.String(), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('parameters', sa.JSON(), nullable=False),
+    sa.Column('strategy_snapshot', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
@@ -230,6 +231,12 @@ def upgrade() -> None:
     sa.Column('pnl_curve_json', sa.JSON(), nullable=True),
     sa.Column('trade_summary_json', sa.JSON(), nullable=True),
     sa.Column('executed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('profit_factor', sa.Float(), nullable=True),
+    sa.Column('sortino_ratio', sa.Float(), nullable=True),
+    sa.Column('cagr_pct', sa.Float(), nullable=True),
+    sa.Column('total_trades', sa.Integer(), nullable=True),
+    sa.Column('winning_trades', sa.Integer(), nullable=True),
+    sa.Column('losing_trades', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['backtest_id'], ['backtests.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('backtest_id')
@@ -259,6 +266,7 @@ def upgrade() -> None:
     sa.Column('commission', sa.Float(), nullable=True),
     sa.Column('pnl', sa.Float(), nullable=True),
     sa.Column('current_balance', sa.Float(), nullable=True),
+    sa.Column('reason', sa.String(length=50), nullable=True),
     sa.CheckConstraint('(backtest_id IS NOT NULL AND live_bot_id IS NULL) OR (backtest_id IS NULL AND live_bot_id IS NOT NULL)', name='_trade_log_exclusive_parent_check'),
     sa.ForeignKeyConstraint(['backtest_id'], ['backtests.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['live_bot_id'], ['live_bots.id'], ondelete='CASCADE'),

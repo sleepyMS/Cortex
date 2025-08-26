@@ -146,14 +146,26 @@ async def calculate_indicators(
 async def calculate_realtime_signals(
     request: Request,
     payload: schemas.SignalCalculationRequest,
-    current_user: models.User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_async_db)
+    current_user: models.User = Depends(get_current_active_user)
 ):
     """전략 편집기 차트에 표시할 매매 신호를 실시간으로 계산합니다."""
     logger.critical("<<<<< [STRATEGIES ROUTER] /calculate-signals API CALLED >>>>>")
 
     try:
-        response = await signal_service.generate_signals(db, payload)
+        signals_dataframe = await signal_service.generate_signals(request=payload)
+        
+        # 서비스가 DataFrame을 반환하므로, API 스키마에 맞게 변환합니다.
+        signals_list = []
+        if not signals_dataframe.empty:
+            signals_df_reset = signals_dataframe.reset_index()
+            signals_df_reset['time'] = (signals_df_reset['time_dt'].astype('int64') // 10**9)
+            signals_list = [
+                schemas.SignalDataPoint(time=row['time'], signal_type=row['signal'])
+                for _, row in signals_df_reset.iterrows()
+            ]
+
+        response = schemas.SignalCalculationResponse(signals=signals_list)
+        
         logger.info(f"User {current_user.email} calculated {len(response.signals)} signals for {payload.ticker}.")
         return response
     except Exception as e:

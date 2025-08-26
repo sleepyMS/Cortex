@@ -40,7 +40,14 @@ async def get_ohlcv(
         )
         if df.empty:
             return []
-        return df.to_dict('records')
+
+        # 2. 인덱스를 'time' 컬럼으로 되돌립니다.
+        df_api = df.reset_index()
+        # 3. 'time' 컬럼을 UNIX 타임스탬프로 변환합니다.
+        df_api['time'] = (df_api['time'].astype('int64') // 10**9)
+        # 4. Pydantic 모델이 기대하는 딕셔너리 리스트로 변환하여 반환합니다.
+        return df_api.to_dict('records')
+    
     except Exception as e:
         logger.error(f"Error fetching OHLCV for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="시세 정보 조회 중 서버 오류가 발생했습니다.")

@@ -4,9 +4,14 @@ import os
 import uuid
 from celery import Celery, Task
 
+import nest_asyncio
+# nest_asyncio를 적용하여 중첩 이벤트 루프를 허용합니다.
+# 이 코드는 Celery 앱이 임포트되는 시점에 한 번만 실행되면 됩니다.
+nest_asyncio.apply()
+
 from .config import settings
-from backend.app.database import SyncSessionLocal
-from backend.app.models import Backtest
+from app.database import SyncSessionLocal
+from app.models import Backtest
 from sqlalchemy import update
 
 # --- 1. 중앙화된 오류 처리를 위한 커스텀 Task 클래스 ---
@@ -34,7 +39,7 @@ celery_app = Celery(
     'cortex_worker',
     broker=settings.DB.REDIS_URL,
     backend=settings.DB.REDIS_URL,
-    include=['backend.app.tasks', 'backend.app.celery_beat'],
+    include=['app.tasks', 'app.celery_beat'],
     task_cls=DatabaseTask  # 커스텀 오류 처리 클래스 적용
 )
 

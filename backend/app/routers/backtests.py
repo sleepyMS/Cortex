@@ -28,19 +28,23 @@ async def create_backtest(
     """
     새로운 백테스팅 작업을 요청합니다. 작업은 비동기적으로 처리됩니다.
     """
+    # 예외 발생 시 안전하게 로깅하기 위해 이메일을 미리 변수에 저장합니다.
+    user_email_for_log = current_user.email
+    
     try:
         new_backtest = await backtest_service.create_backtest_job(db, current_user, backtest_create)
         await db.commit()
         # Eager Loading을 위해 ID로 다시 조회
         created_backtest = await backtest_service.get_backtest_by_id(db, new_backtest.id)
-        logger.info(f"Backtest job (ID: {created_backtest.id}) requested for user {current_user.email}.")
+        logger.info(f"Backtest job (ID: {created_backtest.id}) requested for user {user_email_for_log}.")
         return created_backtest
     except HTTPException as e:
         await db.rollback()
         raise e
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error creating backtest job for user {current_user.email}: {e}", exc_info=True)
+        # 미리 저장해둔 변수를 사용하여 안전하게 로깅합니다.
+        logger.error(f"Error creating backtest job for user {user_email_for_log}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 작업 생성 중 서버 오류가 발생했습니다.")
 
 @router.get("/", response_model=List[schemas.Backtest], summary="Get list of user's backtest records")

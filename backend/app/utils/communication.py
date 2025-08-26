@@ -2,7 +2,7 @@
 
 import redis
 import json
-from backend.app.config import settings
+from app.config import settings
 
 # --- Redis 클라이언트 인스턴스는 한 번만 생성 ---
 redis_client = redis.from_url(settings.DB.REDIS_URL)

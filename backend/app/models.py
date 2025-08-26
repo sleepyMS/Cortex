@@ -8,7 +8,7 @@ from sqlalchemy import (
     ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text
 )
 from sqlalchemy import text
-from sqlalchemy.dialects.postgresql import UUID 
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -161,6 +161,8 @@ class Backtest(Base):
     
     status = Column(String(50), nullable=False, default='pending')
     parameters = Column(JSON, nullable=False)
+    strategy_snapshot = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -184,6 +186,12 @@ class BacktestResult(Base):
     pnl_curve_json = Column(JSON, nullable=True)
     trade_summary_json = Column(JSON, nullable=True)
     executed_at = Column(DateTime(timezone=True), nullable=True)
+    profit_factor = Column(Float, nullable=True)
+    sortino_ratio = Column(Float, nullable=True)
+    cagr_pct = Column(Float, nullable=True)
+    total_trades = Column(Integer, nullable=True)
+    winning_trades = Column(Integer, nullable=True)
+    losing_trades = Column(Integer, nullable=True)
 
     backtest = relationship("Backtest", back_populates="result")
 
@@ -208,6 +216,8 @@ class TradeLog(Base):
     commission = Column(Float, nullable=True)
     pnl = Column(Float, nullable=True)
     current_balance = Column(Float, nullable=True)
+
+    reason = Column(String(50), nullable=True, default="Signal")
 
     backtest = relationship("Backtest", back_populates="trade_logs")
     live_bot = relationship("LiveBot", back_populates="trade_logs")

@@ -12,11 +12,11 @@ import os
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- (변경) 중앙 설정 및 올바른 동기 DB 모듈 임포트 ---
-from backend.app.config import settings
-from backend.app.database import sync_engine, Base, SyncSessionLocal
-from backend.app import models
-from backend.app.security import get_password_hash
-from backend.app.models import PlanType
+from app.config import settings
+from app.database import sync_engine, Base, SyncSessionLocal
+from app import models
+from app.security import get_password_hash
+from app.models import PlanType
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
