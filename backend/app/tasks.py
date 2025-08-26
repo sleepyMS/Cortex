@@ -235,7 +235,14 @@ def run_backtest(self, backtest_id: str):
         
         # --- 단계 4: 백테스팅 엔진 실행 ---
         WebSocketManager.send_status_update(backtest_id, "running", "거래를 시뮬레이션하고 있습니다...", 65)
-        engine = BacktestingEngine(ohlcv_df, signals_df, execution_params)
+        
+        engine = BacktestingEngine(
+            ohlcv_df=ohlcv_df, 
+            signals_df=signals_df, 
+            execution_params=execution_params,
+            strategy_params=snapshot_as_strategy 
+        )
+
         summary, trade_logs = engine.run()
 
         # --- 단계 5: 결과 저장 ---

@@ -4,6 +4,7 @@ import pandas as pd
 import pandas_ta as ta
 import numpy as np
 from typing import Dict, List, Tuple
+from .. import schemas 
 
 class BacktestingEngine:
     """
@@ -15,28 +16,40 @@ class BacktestingEngine:
     def __init__(self,
                  ohlcv_df: pd.DataFrame,
                  signals_df: pd.DataFrame,
-                 parameters: dict):
+                 execution_params: dict,
+                 strategy_params: schemas.StrategyCreate):
         """
-        백테스팅 엔진을 초기화하고 필요한 데이터를 사전 계산합니다.
+        [최종 완성 버전] 백테스팅 엔진을 초기화하고 필요한 모든 변수를 설정합니다.
         """
-        # --- 1. 데이터 및 파라미터 준비 ---
-        self.data = ohlcv_df.join(signals_df).sort_index()
-        self.params = parameters
-        self.strategy_params = self.params.get('parameters', {})
-        self.tpsl_logic = self.strategy_params.get('tpslLogic', {})
+        # --- 1. 데이터 준비 ---
+        self.data = ohlcv_df.join(signals_df)
+        if not self.data.index.is_monotonic_increasing:
+             self.data = self.data.sort_index()
 
-        # --- 2. ATR 기반 TP/SL을 위한 지표 사전 계산 ---
+        # --- 2. 파라미터 분리 및 설정 ---
+        self.exec_params = execution_params
+        strategy_dict = strategy_params.model_dump(by_alias=True)
+        self.tpsl_logic = strategy_dict.get('tpslLogic') or {}
+        
+        # --- 3. ATR 기반 TP/SL을 위한 지표 사전 계산 ---
         if self.tpsl_logic and self.tpsl_logic.get('atrPeriod'):
             atr_period = self.tpsl_logic['atrPeriod']
-            self.data.ta.atr(length=atr_period, append=True)
+            self.data.ta.atr(
+                high=self.data['high'], 
+                low=self.data['low'], 
+                close=self.data['close'], 
+                length=atr_period, 
+                append=True
+            )
 
-        # --- 3. 핵심 파라미터 설정 ---
-        self.initial_capital = self.params.get('initialCapital', 10000.0)
-        self.leverage = self.strategy_params.get('leverage', 1.0)
-        self.fee_pct = self.strategy_params.get('fee', 0.04) / 100
-        self.slippage_pct = self.strategy_params.get('slippage', 0.01) / 100
+        # --- 4. 핵심 파라미터 설정 ---
+        self.initial_capital = self.exec_params.get('initial_capital', 10000.0)
+        inner_params = self.exec_params.get('parameters', {})
+        self.leverage = inner_params.get('leverage', 1.0)
+        self.fee_pct = inner_params.get('fee', 0.04) / 100
+        self.slippage_pct = inner_params.get('slippage', 0.01) / 100
 
-        # --- 4. 시뮬레이션 상태 변수 초기화 ---
+        # --- 5. 시뮬레이션 상태 변수 초기화 ---
         self.balance = self.initial_capital
         self.position_size = 0.0      # 현재 보유 수량 (+: long, -: short)
         self.position_avg_price = 0.0 # 진입 평균 단가
@@ -44,7 +57,7 @@ class BacktestingEngine:
         self.entry_price = 0.0        # TP/SL 계산을 위한 마지막 진입 가격
         self.invested_capital = 0.0   # 포지션에 투입된 원금을 추적할 변수
 
-        # --- 5. 결과 분석용 변수 초기화 ---
+        # --- 6. 결과 분석용 변수 초기화 ---
         self.equity_curve = []
         self.trade_logs = []
         self.winning_trades = 0
