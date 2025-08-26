@@ -42,6 +42,7 @@ class BacktestingEngine:
         self.position_avg_price = 0.0 # 진입 평균 단가
         self.position_type = None     # 'long' 또는 'short'
         self.entry_price = 0.0        # TP/SL 계산을 위한 마지막 진입 가격
+        self.invested_capital = 0.0   # 포지션에 투입된 원금을 추적할 변수
 
         # --- 5. 결과 분석용 변수 초기화 ---
         self.equity_curve = []
@@ -134,25 +135,38 @@ class BacktestingEngine:
                 self._execute_trade(timestamp, tp_price, 'buy', is_entry=False, reason="Take Profit")
 
 
+    # file: backend/app/engine/backtesting_engine.py
+
     def _execute_trade(self, timestamp, price: float, side: str, is_entry: bool, reason: str = "Signal"):
-        """거래를 실행하고 모든 상태 변수를 업데이트합니다. (숏 포지션 청산 로직 추가)"""
+        """
+        [개선된 버전] 거래를 실행하고 모든 상태 변수를 업데이트합니다.
+        포지션 진입/청산 시 현금 흐름을 정확하게 반영합니다.
+        """
         # --- 1. 포지션 진입 로직 ---
         if is_entry:
             if self.position_size != 0: return # 이미 포지션이 있으면 진입 불가
 
             trade_price = price * (1 + self.slippage_pct if side == 'buy' else 1 - self.slippage_pct)
-            invest_amount = self.balance * self.leverage * 0.99
+            # 투자 원금은 레버리지를 적용한 자산의 99%로 고정
+            invest_amount = self.balance * self.leverage * 0.99 
             quantity = invest_amount / trade_price
             
             commission = invest_amount * self.fee_pct
             if self.balance < commission: return
 
+            # 수수료는 즉시 현금에서 차감
             self.balance -= commission
+
+            # 포지션에 투입된 원금을 현금에서 분리하여 추적
+            position_cost = quantity * trade_price
+            self.balance -= position_cost
+            self.invested_capital = position_cost
+            
             self.position_size = quantity if side == 'buy' else -quantity
             self.position_avg_price = trade_price
             self.entry_price = trade_price
             self.position_type = 'long' if side == 'buy' else 'short'
-            pnl = None
+            pnl = None # 진입 시점에는 PNL이 확정되지 않음
 
         # --- 2. 포지션 청산 로직 ---
         else: # is_entry == False
@@ -160,31 +174,32 @@ class BacktestingEngine:
 
             pnl = 0.0
             
-            # --- [핵심 수정] ---
-            # 롱 포지션 청산 (매도)과 숏 포지션 청산 (매수)을 명확히 분리
             if side == 'sell' and self.position_type == 'long':
-                # --- 2-1. 롱 포지션 청산 ---
                 trade_price = price * (1 - self.slippage_pct)
                 quantity = self.position_size
                 pnl = (trade_price - self.position_avg_price) * quantity
                 
-                self.balance += quantity * self.position_avg_price + pnl
+                # 현금 = 기존 현금 + 투입했던 원금 + 확정 손익
+                self.balance += self.invested_capital + pnl
             
             elif side == 'buy' and self.position_type == 'short':
-                # --- 2-2. 숏 포지션 청산 ---
                 trade_price = price * (1 + self.slippage_pct)
                 quantity = abs(self.position_size)
                 pnl = (self.position_avg_price - trade_price) * quantity
 
-                self.balance += quantity * self.position_avg_price + pnl
+                # 현금 = 기존 현금 + 투입했던 원금 + 확정 손익
+                self.balance += self.invested_capital + pnl
             
-            else: # 잘못된 청산 요청 (e.g. 롱 포지션인데 매수 청산)
+            else: # 잘못된 청산 요청
                 return
 
-            # --- 2-3. 공통 청산 후 처리 ---
-            commission = abs(self.position_size * trade_price) * self.fee_pct
-            pnl -= commission
+            # 청산 시 발생하는 수수료 계산 및 차감
+            exit_value = quantity * trade_price
+            commission = exit_value * self.fee_pct
             self.balance -= commission
+            
+            # PNL은 수수료를 반영한 최종 값이어야 합니다.
+            pnl -= commission
 
             # 통계 업데이트
             self.gross_profit += max(0, pnl)
@@ -192,21 +207,31 @@ class BacktestingEngine:
             if pnl > 0: self.winning_trades += 1
             else: self.losing_trades += 1
 
-            # 포지션 상태 초기화
-            self.position_size, self.position_avg_price, self.position_type = 0.0, 0.0, None
+            # 포지션 상태를 완벽하게 초기화
+            self.position_size, self.position_avg_price, self.position_type, self.invested_capital = 0.0, 0.0, None, 0.0
 
         # --- 3. 거래 로그 기록 ---
         log = {
-            "timestamp": timestamp, "side": side, "price": trade_price, "quantity": quantity,
-            "commission": commission, "pnl": pnl, "current_balance": self.balance, "reason": reason,
+            "timestamp": timestamp, "side": side, "price": trade_price, "quantity": abs(quantity),
+            "commission": commission, "pnl": pnl, "current_balance": self.balance + self.invested_capital,
+            "reason": reason,
         }
         self.trade_logs.append(log)
 
     def _update_equity(self, timestamp, current_price: float):
-        """매 캔들마다 현재 총 자산(Equity)을 계산하여 기록합니다."""
-        position_value = self.position_size * current_price
-        equity = self.balance + position_value
+        """
+        롱/숏 포지션의 미실현 손익을 정확히 계산하여 총자산을 기록합니다.
+        """
+        unrealized_pnl = 0.0
+        if self.position_type == 'long':
+            unrealized_pnl = (current_price - self.position_avg_price) * self.position_size
+        elif self.position_type == 'short':
+            unrealized_pnl = (self.position_avg_price - current_price) * abs(self.position_size)
+
+        # 총자산 = 현재 보유 현금 + 투입된 원금 + 현재 미실현 손익
+        equity = self.balance + self.invested_capital + unrealized_pnl
         self.equity_curve.append({'time': timestamp.isoformat(), 'value': equity})
+
 
     def _calculate_summary_stats(self) -> Dict:
         """최종 성과 지표를 계산합니다."""
@@ -233,16 +258,20 @@ class BacktestingEngine:
         daily_returns = equity_df['value'].resample('D').last().pct_change().dropna()
         
         cagr = 0.0
+        # 기간이 30일 미만이거나, 연수가 0일 경우 CAGR을 0으로 처리
         if not daily_returns.empty:
             days = (daily_returns.index[-1] - daily_returns.index[0]).days
-            if days > 0:
-                cagr = ((final_equity / self.initial_capital) ** (365.0 / days) - 1) * 100
+            if days > 30: # 최소 한 달 이상의 데이터로만 계산
+                years = days / 365.0
+                if years > 0:
+                    cagr = ((final_equity / self.initial_capital) ** (1 / years) - 1) * 100
 
         downside_returns = daily_returns[daily_returns < 0]
         downside_std = downside_returns.std()
         
         sortino_ratio = 0.0
-        if downside_std > 0:
+        # 일별 수익률 데이터가 충분할 때만 계산 (예: 10개 이상) 
+        if downside_std > 0 and len(daily_returns) > 10:
             annualized_return = daily_returns.mean() * 365
             annualized_downside_std = downside_std * np.sqrt(365)
             sortino_ratio = annualized_return / annualized_downside_std

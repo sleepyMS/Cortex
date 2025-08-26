@@ -1,123 +1,160 @@
-"use client";
-
+// EquityChart.tsx
 import React, { useEffect, useRef } from "react";
 import {
   createChart,
-  IChartApi,
-  ISeriesApi,
-  LineStyle,
+  ColorType,
   PriceScaleMode,
+  LineStyle,
+  AreaSeries,
+  LineSeries,
+  type IChartApi,
+  type ISeriesApi,
+  type AreaData,
+  type LineData,
 } from "lightweight-charts";
-import { useTheme } from "next-themes";
 
-// lightweight-charts가 기대하는 데이터 형식
-export interface ChartDataPoint {
-  time: string; // 'YYYY-MM-DD' 형식
-  value: number;
-}
+type Props = {
+  /** 영역(면적) 시리즈 데이터: { time, value } */
+  data: AreaData[];
+  /** 벤치마크 라인 시리즈(선택): { time, value } */
+  benchmark?: LineData[];
+  /** 외부 컨테이너가 넓이 100%일 때 내부 리사이즈 처리 */
+  height?: number;
+  /** 다크 모드 여부 */
+  dark?: boolean;
+};
 
-interface EquityChartProps {
-  pnlData: ChartDataPoint[];
-  // 향후 벤치마크 비교 기능 추가를 위한 확장 포인트
-  benchmarkData?: ChartDataPoint[];
-}
-
-export const EquityChart = ({ pnlData, benchmarkData }: EquityChartProps) => {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
+const EquityChart: React.FC<Props> = ({
+  data,
+  benchmark,
+  height = 320,
+  dark = false,
+}) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
-  const benchmarkSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
-  const { theme } = useTheme();
+  const areaRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const benchRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current || pnlData.length === 0) return;
+    if (!containerRef.current) return;
 
-    // --- 테마에 따른 차트 옵션 설정 ---
-    const isDarkMode = theme === "dark";
-    const chartOptions = {
+    // 기존 차트 정리
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      areaRef.current = null;
+      benchRef.current = null;
+    }
+
+    // 차트 생성 (v5 레이아웃/스케일 옵션)
+    const chart = createChart(containerRef.current, {
+      height,
       layout: {
-        background: { color: "transparent" },
-        textColor: isDarkMode ? "#D1D5DB" : "#1F2937",
+        background: {
+          type: ColorType.Solid,
+          color: dark ? "#0B1221" : "#FFFFFF",
+        },
+        textColor: dark ? "rgba(219,222,227,0.9)" : "#191919",
       },
       grid: {
-        vertLines: { color: isDarkMode ? "#374151" : "#E5E7EB" },
-        horzLines: { color: isDarkMode ? "#374151" : "#E5E7EB" },
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        borderColor: isDarkMode ? "#374151" : "#E5E7EB",
+        vertLines: {
+          color: dark ? "rgba(42,46,57,0.3)" : "rgba(197,203,206,0.3)",
+        },
+        horzLines: {
+          color: dark ? "rgba(42,46,57,0.3)" : "rgba(197,203,206,0.3)",
+        },
       },
       rightPriceScale: {
-        borderColor: isDarkMode ? "#374151" : "#E5E7EB",
+        mode: PriceScaleMode.Normal,
+        borderVisible: false,
+      },
+      timeScale: {
+        rightOffset: 8,
+        barSpacing: 6,
+        timeVisible: true,
+        secondsVisible: false,
       },
       crosshair: {
-        // ... (필요 시 커스텀)
+        vertLine: { width: 1, style: LineStyle.Dashed, labelVisible: true },
+        horzLine: { width: 1, style: LineStyle.Dashed, labelVisible: true },
       },
-    };
-
-    // --- 차트 생성 및 시리즈 추가 ---
-    // 차트가 없으면 새로 생성, 있으면 옵션만 업데이트
-    if (!chartRef.current) {
-      chartRef.current = createChart(chartContainerRef.current, chartOptions);
-
-      // 1. PNL(자산) 곡선 시리즈 (Area 차트)
-      seriesRef.current = chartRef.current.addAreaSeries({
-        lineColor: "#2563EB",
-        topColor: "rgba(37, 99, 235, 0.4)",
-        bottomColor: "rgba(37, 99, 235, 0.0)",
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-
-      // 2. 벤치마크 시리즈 (Line 차트) - 데이터가 있을 경우에만 추가
-      if (benchmarkData) {
-        benchmarkSeriesRef.current = chartRef.current.addLineSeries({
-          color: "#F59E0B", // Amber color
-          lineWidth: 2,
-          lineStyle: LineStyle.Dotted,
-        });
-      }
-    } else {
-      chartRef.current.applyOptions(chartOptions);
-    }
-
-    // --- 데이터 설정 ---
-    seriesRef.current?.setData(pnlData);
-    if (benchmarkData && benchmarkSeriesRef.current) {
-      benchmarkSeriesRef.current.setData(benchmarkData);
-    }
-
-    chartRef.current.timeScale().fitContent();
-
-    // --- 리사이즈 핸들러 ---
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries.length > 0 && entries[0].contentRect.width > 0) {
-        chartRef.current?.applyOptions({
-          width: entries[0].contentRect.width,
-        });
-      }
     });
-    resizeObserver.observe(chartContainerRef.current);
 
-    // --- 컴포넌트 언마운트 시 클린업 ---
-    return () => {
-      resizeObserver.disconnect();
-      if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-      }
+    chartRef.current = chart;
+
+    // v5: 시리즈 추가는 addSeries(SeriesToken, options)
+    const area = chart.addSeries(AreaSeries, {
+      lineColor: dark ? "rgba(129,140,248,1)" : "#2563EB",
+      topColor: dark ? "rgba(129,140,248,0.40)" : "rgba(37,99,235,0.40)",
+      bottomColor: dark ? "rgba(129,140,248,0.00)" : "rgba(37,99,235,0.00)",
+      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: "PNL",
+    });
+    areaRef.current = area;
+
+    if (benchmark && benchmark.length) {
+      const bench = chart.addSeries(LineSeries, {
+        color: dark ? "rgba(234,179,8,1)" : "#F59E0B",
+        lineWidth: 2,
+        lineStyle: LineStyle.Solid,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: "Benchmark",
+      });
+      benchRef.current = bench;
+      bench.setData(benchmark);
+    }
+
+    // 초기 데이터 세팅
+    if (data && data.length > 0) {
+      area.setData(data);
+    }
+
+    // 컨테이너 리사이즈 대응 (width 자동)
+    const handleResize = () => {
+      if (!containerRef.current || !chartRef.current) return;
+      const { width } = containerRef.current.getBoundingClientRect();
+      chartRef.current.applyOptions({ width: Math.max(0, Math.floor(width)) });
+      chartRef.current.timeScale().fitContent();
     };
-  }, [pnlData, benchmarkData, theme]); // 데이터나 테마 변경 시 effect 재실행
 
-  if (pnlData.length === 0) {
-    return (
-      <div className="h-96 flex items-center justify-center bg-muted/50 rounded-lg">
-        <p className="text-muted-foreground">
-          차트를 표시할 데이터가 없습니다.
-        </p>
-      </div>
-    );
-  }
+    const ro = new ResizeObserver(handleResize);
+    resizeObserverRef.current = ro;
+    ro.observe(containerRef.current);
+    handleResize();
 
-  return <div ref={chartContainerRef} className="h-96 w-full" />;
+    return () => {
+      ro.disconnect();
+      chart.remove();
+    };
+  }, [height, dark]);
+
+  // 데이터/벤치마크 업데이트
+  useEffect(() => {
+    if (areaRef.current) {
+      areaRef.current.setData(data);
+      chartRef.current?.timeScale().fitContent();
+    }
+    if (benchRef.current) {
+      if (benchmark && benchmark.length) {
+        benchRef.current.setData(benchmark);
+      } else {
+        // 벤치마크 제거가 필요하면 시리즈를 숨김 처리
+        benchRef.current.applyOptions({ visible: false });
+      }
+    }
+  }, [data, benchmark]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: "100%", height }}
+      aria-label="equity-chart"
+    />
+  );
 };
+
+export default EquityChart;
