@@ -692,7 +692,11 @@
       "dateRangeLabel": "Period",
       "initialCapitalLabel": "Initial Capital",
       "leverageLabel": "Leverage",
-      "feePctLabel": "Trading Fee (%)"
+      "feePctLabel": "Trading Fee (%)",
+      "trailingStopLabel": "Trailing Stop",
+      "trailingStopDescription": "Automatically adjust the stop-loss to protect profits.",
+      "activationPctLabel": "Activation Profit (%)",
+      "callbackPctLabel": "Callback (%)"
     },
     "wip": {
       "title": "This Feature is Coming Soon",
@@ -710,6 +714,9 @@
         "atr": "ATR Based"
       },
       "tpslSet": "Set",
+      "trailingStop": "Trailing Stop",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
       "preflightCheck": {
         "title": "Pre-flight Check",
         "strategy": "Strategy selected",

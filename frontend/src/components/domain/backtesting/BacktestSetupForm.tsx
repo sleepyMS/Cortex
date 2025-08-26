@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -48,7 +49,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Separator } from "@/components/ui/Separator";
 import { DateRangePickerCustom } from "@/components/ui/DateRangePickerCustom";
 import { Skeleton } from "@/components/ui/Skeleton";
-// [최종] 새로 설계한 독립적인 파라미터 뷰어 컴포넌트를 import 합니다.
+import { Switch } from "@/components/ui/Switch";
 import { ParameterTreeView } from "./ParameterTreeView";
 
 // --- Zod Form Schema (overrides 필드 포함) ---
@@ -57,22 +58,42 @@ const parameterOverrideSchema = z.object({
   value: z.any(),
 });
 
-const formSchema = z.object({
-  strategyId: z.string().uuid({ message: "전략을 선택해주세요." }),
-  dateRange: z
-    .object({
-      from: z.date({ required_error: "시작일을 선택해주세요." }),
-      to: z.date({ required_error: "종료일을 선택해주세요." }),
-    })
-    .refine((data) => data.from < data.to, {
-      message: "종료일은 시작일보다 이후여야 합니다.",
-      path: ["to"],
-    }),
-  initialCapital: z.coerce.number().min(1),
-  leverage: z.coerce.number().min(1).max(125),
-  feePct: z.coerce.number().min(0).max(1),
-  overrides: z.array(parameterOverrideSchema).optional(),
-});
+const formSchema = z
+  .object({
+    strategyId: z.string().uuid({ message: "전략을 선택해주세요." }),
+    dateRange: z
+      .object({
+        from: z.date({ required_error: "시작일을 선택해주세요." }),
+        to: z.date({ required_error: "종료일을 선택해주세요." }),
+      })
+      .refine((data) => data.from < data.to, {
+        message: "종료일은 시작일보다 이후여야 합니다.",
+        path: ["to"],
+      }),
+    initialCapital: z.coerce.number().min(1),
+    leverage: z.coerce.number().min(1).max(125),
+    feePct: z.coerce.number().min(0).max(1),
+    overrides: z.array(parameterOverrideSchema).optional(),
+    trailingStopEnabled: z.boolean().default(false),
+    trailingStopActivationPct: z.coerce.number().min(0).optional(),
+    trailingStopCallbackPct: z.coerce.number().min(0.1).optional(),
+  })
+  .refine(
+    (data) => {
+      // 트레일링 스탑이 활성화되면, 나머지 두 필드는 반드시 값이 있어야 함
+      if (data.trailingStopEnabled) {
+        return (
+          data.trailingStopActivationPct !== undefined &&
+          data.trailingStopCallbackPct !== undefined
+        );
+      }
+      return true;
+    },
+    {
+      message: "활성화 및 콜백 %를 입력해야 합니다.",
+      path: ["trailingStopCallbackPct"], // 에러 메시지를 표시할 필드
+    }
+  );
 type FormValues = z.infer<typeof formSchema>;
 
 export function BacktestSetupForm() {
@@ -93,12 +114,16 @@ export function BacktestSetupForm() {
         to: startOfDay(new Date()),
       },
       overrides: [],
+      trailingStopEnabled: false,
+      trailingStopActivationPct: 2, // 예시 기본값
+      trailingStopCallbackPct: 1.5, // 예시 기본값
     },
   });
   const { control } = methods;
 
   const { fields, replace } = useFieldArray({ control, name: "overrides" });
   const watchedStrategyId = methods.watch("strategyId");
+  const watchedTrailingStop = methods.watch("trailingStopEnabled");
 
   const { data: strategies, isLoading: isLoadingStrategies } = useQuery<
     Strategy[]
@@ -357,6 +382,77 @@ export function BacktestSetupForm() {
                         )}
                       />
                     </div>
+                    <Separator className="col-span-1 sm:col-span-3" />
+                    <div className="col-span-1 sm:col-span-3">
+                      <FormField
+                        control={methods.control}
+                        name="trailingStopEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                              <FormLabel>
+                                {t("standard.trailingStopLabel")}
+                              </FormLabel>
+                              <FormDescription>
+                                {t("standard.trailingStopDescription")}
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+                      {watchedTrailingStop && (
+                        <>
+                          <FormField
+                            control={methods.control}
+                            name="trailingStopActivationPct"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  {t("standard.activationPctLabel")}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="2.0"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={methods.control}
+                            name="trailingStopCallbackPct"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  {t("standard.callbackPctLabel")}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="1.5"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -436,6 +532,18 @@ export function BacktestSetupForm() {
                       <span className="font-medium">{t("summary.tpsl")}</span>
                       <Badge variant="outline">
                         {getTpslLogicText(selectedStrategy.tpslLogic)}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">
+                        {t("summary.trailingStop")}
+                      </span>
+                      <Badge
+                        variant={watchedTrailingStop ? "default" : "outline"}
+                      >
+                        {watchedTrailingStop
+                          ? t("summary.enabled")
+                          : t("summary.disabled")}
                       </Badge>
                     </div>
                   </div>

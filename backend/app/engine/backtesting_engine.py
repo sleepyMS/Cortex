@@ -3,7 +3,7 @@
 import pandas as pd
 import pandas_ta as ta
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from .. import schemas 
 
 class BacktestingEngine:
@@ -56,6 +56,12 @@ class BacktestingEngine:
         self.position_type = None     # 'long' 또는 'short'
         self.entry_price = 0.0        # TP/SL 계산을 위한 마지막 진입 가격
         self.invested_capital = 0.0   # 포지션에 투입된 원금을 추적할 변수
+        self.sl_price = None
+        self.tp_price = None
+
+        # 진입 후 최고/최저가를 추적하기 위한 변수
+        self.highest_price_since_entry = 0.0
+        self.lowest_price_since_entry = float('inf')
 
         # --- 6. 결과 분석용 변수 초기화 ---
         self.equity_curve = []
@@ -99,56 +105,106 @@ class BacktestingEngine:
             elif signal == 'short_exit' and self.position_type == 'short':
                 self._execute_trade(timestamp, row['close'], 'buy', is_entry=False)
 
+    def _calculate_initial_tp_sl(self, row: pd.Series) -> Tuple[Optional[float], Optional[float]]:
+        """[신규 헬퍼] 포지션 진입 시점의 데이터를 기반으로 최초 TP/SL 가격을 계산합니다."""
+        sl_price, tp_price = None, None
+        
+        atr_period = self.tpsl_logic.get('atrPeriod')
+        atr_value = row.get(f'ATR_{atr_period}') if atr_period and f'ATR_{atr_period}' in row else None
+
+        # --- SL 가격 계산 ---
+        atr_sl_multiplier = self.tpsl_logic.get('atrStopLossMultiplier')
+        stop_loss_pct = self.tpsl_logic.get('stopLossPct')
+        
+        if atr_sl_multiplier and atr_value:
+            sl_price = self.entry_price - (atr_value * atr_sl_multiplier) if self.position_type == 'long' else self.entry_price + (atr_value * atr_sl_multiplier)
+        elif stop_loss_pct:
+            sl_price = self.entry_price * (1 - stop_loss_pct / 100) if self.position_type == 'long' else self.entry_price * (1 + stop_loss_pct / 100)
+
+        # --- TP 가격 계산 ---
+        atr_tp_multiplier = self.tpsl_logic.get('atrTakeProfitMultiplier')
+        take_profit_pct = self.tpsl_logic.get('takeProfitPct')
+        
+        if atr_tp_multiplier and atr_value:
+            tp_price = self.entry_price + (atr_value * atr_tp_multiplier) if self.position_type == 'long' else self.entry_price - (atr_value * atr_tp_multiplier)
+        elif take_profit_pct:
+            tp_price = self.entry_price * (1 + take_profit_pct / 100) if self.position_type == 'long' else self.entry_price * (1 - take_profit_pct / 100)
+            
+        return sl_price, tp_price
+
     def _check_tp_sl(self, timestamp, row: pd.Series):
-        """TP/SL 발동 여부를 확인하고, 발동 시 포지션을 청산합니다."""
-        if not self.position_type:
+        """
+        TP/SL 발동 여부를 확인하고, 트레일링 스탑 로직을 적용합니다.
+        """
+        # --- 0. 가드 조건: 포지션이 없거나, SL/TP가 설정되지 않은 경우 즉시 종료 ---
+        if not self.position_type or (self.sl_price is None and self.tp_price is None):
             return
 
-        atr_period = self.tpsl_logic.get('atrPeriod')
-        atr_sl_multiplier = self.tpsl_logic.get('atrStopLossMultiplier')
-        atr_tp_multiplier = self.tpsl_logic.get('atrTakeProfitMultiplier')
-        
-        sl_price, tp_price = None, None
-        atr_value = row.get(f'ATRr_{atr_period}') if atr_period else None
-
+        # --- 1. 청산 조건 확인: 현재 캔들에서 SL/TP 가격에 도달했는지 먼저 확인 ---
+        # 이 로직은 정적 손절과 트레일링 손절 모두에 공통으로 적용됩니다.
         if self.position_type == 'long':
-            # (기존 롱 포지션 로직은 그대로 유지)
-            if atr_sl_multiplier and not pd.isna(atr_value):
-                sl_price = self.entry_price - (atr_value * atr_sl_multiplier)
-            elif self.tpsl_logic.get('stopLossPct'):
-                sl_price = self.entry_price * (1 - self.tpsl_logic['stopLossPct'] / 100)
-
-            if atr_tp_multiplier and not pd.isna(atr_value):
-                tp_price = self.entry_price + (atr_value * atr_tp_multiplier)
-            elif self.tpsl_logic.get('takeProfitPct'):
-                tp_price = self.entry_price * (1 + self.tpsl_logic['takeProfitPct'] / 100)
-            
-            if sl_price and row['low'] <= sl_price:
-                self._execute_trade(timestamp, sl_price, 'sell', is_entry=False, reason="Stop Loss")
-            elif tp_price and row['high'] >= tp_price:
-                self._execute_trade(timestamp, tp_price, 'sell', is_entry=False, reason="Take Profit")
-
+            # 익절 조건: 현재 캔들의 고가가 TP 가격보다 높거나 같으면 익절
+            if self.tp_price and row['high'] >= self.tp_price:
+                self._execute_trade(timestamp, self.tp_price, 'sell', is_entry=False, reason="Take Profit")
+                return # 포지션이 청산되었으므로 추가 작업 즉시 중단
+            # 손절 조건: 현재 캔들의 저가가 SL 가격보다 낮거나 같으면 손절
+            if self.sl_price and row['low'] <= self.sl_price:
+                self._execute_trade(timestamp, self.sl_price, 'sell', is_entry=False, reason="Stop Loss")
+                return
+                
         elif self.position_type == 'short':
-            # 숏 포지션의 손절은 가격 상승 시 발동
-            if atr_sl_multiplier and not pd.isna(atr_value):
-                sl_price = self.entry_price + (atr_value * atr_sl_multiplier)
-            elif self.tpsl_logic.get('stopLossPct'):
-                sl_price = self.entry_price * (1 + self.tpsl_logic['stopLossPct'] / 100)
-            
-            # 숏 포지션의 익절은 가격 하락 시 발동
-            if atr_tp_multiplier and not pd.isna(atr_value):
-                tp_price = self.entry_price - (atr_value * atr_tp_multiplier)
-            elif self.tpsl_logic.get('takeProfitPct'):
-                tp_price = self.entry_price * (1 - self.tpsl_logic['takeProfitPct'] / 100)
+            # 익절 조건: 현재 캔들의 저가가 TP 가격보다 낮거나 같으면 익절
+            if self.tp_price and row['low'] <= self.tp_price:
+                self._execute_trade(timestamp, self.tp_price, 'buy', is_entry=False, reason="Take Profit")
+                return
+            # 손절 조건: 현재 캔들의 고가가 SL 가격보다 높거나 같으면 손절
+            if self.sl_price and row['high'] >= self.sl_price:
+                self._execute_trade(timestamp, self.sl_price, 'buy', is_entry=False, reason="Stop Loss")
+                return
 
-            # SL/TP 가격 도달 시 청산 (매수로 숏 커버)
-            if sl_price and row['high'] >= sl_price:
-                self._execute_trade(timestamp, sl_price, 'buy', is_entry=False, reason="Stop Loss")
-            elif tp_price and row['low'] <= tp_price:
-                self._execute_trade(timestamp, tp_price, 'buy', is_entry=False, reason="Take Profit")
+        # --- 2. 트레일링 스탑 갱신 로직 (설정이 활성화된 경우에만 실행) ---
+        if not self.tpsl_logic.get('trailingStopEnabled'):
+            return
 
+        # 2-1. 고점/저점 갱신
+        if self.position_type == 'long':
+            self.highest_price_since_entry = max(self.highest_price_since_entry, row['high'])
+        elif self.position_type == 'short':
+            self.lowest_price_since_entry = min(self.lowest_price_since_entry, row['low'])
+        
+        # 2-2. 트레일링 스탑 발동 조건 확인 (수익률이 활성화 수익률 이상일 때)
+        activation_pct = self.tpsl_logic.get('trailingStopActivationPct', 0)
+        current_return_pct = ((self.highest_price_since_entry / self.entry_price - 1) * 100) if self.position_type == 'long' else ((self.entry_price / self.lowest_price_since_entry - 1) * 100)
 
-    # file: backend/app/engine/backtesting_engine.py
+        if current_return_pct < activation_pct:
+            return # 아직 발동 조건 미충족
+
+        # 2-3. 새로운 트레일링 스탑 가격 계산
+        new_sl_price = None
+        callback_pct = self.tpsl_logic.get('trailingStopCallbackPct')
+        atr_sl_multiplier = self.tpsl_logic.get('atrStopLossMultiplier')
+        atr_period = self.tpsl_logic.get('atrPeriod')
+
+        if callback_pct: # 고정 비율 트레일링 스탑
+            if self.position_type == 'long':
+                new_sl_price = self.highest_price_since_entry * (1 - callback_pct / 100)
+            else: # short
+                new_sl_price = self.lowest_price_since_entry * (1 + callback_pct / 100)
+
+        elif atr_sl_multiplier and atr_period: # ATR 기반 트레일링 스탑
+            atr_value = row.get(f'ATR_{atr_period}')
+            if atr_value and not pd.isna(atr_value):
+                if self.position_type == 'long':
+                    new_sl_price = row['close'] - (atr_value * atr_sl_multiplier)
+                else: # short
+                    new_sl_price = row['close'] + (atr_value * atr_sl_multiplier)
+        
+        # 2-4. 손절 라인 갱신 (오직 유리한 방향으로만 이동)
+        if new_sl_price is not None:
+            if self.position_type == 'long' and new_sl_price > self.sl_price:
+                self.sl_price = new_sl_price
+            elif self.position_type == 'short' and new_sl_price < self.sl_price:
+                self.sl_price = new_sl_price
 
     def _execute_trade(self, timestamp, price: float, side: str, is_entry: bool, reason: str = "Signal"):
         """
@@ -177,7 +233,15 @@ class BacktestingEngine:
             self.position_avg_price = trade_price
             self.entry_price = trade_price
             self.position_type = 'long' if side == 'buy' else 'short'
+
             pnl = None
+
+            self.sl_price, self.tp_price = self._calculate_initial_tp_sl(self.data.loc[timestamp])
+        
+            if self.position_type == 'long':
+                self.highest_price_since_entry = self.entry_price
+            elif self.position_type == 'short':
+                self.lowest_price_since_entry = self.entry_price
 
         # --- 2. 포지션 청산 로직 ---
         else: # is_entry == False
@@ -216,6 +280,11 @@ class BacktestingEngine:
             else: self.losing_trades += 1
 
             self.position_size, self.position_avg_price, self.position_type, self.invested_capital = 0.0, 0.0, None, 0.0
+
+            self.sl_price, self.tp_price = None, None
+
+            self.highest_price_since_entry = 0.0
+            self.lowest_price_since_entry = float('inf')
 
         # --- 3. 거래 로그 기록 ---
         # 로그의 currentBalance는 총자산(현금 + 투자 중인 자산 가치)을 의미합니다.

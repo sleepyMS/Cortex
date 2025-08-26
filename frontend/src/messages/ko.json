@@ -691,7 +691,11 @@
       "dateRangeLabel": "기간",
       "initialCapitalLabel": "초기 자본금",
       "leverageLabel": "레버리지",
-      "feePctLabel": "거래 수수료 (%)"
+      "feePctLabel": "거래 수수료 (%)",
+      "trailingStopLabel": "트레일링 스탑 (Trailing Stop)",
+      "trailingStopDescription": "이익을 보호하기 위해 손절 라인을 자동으로 조정합니다.",
+      "activationPctLabel": "발동 수익률 (%)",
+      "callbackPctLabel": "콜백 (%)"
     },
     "wip": {
       "title": "현재 준비 중인 기능입니다",
@@ -709,6 +713,9 @@
         "atr": "ATR 기반"
       },
       "tpslSet": "설정됨",
+      "trailingStop": "트레일링 스탑",
+      "enabled": "사용",
+      "disabled": "미사용",
       "preflightCheck": {
         "title": "사전 점검",
         "strategy": "전략 선택 완료",

@@ -257,6 +257,10 @@ class TpslLogic(CamelCaseModel):
     atr_take_profit_multiplier: Optional[float] = None
     atr_period: Optional[int] = None
 
+    trailing_stop_enabled: bool = Field(False)
+    trailing_stop_activation_pct: Optional[float] = Field(None, ge=0)
+    trailing_stop_callback_pct: Optional[float] = Field(None, gt=0)
+
 class TargetCoin(CamelCaseModel):
     ticker: str
     allocation_pct: float = Field(100.0, ge=0, le=100)
@@ -352,6 +356,7 @@ class BacktestExecutionParameters(CamelCaseModel):
     leverage: float = Field(1.0, gt=0, description="레버리지 배율")
     fee: float = Field(0.04, ge=0, description="거래 수수료 (%)")
     overrides: Optional[List[ParameterOverride]] = Field(None, description="전략의 기본값을 덮어쓰는 파라미터 목록")
+    tpsl_logic: Optional[TpslLogic] = None
 
 class BacktestCreate(CamelCaseModel):
     strategy_id: uuid.UUID
