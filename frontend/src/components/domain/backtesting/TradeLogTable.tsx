@@ -123,15 +123,28 @@ const columns: ColumnDef<TradeLog>[] = [
   {
     accessorKey: "current_balance",
     header: "누적 자산",
-    cell: ({ row }) => (
-      <span className="font-mono">
-        $
-        {row.getValue<number>("current_balance").toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-      </span>
-    ),
+    cell: ({ row }) => {
+      // ▼▼▼ [핵심 수정] ▼▼▼
+      // 1. 값이 null일 수 있음을 명시하고 변수에 할당합니다.
+      const balance = row.getValue<number | null>("current_balance");
+
+      // 2. 값이 null 또는 undefined인 경우, '-'를 표시하고 렌더링을 중단합니다.
+      if (balance === null || typeof balance === "undefined") {
+        return <span className="text-muted-foreground">-</span>;
+      }
+
+      // 3. 값이 숫자일 경우에만 toLocaleString을 호출합니다.
+      return (
+        <span className="font-mono">
+          $
+          {balance.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </span>
+      );
+      // ▲▲▲ [수정 완료] ▲▲▲
+    },
   },
   {
     accessorKey: "reason",

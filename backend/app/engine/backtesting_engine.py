@@ -252,6 +252,14 @@ class BacktestingEngine:
         profit_factor = self.gross_profit / abs(self.gross_loss) if self.gross_loss != 0 else float('inf')
         
         daily_returns = equity_df['value'].resample('D').last().pct_change().dropna()
+
+        sharpe_ratio = 0.0
+        # 일별 수익률 데이터가 충분할 때만 계산 (예: 10개 이상)
+        if not daily_returns.empty and len(daily_returns) > 10 and daily_returns.std() > 0:
+            # 리스크 프리 이자율을 0으로 가정
+            annualized_return = daily_returns.mean() * 365
+            annualized_std = daily_returns.std() * np.sqrt(365)
+            sharpe_ratio = annualized_return / annualized_std
         
         cagr = 0.0
         # 기간이 30일 미만이거나, 연수가 0일 경우 CAGR을 0으로 처리
@@ -267,7 +275,7 @@ class BacktestingEngine:
         
         sortino_ratio = 0.0
         # 일별 수익률 데이터가 충분할 때만 계산 (예: 10개 이상) 
-        if downside_std > 0 and len(daily_returns) > 10:
+        if downside_std > 0 and len(daily_returns) > 2:
             annualized_return = daily_returns.mean() * 365
             annualized_downside_std = downside_std * np.sqrt(365)
             sortino_ratio = annualized_return / annualized_downside_std
@@ -283,4 +291,5 @@ class BacktestingEngine:
             "winning_trades": self.winning_trades,
             "losing_trades": self.losing_trades,
             "pnl_curve_json": self.equity_curve,
+            "sharpe_ratio": round(sharpe_ratio, 2),
         }

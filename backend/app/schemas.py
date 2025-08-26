@@ -378,6 +378,13 @@ class BacktestResultSummary(CamelCaseModel):
     trade_summary_json: Optional[Dict[str, Any]] = None
     executed_at: Optional[datetime] = None
 
+    profit_factor: Optional[float] = None
+    sortino_ratio: Optional[float] = None
+    cagr_pct: Optional[float] = None
+    total_trades: Optional[int] = None
+    winning_trades: Optional[int] = None
+    losing_trades: Optional[int] = None
+
 class Backtest(CamelCaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
