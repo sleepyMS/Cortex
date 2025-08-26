@@ -368,6 +368,7 @@ class TradeLogEntry(CamelCaseModel):
     commission: Optional[float] = None
     pnl: Optional[float] = None
     current_balance: Optional[float] = None
+    reason: Optional[str] = None
 
 class BacktestResultSummary(CamelCaseModel):
     total_return_pct: Optional[float] = None

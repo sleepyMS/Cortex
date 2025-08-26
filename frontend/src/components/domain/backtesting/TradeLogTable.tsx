@@ -121,12 +121,12 @@ const columns: ColumnDef<TradeLog>[] = [
     },
   },
   {
-    accessorKey: "current_balance",
+    accessorKey: "currentBalance",
     header: "누적 자산",
     cell: ({ row }) => {
       // ▼▼▼ [핵심 수정] ▼▼▼
       // 1. 값이 null일 수 있음을 명시하고 변수에 할당합니다.
-      const balance = row.getValue<number | null>("current_balance");
+      const balance = row.getValue<number | null>("currentBalance");
 
       // 2. 값이 null 또는 undefined인 경우, '-'를 표시하고 렌더링을 중단합니다.
       if (balance === null || typeof balance === "undefined") {
