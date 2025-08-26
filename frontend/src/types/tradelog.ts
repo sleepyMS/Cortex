@@ -7,4 +7,5 @@ export interface TradeLog {
   pnl: number | null;
   commission: number;
   currentBalance: number;
+  reason: string;
 }

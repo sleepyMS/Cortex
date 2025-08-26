@@ -139,25 +139,23 @@ class BacktestingEngine:
 
     def _execute_trade(self, timestamp, price: float, side: str, is_entry: bool, reason: str = "Signal"):
         """
-        [개선된 버전] 거래를 실행하고 모든 상태 변수를 업데이트합니다.
+        [최종 수정 버전] 거래를 실행하고 모든 상태 변수를 업데이트합니다.
         포지션 진입/청산 시 현금 흐름을 정확하게 반영합니다.
         """
         # --- 1. 포지션 진입 로직 ---
         if is_entry:
-            if self.position_size != 0: return # 이미 포지션이 있으면 진입 불가
+            if self.position_size != 0: return
 
             trade_price = price * (1 + self.slippage_pct if side == 'buy' else 1 - self.slippage_pct)
-            # 투자 원금은 레버리지를 적용한 자산의 99%로 고정
-            invest_amount = self.balance * self.leverage * 0.99 
+            invest_amount = self.balance * self.leverage * 0.99
             quantity = invest_amount / trade_price
             
             commission = invest_amount * self.fee_pct
             if self.balance < commission: return
 
-            # 수수료는 즉시 현금에서 차감
             self.balance -= commission
 
-            # 포지션에 투입된 원금을 현금에서 분리하여 추적
+            # 포지션에 투입된 원금(비용)을 현금 잔고에서 반드시 차감
             position_cost = quantity * trade_price
             self.balance -= position_cost
             self.invested_capital = position_cost
@@ -166,7 +164,7 @@ class BacktestingEngine:
             self.position_avg_price = trade_price
             self.entry_price = trade_price
             self.position_type = 'long' if side == 'buy' else 'short'
-            pnl = None # 진입 시점에는 PNL이 확정되지 않음
+            pnl = None
 
         # --- 2. 포지션 청산 로직 ---
         else: # is_entry == False
@@ -177,43 +175,41 @@ class BacktestingEngine:
             if side == 'sell' and self.position_type == 'long':
                 trade_price = price * (1 - self.slippage_pct)
                 quantity = self.position_size
-                pnl = (trade_price - self.position_avg_price) * quantity
+                raw_pnl = (trade_price - self.position_avg_price) * quantity
                 
-                # 현금 = 기존 현금 + 투입했던 원금 + 확정 손익
-                self.balance += self.invested_capital + pnl
+                # 청산으로 회수된 총 현금 = 투입했던 원금 + 실현 손익
+                cash_returned = self.invested_capital + raw_pnl
+                self.balance += cash_returned
             
             elif side == 'buy' and self.position_type == 'short':
                 trade_price = price * (1 + self.slippage_pct)
                 quantity = abs(self.position_size)
-                pnl = (self.position_avg_price - trade_price) * quantity
+                raw_pnl = (self.position_avg_price - trade_price) * quantity
 
-                # 현금 = 기존 현금 + 투입했던 원금 + 확정 손익
-                self.balance += self.invested_capital + pnl
+                cash_returned = self.invested_capital + raw_pnl
+                self.balance += cash_returned
             
-            else: # 잘못된 청산 요청
+            else:
                 return
 
-            # 청산 시 발생하는 수수료 계산 및 차감
             exit_value = quantity * trade_price
             commission = exit_value * self.fee_pct
             self.balance -= commission
-            
-            # PNL은 수수료를 반영한 최종 값이어야 합니다.
-            pnl -= commission
+            pnl = raw_pnl - commission
 
-            # 통계 업데이트
             self.gross_profit += max(0, pnl)
             self.gross_loss += min(0, pnl)
             if pnl > 0: self.winning_trades += 1
             else: self.losing_trades += 1
 
-            # 포지션 상태를 완벽하게 초기화
             self.position_size, self.position_avg_price, self.position_type, self.invested_capital = 0.0, 0.0, None, 0.0
 
         # --- 3. 거래 로그 기록 ---
+        # 로그의 currentBalance는 총자산(현금 + 투자 중인 자산 가치)을 의미합니다.
+        log_balance = self.balance + self.invested_capital
         log = {
             "timestamp": timestamp, "side": side, "price": trade_price, "quantity": abs(quantity),
-            "commission": commission, "pnl": pnl, "current_balance": self.balance + self.invested_capital,
+            "commission": commission, "pnl": pnl, "current_balance": log_balance,
             "reason": reason,
         }
         self.trade_logs.append(log)

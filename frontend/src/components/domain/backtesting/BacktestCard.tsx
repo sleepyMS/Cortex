@@ -200,7 +200,7 @@ export const BacktestCard = ({
             {/* --- 'running' 상태일 때 프로그레스 바 표시 --- */}
             {status === "running" && (
               <div className="pt-2">
-                <Progress value={backtest.progress ?? 45} className="h-2" />
+                <Progress value={backtest.progress ?? 30} className="h-2" />
                 <p className="text-xs text-center text-blue-500 mt-1.5">
                   {t("simulating")}
                 </p>

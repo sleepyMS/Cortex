@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/Badge";
 
 // --- 컬럼 정의 (TanStack Table의 핵심) ---
 // 이 부분을 수정하여 표시할 컬럼을 커스터마이징할 수 있습니다.
@@ -131,6 +132,27 @@ const columns: ColumnDef<TradeLog>[] = [
         })}
       </span>
     ),
+  },
+  {
+    accessorKey: "reason",
+    header: "거래 이유",
+    cell: ({ row }) => {
+      const reason = row.getValue<string>("reason");
+      // 이유에 따라 다른 색상의 Badge를 보여주면 가독성이 향상됩니다.
+      const variant = reason === "Signal" ? "secondary" : "default";
+      const colorClass =
+        reason === "Take Profit"
+          ? "bg-emerald-500/80"
+          : reason === "Stop Loss"
+          ? "bg-rose-500/80"
+          : "";
+
+      return (
+        <Badge variant={variant} className={cn("text-xs", colorClass)}>
+          {reason}
+        </Badge>
+      );
+    },
   },
 ];
 
