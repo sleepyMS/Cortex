@@ -29,10 +29,11 @@ function ParameterInput({
       control={control}
       name={fieldPath}
       render={({ field }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-4">
           <Label
             htmlFor={fieldPath}
-            className="w-24 text-right text-xs text-muted-foreground truncate"
+            // ▼▼▼ [수정 2] 라벨의 고정 폭(w-24)과 잘림(truncate) 제거 ▼▼▼
+            className="text-xs text-muted-foreground"
           >
             {label}
           </Label>
@@ -42,7 +43,8 @@ function ParameterInput({
             step="any"
             value={field.value}
             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-            className="h-8 flex-1"
+            // ▼▼▼ [수정 3] flex-1을 제거하고 작은 고정 폭(w-24) 부여 ▼▼▼
+            className="h-8 w-24 text-right"
           />
         </div>
       )}
@@ -86,11 +88,17 @@ function RecursiveRenderer({
                   f.path.startsWith(`${pathPrefix}.blocks.${index}`)
                 )
                 .map((field) => {
-                  // 경로에서 라벨 생성 (예: "mainLine.values.period" -> "Period")
                   const pathParts = field.path.split(".");
-                  const paramKey = pathParts[pathParts.length - 1];
-                  const operandKey = pathParts[pathParts.length - 3];
-                  const label = `${operandKey} ${paramKey}`;
+                  const paramKey = pathParts[pathParts.length - 1]; // "length"
+                  const operandKey = pathParts[pathParts.length - 3]; // "mainLine"
+
+                  // 현재 블록에서 operand 객체(예: block.mainLine)를 가져옵니다.
+                  const operand = (block as any)[operandKey];
+                  // operand 객체에서 indicatorKey(예: "EMA")를 추출합니다.
+                  const indicatorKey = operand?.indicatorKey || "";
+
+                  // indicatorKey를 포함하여 더 명확한 라벨을 생성합니다.
+                  const label = `${indicatorKey} ${operandKey} ${paramKey}`;
 
                   return (
                     <ParameterInput
