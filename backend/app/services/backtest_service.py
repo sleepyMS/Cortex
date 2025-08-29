@@ -120,13 +120,14 @@ class BacktestService:
         await db.flush()
         
         # 4. Celery 태스크 전송 및 Task ID 저장
-        try:
-            # 변경된 함수 이름으로 호출하고, 인자는 str 타입으로 전달
-            async_result = run_backtest.delay(backtest_id=str(db_backtest.id))
-            
-            # Celery가 부여한 Task ID를 DB에 저장
+        try:            
+            # 1초의 지연 시간을 주어 DB 커밋이 완료될 시간을 확보합니다.
+            async_result = run_backtest.apply_async(
+                args=[str(db_backtest.id)],
+                countdown=1
+            )
+
             db_backtest.celery_task_id = async_result.id
-            
             logger.info(f"Celery task dispatched for Backtest ID: {db_backtest.id} with Celery Task ID: {async_result.id}.")
         except Exception as e:
             logger.error(f"Failed to dispatch Celery task for Backtest ID {db_backtest.id}: {e}", exc_info=True)
@@ -189,5 +190,16 @@ class BacktestService:
             # Task ID가 없는 경우 (예: dispatch 실패)
             backtest_to_cancel.status = 'canceled'
             logger.warning(f"Backtest ID {backtest_to_cancel.id} has no Celery Task ID but was marked as canceled.")
+
+    async def delete_backtest(self, db: AsyncSession, backtest_to_delete: models.Backtest):
+        """
+        특정 백테스트 기록과 관련된 모든 자식 데이터(결과, 거래 로그 등)를 삭제합니다.
+        """
+        # backtest 모델에 cascade="all, delete-orphan" 설정이 되어 있으므로,
+        # 부모인 Backtest 객체만 삭제하면 관련된 BacktestResult, TradeLog 등이
+        # 연쇄적으로 자동 삭제됩니다.
+        await db.delete(backtest_to_delete)
+        await db.flush()
+        logger.info(f"Backtest record ID {backtest_to_delete.id} and all associated data deleted.")
 
 backtest_service = BacktestService()

@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pandas_ta as ta
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 import json
 import logging
 import numpy as np
@@ -11,7 +11,7 @@ from functools import reduce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from .. import schemas
-from ..database import AsyncSessionLocal # [추가] 비동기 세션을 직접 생성하기 위해 임포트
+from ..database import AsyncSessionLocal
 
 from ..services.market_data_service import market_data_service
 
@@ -43,6 +43,15 @@ OUTPUT_PREFIX_MAP = {
     "OBV": ["OBV"],
     "VWAP": ["VWAP"],
 }
+
+def timeframe_to_minutes(tf_str: str) -> int:
+    """타임프레임 문자열을 분 단위 정수로 변환합니다."""
+    if 'm' in tf_str: return int(tf_str.replace('m', ''))
+    if 'h' in tf_str: return int(tf_str.replace('h', '')) * 60
+    if 'd' in tf_str: return int(tf_str.replace('d', '')) * 1440
+    if 'w' in tf_str: return int(tf_str.replace('w', '')) * 10080
+    if 'M' in tf_str: return int(tf_str.replace('M', '')) * 43200
+    return float('inf')
 
 class SignalService:
     """
@@ -81,16 +90,13 @@ class SignalService:
         results = {}
         processed_columns = set()
         
-        if 'time' not in df.columns or not pd.api.types.is_integer_dtype(df['time']):
-             df['time'] = pd.to_datetime(df.get('time_dt', df.index)).astype('int64') // 10**9
+        df = df.reset_index()
+        df['time'] = (df['time'].astype('int64') // 10**9)
 
-        # ▼▼▼ [핵심 개선 로직] ▼▼▼
-        # 요청된 각 지표에 대해, OUTPUT_PREFIX_MAP을 사용하여 모든 관련 컬럼을 찾아 결과에 추가합니다.
         for indicator_config in request.indicators:
             key_upper = indicator_config.indicator_key.upper()
             key_lower = indicator_config.indicator_key.lower()
             
-            # OHLCV 기본값 직접 처리
             if key_lower in base_ohlcv_keys:
                 if key_lower in df.columns:
                     series_data = df[[key_lower, 'time']].dropna()
@@ -100,7 +106,6 @@ class SignalService:
                     ]
                 continue
             
-            # 계산된 지표 처리
             known_prefixes = OUTPUT_PREFIX_MAP.get(key_upper, [])
             if not known_prefixes:
                 continue
@@ -109,7 +114,6 @@ class SignalService:
                 if col_name in processed_columns:
                     continue
                 
-                # 컬럼 이름이 알려진 접두사 중 하나로 시작하는지 확인 (대소문자 무시)
                 if any(col_name.upper().startswith(p + '_') or col_name.upper() == p for p in known_prefixes):
                     series_data = df[[col_name, 'time']].dropna()
                     results[col_name.lower()] = [
@@ -127,37 +131,22 @@ class SignalService:
     ) -> Optional[Union[str, float, int]]:
         """
         IndicatorValue 객체로부터 DataFrame에 실제 생성된 소문자 컬럼 이름을 안정적으로 찾아 반환합니다.
-        (개선된 버전)
+        (다중 타임프레임 접미사 대응 추가)
         """
 
-        if indicator_value is None:
-            return None
-        
-        # 1. 숫자 값은 그대로 반환
-        if isinstance(indicator_value, (int, float)):
-            return indicator_value
+        if indicator_value is None: return None
+        if isinstance(indicator_value, (int, float)): return indicator_value
 
-        # 2. OHLCV 같은 기본 값 처리
         key_raw = indicator_value.indicator_key
-        if key_raw.lower() in ['close', 'open', 'high', 'low', 'volume']:
-            return key_raw.lower()
+        if key_raw.lower() in ['close', 'open', 'high', 'low', 'volume']: return key_raw.lower()
 
-        # 3. `INDICATOR_KIND_MAP`을 사용하여 계산 시 사용된 실제 `kind`를 가져옴 (핵심 수정)
-        # 예: 'STOCHASTIC' -> 'stoch'
         kind = INDICATOR_KIND_MAP.get(key_raw.upper(), key_raw.lower())
-
         params_str = "_".join(map(str, indicator_value.values.values()))
         output_key = indicator_value.outputs[0].lower() if indicator_value.outputs else ""
-
-        # 4. `OUTPUT_PREFIX_MAP`을 기반으로 가능한 모든 접두사를 찾음
-        # 예: 'ICHIMOKU' -> ['its', 'iks', 'isa', 'isb', 'ics']
-        possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
         
+        possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
         target_prefix = ""
 
-        # 5. 사용자가 요청한 특정 output에 해당하는 접두사를 결정 (하드코딩 최소화)
-        # 예: 'MACD'의 'histogram' output은 'macdh' 접두사를 가짐
-        # 참고: 이 로직은 pandas-ta 라이브러리의 명명 규칙을 따릅니다.
         if kind == 'macd' and output_key in ['macd', 'histogram', 'signal']:
             prefix_map = {'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds'}
             target_prefix = prefix_map.get(output_key, 'macd')
@@ -167,31 +156,22 @@ class SignalService:
             prefix_map = {'supertrend': 'supert', 'direction': 'supertd'}
             target_prefix = prefix_map.get(output_key, 'supert')
         else:
-            # 대부분의 지표는 첫 번째 접두사가 메인 값임
-            if possible_prefixes:
-                target_prefix = possible_prefixes[0]
-            else:
-                # 맵에 없는 간단한 지표 (예: rsi, ema 등)
-                target_prefix = kind
-
-        # 6. 최종 컬럼 이름을 조합하고 DataFrame 컬럼 목록에서 검색
-        # 예: 'macdh' + '_' + '12_26_9' -> 'macdh_12_26_9'
-        expected_col = f"{target_prefix}_{params_str}" if params_str else target_prefix
-
-        # DataFrame의 모든 컬럼은 이미 소문자로 변환되었으므로, 직접 비교 가능
-        if expected_col in df_columns:
-            return expected_col
+            if possible_prefixes: target_prefix = possible_prefixes[0]
+            else: target_prefix = kind
         
-        # 만약 위에서 못찾았다면, 접두사로 시작하는 컬럼을 다시 한번 탐색 (더 유연한 방식)
-        for col in df_columns:
-            if col.startswith(f"{target_prefix}_"):
-                 # 파라미터 순서가 다를 수 있음을 대비하여, 모든 파라미터가 포함되었는지 확인
-                col_params = set(col.split('_')[1:])
-                req_params = set(params_str.split('_'))
-                if req_params.issubset(col_params):
-                    return col
+        # [수정] _get_resampled_dataframe에서 추가한 타임프레임 접미사를 고려
+        timeframe_suffix = f"_{indicator_value.timeframe}" if indicator_value.timeframe else ""
+        
+        expected_col_base = f"{target_prefix}_{params_str}" if params_str else target_prefix
+        expected_col_with_tf = f"{expected_col_base}{timeframe_suffix}"
 
-        logger.warning(f"신호 계산 실패: 지표 컬럼을 찾을 수 없습니다. 요청 정보: {indicator_value.model_dump()}, 예상 컬럼명: '{expected_col}'")
+        # DataFrame의 컬럼은 모두 소문자이므로, 직접 비교
+        if expected_col_with_tf in df_columns:
+            return expected_col_with_tf
+        if expected_col_base in df_columns: # 접미사가 없는 경우 (base_tf 지표)
+            return expected_col_base
+
+        logger.warning(f"지표 컬럼 탐색 실패: {indicator_value.model_dump()}, 예상 컬럼명: '{expected_col_with_tf}' 또는 '{expected_col_base}'")
         return None
 
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
@@ -311,7 +291,6 @@ class SignalService:
         unique_indicators = set()
         
         def find_indicators_recursively(obj: Any):
-            # --- [핵심 수정] --- 복잡한 Union(LogicBlock) 대신, 공통 부모 클래스(BaseLogicBlock)로 타입 체크
             if isinstance(obj, schemas.BaseLogicBlock):
                 indicator_fields = ['operand_a', 'operand_b', 'main_line', 'signal_line', 'indicator']
                 for field in indicator_fields:
@@ -322,7 +301,9 @@ class SignalService:
                         find_indicators_recursively(child)
             
             elif isinstance(obj, schemas.IndicatorValue):
-                identifier = f"{obj.indicator_key}_{obj.timeframe}_{json.dumps(obj.values, sort_keys=True)}"
+                # [수정] IndicatorValue에 timeframe이 없으면 base_timeframe을 사용
+                tf = obj.timeframe if obj.timeframe else base_timeframe
+                identifier = f"{obj.indicator_key}|{tf}|{json.dumps(obj.values, sort_keys=True)}"
                 unique_indicators.add(identifier)
 
         rules_sets = [request.long_entry_rules, request.long_exit_rules, request.short_entry_rules, request.short_exit_rules]
@@ -337,7 +318,7 @@ class SignalService:
         base_ohlcv_keys = {'open', 'high', 'low', 'close', 'volume'}
 
         for indicator_str in unique_indicators:
-            key, tf, values_str = indicator_str.split('_', 2)
+            key, tf, values_str = indicator_str.split('|', 2)
             
             if key.lower() in base_ohlcv_keys:
                 continue
@@ -358,117 +339,104 @@ class SignalService:
         for tf in indicators_by_tf:
             indicators_by_tf[tf] = list(indicators_by_tf[tf].values())
 
-        def timeframe_to_minutes(tf_str):
-            if 'm' in tf_str: return int(tf_str.replace('m', ''))
-            if 'h' in tf_str: return int(tf_str.replace('h', '')) * 60
-            if 'd' in tf_str: return int(tf_str.replace('d', '')) * 1440
-            return float('inf')
-
         return {"timeframes": sorted(list(timeframes), key=timeframe_to_minutes), "indicators": indicators_by_tf}
 
-    async def _get_resampled_dataframe(self, db: AsyncSession, ticker: str, configs: Dict[str, Any]) -> pd.DataFrame:
-        """추출된 설정을 기반으로 모든 타임프레임의 데이터를 가져와 리샘플링하고 병합합니다."""
-        base_tf = configs['timeframes'][0]
-        
-        # market_data_service는 이제 'time'을 인덱스로 사용하는 DataFrame을 반환합니다.
-        base_df = await market_data_service.get_latest_data(db, ticker, base_tf, limit=1000)
+    
+    def _get_calculation_base_timeframe(self, required_timeframes: List[str]) -> str:
+        """
+        제공된 타임프레임 목록에서 가장 짧은(가장 해상도가 높은) 타임프레임을 찾아 반환합니다.
+        """
+        if not required_timeframes:
+            return '1h'
+        return min(required_timeframes, key=timeframe_to_minutes)
+
+    async def _get_resampled_dataframe(self, db: AsyncSession, ticker: str, configs: Dict[str, Any]) -> Tuple[pd.DataFrame, str]:
+        """
+        추출된 설정을 기반으로 모든 타임프레임의 데이터를 가져와 리샘플링하고 병합합니다.
+        가장 짧은 타임프레임을 '계산 기준'으로 삼아 모든 데이터를 정렬합니다.
+        """
+        all_timeframes = configs['timeframes']
+        if not all_timeframes:
+            return pd.DataFrame(), '1h'
+
+        # 1. 계산의 기준이 될 가장 짧은 타임프레임을 결정합니다.
+        calculation_base_tf = self._get_calculation_base_timeframe(all_timeframes)
+        logger.info(f"계산 기준 타임프레임 결정: {calculation_base_tf}")
+
+        # 2. '계산 기준' 타임프레임의 데이터를 메인 데이터프레임으로 로드합니다.
+        base_df = await market_data_service.get_latest_data(db, ticker, calculation_base_tf, limit=2000)
         if base_df.empty: 
-            return base_df
+            return pd.DataFrame(), calculation_base_tf
         
-        # ▼▼▼ [핵심 수정] ▼▼▼
-        # base_df에는 이미 DatetimeIndex가 적용되어 있으므로,
-        # 'time' 컬럼을 참조하는 아래 두 줄은 더 이상 필요 없습니다.
-        # base_df['time_dt'] = pd.to_datetime(base_df['time'], unit='s', utc=True)
-        # base_df = base_df.set_index('time_dt')
-        # ▲▲▲ [수정 완료] ▲▲▲
+        if configs['indicators'].get(calculation_base_tf):
+            base_df.ta.strategy(ta.Strategy(name=f"strat_{calculation_base_tf}", ta=configs['indicators'][calculation_base_tf]), append=True)
 
-        if configs['indicators'].get(base_tf):
-            base_df.ta.strategy(ta.Strategy(name=f"strat_{base_tf}", ta=configs['indicators'][base_tf]), append=True)
+        # 3. 나머지 (더 긴) 타임프레임들의 데이터를 '계산 기준'에 맞게 다운샘플링하여 병합합니다.
+        for tf in all_timeframes:
+            if tf == calculation_base_tf:
+                continue
 
-        for tf in configs['timeframes'][1:]:
-            df_higher_tf = await market_data_service.get_latest_data(db, ticker, tf, limit=1000)
+            df_higher_tf = await market_data_service.get_latest_data(db, ticker, tf, limit=2000)
             if df_higher_tf.empty: 
                 continue
             
-            # df_higher_tf도 'time'을 인덱스로 가집니다.
             if configs['indicators'].get(tf):
                 df_higher_tf.ta.strategy(ta.Strategy(name=f"strat_{tf}", ta=configs['indicators'][tf]), append=True)
             
             indicator_cols = [col for col in df_higher_tf.columns if col.lower() not in ['open', 'high', 'low', 'close', 'volume']]
-            if indicator_cols:
-                # [수정] reindex는 두 DataFrame의 인덱스를 기준으로 동작하므로 올바르게 작동합니다.
-                resampled_indicators = df_higher_tf[indicator_cols].reindex(base_df.index, method='ffill')
-                base_df = base_df.join(resampled_indicators)
+            if not indicator_cols:
+                continue
+
+            resampled_indicators = df_higher_tf[indicator_cols].reindex(base_df.index, method='ffill')
+            
+            # 컬럼 이름 중복 방지를 위해 접미사 추가
+            resampled_indicators = resampled_indicators.rename(columns={col: f"{col}_{tf}" for col in indicator_cols})
+
+            base_df = base_df.join(resampled_indicators)
         
-        # [수정] 인덱스를 리셋하고 컬럼을 소문자로 바꾸는 로직을 조정합니다.
-        # 'time' 컬럼은 UNIX 타임스탬프로 유지해야 하므로, 인덱스를 리셋하여 'time' 컬럼으로 되돌립니다.
+        # 4. 최종 데이터프레임 정리
         base_df = base_df.reset_index()
         base_df.columns = base_df.columns.str.lower()
-        base_df['time'] = (base_df['time'].astype('int64') // 10**9) # UNIX 타임스탬프로 변환
+        base_df['time'] = (base_df['time'].astype('int64') // 10**9)
         
-        # dropna() 전에 필요한 컬럼들이 모두 있는지 확인하는 것이 좋습니다.
         required_cols = ['time', 'open', 'high', 'low', 'close', 'volume']
-        
-        # 지표 계산 후 NaN이 생긴 행들을 제거
-        return base_df.dropna(subset=required_cols)
+        return base_df.dropna(subset=required_cols), calculation_base_tf
 
     async def generate_signals(
         self, request: Union[schemas.SignalCalculationRequest, schemas.StrategyCreate]
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, str]:
         """
-        [최종 개선 버전]
-        전략 규칙(스냅샷 또는 실시간 요청)을 기반으로 매매 신호 DataFrame을 생성합니다.
-        - DB 세션을 내부에서 직접 생성하고 관리합니다.
-        - BacktestingEngine이 요구하는 형식의 DataFrame을 반환합니다.
+        [최종 수정 버전]
+        전략 규칙 기반으로 매매 신호 DataFrame과 '계산 기준 타임프레임'을 함께 반환합니다.
         """
-        # --- 1. 요청 객체에서 기본 정보 추출 ---
-        # StrategyCreate에는 ticker 필드가 없으므로 target_coins를 사용합니다.
         if isinstance(request, schemas.StrategyCreate) and request.target_coins:
             ticker = request.target_coins[0].ticker
         else:
             ticker = getattr(request, 'ticker', "BTC/USDT")
 
-        # BacktestingEngine에 전달된 파라미터에서 timeframe을 가져오는 것이 더 안정적입니다.
-        # 여기서는 request에 timeframe이 있다고 가정하고, 없으면 기본값을 사용합니다.
-        timeframe = getattr(request, 'timeframe', '1h')
-        
-        logger.debug(f"--- 신호 생성 시작: Ticker={ticker}, Timeframe={timeframe} ---")
+        # backtest_task에서 사용할 timeframe은 snapshot에 없으므로, 기본값을 사용합니다.
+        # 어차피 _get_required_timeframes_and_indicators가 올바른 타임프레임을 찾아줍니다.
+        base_timeframe = '1h'
 
-        # --- 2. 비동기 DB 세션 생성 및 데이터 처리 ---
+        logger.debug(f"--- 신호 생성 시작 (Backtest): Ticker={ticker} ---")
+
         async with AsyncSessionLocal() as db:
-            # 2-1. 전략 규칙을 분석하여 필요한 모든 지표와 타임프레임을 추출합니다.
-            configs = self._get_required_timeframes_and_indicators(request, base_timeframe=timeframe)
-            
-            # 2-2. 여러 타임프레임의 데이터를 가져와 병합하고 모든 지표를 계산합니다.
-            df_merged = await self._get_resampled_dataframe(db, ticker, configs)
+            configs = self._get_required_timeframes_and_indicators(request, base_timeframe=base_timeframe)
+            df_merged, calculation_tf = await self._get_resampled_dataframe(db, ticker, configs)
 
-        # --- 3. 데이터 부재 시 예외 처리 ---
         if df_merged.empty:
-            logger.warning(f"{ticker} ({timeframe}) 시세 데이터를 가져오지 못했거나 지표 계산 후 데이터가 없습니다.")
-            # 엔진이 오류를 일으키지 않도록 빈 'signal' 컬럼을 가진 DataFrame을 반환합니다.
-            return pd.DataFrame(columns=['signal'])
+            logger.warning(f"{ticker} 시세 데이터를 가져오지 못했습니다.")
+            return pd.DataFrame(columns=['signal']), '1h' # 기본 타임프레임 반환
 
-        # --- 4. 규칙 기반 신호 생성 ---
         final_signals: List[schemas.SignalDataPoint] = []
 
         def process_rules(rules: Optional[schemas.PositionRules], signal_type: str):
-            if not rules or not rules.blocks:
-                return
-
-            logger.debug(f"--- '{signal_type}' 규칙 처리 시작 ---")
-            
+            if not rules or not rules.blocks: return
             block_results = [self._parse_logic_block_to_series(df_merged, block) for block in rules.blocks]
-            
-            # OR 조건일 경우 any, AND 조건일 경우 all을 사용합니다.
             op = any if rules.logic_operator == "OR" else all
             final_series = pd.DataFrame(block_results).transpose().apply(op, axis=1)
-
-            true_count = final_series.sum()
-            logger.debug(f"'{signal_type}' 규칙의 최종 조건 만족 횟수: {true_count} / {len(df_merged)}")
-
             signal_points = df_merged[final_series]
             for _, row in signal_points.iterrows():
-                # df_merged의 'time' 컬럼은 UNIX 타임스탬프입니다.
                 final_signals.append(schemas.SignalDataPoint(time=int(row['time']), signal_type=signal_type))
 
         process_rules(request.long_entry_rules, "long_entry")
@@ -476,22 +444,21 @@ class SignalService:
         process_rules(request.short_entry_rules, "short_entry")
         process_rules(request.short_exit_rules, "short_exit")
 
-        logger.debug(f"--- 신호 생성 완료: 총 {len(final_signals)}개의 신호 생성됨 ---")
+        logger.debug(f"--- 신호 생성 완료 ({calculation_tf} 기준): 총 {len(final_signals)}개 신호 생성됨 ---")
         
-        # --- 5. 최종 DataFrame 형식 변환 ---
         if not final_signals:
-            return pd.DataFrame(columns=['signal'])
+            return pd.DataFrame(columns=['signal']), calculation_tf
 
-        # BacktestingEngine이 요구하는 형식으로 가공합니다.
         signals_df = pd.DataFrame([s.model_dump() for s in final_signals])
         signals_df['time_dt'] = pd.to_datetime(signals_df['time'], unit='s', utc=True)
         signals_df = signals_df.set_index('time_dt')
         signals_df = signals_df.rename(columns={'signal_type': 'signal'})
         
+        # [수정] 업샘플링 로직 제거!
         # 중복된 인덱스(동일 시간)에 여러 신호가 발생할 경우, 첫 번째 신호만 유지합니다.
-        # 또는 비즈니스 로직에 따라 다르게 처리할 수 있습니다. (e.g., 진입 신호 우선)
         signals_df = signals_df[~signals_df.index.duplicated(keep='first')]
 
-        return signals_df[['signal']]
+        # [수정] (DataFrame, 계산기준_타임프레임) 튜플을 반환합니다.
+        return signals_df[['signal']], calculation_tf
 
 signal_service = SignalService()

@@ -108,3 +108,21 @@ async def cancel_backtest(
         await db.rollback()
         logger.error(f"Error canceling backtest {backtest_to_cancel.id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 취소 중 서버 오류가 발생했습니다.")
+    
+@router.delete("/{backtest_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a specific backtest record")
+async def delete_backtest_record(
+    backtest_to_delete: models.Backtest = Depends(get_verified_backtest),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    특정 ID의 백테스트 기록을 삭제합니다. (소유권 자동 검증)
+    성공 시 204 No Content를 반환합니다.
+    """
+    try:
+        await backtest_service.delete_backtest(db, backtest_to_delete)
+        await db.commit()
+        # 성공 시에는 내용(content)이 없는 응답을 보내는 것이 RESTful API 표준입니다.
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error deleting backtest {backtest_to_delete.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 기록 삭제 중 서버 오류가 발생했습니다.")

@@ -317,19 +317,18 @@ class BacktestingEngine:
     def _calculate_summary_stats(self) -> Dict:
         """최종 성과 지표를 계산합니다."""
         if not self.equity_curve:
-            return {} # 거래가 없으면 빈 dict 반환
+            return {}
 
         equity_df = pd.DataFrame(self.equity_curve).sort_values('time').set_index('time')
         equity_df.index = pd.to_datetime(equity_df.index, unit='s')
         
-        # 기본 지표
         final_equity = equity_df['value'].iloc[-1]
         total_return_pct = ((final_equity - self.initial_capital) / self.initial_capital) * 100
         
         peak = equity_df['value'].expanding(min_periods=1).max()
         drawdown = (equity_df['value'] - peak) / peak
         mdd_pct = drawdown.min() * 100 if not drawdown.empty else 0.0
-        drawdown_curve = (drawdown * 100).round(2) # 퍼센티지로 변환
+        drawdown_curve = (drawdown * 100).round(2)
         drawdown_curve_json = [
             {'time': int(idx.timestamp()), 'value': val} 
             for idx, val in drawdown_curve.items()
@@ -338,36 +337,33 @@ class BacktestingEngine:
         total_trades = self.winning_trades + self.losing_trades
         win_rate_pct = (self.winning_trades / total_trades) * 100 if total_trades > 0 else 0.0
         
-        # 고급 지표
-        profit_factor = self.gross_profit / abs(self.gross_loss) if self.gross_loss != 0 else float('inf')
+        # Profit Factor: 총 손실이 0이면 0.0으로 처리 (또는 gross_profit 값으로 처리할 수도 있음)
+        profit_factor = self.gross_profit / abs(self.gross_loss) if self.gross_loss != 0 else 0.0
         
         daily_returns = equity_df['value'].resample('D').last().pct_change().dropna()
 
         sharpe_ratio = 0.0
-        # 일별 수익률 데이터가 충분할 때만 계산 (예: 10개 이상)
-        if not daily_returns.empty and len(daily_returns) > 10 and daily_returns.std() > 0:
-            # 리스크 프리 이자율을 0으로 가정
+        annualized_std = daily_returns.std() * np.sqrt(365)
+        # Sharpe Ratio: 연간 표준편차가 0보다 클 때만 계산
+        if not daily_returns.empty and annualized_std > 0:
             annualized_return = daily_returns.mean() * 365
-            annualized_std = daily_returns.std() * np.sqrt(365)
             sharpe_ratio = annualized_return / annualized_std
         
         cagr = 0.0
-        # 기간이 30일 미만이거나, 연수가 0일 경우 CAGR을 0으로 처리
         if not daily_returns.empty:
             days = (daily_returns.index[-1] - daily_returns.index[0]).days
-            if days > 30: # 최소 한 달 이상의 데이터로만 계산
+            if days > 30:
                 years = days / 365.0
                 if years > 0:
                     cagr = ((final_equity / self.initial_capital) ** (1 / years) - 1) * 100
 
         downside_returns = daily_returns[daily_returns < 0]
-        downside_std = downside_returns.std()
-        
+        annualized_downside_std = downside_returns.std() * np.sqrt(365)
+
         sortino_ratio = 0.0
-        # 일별 수익률 데이터가 충분할 때만 계산 (예: 10개 이상) 
-        if downside_std > 0 and len(daily_returns) > 2:
+        # Sortino Ratio: 하방 표준편차가 0보다 클 때만 계산
+        if not downside_returns.empty and annualized_downside_std > 0:
             annualized_return = daily_returns.mean() * 365
-            annualized_downside_std = downside_std * np.sqrt(365)
             sortino_ratio = annualized_return / annualized_downside_std
 
         return {

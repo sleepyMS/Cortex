@@ -152,12 +152,16 @@ async def calculate_realtime_signals(
     logger.critical("<<<<< [STRATEGIES ROUTER] /calculate-signals API CALLED >>>>>")
 
     try:
-        signals_dataframe = await signal_service.generate_signals(request=payload)
+        # ▼▼▼ [핵심 수정] 튜플 반환값을 올바르게 받도록 수정 ▼▼▼
+        # generate_signals는 이제 (DataFrame, str) 튜플을 반환합니다.
+        # 이 API에서는 DataFrame만 필요하므로 첫 번째 값만 사용합니다.
+        signals_dataframe, _ = await signal_service.generate_signals(request=payload)
+        # ▲▲▲ [핵심 수정] ▲▲▲
         
-        # 서비스가 DataFrame을 반환하므로, API 스키마에 맞게 변환합니다.
         signals_list = []
         if not signals_dataframe.empty:
             signals_df_reset = signals_dataframe.reset_index()
+            # [수정] BacktestingEngine과 형식을 맞추기 위해 컬럼명을 'time_dt'로 변경
             signals_df_reset['time'] = (signals_df_reset['time_dt'].astype('int64') // 10**9)
             signals_list = [
                 schemas.SignalDataPoint(time=row['time'], signal_type=row['signal'])

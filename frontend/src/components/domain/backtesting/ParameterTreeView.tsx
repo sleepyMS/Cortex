@@ -1,4 +1,4 @@
-// file: frontend/src/components/domain/backtesting/ParameterTreeView.tsx (신규 생성)
+// file: frontend/src/components/domain/backtesting/ParameterTreeView.tsx
 "use client";
 
 import React from "react";
