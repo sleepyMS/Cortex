@@ -19,51 +19,53 @@ class BacktestingEngine:
                  execution_params: dict,
                  strategy_params: schemas.StrategyCreate):
         """
-        [최종 완성 버전] 백테스팅 엔진을 초기화하고 필요한 모든 변수를 설정합니다.
+        [최종 완성 버전] 모든 파라미터를 올바른 위치에서 가져오고, 모든 변수를 정확하게 초기화합니다.
         """
         # --- 1. 데이터 준비 ---
         self.data = ohlcv_df.join(signals_df)
         if not self.data.index.is_monotonic_increasing:
              self.data = self.data.sort_index()
 
-        # --- 2. 파라미터 분리 및 설정 ---
-        self.exec_params = execution_params
-        strategy_dict = strategy_params.model_dump(by_alias=True)
-        self.tpsl_logic = strategy_dict.get('tpslLogic') or {}
+        # --- 2. 파라미터 설정 ---
+        self.exec_params = execution_params # 이 줄이 누락되었습니다.
         
-        # --- 3. ATR 기반 TP/SL을 위한 지표 사전 계산 ---
-        if self.tpsl_logic and self.tpsl_logic.get('atrPeriod'):
-            atr_period = self.tpsl_logic['atrPeriod']
-            self.data.ta.atr(
-                high=self.data['high'], 
-                low=self.data['low'], 
-                close=self.data['close'], 
-                length=atr_period, 
-                append=True
-            )
-
-        # --- 4. 핵심 파라미터 설정 ---
-        self.initial_capital = self.exec_params.get('initial_capital', 10000.0)
+        self.initial_capital = self.exec_params.get('initialCapital', 10000.0)
+        
         inner_params = self.exec_params.get('parameters', {})
         self.leverage = inner_params.get('leverage', 1.0)
         self.fee_pct = inner_params.get('fee', 0.04) / 100
         self.slippage_pct = inner_params.get('slippage', 0.01) / 100
+        
+        # TP/SL 규칙은 '전략 정보(strategy_params)' Pydantic 객체에서 직접 가져옵니다.
+        self.tpsl_logic = strategy_params.tpsl_logic if strategy_params.tpsl_logic else schemas.TpslLogic()
+        
+        # --- 3. ATR 기반 TP/SL을 위한 지표 사전 계산 ---
+        if self.tpsl_logic and self.tpsl_logic.atr_period:
+            atr_period = self.tpsl_logic.atr_period
+            # pandas-ta는 컬럼 이름이 소문자여야 안정적으로 동작합니다.
+            ohlcv_lower = ohlcv_df.rename(columns=str.lower)
+            self.data.ta.atr(
+                high=ohlcv_lower['high'], 
+                low=ohlcv_lower['low'], 
+                close=ohlcv_lower['close'], 
+                length=atr_period, 
+                append=True
+            )
+            self.data.rename(columns={f"ATR_{atr_period}": f"atr_{atr_period}"}, inplace=True)
 
-        # --- 5. 시뮬레이션 상태 변수 초기화 ---
+        # --- 4. 시뮬레이션 상태 변수 초기화 ---
         self.balance = self.initial_capital
-        self.position_size = 0.0      # 현재 보유 수량 (+: long, -: short)
-        self.position_avg_price = 0.0 # 진입 평균 단가
-        self.position_type = None     # 'long' 또는 'short'
-        self.entry_price = 0.0        # TP/SL 계산을 위한 마지막 진입 가격
-        self.invested_capital = 0.0   # 포지션에 투입된 원금을 추적할 변수
+        self.position_size = 0.0
+        self.position_avg_price = 0.0
+        self.position_type = None
+        self.entry_price = 0.0
+        self.invested_capital = 0.0
         self.sl_price = None
         self.tp_price = None
-
-        # 진입 후 최고/최저가를 추적하기 위한 변수
         self.highest_price_since_entry = 0.0
         self.lowest_price_since_entry = float('inf')
 
-        # --- 6. 결과 분석용 변수 초기화 ---
+        # --- 5. 결과 분석용 변수 초기화 ---
         self.equity_curve = []
         self.trade_logs = []
         self.winning_trades = 0
@@ -106,15 +108,15 @@ class BacktestingEngine:
                 self._execute_trade(timestamp, row['close'], 'buy', is_entry=False)
 
     def _calculate_initial_tp_sl(self, row: pd.Series) -> Tuple[Optional[float], Optional[float]]:
-        """[신규 헬퍼] 포지션 진입 시점의 데이터를 기반으로 최초 TP/SL 가격을 계산합니다."""
+        """[수정] Pydantic 객체 속성에 직접 접근하여 최초 TP/SL 가격을 계산합니다."""
         sl_price, tp_price = None, None
         
-        atr_period = self.tpsl_logic.get('atrPeriod')
-        atr_value = row.get(f'ATR_{atr_period}') if atr_period and f'ATR_{atr_period}' in row else None
+        atr_period = self.tpsl_logic.atr_period
+        atr_value = row.get(f'atr_{atr_period}') if atr_period else None
 
         # --- SL 가격 계산 ---
-        atr_sl_multiplier = self.tpsl_logic.get('atrStopLossMultiplier')
-        stop_loss_pct = self.tpsl_logic.get('stopLossPct')
+        atr_sl_multiplier = self.tpsl_logic.atr_stop_loss_multiplier
+        stop_loss_pct = self.tpsl_logic.stop_loss_pct
         
         if atr_sl_multiplier and atr_value:
             sl_price = self.entry_price - (atr_value * atr_sl_multiplier) if self.position_type == 'long' else self.entry_price + (atr_value * atr_sl_multiplier)
@@ -122,8 +124,8 @@ class BacktestingEngine:
             sl_price = self.entry_price * (1 - stop_loss_pct / 100) if self.position_type == 'long' else self.entry_price * (1 + stop_loss_pct / 100)
 
         # --- TP 가격 계산 ---
-        atr_tp_multiplier = self.tpsl_logic.get('atrTakeProfitMultiplier')
-        take_profit_pct = self.tpsl_logic.get('takeProfitPct')
+        atr_tp_multiplier = self.tpsl_logic.atr_take_profit_multiplier
+        take_profit_pct = self.tpsl_logic.take_profit_pct
         
         if atr_tp_multiplier and atr_value:
             tp_price = self.entry_price + (atr_value * atr_tp_multiplier) if self.position_type == 'long' else self.entry_price - (atr_value * atr_tp_multiplier)
@@ -163,7 +165,7 @@ class BacktestingEngine:
                 return
 
         # --- 2. 트레일링 스탑 갱신 로직 (설정이 활성화된 경우에만 실행) ---
-        if not self.tpsl_logic.get('trailingStopEnabled'):
+        if not self.tpsl_logic.trailing_stop_enabled:
             return
 
         # 2-1. 고점/저점 갱신
@@ -173,17 +175,18 @@ class BacktestingEngine:
             self.lowest_price_since_entry = min(self.lowest_price_since_entry, row['low'])
         
         # 2-2. 트레일링 스탑 발동 조건 확인 (수익률이 활성화 수익률 이상일 때)
-        activation_pct = self.tpsl_logic.get('trailingStopActivationPct', 0)
+        activation_pct = self.tpsl_logic.trailing_stop_activation_pct or 0
         current_return_pct = ((self.highest_price_since_entry / self.entry_price - 1) * 100) if self.position_type == 'long' else ((self.entry_price / self.lowest_price_since_entry - 1) * 100)
+
 
         if current_return_pct < activation_pct:
             return # 아직 발동 조건 미충족
 
         # 2-3. 새로운 트레일링 스탑 가격 계산
         new_sl_price = None
-        callback_pct = self.tpsl_logic.get('trailingStopCallbackPct')
-        atr_sl_multiplier = self.tpsl_logic.get('atrStopLossMultiplier')
-        atr_period = self.tpsl_logic.get('atrPeriod')
+        callback_pct = self.tpsl_logic.trailing_stop_callback_pct
+        atr_sl_multiplier = self.tpsl_logic.atr_stop_loss_multiplier
+        atr_period = self.tpsl_logic.atr_period
 
         if callback_pct: # 고정 비율 트레일링 스탑
             if self.position_type == 'long':

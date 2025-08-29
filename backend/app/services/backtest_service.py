@@ -77,8 +77,11 @@ class BacktestService:
         user: models.User,
         backtest_create: schemas.BacktestCreate
     ) -> models.Backtest:
-        """새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다."""
-        # 1. 플랜 기반 제한 검사 
+        """
+        [최종 수정 버전] 새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다.
+        명확한 스키마를 사용하여 데이터를 안정적으로 저장합니다.
+        """
+        # 1. 플랜 기반 제한 검사 (기존과 동일)
         user_features = await self.plan_service.get_user_plan_features(user, db)
         max_backtests = user_features.daily_backtest_count
         
@@ -98,35 +101,38 @@ class BacktestService:
         if not strategy or strategy.author_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
         
-        # 2. '전략 스냅샷' 생성
-        # 2-1. 원본 전략을 Pydantic 스키마를 통해 딕셔너리로 변환합니다.
+        # 2. '전략 스냅샷' 생성 (기존과 동일)
         strategy_dict = schemas.Strategy.from_orm(strategy).model_dump(mode='json', by_alias=True)
-
-        # 2-2. 요청받은 overrides 파라미터를 추출합니다.
         overrides = backtest_create.parameters.overrides or []
-
-        # 2-3. 헬퍼 함수를 사용하여 overrides를 적용하고 최종 스냅샷을 만듭니다.
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
 
-        # 3. 백테스트 DB 레코드 생성
+        # ▼▼▼ [핵심 수정] 'parameters' 객체를 명시적으로 구성합니다. ▼▼▼
+        # 3-1. 저장할 파라미터 객체를 'BacktestParametersPayload' 스키마로 생성합니다.
+        params_to_store = schemas.BacktestParametersPayload(
+            start_date=backtest_create.start_date,
+            end_date=backtest_create.end_date,
+            initial_capital=backtest_create.initial_capital,
+            parameters=backtest_create.parameters # leverage, fee, overrides, tpsl_logic 등
+        )
+
+        # 3-2. 백테스트 DB 레코드를 생성합니다.
         db_backtest = models.Backtest(
             user_id=user.id,
-            strategy_id=strategy.id,
+            strategy_id=backtest_create.strategy_id,
             status='pending',
-            parameters=backtest_create.model_dump(mode='json', exclude_unset=True),
-            strategy_snapshot=strategy_snapshot_dict  # 생성된 스냅샷을 저장합니다.
+            parameters=params_to_store.model_dump(mode='json'),
+            strategy_snapshot=strategy_snapshot_dict
         )
+        # ▲▲▲ [수정 완료] ▲▲▲
+        
         db.add(db_backtest)
         await db.flush()
         
-        # 4. Celery 태스크 전송 및 Task ID 저장
-        try:            
-            # 1초의 지연 시간을 주어 DB 커밋이 완료될 시간을 확보합니다.
-            async_result = run_backtest.apply_async(
-                args=[str(db_backtest.id)],
-                countdown=1
-            )
-
+        # 4. Celery 태스크 전송 및 Task ID 저장 (기존과 동일)
+        try:
+            # countdown=1 보다 tasks.py 내부의 재시도 로직이 더 효율적입니다.
+            async_result = run_backtest.delay(backtest_id=str(db_backtest.id))
+            
             db_backtest.celery_task_id = async_result.id
             logger.info(f"Celery task dispatched for Backtest ID: {db_backtest.id} with Celery Task ID: {async_result.id}.")
         except Exception as e:

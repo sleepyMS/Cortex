@@ -392,12 +392,19 @@ class BacktestResultSummary(CamelCaseModel):
     winning_trades: Optional[int] = None
     losing_trades: Optional[int] = None
 
+class BacktestParametersPayload(CamelCaseModel):
+    start_date: datetime
+    end_date: datetime
+    initial_capital: float
+    # leverage, fee, overrides, tpsl_logic 등을 포함하는 객체를 중첩시킵니다.
+    parameters: BacktestExecutionParameters
+
 class Backtest(CamelCaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     strategy_id: uuid.UUID
     status: str
-    parameters: Dict[str, Any]
+    parameters: BacktestParametersPayload
     created_at: datetime
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
