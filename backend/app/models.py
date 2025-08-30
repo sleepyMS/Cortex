@@ -390,3 +390,4 @@ class OHLCV1h(Base):
     low = Column(Float, nullable=False)
     close = Column(Float, nullable=False)
     volume = Column(Float, nullable=False)
+    

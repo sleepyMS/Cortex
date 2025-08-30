@@ -1,10 +1,10 @@
 // file: src/types/backtest.ts
 
-import { Strategy } from "./strategy"; // strategy 타입이 다른 곳에 정의되어 있다고 가정
+import { Strategy } from "./strategy";
+import { TradeLog } from "./tradelog";
 
 /**
  * 백엔드로부터 받는 상세 백테스트 결과 객체의 전체 형태입니다.
- * BacktestResultSummary 컴포넌트가 기대하는 모든 필드를 포함해야 합니다.
  */
 export interface BacktestResult {
   totalReturnPct: number | null;
@@ -20,7 +20,6 @@ export interface BacktestResult {
   pnlCurveJson: { time: number; value: number }[] | null;
   drawdownCurveJson?: { time: number; value: number }[] | null;
 }
-
 /**
  * 백테스트 상세 페이지(`/backtester/[backtestId]`)에서 사용하는
  * 완전한 형태의 Backtest 객체 타입입니다.
@@ -38,6 +37,7 @@ export interface Backtest {
   strategy: Strategy;
   createdAt: string;
   progress?: number;
+  tradeLogs?: TradeLog[] | null;
 }
 
 /**
