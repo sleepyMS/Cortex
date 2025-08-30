@@ -25,6 +25,16 @@ import { StrategyCard } from "@/components/domain/strategy/StrategyCard";
 import { PlusCircle, List, LayoutGrid } from "lucide-react";
 import { Strategy } from "@/types/strategy";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StrategyListingForm } from "@/components/domain/strategy/StrategyListingForm"; // 폼 컴포넌트 import
+import { useListStrategyMutation } from "@/hooks/useStrategyMutations"; // 신규 훅 import
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/Dialog";
+import { StrategyListingPreview } from "@/components/domain/strategy/StrategyListingPreview";
 
 // --- 주요 지표 목록 (변경 없음) ---
 const KEY_INDICATORS = [
@@ -94,6 +104,29 @@ export default function StrategiesPage() {
   const [indicatorFilter, setIndicatorFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("updated_at_desc");
   const { ref, inView } = useInView();
+  const [isListingModalOpen, setIsListingModalOpen] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(
+    null
+  );
+  const listStrategyMutation = useListStrategyMutation();
+
+  const handleOpenListingModal = (strategy: Strategy) => {
+    setSelectedStrategy(strategy);
+    setIsListingModalOpen(true);
+  };
+
+  const handleListingSubmit = (values: any) => {
+    if (!selectedStrategy) return;
+    listStrategyMutation.mutate(
+      { strategyId: selectedStrategy.id, listingData: values },
+      {
+        onSuccess: () => {
+          setIsListingModalOpen(false);
+          setSelectedStrategy(null);
+        },
+      }
+    );
+  };
 
   const {
     data,
@@ -164,6 +197,7 @@ export default function StrategiesPage() {
             key={strategy.id}
             strategy={strategy}
             viewMode={viewMode}
+            onOpenListingModal={handleOpenListingModal}
           />
         ))}
       </div>
@@ -265,6 +299,53 @@ export default function StrategiesPage() {
           </p>
         )}
       </div>
+
+      {/* 마켓 등록/수정 모달 */}
+      <Dialog open={isListingModalOpen} onOpenChange={setIsListingModalOpen}>
+        <DialogContent className="max-w-4xl p-0">
+          {/* Grid 레이아웃으로 좌우 패널 분리 */}
+          <div className="grid grid-cols-1 md:grid-cols-5">
+            {/* 좌측: 전략 정보 확인 패널 (2/5 너비) */}
+            <div className="col-span-2 p-6 hidden md:block bg-muted/50">
+              <DialogHeader className="mb-6">
+                <DialogTitle className="text-xl">
+                  {t("modalPreviewTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  {t("modalPreviewDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              {selectedStrategy && (
+                <StrategyListingPreview strategy={selectedStrategy} />
+              )}
+            </div>
+
+            {/* 우측: 판매 조건 설정 폼 (3/5 너비) */}
+            <div className="col-span-3 p-8">
+              <DialogHeader className="mb-6">
+                <DialogTitle className="text-2xl font-bold">
+                  {selectedStrategy?.marketplaceListing
+                    ? t("modalEditTitle")
+                    : t("modalRegisterTitle")}
+                </DialogTitle>
+                {/* [개선] 등록할 전략 이름을 명확히 표시 */}
+                <DialogDescription>
+                  {t("modalDescription", {
+                    strategyName: selectedStrategy?.name,
+                  })}
+                </DialogDescription>
+              </DialogHeader>
+              {selectedStrategy && (
+                <StrategyListingForm
+                  strategy={selectedStrategy}
+                  onSubmit={handleListingSubmit}
+                  isSubmitting={listStrategyMutation.isPending}
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

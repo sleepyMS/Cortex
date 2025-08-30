@@ -44,11 +44,8 @@ export function IndicatorHub({
   const [selectedIndicator, setSelectedIndicator] =
     useState<SelectedIndicatorState>(null);
 
-  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
-  // ▲▲▲ [수정 완료] ▲▲▲
 
-  // ▼▼▼ [핵심 수정 3] 카테고리 목록을 하드코딩하지 않고, 메타데이터로부터 동적으로 생성합니다. ▼▼▼
   const categories = useMemo(() => {
     if (!indicatorMetadata) return ["All"];
     const uniqueCategories = new Set(
@@ -56,7 +53,6 @@ export function IndicatorHub({
     );
     return ["All", ...Array.from(uniqueCategories).sort()];
   }, [indicatorMetadata]);
-  // ▲▲▲ [수정 완료] ▲▲▲
 
   const filteredIndicators = useMemo(() => {
     if (!indicatorMetadata) return [];

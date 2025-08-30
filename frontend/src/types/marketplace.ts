@@ -1,6 +1,7 @@
 // file: frontend/src/types/marketplace.ts
 
 import { Backtest } from "./backtest";
+import { LucideIconName } from "@/lib/iconMap";
 
 /**
  * 아이템 샵에서 판매될 단일 아이템의 정보입니다.
@@ -12,16 +13,22 @@ export interface ShopItem {
   name: string;
   description: string;
   price: number;
-  // ▼▼▼ [핵심] 백엔드가 UI를 제어하기 위한 메타데이터 ▼▼▼
+
+  /**
+   * [신규] 아이템의 재고 유형을 정의합니다.
+   * - 'UNLOCK': 한 번만 구매 가능한 아이템 (e.g., 전략, 꾸미기 아이템)
+   * - 'CONSUMABLE': 여러 번 구매하여 수량을 쌓을 수 있는 아이템 (e.g., 쿠폰, 크레딧)
+   */
+  inventoryType: "UNLOCK" | "CONSUMABLE";
+
   displayProperties: {
-    icon: string; // 사용할 Lucide 아이콘의 이름 (예: "TestTubeDiagonal")
+    icon: LucideIconName;
     tier?: "BRONZE" | "SILVER" | "GOLD";
     stats: {
       label: string; // 예: "최적화 횟수"
       value: string; // 예: "100회"
     }[];
   };
-  // ▲▲▲ [완료] ▲▲▲
 }
 
 /**
@@ -33,7 +40,7 @@ export interface UserInventoryItem {
   itemId: string; // ShopItem의 ID
   name: string;
   isUsed: boolean;
-  metadata: ShopItem["metadata"];
+  metadata: ShopItem["displayProperties"];
 }
 
 /**

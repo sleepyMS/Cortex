@@ -1,3 +1,4 @@
+// file: frontend/src/components/domain/marketplace/StrategyMarketCard.tsx
 "use client";
 
 import Link from "next/link";
@@ -7,10 +8,11 @@ import {
   ArrowDownRight,
   Target,
   ShoppingCart,
-  Loader2,
 } from "lucide-react";
-
+import { cn } from "@/lib/utils";
 import { MarketplaceStrategy } from "@/types/marketplace";
+
+// UI 컴포넌트 import
 import {
   Card,
   CardContent,
@@ -19,11 +21,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/Spinner";
 
-// 카드 내부의 개별 통계 UI를 위한 작은 컴포넌트
+/**
+ * StrategyMarketCard 컴포넌트에 전달될 props 타입 정의
+ */
+interface StrategyMarketCardProps {
+  /** 표시할 전략의 데이터 */
+  strategy: MarketplaceStrategy;
+  /** 사용자가 이 전략을 이미 구매했는지 여부 */
+  isOwned: boolean;
+  /** 구매 버튼 클릭 시 호출될 함수 */
+  onPurchase: () => void;
+  /** 현재 이 전략의 구매가 진행 중인지 여부 */
+  isPurchasing: boolean;
+}
+
+/**
+ * 카드 내부의 개별 통계 UI를 위한 작은 컴포넌트
+ */
 const StatItem = ({
   Icon,
   label,
@@ -33,7 +50,7 @@ const StatItem = ({
 }: {
   Icon: React.ElementType;
   label: string;
-  value: number | null;
+  value: number;
   unit: string;
   colorClass: string;
 }) => (
@@ -43,25 +60,46 @@ const StatItem = ({
       <span>{label}</span>
     </div>
     <p className={cn("text-lg font-bold", colorClass)}>
-      {value?.toFixed(2) ?? "N/A"}
+      {value.toFixed(2)}
       <span className="text-sm font-normal">{unit}</span>
     </p>
   </div>
 );
 
-interface StrategyMarketCardProps {
-  strategy: MarketplaceStrategy;
-  onPurchase: () => void;
-  isPurchasing: boolean;
-}
-
 export const StrategyMarketCard = ({
   strategy,
+  isOwned,
   onPurchase,
   isPurchasing,
 }: StrategyMarketCardProps) => {
   const t = useTranslations("Marketplace.strategyMarketCard");
   const { summaryMetrics: metrics } = strategy;
+
+  /**
+   * isOwned와 isPurchasing 상태에 따라 올바른 구매 버튼을 렌더링하는 함수
+   */
+  const renderPurchaseButton = () => {
+    // 1. 이미 보유 중인 전략이라면 '보유 중' 버튼 표시
+    if (isOwned) {
+      return (
+        <Button disabled className="w-full">
+          {t("ownedButton")}
+        </Button>
+      );
+    }
+
+    // 2. 보유하지 않은 전략이라면 구매 버튼 표시
+    return (
+      <Button onClick={onPurchase} disabled={isPurchasing} className="w-full">
+        {isPurchasing ? (
+          <Spinner className="mr-2 h-4 w-4" />
+        ) : (
+          <ShoppingCart className="mr-2 h-4 w-4" />
+        )}
+        {isPurchasing ? t("purchasing") : t("purchaseButton")}
+      </Button>
+    );
+  };
 
   return (
     <Card className="flex flex-col h-full transition-all duration-300 border-2 border-transparent hover:border-primary hover:shadow-lg">
@@ -69,6 +107,7 @@ export const StrategyMarketCard = ({
       <Link
         href={`/marketplace/strategies/${strategy.id}`}
         className="block group flex-grow"
+        aria-label={`${strategy.name} 상세 정보 보기`}
       >
         <CardHeader>
           <CardDescription className="font-medium text-primary">
@@ -78,7 +117,7 @@ export const StrategyMarketCard = ({
             {strategy.name}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-grow flex items-center justify-around text-center py-6">
+        <CardContent className="flex flex-grow items-center justify-around text-center py-6">
           <StatItem
             Icon={metrics.totalReturnPct >= 0 ? ArrowUpRight : ArrowDownRight}
             label={t("totalReturn")}
@@ -105,7 +144,7 @@ export const StrategyMarketCard = ({
         </CardContent>
       </Link>
 
-      {/* 카드 하단부는 구매 액션을 담당 */}
+      {/* 카드 하단부는 링크와 분리하여 구매 액션만 담당 */}
       <CardFooter className="flex-col items-stretch pt-4 border-t bg-muted/50">
         <div className="flex justify-between items-baseline mb-4">
           <span className="text-sm text-muted-foreground">{t("price")}</span>
@@ -113,14 +152,7 @@ export const StrategyMarketCard = ({
             ${strategy.price.toFixed(2)}
           </span>
         </div>
-        <Button onClick={onPurchase} disabled={isPurchasing}>
-          {isPurchasing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <ShoppingCart className="mr-2 h-4 w-4" />
-          )}
-          {isPurchasing ? t("purchasing") : t("purchaseButton")}
-        </Button>
+        {renderPurchaseButton()}
       </CardFooter>
     </Card>
   );

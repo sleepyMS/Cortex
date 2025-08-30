@@ -23,8 +23,9 @@ import {
   Copy,
   Globe,
   Lock,
-  Zap, // 👈 [추가] 성과 아이콘
-  ShieldCheck, // 👈 [추가] 성과 아이콘
+  Zap,
+  ShieldCheck,
+  ShoppingCart,
 } from "lucide-react";
 import {
   Card,
@@ -59,11 +60,13 @@ import { LogicBlock, Strategy } from "@/types/strategy";
 interface StrategyCardProps {
   strategy: Strategy;
   viewMode?: "grid" | "list";
+  onOpenListingModal: (strategy: Strategy) => void;
 }
 
 export function StrategyCard({
   strategy,
   viewMode = "grid",
+  onOpenListingModal,
 }: StrategyCardProps) {
   const t = useTranslations("StrategyCard");
   const router = useRouter();
@@ -186,6 +189,12 @@ export function StrategyCard({
 
   const displayDateString = strategy.updatedAt || strategy.createdAt;
 
+  const handleListOnMarketplace = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    onOpenListingModal(strategy);
+  };
+
   const dropdownMenuContent = (
     <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
       <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
@@ -211,6 +220,11 @@ export function StrategyCard({
       >
         <Bot className="mr-2 h-4 w-4" />
         {t("deployLiveBot")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={handleListOnMarketplace}>
+        <ShoppingCart className="mr-2 h-4 w-4" />
+        {strategy.marketplaceListing ? t("editListing") : t("listOnMarket")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={handleTogglePublic}>

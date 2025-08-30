@@ -1,6 +1,13 @@
+// file: frontend/src/components/domain/marketplace/ShopItemCard.tsx
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ShoppingCart } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ShopItem } from "@/types/marketplace";
+import { ICON_MAP } from "@/lib/iconMap"; // 아이콘 맵 import
+
+// UI 컴포넌트 import
 import {
   Card,
   CardHeader,
@@ -11,27 +18,25 @@ import {
 } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { cn } from "@/lib/utils";
-import { ShopItem } from "@/types/marketplace";
-import * as LucideIcons from "lucide-react"; // Lucide 아이콘 전체를 import
+import { Spinner } from "@/components/ui/Spinner";
 
+/**
+ * ShopItemCard 컴포넌트에 전달될 props 타입 정의
+ */
 interface ShopItemCardProps {
+  /** 표시할 아이템의 데이터 */
   item: ShopItem;
-  onPurchase: (itemId: string) => void;
+  /** 사용자가 이 아이템을 하나 이상 보유하고 있는지 여부 */
+  isOwned: boolean;
+  /** 구매 버튼 클릭 시 호출될 함수 */
+  onPurchase: () => void;
+  /** 현재 이 아이템의 구매가 진행 중인지 여부 */
   isPurchasing: boolean;
 }
 
-// 백엔드에서 받은 아이콘 이름(string)을 실제 아이콘 컴포넌트로 매핑하는 객체
-const ICON_MAP: { [key: string]: React.ElementType } = {
-  TestTubeDiagonal: LucideIcons.TestTubeDiagonal,
-  Tag: LucideIcons.Tag,
-  Gift: LucideIcons.Gift, // 향후 '향수 아이템' 등을 위한 아이콘 예시
-  Zap: LucideIcons.Zap,
-  // 필요에 따라 Lucide 아이콘을 계속 추가
-};
-
 export const ShopItemCard = ({
   item,
+  isOwned,
   onPurchase,
   isPurchasing,
 }: ShopItemCardProps) => {
@@ -39,8 +44,9 @@ export const ShopItemCard = ({
 
   // 백엔드에서 받은 아이콘 이름으로 실제 아이콘 컴포넌트를 동적으로 선택
   const IconComponent =
-    ICON_MAP[item.displayProperties.icon] || LucideIcons.HelpCircle;
+    ICON_MAP[item.displayProperties.icon] || ICON_MAP.HelpCircle;
 
+  // 아이템 등급(tier)에 따라 다른 Badge 스타일을 반환하는 함수
   const getTierClass = (tier?: string) => {
     switch (tier) {
       case "GOLD":
@@ -54,11 +60,37 @@ export const ShopItemCard = ({
     }
   };
 
+  /**
+   * 아이템의 inventoryType과 isOwned 상태에 따라 올바른 구매 버튼을 렌더링하는 함수
+   */
+  const renderPurchaseButton = () => {
+    // 1. 'UNLOCK' 타입 아이템이고, 이미 보유 중이라면 '보유 중' 버튼 표시
+    if (item.inventoryType === "UNLOCK" && isOwned) {
+      return (
+        <Button disabled className="w-full">
+          {t("ownedButton")}
+        </Button>
+      );
+    }
+
+    // 2. 그 외 모든 경우 ('CONSUMABLE' 타입 또는 아직 구매 안 한 'UNLOCK' 타입)
+    return (
+      <Button onClick={onPurchase} disabled={isPurchasing} className="w-full">
+        {isPurchasing ? (
+          <Spinner className="mr-2 h-4 w-4" />
+        ) : (
+          <ShoppingCart className="mr-2 h-4 w-4" />
+        )}
+        {isPurchasing ? t("purchasing") : t("purchaseButton")}
+      </Button>
+    );
+  };
+
   return (
     <Card className="flex flex-col h-full border-2 border-transparent hover:border-primary transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg">{item.name}</CardTitle>
+          <CardTitle className="text-lg pr-2">{item.name}</CardTitle>
           {item.displayProperties.tier && (
             <Badge
               className={cn(
@@ -72,8 +104,8 @@ export const ShopItemCard = ({
         </div>
         <CardDescription>{item.description}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow space-y-3 text-sm">
-        {/* ▼▼▼ [핵심] 백엔드에서 보내준 stats 배열을 동적으로 렌더링 ▼▼▼ */}
+      <CardContent className="flex-grow flex flex-col justify-end space-y-3 text-sm">
+        {/* 백엔드에서 보내준 stats 배열을 동적으로 렌더링 */}
         {item.displayProperties.stats.map((stat, index) => (
           <div
             key={index}
@@ -86,15 +118,12 @@ export const ShopItemCard = ({
             </span>
           </div>
         ))}
-        {/* ▲▲▲ [완료] ▲▲▲ */}
       </CardContent>
-      <CardFooter className="flex-col items-stretch pt-4 border-t">
+      <CardFooter className="flex-col items-stretch pt-4 border-t bg-muted/50">
         <div className="text-3xl font-bold text-right mb-4">
           ${item.price.toFixed(2)}
         </div>
-        <Button onClick={() => onPurchase(item.id)} disabled={isPurchasing}>
-          {isPurchasing ? t("purchasing") : t("purchaseButton")}
-        </Button>
+        {renderPurchaseButton()}
       </CardFooter>
     </Card>
   );

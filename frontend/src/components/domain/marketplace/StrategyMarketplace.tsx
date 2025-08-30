@@ -1,15 +1,20 @@
+// file: frontend/src/components/domain/marketplace/StrategyMarketplace.tsx
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Search, ListFilter, AlertTriangle } from "lucide-react";
-
-import apiClient from "@/lib/apiClient";
+import { Search, ListFilter, AlertTriangle, Inbox } from "lucide-react";
 import { MarketplaceStrategy } from "@/types/marketplace";
-import { StrategyMarketCard } from "./StrategyMarketCard";
-import { usePurchaseMutation } from "@/hooks/usePurchase"; // [핵심] 구매 훅 import
 
+// 1. 중앙화된 커스텀 훅과 신규 훅 import
+import {
+  useMarketplaceStrategies,
+  usePurchaseMutation,
+} from "@/hooks/useMarketplace";
+import { usePurchasedStrategies } from "@/hooks/useInventory";
+
+// 2. UI 컴포넌트 import
+import { StrategyMarketCard } from "./StrategyMarketCard";
 import { Input } from "@/components/ui/Input";
 import {
   Select,
@@ -21,97 +26,108 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-
-// API 함수 정의
-const fetchMarketplaceStrategies = async (): Promise<MarketplaceStrategy[]> => {
-  const { data } = await apiClient.get("/marketplace/strategies");
-  return data;
-};
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/Dialog";
+import { Spinner } from "@/components/ui/Spinner";
 
 export const StrategyMarketplace = () => {
   const t = useTranslations("Marketplace");
+
+  // 3. 필터링 및 페이지네이션 상태 관리
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("createdAt_desc"); // API와 연동될 정렬 키
 
+  // 4. 모달 상태 및 선택된 전략 정보 관리
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] =
+    useState<MarketplaceStrategy | null>(null);
+
+  // 5. 데이터 로직: 중앙화된 훅 사용 (무한 쿼리 버전)
   const {
-    data: strategies,
-    isLoading,
-    isError,
+    data,
     error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isError,
+    isLoading,
     refetch,
-  } = useQuery<MarketplaceStrategy[]>({
-    queryKey: ["marketplaceStrategies"],
-    queryFn: fetchMarketplaceStrategies,
-  });
+  } = useMarketplaceStrategies({ searchTerm, sortBy }); // 필터 상태를 훅에 전달
 
+  const { data: purchasedStrategyIds = [], isLoading: isLoadingInventory } =
+    usePurchasedStrategies();
   const purchaseMutation = usePurchaseMutation();
 
-  // 클라이언트 사이드 필터링 및 정렬 로직
-  const filteredAndSortedStrategies = useMemo(() => {
-    if (!strategies) return [];
+  // 6. 이벤트 핸들러: 구매 버튼 클릭 시 모달 열기
+  const handlePurchaseClick = (strategy: MarketplaceStrategy) => {
+    setSelectedStrategy(strategy);
+    setIsConfirmModalOpen(true);
+  };
 
-    let processed = [...strategies];
-
-    // 1. 검색어 필터링
-    if (searchTerm) {
-      processed = processed.filter(
-        (s) =>
-          s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.author.username.toLowerCase().includes(searchTerm.toLowerCase())
+  // 7. 이벤트 핸들러: 모달에서 최종 구매 확정
+  const handleConfirmPurchase = () => {
+    if (selectedStrategy) {
+      purchaseMutation.mutate(
+        { type: "strategy", id: selectedStrategy.id },
+        {
+          onSuccess: () => {
+            setIsConfirmModalOpen(false);
+            setSelectedStrategy(null);
+          },
+        }
       );
     }
+  };
 
-    // 2. 정렬
-    switch (sortBy) {
-      case "highestReturn":
-        processed.sort(
-          (a, b) =>
-            b.summaryMetrics.totalReturnPct - a.summaryMetrics.totalReturnPct
-        );
-        break;
-      case "lowestMdd":
-        processed.sort(
-          (a, b) => a.summaryMetrics.mddPct - b.summaryMetrics.mddPct
-        );
-        break;
-      case "newest":
-      default:
-        // 'createdAt' 필드가 API 응답에 포함되어야 정확한 정렬이 가능합니다.
-        // 여기서는 임시로 id를 사용합니다.
-        processed.sort((a, b) => b.id.localeCompare(a.id));
-        break;
-    }
-
-    return processed;
-  }, [strategies, searchTerm, sortBy]);
+  // 8. 렌더링할 데이터 가공 (useInfiniteQuery 결과 평탄화)
+  const strategies = useMemo(
+    () => data?.pages.flatMap((page) => page.strategies) ?? [],
+    [data]
+  );
 
   // --- 렌더링 로직 ---
 
-  if (isLoading) {
+  // 초기 로딩 상태
+  if (isLoading || isLoadingInventory) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-8">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-72 w-full rounded-xl" />
-        ))}
-      </div>
+      <>
+        <FilterControlsSkeleton />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-80 w-full rounded-xl" />
+          ))}
+        </div>
+      </>
     );
   }
 
+  // 에러 상태
   if (isError) {
     return (
       <Alert variant="destructive" className="mt-8 max-w-lg mx-auto">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>{t("loadError")}</AlertTitle>
-        <AlertDescription>{error.message}</AlertDescription>
+        <AlertDescription>
+          {error?.message || "전략 목록을 불러오는 데 실패했습니다."}
+        </AlertDescription>
         <Button onClick={() => refetch()} className="mt-4">
-          재시도
+          {t("retryButton")}
         </Button>
       </Alert>
     );
   }
 
+  // 메인 렌더링
   return (
-    <div>
+    <>
       {/* 필터 및 정렬 컨트롤 */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="relative flex-grow">
@@ -121,51 +137,107 @@ export const StrategyMarketplace = () => {
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            disabled={isFetching}
           />
         </div>
         <div className="flex items-center gap-2">
           <ListFilter className="h-4 w-4 text-muted-foreground" />
-          <Select value={sortBy} onValueChange={setSortBy}>
+          <Select
+            value={sortBy}
+            onValueChange={setSortBy}
+            disabled={isFetching}
+          >
             <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder={t("sortBy")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">{t("sort.newest")}</SelectItem>
-              <SelectItem value="highestReturn">
+              <SelectItem value="createdAt_desc">{t("sort.newest")}</SelectItem>
+              <SelectItem value="totalReturnPct_desc">
                 {t("sort.highestReturn")}
               </SelectItem>
-              <SelectItem value="lowestMdd">{t("sort.lowestMdd")}</SelectItem>
+              <SelectItem value="mddPct_asc">{t("sort.lowestMdd")}</SelectItem>
+              <SelectItem value="price_asc">{t("sort.priceAsc")}</SelectItem>
+              <SelectItem value="price_desc">{t("sort.priceDesc")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
       {/* 전략 카드 그리드 */}
-      {filteredAndSortedStrategies.length > 0 ? (
+      {strategies.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredAndSortedStrategies.map((strategy) => (
+          {strategies.map((strategy) => (
             <StrategyMarketCard
               key={strategy.id}
               strategy={strategy}
-              // ▼▼▼ [핵심] 구매 훅의 mutate 함수를 'strategy' 타입으로 호출하여 onPurchase에 연결 ▼▼▼
-              onPurchase={() =>
-                purchaseMutation.mutate({ type: "strategy", id: strategy.id })
-              }
-              // [핵심] 현재 구매 중인 '바로 그' 전략 카드에만 로딩 상태를 전달
+              isOwned={purchasedStrategyIds.includes(strategy.id)}
+              onPurchase={() => handlePurchaseClick(strategy)}
               isPurchasing={
                 purchaseMutation.isPending &&
                 purchaseMutation.variables?.id === strategy.id
               }
-              // ▲▲▲ [완료] ▲▲▲
             />
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-muted/50 rounded-lg">
-          <h3 className="text-xl font-semibold">{t("emptyTitle")}</h3>
+        // 데이터가 없을 때
+        <div className="text-center py-20 bg-muted/50 rounded-lg flex flex-col items-center">
+          <Inbox className="h-16 w-16 text-muted-foreground" />
+          <h3 className="text-xl font-semibold mt-4">{t("emptyTitle")}</h3>
           <p className="text-muted-foreground mt-2">{t("emptyDescription")}</p>
         </div>
       )}
-    </div>
+
+      {/* '더 보기' 버튼 */}
+      {hasNextPage && (
+        <div className="mt-10 text-center">
+          <Button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            size="lg"
+          >
+            {isFetchingNextPage ? <Spinner className="mr-2 h-4 w-4" /> : null}
+            {t("loadMoreButton")}
+          </Button>
+        </div>
+      )}
+
+      {/* 구매 확인 모달 */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("purchaseConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("purchaseConfirmDescriptionStrategy", {
+                strategyName: selectedStrategy?.name,
+                price: selectedStrategy?.price.toFixed(2),
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <DialogClose asChild>
+              <Button variant="outline">{t("cancelButton")}</Button>
+            </DialogClose>
+            <Button
+              onClick={handleConfirmPurchase}
+              disabled={purchaseMutation.isPending}
+            >
+              {purchaseMutation.isPending && (
+                <Spinner className="mr-2 h-4 w-4" />
+              )}
+              {t("confirmButton")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
+
+// 필터 컨트롤 영역의 스켈레톤 UI
+const FilterControlsSkeleton = () => (
+  <div className="flex flex-col md:flex-row gap-4 mb-8">
+    <Skeleton className="h-10 flex-grow" />
+    <Skeleton className="h-10 w-full md:w-[180px]" />
+  </div>
+);

@@ -143,20 +143,29 @@ export interface TargetCoin {
 
 // --- 전체 전략 객체 타입 (API 응답과 일치) ---
 export interface Strategy {
-  id: number;
-  authorId: number;
+  id: string; // UUID 형식이므로 string
+  authorId: string;
   name: string;
-  description: string | null;
+  description: string;
   isPublic: boolean;
-  longEntryRules: PositionRules | null;
-  longExitRules: PositionRules | null;
-  shortEntryRules: PositionRules | null;
-  shortExitRules: PositionRules | null;
-  tpslLogic: TpslLogic | null;
-  targetCoins: TargetCoin[];
-  paidFeatureLevel: "Basic" | "Trader" | "Pro";
+  longEntryRules: PositionRules;
+  longExitRules: PositionRules;
+  shortEntryRules: PositionRules;
+  shortExitRules: PositionRules;
+  tpslLogic: any;
+  targetCoins: any[];
   createdAt: string;
-  updatedAt: string | null;
+  updatedAt: string;
+  paidFeatureLevel: "Basic" | "Trader" | "Pro";
+
+  /** [추가] 가장 최근 백테스트 요약 정보 (성과 뱃지 표시용) */
+  latestBacktestSummary?: {
+    totalReturnPct: number | null;
+    winRatePct: number | null;
+  } | null;
+
+  /** [추가] 마켓플레이스 등록 정보 (등록된 경우에만 존재) */
+  marketplaceListing?: MarketplaceListing | null;
 }
 
 // --- UI 상호작용을 위한 컨텍스트 타입 ---
@@ -198,4 +207,28 @@ export interface RuleBlockProps {
   onDelete: (id: string) => void;
   onTriggerAddRule: (parentId: string, as: LogicOperator) => void;
   onTriggerOperandHub: (blockId: string, operandKey: string) => void;
+}
+
+/**
+ * [신규] 마켓플레이스 등록 정보 타입
+ */
+export interface MarketplaceListing {
+  /** 마켓 등록 ID */
+  listingId: string;
+  /** 판매 가격 */
+  price: number;
+  /**
+   * 전략 카테고리 (백엔드와 협의된 Enum 값)
+   * 예: 'Scalping', 'Swing', 'TrendFollowing', 'Grid' 등
+   */
+  category: string;
+  /**
+   * 포지션 타입
+   * - 'LongOnly': 롱 포지션만 진입
+   * - 'ShortOnly': 숏 포지션만 진입
+   * - 'LongShort': 양방향 포지션 진입
+   */
+  positionType: "LongOnly" | "ShortOnly" | "LongShort";
+  /** 마켓에 등록된 시각 */
+  listedAt: string;
 }
