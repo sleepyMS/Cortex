@@ -16,7 +16,6 @@ import { CandlestickData, UTCTimestamp } from "lightweight-charts";
 // --- 커스텀 훅, 타입, 유틸리티 임포트 ---
 import { useStrategyState } from "@/hooks/useStrategyState";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
-import { IndicatorMetadata } from "@/lib/indicators";
 import {
   StrategyType,
   LogicBlock,
@@ -67,6 +66,7 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { IndicatorMetadata } from "@/types/indicator";
 
 // --- Zod 폼 스키마 정의 ---
 const formSchema = z.object({

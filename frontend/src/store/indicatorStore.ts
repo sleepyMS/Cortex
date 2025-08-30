@@ -1,5 +1,5 @@
+import { IndicatorMetadata } from "@/types/indicator";
 import { create } from "zustand";
-import { IndicatorMetadata } from "@/lib/indicators"; // 기존 indicators.ts의 타입 재사용
 
 interface IndicatorState {
   metadata: IndicatorMetadata[];

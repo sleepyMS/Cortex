@@ -99,7 +99,6 @@ export default function StrategyDetailPage() {
             </TabsList>
 
             <TabsContent value="chart" className="mt-4 space-y-4">
-              {/* ▼▼▼ [핵심 수정] 'as'를 사용하여 타입 단언을 추가합니다. ▼▼▼ */}
               <DynamicEquityChart
                 pnlData={
                   (backtestResult.pnlCurveJson as ChartDataPoint[]) || []
@@ -112,7 +111,6 @@ export default function StrategyDetailPage() {
               />
             </TabsContent>
             <TabsContent value="monthly" className="mt-4">
-              {/* ▼▼▼ [핵심 수정] 'as'를 사용하여 타입 단언을 추가합니다. ▼▼▼ */}
               <MonthlyPerformance
                 pnlData={
                   (backtestResult.pnlCurveJson as ChartDataPoint[]) || []
@@ -126,7 +124,10 @@ export default function StrategyDetailPage() {
                 }
               />
             </TabsContent>
-            {/* ... */}
+            <TabsContent value="summary" className="mt-4">
+              {/* 여기에 전략 규칙 요약 등을 표시할 수 있습니다. */}
+              <p>전략 상세 규칙 요약 (향후 구현)</p>
+            </TabsContent>
           </Tabs>
         </>
       ) : (
