@@ -135,7 +135,7 @@ export const StrategyListingPreview = ({
   const t = useTranslations("StrategyListingPreview");
 
   return (
-    <Card className="bg-muted/50 border-dashed h-full">
+    <Card className="bg-muted/50 border-dashed">
       <CardHeader>
         <CardTitle className="text-2xl">{strategy.name}</CardTitle>
         <CardDescription className="line-clamp-3 min-h-[60px]">
