@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { INDICATOR_METADATA, IndicatorMetadata } from "@/lib/indicators";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,11 @@ import { ScrollArea } from "@/components/ui/ScrollArea";
 import { HorizontalScrollArea } from "@/components/ui/HorizontalScrollArea";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft } from "lucide-react";
+
+// ▼▼▼ [핵심 수정 1] Zustand 스토어를 import 합니다. ▼▼▼
+import { useIndicatorStore } from "@/store/indicatorStore";
+import { IndicatorMetadata } from "@/types/indicator";
+// ▲▲▲ [수정 완료] ▲▲▲
 
 type SelectedIndicatorState = {
   indicator: IndicatorMetadata;
@@ -40,27 +44,27 @@ export function IndicatorHub({
   const [selectedIndicator, setSelectedIndicator] =
     useState<SelectedIndicatorState>(null);
 
-  const categories = useMemo(
-    () => [
-      "All",
-      "Price",
-      "Trend",
-      "Momentum",
-      "Volatility",
-      "Volume",
-      "Channel",
-      "Quant",
-      "Candlestick",
-    ],
-    []
-  );
+  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
+  const indicatorMetadata = useIndicatorStore((state) => state.metadata);
+  // ▲▲▲ [수정 완료] ▲▲▲
+
+  // ▼▼▼ [핵심 수정 3] 카테고리 목록을 하드코딩하지 않고, 메타데이터로부터 동적으로 생성합니다. ▼▼▼
+  const categories = useMemo(() => {
+    if (!indicatorMetadata) return ["All"];
+    const uniqueCategories = new Set(
+      indicatorMetadata.map((ind) => ind.category)
+    );
+    return ["All", ...Array.from(uniqueCategories).sort()];
+  }, [indicatorMetadata]);
+  // ▲▲▲ [수정 완료] ▲▲▲
 
   const filteredIndicators = useMemo(() => {
-    if (!searchTerm) return INDICATOR_METADATA;
-    return INDICATOR_METADATA.filter((ind) =>
+    if (!indicatorMetadata) return [];
+    if (!searchTerm) return indicatorMetadata;
+    return indicatorMetadata.filter((ind) =>
       ind.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [searchTerm, indicatorMetadata]);
 
   const logicTypeTranslations: { [key: string]: string } = {
     comparison: t("logic.comparison"),
@@ -157,6 +161,7 @@ export function IndicatorHub({
                 {categories.map((cat) => (
                   <TabsContent key={cat} value={cat} className="pt-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {/* ▼▼▼ [핵심 수정 4] filter 로직이 동적 데이터를 사용하도록 합니다. ▼▼▼ */}
                       {filteredIndicators
                         .filter((ind) => cat === "All" || ind.category === cat)
                         .map((indicator) => (
@@ -173,6 +178,7 @@ export function IndicatorHub({
                             </p>
                           </div>
                         ))}
+                      {/* ▲▲▲ [수정 완료] ▲▲▲ */}
                     </div>
                   </TabsContent>
                 ))}

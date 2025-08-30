@@ -11,7 +11,6 @@ import { useInView } from "react-intersection-observer";
 import { useDebounce } from "use-debounce";
 
 import apiClient from "@/lib/apiClient";
-import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -172,104 +171,100 @@ export default function StrategiesPage() {
   };
 
   return (
-    <AuthGuard>
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-          <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-md border bg-card p-1">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => setViewMode("grid")}
-                aria-label="Grid view"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => setViewMode("list")}
-                aria-label="List view"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-            <Link href="/strategies/new">
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                {t("createNewStrategy")}
-              </Button>
-            </Link>
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+        <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border bg-card p-1">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-
-        {/* ▼▼▼ [수정] 제안해주신 대로 필터 레이아웃을 5열 그리드로 변경 ▼▼▼ */}
-        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Input
-            placeholder={t("searchPlaceholder")}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="lg:col-span-2"
-          />
-          <Select
-            value={filterStatus}
-            onValueChange={(v: any) => setFilterStatus(v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={t("filterPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("filterAll")}</SelectItem>
-              <SelectItem value="public">{t("filterPublic")}</SelectItem>
-              <SelectItem value="private">{t("filterPrivate")}</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={indicatorFilter}
-            onValueChange={(v: any) => setIndicatorFilter(v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("indicatorFilterAll")}</SelectItem>
-              {KEY_INDICATORS.map((indicator) => (
-                <SelectItem key={indicator} value={indicator}>
-                  {indicator}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("sortByPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="updated_at_desc">
-                {t("sortByLastUpdated")}
-              </SelectItem>
-              <SelectItem value="created_at_desc">
-                {t("sortByNewest")}
-              </SelectItem>
-              <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {renderContent()}
-
-        <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
-          {isFetchingNextPage && <Spinner />}
-          {!hasNextPage && strategies.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {t("noMoreStrategies")}
-            </p>
-          )}
+          <Link href="/strategies/new">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {t("createNewStrategy")}
+            </Button>
+          </Link>
         </div>
       </div>
-    </AuthGuard>
+
+      {/* ▼▼▼ [수정] 제안해주신 대로 필터 레이아웃을 5열 그리드로 변경 ▼▼▼ */}
+      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Input
+          placeholder={t("searchPlaceholder")}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="lg:col-span-2"
+        />
+        <Select
+          value={filterStatus}
+          onValueChange={(v: any) => setFilterStatus(v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={t("filterPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAll")}</SelectItem>
+            <SelectItem value="public">{t("filterPublic")}</SelectItem>
+            <SelectItem value="private">{t("filterPrivate")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={indicatorFilter}
+          onValueChange={(v: any) => setIndicatorFilter(v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("indicatorFilterAll")}</SelectItem>
+            {KEY_INDICATORS.map((indicator) => (
+              <SelectItem key={indicator} value={indicator}>
+                {indicator}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+          <SelectTrigger>
+            <SelectValue placeholder={t("sortByPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated_at_desc">
+              {t("sortByLastUpdated")}
+            </SelectItem>
+            <SelectItem value="created_at_desc">{t("sortByNewest")}</SelectItem>
+            <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {renderContent()}
+
+      <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
+        {isFetchingNextPage && <Spinner />}
+        {!hasNextPage && strategies.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {t("noMoreStrategies")}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

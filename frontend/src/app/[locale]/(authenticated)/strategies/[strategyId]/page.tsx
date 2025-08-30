@@ -33,7 +33,6 @@ import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
 // --- UI 및 도메인 컴포넌트 임포트 ---
-import { AuthGuard } from "@/components/auth/AuthGuard";
 import DynamicStrategyChart from "@/components/domain/strategy/DynamicStrategyChart";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
@@ -474,7 +473,7 @@ export default function StrategyEditorPage({
   }
 
   return (
-    <AuthGuard>
+    <div>
       <IndicatorHub
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
@@ -682,6 +681,6 @@ export default function StrategyEditorPage({
           </form>
         </FormProvider>
       </div>
-    </AuthGuard>
+    </div>
   );
 }

@@ -16,14 +16,16 @@ import {
 } from "lightweight-charts";
 
 import { useChartIndicatorManager } from "@/hooks/useChartIndicatorManager";
-import { LegendData } from "@/types/chart";
-import { PositionRules } from "@/types/strategy";
-import { SignalData } from "@/types/market";
-import { INDICATOR_METADATA } from "@/lib/indicators";
-import { parseRulesForIndicators } from "@/lib/strategyUtils";
-
 import { ChartLegend } from "./ChartLegend";
 import { Spinner } from "@/components/ui/Spinner";
+
+// ▼▼▼ [핵심 수정 1] Zustand 스토어와 중앙화된 타입을 import 합니다. ▼▼▼
+import { useIndicatorStore } from "@/store/indicatorStore";
+import { IndicatorMetadata } from "@/types/indicator";
+import { LegendData } from "@/types/chart";
+import { PositionRules, IndicatorValue, LogicBlock } from "@/types/strategy";
+import { SignalData } from "@/types/market";
+// ▲▲▲ [수정 완료] ▲▲▲
 
 // --- 타입 정의 ---
 interface StrategyChartProps {
@@ -39,8 +41,8 @@ interface StrategyChartProps {
     LineData<UTCTimestamp>[] | HistogramData<UTCTimestamp>[]
   >;
   isLoadingIndicators: boolean;
-  signalData?: SignalData; // 👈 [추가] 신호 데이터 prop
-  isLoadingSignals?: boolean; // 👈 [추가] 신호 데이터 로딩 상태 prop
+  signalData?: SignalData;
+  isLoadingSignals?: boolean;
 }
 
 // --- 메인 컴포넌트 ---
@@ -49,8 +51,8 @@ export default function StrategyChart({
   ohlcvData,
   indicatorData,
   isLoadingIndicators,
-  signalData, // 👈 [추가]
-  isLoadingSignals, // 👈 [추가]
+  signalData,
+  isLoadingSignals,
 }: StrategyChartProps) {
   // --- Refs ---
   const mainChartContainerRef = useRef<HTMLDivElement>(null);
@@ -60,42 +62,62 @@ export default function StrategyChart({
 
   // --- State ---
   const { resolvedTheme } = useTheme();
-  const [paneIndicators, setPaneIndicators] = useState<string[]>([]);
   const [legendData, setLegendData] = useState<LegendData>({});
 
-  // --- 파생 상태 계산 ---
-  const indicatorConfigs = useMemo(
-    () => parseRulesForIndicators(rules),
-    [rules]
-  );
+  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
+  const indicatorMetadata = useIndicatorStore((state) => state.metadata);
+  // ▲▲▲ [수정 완료] ▲▲▲
 
-  // 필요한 보조 차트 패널 목록을 계산하고 상태를 업데이트합니다.
-  useEffect(() => {
+  // ▼▼▼ [핵심 수정 3] useMemo 훅을 사용하여, 규칙(rules)이 바뀔 때마다
+  // 필요한 지표 설정과 보조 패널 목록을 한 번에 계산합니다. ▼▼▼
+  const { indicatorConfigs, paneIndicators } = useMemo(() => {
+    const indicators = new Map<string, IndicatorValue>();
     const requiredPanes = new Set<string>();
-    indicatorConfigs.forEach((config) => {
-      const metadata = INDICATOR_METADATA.find(
+
+    // 재귀적으로 모든 규칙을 탐색하여 IndicatorValue를 추출하는 헬퍼 함수
+    const findIndicatorsRecursively = (blocks: LogicBlock[]) => {
+      blocks.forEach((block) => {
+        Object.values(block).forEach((value) => {
+          if (value && typeof value === "object" && "indicatorKey" in value) {
+            const indicator = value as IndicatorValue;
+            // 고유 식별자를 만들어 중복 계산 방지
+            const uniqueId = `${indicator.indicatorKey}-${JSON.stringify(
+              indicator.values
+            )}`;
+            if (!indicators.has(uniqueId)) {
+              indicators.set(uniqueId, indicator);
+            }
+          }
+        });
+        if (block.children) {
+          findIndicatorsRecursively(block.children);
+        }
+      });
+    };
+
+    Object.values(rules).forEach((rule) => {
+      if (rule?.blocks) findIndicatorsRecursively(rule.blocks);
+    });
+
+    const configs = Array.from(indicators.values());
+
+    // 추출된 지표 설정을 기반으로 보조 패널이 필요한지 결정
+    configs.forEach((config) => {
+      const metadata = indicatorMetadata.find(
         (ind) => ind.key === config.indicatorKey
       );
-      // 'pane' 타입이거나 'Volume' 지표일 경우 보조 차트로 분리합니다.
-      if (
-        metadata &&
-        (metadata.paneType === "pane" || metadata.key === "Volume")
-      ) {
+      if (metadata && metadata.paneType === "pane") {
         requiredPanes.add(config.indicatorKey);
       }
     });
 
-    const newPanes = Array.from(requiredPanes);
+    return {
+      indicatorConfigs: configs,
+      paneIndicators: Array.from(requiredPanes),
+    };
+  }, [rules, indicatorMetadata]); // 규칙이나 메타데이터가 변경될 때만 재계산
+  // ▲▲▲ [수정 완료] ▲▲▲
 
-    // 실제 패널 목록에 변화가 있을 때만 상태를 업데이트하여 불필요한 리렌더링을 방지합니다.
-    setPaneIndicators((prevPanes) =>
-      JSON.stringify(prevPanes) !== JSON.stringify(newPanes)
-        ? newPanes
-        : prevPanes
-    );
-  }, [indicatorConfigs]);
-
-  // ref map에서 DOM 엘리먼트를 가져오는 콜백 함수
   const getPaneContainer = useCallback((key: string) => {
     return paneContainersRef.current.get(key);
   }, []);
@@ -114,34 +136,26 @@ export default function StrategyChart({
 
   return (
     <div className="w-full flex flex-col relative bg-background">
-      {/* 범례(Legend) UI */}
       <ChartLegend legendData={legendData} />
 
-      {/* 지표 로딩 시 스피너 오버레이 */}
       {(isLoadingIndicators || isLoadingSignals) && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm rounded-lg">
           <Spinner size="lg" />
         </div>
       )}
 
-      {/* 메인 차트 컨테이너 */}
       <div
         ref={mainChartContainerRef}
         className="w-full h-[400px] rounded-t-lg border-x border-t border-border"
       />
 
-      {/* 보조 지표 패널 컨테이너 (동적 렌더링) */}
       {paneIndicators.map((paneKey) => (
         <div
           key={paneKey}
           className="w-full h-[150px] border-x border-b border-t border-border"
-          // ref 콜백을 사용하여 Map에 DOM 엘리먼트를 동적으로 할당/제거합니다.
           ref={(el) => {
-            if (el) {
-              paneContainersRef.current.set(paneKey, el);
-            } else {
-              paneContainersRef.current.delete(paneKey);
-            }
+            if (el) paneContainersRef.current.set(paneKey, el);
+            else paneContainersRef.current.delete(paneKey);
           }}
         />
       ))}

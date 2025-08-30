@@ -1,11 +1,8 @@
-// file: frontend/src/components/domain/strategy/OperandSlot.tsx
 "use client";
 
 import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { IndicatorValue } from "@/types/strategy";
-import { INDICATOR_METADATA } from "@/lib/indicators";
-
 import { ParameterPopover } from "./ParameterPopover";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -16,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { Settings2, Replace } from "lucide-react";
+import { useIndicatorStore } from "@/store/indicatorStore";
 
 interface OperandSlotProps {
   value: IndicatorValue | number | null;
@@ -34,6 +32,8 @@ export function OperandSlot({
 }: OperandSlotProps) {
   const t = useTranslations("RuleBlock");
 
+  const indicatorMetadata = useIndicatorStore((state) => state.metadata);
+
   const parameterDetails = useMemo(() => {
     if (
       typeof value !== "object" ||
@@ -42,12 +42,14 @@ export function OperandSlot({
     ) {
       return "";
     }
-    const metadata = INDICATOR_METADATA.find(
+    const metadata = indicatorMetadata.find(
       (ind) => ind.key === value.indicatorKey
     );
+
     if (!metadata) return "";
+
     const parts: string[] = [];
-    if (metadata.parameters.length > 0) {
+    if (Object.keys(metadata.parameters).length > 0) {
       parts.push(Object.values(value.values).join(", "));
     }
     if (metadata.outputs.length > 1) {
@@ -61,7 +63,7 @@ export function OperandSlot({
     }
     parts.push(value.timeframe);
     return parts.filter(Boolean).join(", ");
-  }, [value]);
+  }, [value, indicatorMetadata]); // 의존성 배열에 indicatorMetadata 추가
 
   if (value === null) {
     return (
@@ -122,9 +124,9 @@ export function OperandSlot({
     );
   }
 
+  // 숫자 입력 슬롯 (기존과 동일)
   return (
     <div className="flex w-full items-center">
-      {/* 👇 [수정] h-10 고정 높이 */}
       <Input
         type="number"
         value={value}

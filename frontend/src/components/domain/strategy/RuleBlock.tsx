@@ -15,7 +15,6 @@ import {
   PatternLogic,
   IndicatorValue,
 } from "@/types/strategy";
-import { INDICATOR_METADATA } from "@/lib/indicators";
 import {
   ArrowRight,
   MoreVertical,
@@ -27,7 +26,6 @@ import {
   Shuffle,
   Waves,
   CandlestickChart,
-  ArrowDown,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
@@ -47,11 +45,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
 import { OperandSlot } from "./OperandSlot";
 
-// 각 로직 타입에 대한 메타데이터 (아이콘, 레이블 키)
+// ▼▼▼ [핵심 수정 1] Zustand 스토어와 중앙화된 타입을 import 합니다. ▼▼▼
+import { useIndicatorStore } from "@/store/indicatorStore";
+import { IndicatorMetadata } from "@/types/indicator";
+import { Label } from "@/components/ui/Label";
+import { Input } from "@/components/ui/Input";
+// ▲▲▲ [수정 완료] ▲▲▲
+
+// 각 로직 타입에 대한 메타데이터 (아이콘, 레이블 키) - 기존과 동일
 const LOGIC_TYPE_METADATA: {
   [key in LogicBlock["type"]]: { icon: React.ElementType; labelKey: string };
 } = {
@@ -64,26 +67,15 @@ const LOGIC_TYPE_METADATA: {
   pattern: { icon: CandlestickChart, labelKey: "pattern" },
 };
 
-// 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출
+// 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출 (안정성 개선)
 const getCurrentIndicator = (block: LogicBlock): IndicatorValue | null => {
-  if (
-    "indicator" in block &&
-    typeof (block as any).indicator === "object" &&
-    (block as any).indicator !== null
-  )
-    return (block as any).indicator;
-  if (
-    "operandA" in block &&
-    typeof block.operandA === "object" &&
-    block.operandA !== null
-  )
-    return block.operandA;
-  if (
-    "mainLine" in block &&
-    typeof (block as any).mainLine === "object" &&
-    (block as any).mainLine !== null
-  )
-    return (block as any).mainLine;
+  const possibleIndicatorKeys = ["indicator", "operand_a", "main_line"];
+  for (const key of possibleIndicatorKeys) {
+    const value = (block as any)[key];
+    if (value && typeof value === "object" && "indicatorKey" in value) {
+      return value;
+    }
+  }
   return null;
 };
 
@@ -97,25 +89,26 @@ export function RuleBlock({
   const t = useTranslations("RuleBlock");
   const tLogic = useTranslations("StrategyBuilder.logic");
 
+  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
+  const indicatorMetadata = useIndicatorStore((state) => state.metadata);
+  // ▲▲▲ [수정 완료] ▲▲▲
+
   const CurrentLogicIcon =
     LOGIC_TYPE_METADATA[item.type]?.icon || GitCompareArrows;
 
   const supportedLogics = useMemo(() => {
     const currentIndicator = getCurrentIndicator(item);
-    if (item.type === "pattern") {
-      const patternMeta = Object.keys(LOGIC_TYPE_METADATA).find(
-        (k) => k === "pattern"
-      );
-      return patternMeta ? [patternMeta] : [];
-    }
-    if (!currentIndicator) {
-      return Object.keys(LOGIC_TYPE_METADATA);
-    }
-    const metadata = INDICATOR_METADATA.find(
+    if (item.type === "pattern") return ["pattern"];
+    if (!currentIndicator) return Object.keys(LOGIC_TYPE_METADATA);
+
+    // ▼▼▼ [핵심 수정 3] 정적 데이터 대신 전역 스토어의 메타데이터를 사용합니다. ▼▼▼
+    const metadata = indicatorMetadata.find(
       (ind) => ind.key === currentIndicator.indicatorKey
     );
+    // ▲▲▲ [수정 완료] ▲▲▲
+
     return metadata ? metadata.supportedLogics : [];
-  }, [item]);
+  }, [item, indicatorMetadata]); // 의존성 배열에 indicatorMetadata 추가
 
   const handleUpdateField = (field: AllLogicBlockKeys, value: any) => {
     // onUpdate 함수의 타입 안정성을 위해 타입 단언(as)을 사용할 수 있습니다.
@@ -495,8 +488,6 @@ export function RuleBlock({
 
   return (
     <Card className="p-3 transition-shadow shadow-md hover:shadow-lg border-l-4 border-primary/70">
-      {/* --- 1. 헤더 영역 --- */}
-      {/* 이 부분은 이제 ScrollArea의 바깥에 위치하여 스크롤되지 않습니다. */}
       <div className="flex items-center justify-between mb-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -510,6 +501,7 @@ export function RuleBlock({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
+            {/* ▼▼▼ [핵심 수정 4] supportedLogics가 동적 데이터를 사용하도록 합니다. ▼▼▼ */}
             {Object.entries(LOGIC_TYPE_METADATA)
               .filter(([type]) =>
                 supportedLogics.includes(type as LogicBlock["type"])
@@ -525,6 +517,7 @@ export function RuleBlock({
                   <span>{tLogic(labelKey as any)}</span>
                 </DropdownMenuItem>
               ))}
+            {/* ▲▲▲ [수정 완료] ▲▲▲ */}
           </DropdownMenuContent>
         </DropdownMenu>
 

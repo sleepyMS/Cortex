@@ -1,22 +1,18 @@
-// file: src/lib/strategyUtils.ts
+// file: frontend/src/lib/strategyUtils.ts
 
 import { nanoid } from "nanoid";
-import {
-  IndicatorMetadata,
-  IndicatorValue,
-  LogicBlock,
-  PositionRules,
-  StrategyType,
-} from "@/types/strategy";
+import { IndicatorValue, LogicBlock, PositionRules } from "@/types/strategy";
+import { IndicatorMetadata } from "@/types/indicator";
 
-// API 요청에 맞는 IndicatorConfig 형태로 변환하는 헬퍼
+// API 요청에 맞는 IndicatorConfig 형태로 변환하는 헬퍼 (기존과 동일)
 const toIndicatorConfig = (iv: IndicatorValue) => ({
   indicatorKey: iv.indicatorKey,
   values: iv.values,
   outputs: iv.outputs,
+  timeframe: iv.timeframe, // timeframe도 포함
 });
 
-// 재귀적으로 순회하며 IndicatorValue를 찾는 함수 (개선된 버전)
+// 재귀적으로 순회하며 IndicatorValue를 찾는 함수 (기존과 동일)
 const findIndicatorsRecursive = (
   blocks: LogicBlock[],
   indicatorSet: Set<string>
@@ -24,49 +20,13 @@ const findIndicatorsRecursive = (
   if (!blocks) return;
 
   blocks.forEach((block) => {
-    switch (block.type) {
-      case "comparison":
-        if (
-          block.operandA &&
-          typeof block.operandA === "object" &&
-          "indicatorKey" in block.operandA
-        ) {
-          indicatorSet.add(JSON.stringify(toIndicatorConfig(block.operandA)));
-        }
-        if (
-          block.operandB &&
-          typeof block.operandB === "object" &&
-          "indicatorKey" in block.operandB
-        ) {
-          indicatorSet.add(JSON.stringify(toIndicatorConfig(block.operandB)));
-        }
-        break;
-      case "crossover":
-        if (
-          block.mainLine &&
-          typeof block.mainLine === "object" &&
-          "indicatorKey" in block.mainLine
-        ) {
-          indicatorSet.add(JSON.stringify(toIndicatorConfig(block.mainLine)));
-        }
-        if (
-          block.signalLine &&
-          typeof block.signalLine === "object" &&
-          "indicatorKey" in block.signalLine
-        ) {
-          indicatorSet.add(JSON.stringify(toIndicatorConfig(block.signalLine)));
-        }
-        break;
-      case "state":
-      case "trend_signal":
-      case "channel":
-      case "divergence":
-        // 이 로직들은 indicator 타입이 IndicatorValue | null 이므로 typeof 체크가 필요 없습니다.
-        if (block.indicator && "indicatorKey" in block.indicator) {
-          indicatorSet.add(JSON.stringify(toIndicatorConfig(block.indicator)));
-        }
-        break;
-    }
+    // 블록의 모든 속성을 순회하며 IndicatorValue 객체를 찾음
+    Object.values(block).forEach((value) => {
+      if (value && typeof value === "object" && "indicatorKey" in value) {
+        const indicator = value as IndicatorValue;
+        indicatorSet.add(JSON.stringify(toIndicatorConfig(indicator)));
+      }
+    });
 
     // 자식 노드가 있으면 재귀 호출
     if (block.children && block.children.length > 0) {
@@ -75,7 +35,10 @@ const findIndicatorsRecursive = (
   });
 };
 
-// 메인 함수: 모든 규칙을 받아 중복 없는 지표 목록 반환 (변경 없음)
+/**
+ * 전략 규칙 객체 전체를 분석하여, 차트 렌더링 및 API 요청에 필요한
+ * 모든 IndicatorValue 설정의 중복 없는 리스트를 반환합니다.
+ */
 export const parseRulesForIndicators = (
   rules: {
     longEntry: PositionRules | null;
@@ -96,35 +59,38 @@ export const parseRulesForIndicators = (
   return Array.from(indicatorSet).map((s) => JSON.parse(s));
 };
 
-// createLogicBlock 함수를 중앙화하여 관리
+/**
+ * [최종 수정 버전]
+ * IndicatorHub에서 지표를 처음 선택했을 때, 해당 지표의 기본 파라미터로
+ * 새로운 LogicBlock 객체를 생성합니다.
+ */
 export const createLogicBlock = (
   indicator: IndicatorMetadata,
   logicType: string,
   allowedTimeframes: string[]
 ): LogicBlock => {
-  const availableTimeframes = indicator.supportedTimeframes.filter((tf) =>
-    allowedTimeframes.includes(tf)
-  );
-
-  // '1h'가 사용 가능한 경우 우선적으로 기본값으로 설정합니다.
-  const defaultTimeframe = availableTimeframes.includes("1h")
+  // 사용 가능한 타임프레임 중 '1h'가 있으면 우선 사용, 없으면 첫 번째 값 사용
+  const defaultTimeframe = indicator.supportedTimeframes?.includes("1h")
     ? "1h"
-    : availableTimeframes.length > 0
-    ? availableTimeframes[0]
-    : "1h"; // 사용 가능한 타임프레임이 없는 경우의 최종 fallback
+    : indicator.supportedTimeframes?.[0] || "1h";
 
   const baseIndicatorValue: IndicatorValue = {
     indicatorKey: indicator.key,
-    outputs: [indicator.outputs[0].key],
-    values: indicator.parameters.reduce(
-      (acc, param) => ({ ...acc, [param.key]: param.default }),
-      {}
-    ),
+    outputs: [indicator.outputs[0]?.key || ""],
     timeframe: defaultTimeframe,
+    // ▼▼▼ [핵심 수정] .reduce() 대신 객체(Record)를 올바르게 처리하는 로직으로 변경 ▼▼▼
+    values: Object.fromEntries(
+      Object.entries(indicator.parameters).map(([key, paramDef]) => [
+        key,
+        paramDef.default,
+      ])
+    ),
+    // ▲▲▲ [수정 완료] ▲▲▲
   };
+
   const newBlockId = nanoid();
 
-  switch (logicType) {
+  switch (logicType as LogicBlock["type"]) {
     case "comparison":
       return {
         id: newBlockId,

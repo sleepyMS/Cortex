@@ -192,69 +192,61 @@ export default function BacktesterPage() {
   };
 
   return (
-    <AuthGuard>
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-          <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
-          <Link href="/backtester/new">
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {t("createNewBacktest")}
-            </Button>
-          </Link>
-        </div>
-
-        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("filterStatusPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
-              <SelectItem value="running">
-                {t("filterStatusRunning")}
-              </SelectItem>
-              <SelectItem value="pending">
-                {t("filterStatusPending")}
-              </SelectItem>
-              <SelectItem value="completed">
-                {t("filterStatusCompleted")}
-              </SelectItem>
-              <SelectItem value="failed">{t("filterStatusFailed")}</SelectItem>
-              <SelectItem value="canceled">
-                {t("filterStatusCanceled")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={strategyFilter} onValueChange={setStrategyFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("filterStrategyPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("filterStrategyAll")}</SelectItem>
-              {strategiesData?.map((strategy) => (
-                <SelectItem key={strategy.id} value={strategy.id}>
-                  {strategy.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {renderContent()}
-
-        <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
-          {isFetchingNextPage && (
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          )}
-          {!hasNextPage && backtests.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {t("noMoreResults")}
-            </p>
-          )}
-        </div>
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+        <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
+        <Link href="/backtester/new">
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {t("createNewBacktest")}
+          </Button>
+        </Link>
       </div>
-    </AuthGuard>
+
+      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder={t("filterStatusPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
+            <SelectItem value="running">{t("filterStatusRunning")}</SelectItem>
+            <SelectItem value="pending">{t("filterStatusPending")}</SelectItem>
+            <SelectItem value="completed">
+              {t("filterStatusCompleted")}
+            </SelectItem>
+            <SelectItem value="failed">{t("filterStatusFailed")}</SelectItem>
+            <SelectItem value="canceled">
+              {t("filterStatusCanceled")}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={strategyFilter} onValueChange={setStrategyFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder={t("filterStrategyPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterStrategyAll")}</SelectItem>
+            {strategiesData?.map((strategy) => (
+              <SelectItem key={strategy.id} value={strategy.id}>
+                {strategy.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {renderContent()}
+
+      <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
+        {isFetchingNextPage && (
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        )}
+        {!hasNextPage && backtests.length > 0 && (
+          <p className="text-sm text-muted-foreground">{t("noMoreResults")}</p>
+        )}
+      </div>
+    </div>
   );
 }

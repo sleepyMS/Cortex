@@ -1,4 +1,4 @@
-// file: src/types/backtest.ts (신규 생성 또는 수정)
+// file: src/types/backtest.ts
 
 import { Strategy } from "./strategy"; // strategy 타입이 다른 곳에 정의되어 있다고 가정
 

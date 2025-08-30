@@ -19,17 +19,17 @@ export interface IndicatorOutput {
   label: string; // "MACD"
 }
 
-// 지표의 기본 정보를 정의하는 '설계도' 타입
-export interface IndicatorMetadata {
-  key: string; // "RSI", "MACD"
-  label: string; // "상대강도지수", "MACD"
-  description: string; // "가격의 상승 압력과 하락 압력 간의 상대적인 강도를 나타냅니다."
-  category: string; // "Momentum", "Trend"
-  parameters: IndicatorParameter[];
-  outputs: IndicatorOutput[];
-  supportedLogics: LogicBlock["type"][]; // 지원하는 로직 타입 배열 (e.g., ["comparison", "state"])
-  supportedTimeframes: string[]; // 지원하는 타임프레임 배열 (e.g., ["1m", "5m", "1h"])
-}
+// // 지표의 기본 정보를 정의하는 '설계도' 타입
+// export interface IndicatorMetadata {
+//   key: string; // "RSI", "MACD"
+//   label: string; // "상대강도지수", "MACD"
+//   description: string; // "가격의 상승 압력과 하락 압력 간의 상대적인 강도를 나타냅니다."
+//   category: string; // "Momentum", "Trend"
+//   parameters: IndicatorParameter[];
+//   outputs: IndicatorOutput[];
+//   supportedLogics: LogicBlock["type"][]; // 지원하는 로직 타입 배열 (e.g., ["comparison", "state"])
+//   supportedTimeframes: string[]; // 지원하는 타임프레임 배열 (e.g., ["1m", "5m", "1h"])
+// }
 
 // --- 지표 및 값 관련 타입 ---
 export interface IndicatorValue {

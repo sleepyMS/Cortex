@@ -16,25 +16,24 @@ import {
   DeepPartial,
   ChartOptions,
   SeriesType,
+  LineSeriesOptions,
+  HistogramSeriesOptions,
+  Time,
+  SeriesMarker,
+  createSeriesMarkers,
   CandlestickSeries,
   LineSeries,
   HistogramSeries,
   TickMarkType,
-  Time,
-  BusinessDay,
-  LineSeriesOptions,
-  HistogramSeriesOptions,
   IRange,
-  SeriesMarker,
-  ISeriesMarkers,
-  createSeriesMarkers,
+  BusinessDay,
 } from "lightweight-charts";
-import { INDICATOR_METADATA } from "@/lib/indicators";
 import { LegendData } from "@/types/chart";
 import { SignalData } from "@/types/market";
+import { useIndicatorStore } from "@/store/indicatorStore";
 
 // =================================================================================
-// #region 유틸리티 및 상수
+// #region 유틸리티 및 상수 (기존과 동일)
 // =================================================================================
 
 const LEGEND_KEY_CANDLE = "CANDLE";
@@ -200,7 +199,12 @@ export function useChartIndicatorManager({
       Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
     >
   >(new Map());
-  const markersPluginRef = useRef<ISeriesMarkers<Time> | null>(null);
+  const markersPluginRef = useRef<ReturnType<
+    typeof createSeriesMarkers
+  > | null>(null);
+
+  // [핵심] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다.
+  const indicatorMetadata = useIndicatorStore((state) => state.metadata);
 
   const setupChart = useCallback(
     (container: HTMLElement, options: DeepPartial<ChartOptions>): IChartApi => {
@@ -399,10 +403,14 @@ export function useChartIndicatorManager({
     // 3. 새로운 지표 시리즈 생성
     if (indicatorData) {
       Object.entries(indicatorData).forEach(([fullSeriesKey, data], index) => {
-        const metadata = INDICATOR_METADATA.find((ind) =>
+        // ▼▼▼ [핵심 수정] 정적 데이터 대신 전역 스토어의 메타데이터를 사용합니다. ▼▼▼
+        const metadata = indicatorMetadata.find((ind) =>
           fullSeriesKey.toUpperCase().startsWith(ind.key.toUpperCase())
         );
+        // ▲▲▲ [수정 완료] ▲▲▲
+
         if (!metadata || !data || data.length === 0) return;
+
         const baseKey = metadata.key;
 
         // baseKey 자체가 없으면 새로 pane과 상태를 만듬
@@ -457,6 +465,7 @@ export function useChartIndicatorManager({
     paneChartHeight,
     resolvedTheme,
     setupChart,
+    indicatorMetadata,
   ]);
 
   // Effect 4: 신호 데이터를 받아 마커를 렌더링
@@ -502,9 +511,12 @@ export function useChartIndicatorManager({
     });
 
     if (!markersPluginRef.current) {
-      markersPluginRef.current = createSeriesMarkers(series, markers);
+      markersPluginRef.current = createSeriesMarkers(
+        series,
+        markers
+      ) as ReturnType<typeof createSeriesMarkers>;
     } else {
-      markersPluginRef.current.setMarkers(markers);
+      (markersPluginRef.current as any).setMarkers(markers);
     }
   }, [signalData, ohlcvData]);
 }

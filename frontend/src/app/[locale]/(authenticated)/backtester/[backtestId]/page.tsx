@@ -317,11 +317,9 @@ export default function BacktestDetailPage({
   };
 
   return (
-    <AuthGuard>
-      <div className="container mx-auto max-w-screen-xl px-4 py-8">
-        {data?.backtest && <PageHeader backtest={data.backtest} />}
-        {renderContent()}
-      </div>
-    </AuthGuard>
+    <div className="container mx-auto max-w-screen-xl px-4 py-8">
+      {data?.backtest && <PageHeader backtest={data.backtest} />}
+      {renderContent()}
+    </div>
   );
 }

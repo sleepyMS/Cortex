@@ -21,9 +21,10 @@ import { Button } from "@/components/ui/Button";
 import { Separator } from "@/components/ui/Separator";
 import { RefreshCcw, Sparkles } from "lucide-react";
 
-import { IndicatorValue } from "@/types/strategy";
-import { INDICATOR_METADATA, IndicatorMetadata } from "@/lib/indicators";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { useIndicatorStore } from "@/store/indicatorStore";
+import { IndicatorValue } from "@/types/strategy";
+import { IndicatorMetadata } from "@/types/indicator";
 
 interface ParameterPopoverProps {
   indicatorValue: IndicatorValue;
@@ -42,11 +43,17 @@ export function ParameterPopover({
   const router = useRouter();
   const { currentPlan } = useUserSubscription();
 
-  const metadata: IndicatorMetadata | undefined = INDICATOR_METADATA.find(
+  // 1. 전역 스토어에서 최신 지표 메타데이터를 가져옵니다.
+  const allMetadata = useIndicatorStore((state) => state.metadata);
+  const metadata = allMetadata.find(
     (ind) => ind.key === indicatorValue.indicatorKey
   );
 
-  if (!metadata) return null;
+  // 메타데이터가 없으면 (아직 로딩 중이거나, 잘못된 key일 경우)
+  // Popover를 렌더링하지 않고 Trigger만 표시합니다.
+  if (!metadata) {
+    return <>{children}</>;
+  }
 
   const handleParameterChange = (paramKey: string, newValue: any) => {
     onUpdate({
@@ -64,7 +71,10 @@ export function ParameterPopover({
   };
 
   const planName = currentPlan || "Basic";
-  const canSelectMultipleTimeframes = ["Trader", "Pro"].includes(planName);
+  // [개선] supportedTimeframes는 이제 백엔드 메타데이터에서 가져옵니다.
+  const supportedTimeframes = metadata.supportedTimeframes || [];
+  const canSelectMultipleTimeframes =
+    planName !== "Basic" && supportedTimeframes.length > 1;
 
   return (
     <Popover>
@@ -83,6 +93,7 @@ export function ParameterPopover({
           <Separator />
 
           <div className="grid gap-4">
+            {/* 다중 출력(Output) 렌더링 */}
             {metadata.outputs.length > 1 && (
               <div className="grid grid-cols-3 items-center gap-4">
                 <Label htmlFor="output">{t("outputLabel")}</Label>
@@ -104,47 +115,46 @@ export function ParameterPopover({
               </div>
             )}
 
-            {metadata.parameters.map((param) => (
-              <div
-                key={param.key}
-                className="grid grid-cols-3 items-center gap-4"
-              >
-                <Label htmlFor={param.key}>{param.label}</Label>
-                <Input
-                  id={param.key}
-                  type="number"
-                  value={indicatorValue.values[param.key] ?? param.default}
-                  onChange={(e) =>
-                    handleParameterChange(param.key, Number(e.target.value))
-                  }
-                  className="col-span-2 h-8"
-                />
-              </div>
-            ))}
+            {/* 파라미터 렌더링 (객체 구조 사용) */}
+            {Object.keys(metadata.parameters).map((paramKey) => {
+              const paramDef = metadata.parameters[paramKey];
+              return (
+                <div
+                  key={paramKey}
+                  className="grid grid-cols-3 items-center gap-4"
+                >
+                  <Label htmlFor={paramKey}>{paramDef.label}</Label>
+                  <Input
+                    id={paramKey}
+                    type="number"
+                    value={indicatorValue.values[paramKey] ?? paramDef.default}
+                    onChange={(e) =>
+                      handleParameterChange(paramKey, Number(e.target.value))
+                    }
+                    min={paramDef.validation_range?.[0]}
+                    max={paramDef.validation_range?.[1]}
+                    step={paramDef.step}
+                    className="col-span-2 h-8"
+                  />
+                </div>
+              );
+            })}
           </div>
 
           <Separator />
 
+          {/* 타임프레임 선택 렌더링 */}
           <div className="grid grid-cols-3 items-center gap-4">
             <Label htmlFor="timeframe">{t("timeframeLabel")}</Label>
-            {/* 🔽🔽🔽 핵심 수정 영역 🔽🔽🔽 */}
             {!canSelectMultipleTimeframes ? (
               <button
                 type="button"
                 onClick={() => router.push("/pricing")}
-                className="col-span-2 h-8 p-[2px] rounded-lg relative group overflow-hidden
-                           bg-gradient-to-r from-teal-400 via-pink-500 to-yellow-500
-                           transition-all duration-500 [background-size:200%_auto] hover:[background-position:100%_0]"
+                className="col-span-2 h-8 p-[2px] rounded-lg relative group overflow-hidden bg-gradient-to-r from-teal-400 via-pink-500 to-yellow-500 transition-all duration-500 [background-size:200%_auto] hover:[background-position:100%_0]"
               >
                 <div className="w-full h-full flex items-center justify-center rounded-md bg-background group-hover:bg-muted/80 transition-colors">
                   <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
-                  <span
-                    className="font-semibold text-sm
-                                 bg-gradient-to-r from-teal-400 via-pink-500 to-yellow-500
-                                 text-transparent bg-clip-text
-                                 [background-size:200%_auto] transition-all duration-500
-                                 group-hover:[background-position:100%_0]"
-                  >
+                  <span className="font-semibold text-sm bg-gradient-to-r from-teal-400 via-pink-500 to-yellow-500 text-transparent bg-clip-text [background-size:200%_auto] transition-all duration-500 group-hover:[background-position:100%_0]">
                     {t("upgradePlanForTimeframe")}
                   </span>
                 </div>
@@ -158,7 +168,7 @@ export function ParameterPopover({
                   <SelectValue placeholder={t("selectTimeframePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {metadata.supportedTimeframes.map((tf) => (
+                  {supportedTimeframes.map((tf) => (
                     <SelectItem key={tf} value={tf}>
                       {tf}
                     </SelectItem>
@@ -166,7 +176,6 @@ export function ParameterPopover({
                 </SelectContent>
               </Select>
             )}
-            {/* 🔼🔼🔼 핵심 수정 영역 완료 🔼🔼🔼 */}
           </div>
 
           <Separator />
