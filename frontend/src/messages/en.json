@@ -603,6 +603,10 @@
     "retryLoad": "Retry",
     "noStrategiesAvailable": "No strategies found.",
     "noMoreStrategies": "You've reached the end.",
+    "modalPreviewTitle": "Strategy Preview",
+    "modalPreviewDescription": "This is a preview of how your strategy will appear on the marketplace. The price and description will be finalized upon submission.",
+    "modalRegisterTitle": "Confirm Strategy Listing",
+    "modalDescription": "Are you sure you want to list this strategy on the marketplace? You can edit the details at any time after listing.",
     "empty": {
       "title": "Create your first investment strategy!",
       "description": "You can backtest your ideas with data and automate them.",
@@ -629,6 +633,7 @@
     "makePrivate": "Make Private",
     "makePublic": "Make Public",
     "deleteStrategy": "Delete",
+    "listOnMarket": "List on Marketplace",
     "confirmDelete": "Are you sure you want to delete the strategy?",
     "deleteSuccess": "Strategy deleted successfully.",
     "deleteError": "Delete failed: {error}",

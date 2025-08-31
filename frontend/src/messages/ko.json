@@ -603,6 +603,10 @@
     "retryLoad": "다시 시도",
     "noStrategiesAvailable": "생성된 전략이 없습니다.",
     "noMoreStrategies": "더 이상 불러올 전략이 없습니다.",
+    "modalPreviewTitle": "전략 미리보기",
+    "modalRegisterTitle": "전략 마켓 등록 확인",
+    "modalDescription": "전략을 마켓플레이스에 등록하시겠습니까? 등록 후에도 언제든지 수정할 수 있습니다.",
+    "modalPreviewDescription": "마켓플레이스에 등록될 전략의 모습을 미리 확인하세요. 가격 및 설명은 최종 등록 시 반영됩니다.",
     "empty": {
       "title": "첫 번째 투자 전략을 만들어보세요!",
       "description": "나만의 아이디어를 데이터로 검증하고 자동화할 수 있습니다.",
@@ -629,6 +633,7 @@
     "makePrivate": "비공개로 전환",
     "makePublic": "공개로 전환",
     "deleteStrategy": "삭제",
+    "listOnMarket": "마켓에 등록하기",
     "confirmDelete": "전략을 정말 삭제하시겠습니까?",
     "deleteSuccess": "전략이 삭제되었습니다.",
     "deleteError": "삭제 실패: {error}",
