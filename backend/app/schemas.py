@@ -304,8 +304,12 @@ class StrategyUpdate(CamelCaseModel):
         return value
 
 class BacktestResultSummaryForCard(CamelCaseModel):
-    total_return_pct: Optional[float] = None
-    win_rate_pct: Optional[float] = None
+    totalReturnPct: Optional[float] = None
+    winRatePct: Optional[float] = None
+    mddPct: Optional[float] = None
+    sharpeRatio: Optional[float] = None
+    profitFactor: Optional[float] = None
+    sortinoRatio: Optional[float] = None
 
 class Strategy(CamelCaseModel):
     id: uuid.UUID
@@ -324,7 +328,6 @@ class Strategy(CamelCaseModel):
     paid_feature_level: PlanType = PlanType.BASIC
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
 
-    # 👈 [개선 4] DB에서 target_coins가 NULL일 경우에도 항상 list를 반환하도록 보장
     @field_validator('target_coins', mode='before')
     @classmethod
     def validate_target_coins(cls, v):
@@ -354,7 +357,8 @@ class ParameterOverride(CamelCaseModel):
 class BacktestExecutionParameters(CamelCaseModel):
     """백테스트 실행에 필요한 모든 상세 파라미터를 그룹화"""
     leverage: float = Field(1.0, gt=0, description="레버리지 배율")
-    fee: float = Field(0.04, ge=0, description="거래 수수료 (%)")
+    fee: float = Field(0.05, ge=0, description="거래 수수료 (%)")
+    slippage: float = Field(0.01, ge=0, description="거래 슬리피지 (%)")
     overrides: Optional[List[ParameterOverride]] = Field(None, description="전략의 기본값을 덮어쓰는 파라미터 목록")
     tpsl_logic: Optional[TpslLogic] = None
 
@@ -548,3 +552,139 @@ class SignalCalculationRequest(CamelCaseModel):
 class SignalCalculationResponse(CamelCaseModel):
     """신호 계산 결과 응답 스키마"""
     signals: List[SignalDataPoint] = Field(default_factory=list)
+
+# ==============================================================================
+# 5. 마켓플레이스 및 인벤토리 관련 스키마
+# ==============================================================================
+
+# models.py에 정의한 Enum들을 import 합니다.
+from .models import ProductType, InventoryType, OrderStatus
+
+# --- API 요청(Request) 스키마 ---
+
+class ProductFilters(CamelCaseModel):
+    """상품 목록 조회를 위한 필터 및 페이지네이션 파라미터"""
+    page: int = Field(1, ge=1)
+    limit: int = Field(12, ge=1, le=100)
+    product_type: ProductType
+    sort_by: Optional[str] = None
+    search_term: Optional[str] = None
+    categories: Optional[List[str]] = Field(None, query=[])
+    position_types: Optional[List[str]] = Field(None, query=[])
+
+class OrderItemCreate(CamelCaseModel):
+    """주문 생성 시 포함될 개별 아이템"""
+    product_id: uuid.UUID
+    quantity: int = Field(1, ge=1)
+
+class OrderCreate(CamelCaseModel):
+    """주문 생성을 위한 요청 본문"""
+    items: List[OrderItemCreate] = Field(..., min_length=1)
+
+class StrategyListPayload(CamelCaseModel):
+    """전략을 마켓플레이스에 등록하기 위한 요청 본문"""
+    price: float = Field(..., ge=0)
+    category: str
+    position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
+    description: Optional[str] = None
+
+
+# --- API 응답(Response) 스키마 ---
+
+class ProductAuthor(CamelCaseModel):
+    """상품 판매자 정보"""
+    username: Optional[str]
+
+class BaseProduct(CamelCaseModel):
+    """모든 상품 목록에 공통적으로 포함될 기본 정보"""
+    id: uuid.UUID
+    name: str
+    price: float
+    product_type: ProductType
+    inventory_type: InventoryType
+    metadata_: Dict[str, Any] = Field(..., alias="metadata")
+    author: Optional[ProductAuthor] = None
+
+class StrategyProduct(BaseProduct):
+    """전략 상품 목록에 표시될 정보"""
+    summary_metrics: Optional[BacktestResultSummaryForCard] = Field(None, alias="latestBacktestSummary")
+
+class ShopItemProduct(BaseProduct):
+    """상점 아이템 목록에 표시될 정보"""
+    display_properties: Dict[str, Any]
+
+class StrategyProductDetail(StrategyProduct):
+    """
+    전략 상품의 모든 상세 정보를 포함하는 스키마.
+    (전략 규칙, 상세 백테스트 결과 등)
+    """
+    # [변경] from_attributes(구 orm_mode)가 True여야 relationship 필드를 자동으로 변환합니다.
+    model_config = ConfigDict(from_attributes=True)
+
+    # Strategy 모델 전체를 포함하여 프론트엔드가 필요한 모든 규칙 정보를 제공
+    strategy_details: Strategy 
+    
+    # 대표 백테스트의 전체 결과(차트 데이터, 거래 기록 등)를 포함
+    representative_backtest: Optional[Backtest] = None
+
+class ShopItemProductDetail(ShopItemProduct):
+    """
+    상점 아이템의 모든 상세 정보를 포함하는 스키마.
+    """
+    model_config = ConfigDict(from_attributes=True)
+    
+    # display_properties는 이미 ShopItemProduct에 포함되어 있으므로
+    # 추가적으로 필요한 상세 정보가 있다면 여기에 필드를 정의합니다.
+    # 예: "how_to_use": "최적화 페이지에서 쿠폰을 선택하여 사용하세요."
+    usage_guide: Optional[str] = None
+
+class PaginatedProductsResponse(CamelCaseModel):
+    """페이지네이션된 상품 목록 응답"""
+    products: List[Union[StrategyProduct, ShopItemProduct]]
+    meta: Dict[str, int]
+
+class UserPurchasedStrategyResponse(CamelCaseModel):
+    """구매한 전략 정보 응답"""
+    purchase_id: uuid.UUID
+    strategy_id: uuid.UUID
+    name: str
+    author_username: str
+    price_paid: float
+    purchased_at: datetime
+
+class UserInventoryItemResponse(CamelCaseModel):
+    """인벤토리 아이템 정보 응답"""
+    instance_id: uuid.UUID
+    product_id: uuid.UUID
+    name: str
+    description: str
+    display_properties: Dict[str, Any]
+    quantity: int
+    purchased_at: datetime
+    is_used: bool
+    used_at: Optional[datetime]
+
+class OrderItemResponse(CamelCaseModel):
+    """주문 내역에 포함된 아이템 정보"""
+    quantity: int
+    price_at_purchase: float
+    product: BaseProduct
+
+class OrderResponse(CamelCaseModel):
+    """주문 상세 정보 응답"""
+    id: uuid.UUID
+    buyer_id: uuid.UUID
+    total_amount: float
+    status: OrderStatus
+    created_at: datetime
+    items: List[OrderItemResponse]
+
+class OrderCreateResponse(CamelCaseModel):
+    """주문 생성(결제 요청) 성공 시 프론트엔드에 반환할 정보"""
+    order_id: uuid.UUID
+    order_name: str
+    amount: float
+    customer_name: str
+    customer_email: EmailStr
+    # success_url, fail_url 등은 프론트엔드에서 동적으로 생성 가능
+

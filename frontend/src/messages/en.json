@@ -537,7 +537,8 @@
     "positionTypeShortOnly": "Short Only",
     "positionTypeLongShort": "Long/Short",
     "platformFee": "Platform Fee ({fee}%)",
-    "estimatedEarnings": "Estimated Earnings"
+    "estimatedEarnings": "Estimated Earnings",
+    "typeMismatchWarning": "The selected type differs from the automatic analysis. Please confirm your selection is intentional."
   },
   "RuleBlock": {
     "addIndicatorOrValue": "+ Add Indicator / Value",
@@ -746,6 +747,7 @@
       "initialCapitalLabel": "Initial Capital",
       "leverageLabel": "Leverage",
       "feePctLabel": "Trading Fee (%)",
+      "slippagePctLabel": "Trading Slippage (%)",
       "trailingStopLabel": "Trailing Stop",
       "trailingStopDescription": "Automatically adjust the stop-loss to protect profits.",
       "activationPctLabel": "Activation Profit (%)",
@@ -853,5 +855,19 @@
         "sell": "Sell"
       }
     }
+  },
+  "StrategyPerformanceBadges": {
+    "totalReturnLabel": "Total Return",
+    "totalReturnTooltip": "The cumulative return over the entire backtesting period.",
+    "winRateLabel": "Win Rate",
+    "winRateTooltip": "The percentage of trades that resulted in a profit.",
+    "mddLabel": "Max Drawdown (MDD)",
+    "mddTooltip": "The largest peak-to-trough decline in portfolio value. Lower is better.",
+    "sharpeLabel": "Sharpe Ratio",
+    "sharpeTooltip": "Measures return per unit of risk (volatility). Higher indicates a more efficient investment.",
+    "profitFactorLabel": "Profit Factor",
+    "profitFactorTooltip": "The gross profit divided by the gross loss. A value greater than 1.0 is required to be profitable.",
+    "sortinoLabel": "Sortino Ratio",
+    "sortinoTooltip": "Measures excess return per unit of downside risk. A refinement of the Sharpe Ratio that only penalizes for negative volatility."
   }
 }

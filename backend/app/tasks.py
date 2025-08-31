@@ -34,8 +34,12 @@ from .database import AsyncSessionLocal, SyncSessionLocal
 from . import models, schemas
 from .engine.backtesting_engine import BacktestingEngine
 from .utils.communication import WebSocketManager, EventPublisher
+from .event_bus import publish_event
 from .services.market_data_service import market_data_service
 from .services.signal_service import signal_service
+from .services.marketplace_service import marketplace_service
+from .services.notification_service import notification_service # 알림 서비스 (가상)
+
 
 
 logger = get_task_logger(__name__)
@@ -142,68 +146,78 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
     except Exception as e:
         logger.error(f"Unhandled exception in fetch_and_store_ohlcv: {e}", exc_info=True)
         raise self.retry(exc=e)
+    
+@celery_app.task(name="fulfill_order_task", queue="io_bound_queue")
+def fulfill_order_task(order_id: str, gateway_transaction_id: str):
+    """ 결제가 완료된 주문에 대해 자산을 지급하는 I/O-Bound Task"""
+    logger.info(f"Starting fulfillment for order ID: {order_id}")
+    
+    async def _fulfill():
+        async with AsyncSessionLocal() as session:
+            try:
+                # 실제 비즈니스 로직은 marketplace_service에 위임
+                await marketplace_service.fulfill_order(session, uuid.UUID(order_id), gateway_transaction_id)
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Critical error fulfilling order {order_id}: {e}", exc_info=True)
+                # Task 실패 시, celery_app.py의 DatabaseTask가 DB 상태를 'failed'로 처리해 줄 수 있음
+                raise
+
+    return asyncio.run(_fulfill())
 
 
 # ==============================================================================
 # Part 2: CPU-Bound Tasks (백테스팅, 최적화 등)
 # ==============================================================================
 
-@celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue")
+@celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue", acks_late=True)
 def run_backtest(self, backtest_id: str):
     """
     [최종 오케스트레이터] '전략 스냅샷' 기반 백테스팅의 전체 과정을 조율합니다.
+    진행률은 WebSocket으로, 최종 결과는 이벤트 버스로 전달합니다.
     """
     logger.info(f"Starting backtest orchestration for ID: {backtest_id}")
     backtest_uuid = uuid.UUID(backtest_id)
-    session = None
+    session = SyncSessionLocal()
+    backtest = None # 예외 처리에서 사용하기 위해 미리 선언
 
     try:
         # --- 단계 1: 초기 설정 및 상태 업데이트 ---
-        WebSocketManager.send_status_update(backtest_id, "running", "백테스트를 시작합니다.", 5)
+        WebSocketManager.send_status_update(backtest_id, "running", "백테스트 초기화 중...", 5)
         
-        session = SyncSessionLocal()
-
-        backtest = session.query(models.Backtest).filter(
-            models.Backtest.id == backtest_uuid
-        ).one_or_none()
-        
+        backtest = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one_or_none()
         if not backtest:
-            raise ValueError(f"Backtest {backtest_id} not found.")
+            raise ValueError(f"Backtest ID {backtest_id} not found in the database.")
 
         if backtest.status != 'pending':
-            logger.warning(f"Backtest {backtest_id} not pending (current: {backtest.status}). Aborting.")
-            session.close()
-            return
+            logger.warning(f"Backtest {backtest_id} is not in 'pending' state (current: {backtest.status}). Aborting task.")
+            return f"Task aborted: Backtest status was '{backtest.status}'."
             
         backtest.status = 'running'
         session.commit()
         
-        execution_params = backtest.parameters
-        snapshot_as_strategy = schemas.StrategyCreate(**backtest.strategy_snapshot)
+        # DB에 저장된 파라미터와 전략 스냅샷을 Pydantic 스키마로 변환
+        execution_params = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
+        snapshot_as_strategy = schemas.StrategyCreate.model_validate(backtest.strategy_snapshot)
 
         # --- 단계 2: 매매 신호 생성 ---
-        # [수정] 이제 signal_service는 (DataFrame, 계산기준_타임프레임) 튜플을 반환합니다.
-        WebSocketManager.send_status_update(backtest_id, "running", "전략에 따른 매매 신호를 생성 중입니다...", 25)
-        signals_df, calculation_base_tf = asyncio.run(
-            signal_service.generate_signals(
-                request=snapshot_as_strategy
-            )
-        )
+        WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 중...", 25)
+        signals_df, calculation_base_tf = asyncio.run(signal_service.generate_signals(request=snapshot_as_strategy))
         logger.info(f"Backtest {backtest_id}: Signals generated on '{calculation_base_tf}' timeframe.")
 
         # --- 단계 3: 시세 데이터 로드 ---
-        # [수정] 신호가 계산된 '기준 타임프레임'으로 OHLCV 데이터를 가져옵니다.
-        WebSocketManager.send_status_update(backtest_id, "running", f"시세 데이터를 로드하고 있습니다 ({calculation_base_tf})...", 50)
+        WebSocketManager.send_status_update(backtest_id, "running", f"{calculation_base_tf} 시세 데이터 로딩 중...", 50)
         
+        # target_coins가 비어있을 경우를 대비한 기본값 설정
         ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTC/USDT"
         
         ohlcv_df = market_data_service.get_historical_data_sync(
             ticker=ticker,
-            timeframe=calculation_base_tf, # <<< [핵심 수정]
-            start_date=datetime.fromisoformat(execution_params['start_date']),
-            end_date=datetime.fromisoformat(execution_params['end_date'])  
+            timeframe=calculation_base_tf,
+            start_date=execution_params.start_date,
+            end_date=execution_params.end_date
         )
-
         if ohlcv_df.empty:
             raise ValueError("시세 데이터를 로드할 수 없습니다. 기간이나 티커를 확인해주세요.")
 
@@ -220,12 +234,14 @@ def run_backtest(self, backtest_id: str):
         summary, trade_logs = engine.run()
 
         # --- 단계 5: 결과 저장 ---
-        WebSocketManager.send_status_update(backtest_id, "running", "분석 결과를 데이터베이스에 저장 중입니다...", 90)
+        WebSocketManager.send_status_update(backtest_id, "running", "결과 저장 중...", 90)
         
-        session.query(models.BacktestResult).filter_by(backtest_id=backtest_uuid).delete(synchronize_session=False)
-        session.query(models.TradeLog).filter_by(backtest_id=backtest_uuid).delete(synchronize_session=False)
+        # 기존 결과가 있다면 삭제 (재실행 대비)
+        session.query(models.BacktestResult).filter_by(backtest_id=backtest_uuid).delete()
+        session.query(models.TradeLog).filter_by(backtest_id=backtest_uuid).delete()
         session.flush()
 
+        # 새 결과 및 거래 기록 저장
         new_result = models.BacktestResult(backtest_id=backtest_uuid, **summary)
         session.add(new_result)
         
@@ -233,43 +249,120 @@ def run_backtest(self, backtest_id: str):
             log_objects = [models.TradeLog(backtest_id=backtest_uuid, **log) for log in trade_logs]
             session.add_all(log_objects)
 
-        backtest_to_update = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one()
-        backtest_to_update.status = 'completed'
-        backtest_to_update.completed_at = datetime.now(timezone.utc)
+        # 최종 상태 업데이트
+        backtest.status = 'completed'
+        backtest.completed_at = datetime.now(timezone.utc)
         session.commit()
 
-        # --- 단계 6: 완료 알림 ---
-        user_id_str = str(backtest_to_update.user_id)
-        EventPublisher.publish_backtest_event(
-            "BacktestCompleted", 
-            {"backtest_id": backtest_id, "user_id": user_id_str}
+        # --- 단계 6: 완료 이벤트 발행 ---
+        publish_event(
+            "backtest.completed", 
+            {"backtest_id": backtest_id, "user_id": str(backtest.user_id)}
         )
         WebSocketManager.send_status_update(backtest_id, "completed", "백테스트가 성공적으로 완료되었습니다.", 100)
-
         logger.info(f"Backtest {backtest_id} completed successfully.")
         return f"Backtest ID {backtest_id} completed successfully."
 
     except Exception as exc:
         logger.error(f"Exception in run_backtest for ID {backtest_id}: {exc}", exc_info=True)
+        user_id_on_fail = str(backtest.user_id) if backtest else "unknown"
         
-        user_id_on_fail = str(backtest.user_id) if 'backtest' in locals() and backtest else "unknown"
-        EventPublisher.publish_backtest_event(
-            "BacktestFailed", 
+        # --- 예외 발생 시 실패 이벤트 발행 ---
+        publish_event(
+            "backtest.failed", 
             {"backtest_id": backtest_id, "user_id": user_id_on_fail, "error": str(exc)}
         )
         WebSocketManager.send_status_update(backtest_id, "failed", f"오류가 발생했습니다: {str(exc)}", 100)
         
-        if session:
-            try:
-                failed_backtest = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one_or_none()
-                if failed_backtest and failed_backtest.status == 'running':
-                    failed_backtest.status = 'failed'
-                    session.commit()
-            except Exception as db_exc:
-                 logger.error(f"Failed to update backtest status to 'failed' for {backtest_id}: {db_exc}")
+        # celery_app.py의 on_failure 핸들러가 DB 상태를 최종적으로 'failed'로 업데이트하지만,
+        # 즉각적인 상태 변경을 위해 여기서도 시도
+        try:
+            if backtest and backtest.status == 'running':
+                backtest.status = 'failed'
+                session.commit()
+        except Exception as db_exc:
+            logger.error(f"Failed to update backtest status to 'failed' for {backtest_id}: {db_exc}")
 
+        # Celery의 재시도 로직에 예외를 전달
         raise self.retry(exc=exc, countdown=60, max_retries=2)
 
     finally:
         if session:
             session.close()
+
+# ==============================================================================
+# Part 3: Event-Driven Tasks (신규 섹션)
+# ==============================================================================
+
+# --- 이벤트 구독자 (Subscribers) ---
+
+@celery_app.task(name="fulfill_order_task", queue="io_bound_queue")
+def fulfill_order_task(order_id: str, gateway_transaction_id: str):
+    """'payment.succeeded' 이벤트를 구독하여 자산을 지급합니다."""
+    logger.info(f"Event received: Fulfilling order ID: {order_id}")
+    async def _fulfill():
+        async with AsyncSessionLocal() as session:
+            try:
+                await marketplace_service.fulfill_order(session, uuid.UUID(order_id), gateway_transaction_id)
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                logger.error(f"Critical error fulfilling order {order_id}", exc_info=True)
+                raise
+    return asyncio.run(_fulfill())
+
+@celery_app.task(name="send_purchase_notification_task", queue="io_bound_queue")
+def send_purchase_notification_task(order_id: str, buyer_id: str):
+    """'order.fulfilled' 이벤트를 구독하여 구매 완료 알림을 보냅니다."""
+    logger.info(f"Event received: Sending purchase notification for order {order_id}")
+    async def _send():
+        async with AsyncSessionLocal() as session:
+            await notification_service.send_purchase_confirmation(session, order_id)
+    return asyncio.run(_send())
+
+@celery_app.task(name="send_backtest_notification_task", queue="io_bound_queue")
+def send_backtest_notification_task(event_name: str, payload: dict):
+    """'backtest.completed' 또는 'backtest.failed' 이벤트를 구독하여 알림을 보냅니다."""
+    backtest_id = payload.get("backtest_id")
+    logger.info(f"Event received: Sending backtest notification for {backtest_id} ({event_name})")
+    async def _send():
+        async with AsyncSessionLocal() as session:
+            if event_name == "backtest.completed":
+                await notification_service.send_backtest_completed_notification(session, backtest_id)
+            elif event_name == "backtest.failed":
+                # notification_service에 실패 알림 함수 추가 필요
+                # await notification_service.send_backtest_failed_notification(session, backtest_id, payload.get("error"))
+                pass
+    return asyncio.run(_send())
+
+
+# --- 중앙 이벤트 분배기 (Dispatcher) ---
+
+EVENT_SUBSCRIBERS = {
+    "payment.succeeded": ["fulfill_order_task"],
+    "order.fulfilled": ["send_purchase_notification_task"],
+    "backtest.completed": ["send_backtest_notification_task"],
+    "backtest.failed": ["send_backtest_notification_task"],
+}
+
+@celery_app.task(name="dispatch_event", queue="io_bound_queue")
+def dispatch_event(event_name: str, payload: dict):
+    """발행된 이벤트를 받아 적절한 구독자 태스크들에게 전달하는 중앙 분배기."""
+    logger.info(f"Dispatching event '{event_name}'...")
+    if event_name not in EVENT_SUBSCRIBERS:
+        return f"No subscribers for event '{event_name}'."
+
+    for task_name in EVENT_SUBSCRIBERS[event_name]:
+        try:
+            # 이벤트 페이로드에서 필요한 인자를 추출하여 각 태스크에 전달
+            if task_name == "fulfill_order_task":
+                celery_app.send_task(task_name, args=[payload["order_id"], payload["gateway_transaction_id"]])
+            elif task_name == "send_purchase_notification_task":
+                celery_app.send_task(task_name, args=[payload["order_id"], payload["buyer_id"]])
+            elif task_name == "send_backtest_notification_task":
+                 # 이벤트 이름과 페이로드 전체를 넘겨주어 구독자가 분기 처리하도록 함
+                celery_app.send_task(task_name, args=[event_name, payload])
+            
+            logger.info(f"Dispatched task '{task_name}' for event '{event_name}'.")
+        except Exception as e:
+            logger.error(f"Failed to dispatch task '{task_name}' for event '{event_name}': {e}", exc_info=True)

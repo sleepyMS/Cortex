@@ -1,13 +1,14 @@
 // file: frontend/src/components/domain/strategy/StrategyListingForm.tsx
 "use client";
 
-import { useForm } from "react-hook-form";
-import { useWatch } from "react-hook-form";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Strategy } from "@/types/strategy";
+import { Info } from "lucide-react";
 
 // UI 컴포넌트
 import { Input } from "@/components/ui/Input";
@@ -32,6 +33,7 @@ import {
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Separator } from "@/components/ui/Separator";
 import { Spinner } from "@/components/ui/Spinner";
+import { toast } from "sonner";
 
 // --- 설정값 (향후 백엔드에서 받아오거나 환경 변수로 관리 가능) ---
 
@@ -77,6 +79,17 @@ export const StrategyListingForm = ({
   isSubmitting,
 }: StrategyListingFormProps) => {
   const t = useTranslations("StrategyListingForm");
+  // --- [핵심 개선] 폼 초기화 전에 전략 타입을 미리 분석 ---
+  const autoDetectedPositionType = useMemo(() => {
+    const hasLong = strategy.longEntryRules?.blocks.length > 0;
+    const hasShort = strategy.shortEntryRules?.blocks.length > 0;
+
+    if (hasLong && hasShort) return "LongShort";
+    if (hasLong) return "LongOnly";
+    if (hasShort) return "ShortOnly";
+
+    return strategy.marketplaceListing?.positionType || "LongShort";
+  }, [strategy]);
 
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingFormSchema),
@@ -84,11 +97,47 @@ export const StrategyListingForm = ({
     defaultValues: {
       price: strategy.marketplaceListing?.price || 10.0,
       category: strategy.marketplaceListing?.category || "",
-      positionType: strategy.marketplaceListing?.positionType || "LongShort",
+      positionType: autoDetectedPositionType, // 분석된 초기값을 직접 주입
       termsAccepted: false,
     },
   });
 
+  // --- 2. [핵심 수정] 알림 기능 로직 ---
+  const [initialAutoType, setInitialAutoType] = useState<string>(
+    autoDetectedPositionType
+  );
+  const isInitialRender = useRef(true);
+
+  // 현재 사용자가 선택한 라디오 버튼 값
+  const currentPositionType = useWatch({
+    control: form.control,
+    name: "positionType",
+  });
+
+  // [핵심 수정] `strategy` 데이터가 변경될 때마다 폼 값과 초기 분석 값을 `reset`
+  useEffect(() => {
+    form.reset({
+      ...form.getValues(), // 다른 필드 값은 유지
+      positionType: autoDetectedPositionType, // 포지션 타입만 갱신
+    });
+    setInitialAutoType(autoDetectedPositionType);
+  }, [autoDetectedPositionType, form]);
+
+  // [핵심 수정] 사용자가 값을 변경했을 때만 알림을 띄우도록 로직 수정
+  useEffect(() => {
+    // 최초 렌더링 시에는 알림을 띄우지 않음
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
+
+    // 현재 선택값이 있고, 그것이 초기 분석값과 다를 경우에만 알림
+    if (currentPositionType && currentPositionType !== initialAutoType) {
+      toast.info(t("typeMismatchWarning"), {
+        icon: <Info className="h-4 w-4" />,
+      });
+    }
+  }, [currentPositionType, initialAutoType, t]);
   // 가격 필드의 값을 실시간으로 감지하여 수수료 계산
   const price = useWatch({
     control: form.control,

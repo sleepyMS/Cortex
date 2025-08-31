@@ -162,6 +162,10 @@ export interface Strategy {
   latestBacktestSummary?: {
     totalReturnPct: number | null;
     winRatePct: number | null;
+    mddPct: number | null;
+    sharpeRatio: number | null;
+    profitFactor: number | null;
+    sortinoRatio: number | null;
   } | null;
 
   /** [추가] 마켓플레이스 등록 정보 (등록된 경우에만 존재) */

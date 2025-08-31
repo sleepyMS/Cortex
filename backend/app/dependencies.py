@@ -27,8 +27,19 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """비동기 데이터베이스 세션을 생성하고 API 처리가 끝나면 자동으로 닫습니다."""
     async with AsyncSessionLocal() as session:
-        yield session
-
+        try:
+            yield session
+            await session.commit()
+        except HTTPException as e:
+            await session.rollback()
+            raise e
+        except Exception as e:
+            await session.rollback()
+            # 프로덕션 환경에서는 더 일반적인 에러 메시지를 반환해야 합니다.
+            # logger.error(...) 등으로 로깅하는 것이 좋습니다.
+            raise HTTPException(status_code=500, detail=f"An internal server error occurred: {str(e)}")
+        finally:
+            await session.close()
 
 # ==============================================================================
 # 섹션 2: 인증 및 권한 부여 의존성

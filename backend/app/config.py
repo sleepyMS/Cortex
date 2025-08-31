@@ -61,6 +61,9 @@ class PaymentSettings(BaseModel):
     IAMPORT_API_SECRET: Optional[str] = None
     IAMPORT_API_BASE_URL: str = "https://api.iamport.kr"
 
+    TOSS_PAYMENTS_SECRET_KEY: Optional[str] = None
+    TOSS_PAYMENTS_API_BASE_URL: str = "https://api.tosspayments.com"
+
 
 class PlanFeatureSettings(BaseModel):
     MAX_BACKTESTS_PER_DAY: int

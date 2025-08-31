@@ -16,7 +16,7 @@ class BacktestingEngine:
     def __init__(self,
                  ohlcv_df: pd.DataFrame,
                  signals_df: pd.DataFrame,
-                 execution_params: dict,
+                 execution_params: schemas.BacktestParametersPayload,
                  strategy_params: schemas.StrategyCreate):
         """
         [최종 완성 버전] 모든 파라미터를 올바른 위치에서 가져오고, 모든 변수를 정확하게 초기화합니다.
@@ -27,14 +27,13 @@ class BacktestingEngine:
              self.data = self.data.sort_index()
 
         # --- 2. 파라미터 설정 ---
-        self.exec_params = execution_params # 이 줄이 누락되었습니다.
+        self.exec_params = execution_params 
         
-        self.initial_capital = self.exec_params.get('initialCapital', 10000.0)
-        
-        inner_params = self.exec_params.get('parameters', {})
-        self.leverage = inner_params.get('leverage', 1.0)
-        self.fee_pct = inner_params.get('fee', 0.04) / 100
-        self.slippage_pct = inner_params.get('slippage', 0.01) / 100
+        self.initial_capital = self.exec_params.initial_capital
+        inner_params = self.exec_params.parameters
+        self.leverage = inner_params.leverage
+        self.fee_pct = inner_params.fee
+        self.slippage_pct = inner_params.slippage
         
         # TP/SL 규칙은 '전략 정보(strategy_params)' Pydantic 객체에서 직접 가져옵니다.
         self.tpsl_logic = strategy_params.tpsl_logic if strategy_params.tpsl_logic else schemas.TpslLogic()
@@ -72,6 +71,7 @@ class BacktestingEngine:
         self.losing_trades = 0
         self.gross_profit = 0.0
         self.gross_loss = 0.0
+        self.entry_commission = 0.0
 
     def run(self) -> Tuple[Dict, List[Dict]]:
         """메인 시뮬레이션 루프를 실행합니다."""
@@ -211,23 +211,33 @@ class BacktestingEngine:
 
     def _execute_trade(self, timestamp, price: float, side: str, is_entry: bool, reason: str = "Signal"):
         """
-        [최종 수정 버전] 거래를 실행하고 모든 상태 변수를 업데이트합니다.
-        포지션 진입/청산 시 현금 흐름을 정확하게 반영합니다.
+        [최종 수정 버전] 진입과 청산의 로직과 변수 범위를 명확하게 분리합니다.
         """
+        # --- 공통 변수 초기화 ---
+        commission = 0.0
+        pnl = None
+        quantity = 0.0
+        trade_price = price
+
+        # 슬리피지 적용
+        if side == 'buy':
+            trade_price *= (1 + self.slippage_pct / 100)
+        else: # side == 'sell'
+            trade_price *= (1 - self.slippage_pct / 100)
+
         # --- 1. 포지션 진입 로직 ---
         if is_entry:
             if self.position_size != 0: return
 
-            trade_price = price * (1 + self.slippage_pct if side == 'buy' else 1 - self.slippage_pct)
             invest_amount = self.balance * self.leverage * 0.99
             quantity = invest_amount / trade_price
             
-            commission = invest_amount * self.fee_pct
-            if self.balance < commission: return
+            entry_commission = invest_amount * (self.fee_pct / 100)
+            if self.balance < entry_commission: return
 
-            self.balance -= commission
+            self.entry_commission = entry_commission
+            self.balance -= self.entry_commission
 
-            # 포지션에 투입된 원금(비용)을 현금 잔고에서 반드시 차감
             position_cost = quantity * trade_price
             self.balance -= position_cost
             self.invested_capital = position_cost
@@ -237,60 +247,52 @@ class BacktestingEngine:
             self.entry_price = trade_price
             self.position_type = 'long' if side == 'buy' else 'short'
 
-            pnl = None
-
             self.sl_price, self.tp_price = self._calculate_initial_tp_sl(self.data.loc[timestamp])
         
             if self.position_type == 'long':
                 self.highest_price_since_entry = self.entry_price
             elif self.position_type == 'short':
                 self.lowest_price_since_entry = self.entry_price
+            
+            commission = self.entry_commission # 로그 기록용
 
         # --- 2. 포지션 청산 로직 ---
-        else: # is_entry == False
+        else:
             if self.position_size == 0: return
 
-            pnl = 0.0
-            
-            if side == 'sell' and self.position_type == 'long':
-                trade_price = price * (1 - self.slippage_pct)
-                quantity = self.position_size
-                raw_pnl = (trade_price - self.position_avg_price) * quantity
-                
-                # 청산으로 회수된 총 현금 = 투입했던 원금 + 실현 손익
-                cash_returned = self.invested_capital + raw_pnl
-                self.balance += cash_returned
-            
-            elif side == 'buy' and self.position_type == 'short':
-                trade_price = price * (1 + self.slippage_pct)
-                quantity = abs(self.position_size)
-                raw_pnl = (self.position_avg_price - trade_price) * quantity
+            raw_pnl = 0.0
+            quantity = abs(self.position_size)
 
-                cash_returned = self.invested_capital + raw_pnl
-                self.balance += cash_returned
-            
+            if side == 'sell' and self.position_type == 'long':
+                raw_pnl = (trade_price - self.position_avg_price) * quantity
+            elif side == 'buy' and self.position_type == 'short':
+                raw_pnl = (self.position_avg_price - trade_price) * quantity
             else:
-                return
+                return # 포지션 타입과 청산 사이드가 맞지 않으면 종료
+
+            cash_returned = self.invested_capital + raw_pnl
+            self.balance += cash_returned
 
             exit_value = quantity * trade_price
-            commission = exit_value * self.fee_pct
-            self.balance -= commission
-            pnl = raw_pnl - commission
+            exit_commission = exit_value * (self.fee_pct / 100)
+            self.balance -= exit_commission
+            
+            commission = exit_commission # 로그 기록용
+            pnl = raw_pnl - self.entry_commission - exit_commission
 
             self.gross_profit += max(0, pnl)
             self.gross_loss += min(0, pnl)
             if pnl > 0: self.winning_trades += 1
             else: self.losing_trades += 1
 
+            # 상태 변수 초기화
+            self.entry_commission = 0.0
             self.position_size, self.position_avg_price, self.position_type, self.invested_capital = 0.0, 0.0, None, 0.0
-
             self.sl_price, self.tp_price = None, None
-
             self.highest_price_since_entry = 0.0
             self.lowest_price_since_entry = float('inf')
 
         # --- 3. 거래 로그 기록 ---
-        # 로그의 currentBalance는 총자산(현금 + 투자 중인 자산 가치)을 의미합니다.
         log_balance = self.balance + self.invested_capital
         log = {
             "timestamp": timestamp, "side": side, "price": trade_price, "quantity": abs(quantity),

@@ -1,7 +1,12 @@
 // file: frontend/src/hooks/useMarketplace.ts
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
@@ -10,65 +15,95 @@ import { ShopItem, MarketplaceStrategy } from "@/types/marketplace";
 
 // --- 타입 정의 ---
 
-// 구매 요청을 위한 타입
-interface PurchaseInput {
-  type: "item" | "strategy";
-  id: string;
+/**
+ * 상품 목록 조회를 위한 필터 및 페이지네이션 파라미터 타입
+ * 이 객체가 변경되면 useProducts 훅이 자동으로 데이터를 다시 가져옵니다.
+ */
+export interface ProductFilters {
+  page: number;
+  limit: number;
+  productType: "STRATEGY" | "SHOP_ITEM";
+  sortBy?: string;
+  searchTerm?: string;
+  categories?: string[];
+  positionTypes?: ("LongOnly" | "ShortOnly" | "LongShort")[];
+}
+
+/**
+ * 페이지네이션된 상품 목록 API의 응답 타입
+ */
+export interface PaginatedProductsResponse {
+  products: (MarketplaceStrategy | ShopItem)[];
+  meta: {
+    totalItems: number;
+    itemCount: number;
+    itemsPerPage: number;
+    totalPages: number;
+    currentPage: number;
+  };
+}
+
+/**
+ * 통합 구매 요청을 위한 데이터 타입
+ * 장바구니 기능을 고려하여 배열 형태로 설계합니다.
+ */
+export interface PurchasePayload {
+  items: {
+    productId: string;
+    quantity: number;
+  }[];
 }
 
 // --- API 호출 함수 ---
 
-// 1. 상점 아이템 목록 조회 API
-const fetchShopItems = async (): Promise<ShopItem[]> => {
-  const { data } = await apiClient.get("/marketplace/items");
+/**
+ * [통합] 필터링된 상품 목록을 서버에서 가져옵니다.
+ */
+const fetchProducts = async (
+  filters: ProductFilters
+): Promise<PaginatedProductsResponse> => {
+  const params = new URLSearchParams({
+    page: filters.page.toString(),
+    limit: filters.limit.toString(),
+    productType: filters.productType,
+  });
+
+  if (filters.sortBy) params.append("sortBy", filters.sortBy);
+  if (filters.searchTerm) params.append("searchTerm", filters.searchTerm);
+  filters.categories?.forEach((cat) => params.append("categories", cat));
+  filters.positionTypes?.forEach((pt) => params.append("positionTypes", pt));
+
+  const { data } = await apiClient.get(
+    `/marketplace/products?${params.toString()}`
+  );
   return data;
 };
 
-// 2. 마켓플레이스 전략 목록 조회 API
-const fetchMarketplaceStrategies = async (): Promise<MarketplaceStrategy[]> => {
-  const { data } = await apiClient.get("/marketplace/strategies");
-  return data;
-};
-
-// 3. 구매 요청 API
-const purchaseApiFn = async ({ type, id }: PurchaseInput): Promise<any> => {
-  // 단일 엔드포인트로 통합하는 것을 권장하나, 기존 로직을 유지
-  const endpoint =
-    type === "item"
-      ? "/marketplace/purchase" // 아이템 구매
-      : `/marketplace/strategies/${id}/purchase`; // 전략 구매
-
-  const payload = type === "item" ? { itemId: id } : {};
-  const { data } = await apiClient.post(endpoint, payload);
-  return data;
+/**
+ * [통합] 상품 구매(주문 생성)를 요청하는 API를 호출합니다.
+ */
+const purchaseApiFn = async (payload: PurchasePayload): Promise<any> => {
+  // 백엔드의 통합 결제 요청 엔드포인트 호출
+  const { data } = await apiClient.post("/marketplace/orders", payload);
+  return data; // 백엔드는 Toss Payments 연동에 필요한 정보를 반환
 };
 
 // --- 커스텀 훅 ---
 
 /**
- * 상점에서 판매하는 모든 아이템 목록을 조회하는 훅입니다.
+ * [완성] 마켓플레이스의 모든 상품(전략, 아이템)을 필터링 및 페이지네이션하여 조회하는 훅
+ * @param filters - 상품 조회를 위한 필터 조건
  */
-export const useShopItems = () => {
-  return useQuery<ShopItem[]>({
-    queryKey: ["shopItems"],
-    queryFn: fetchShopItems,
+export const useProducts = (filters: ProductFilters) => {
+  return useQuery({
+    queryKey: ["products", filters], // 필터 객체 전체를 queryKey에 포함시켜, 변경 시 자동 재조회
+    queryFn: () => fetchProducts(filters),
+    keepPreviousData: true, // 페이지 이동 시 UX 향상을 위해 이전 데이터 유지
   });
 };
 
 /**
- * 마켓플레이스에 등록된 모든 판매용 전략 목록을 조회하는 훅입니다.
- * TODO: 향후 페이지네이션, 필터링, 정렬을 위한 인자(filters)를 추가해야 합니다.
- */
-export const useMarketplaceStrategies = (/* filters?: any */) => {
-  return useQuery<MarketplaceStrategy[]>({
-    queryKey: ["marketplaceStrategies" /*, filters */],
-    queryFn: fetchMarketplaceStrategies,
-  });
-};
-
-/**
- * 마켓플레이스에서 아이템 또는 전략을 구매하는 뮤테이션 훅입니다.
- * 성공/실패 시 사용자 피드백 및 관련 데이터 갱신을 자동으로 처리합니다.
+ * [완성] 마켓플레이스 상품을 구매하는 뮤테이션 훅
  */
 export const usePurchaseMutation = () => {
   const t = useTranslations("Marketplace");
@@ -78,32 +113,20 @@ export const usePurchaseMutation = () => {
   return useMutation({
     mutationFn: purchaseApiFn,
     onSuccess: (data, variables) => {
-      const { type } = variables;
+      // 결제 성공 후의 로직은 실제 결제(Toss Payments) 연동 시
+      // useSubscription.ts 처럼 SDK를 호출하는 방식으로 구체화됩니다.
+      // 여기서는 성공 후 데이터 갱신에 집중합니다.
 
-      if (type === "item") {
-        toast.success(t("purchaseSuccessItem"), {
-          description: "내 인벤토리에서 구매한 아이템을 확인하세요.",
-          action: {
-            label: "인벤토리로 이동",
-            onClick: () => router.push("/settings/inventory"),
-          },
-        });
-        // 사용자의 인벤토리(보유 아이템) 관련 쿼리를 무효화하여 새로고침
-        queryClient.invalidateQueries({ queryKey: ["userInventory"] });
-      } else if (type === "strategy") {
-        toast.success(t("purchaseSuccessStrategy"), {
-          description:
-            "이제 나의 전략 목록에서 구매한 전략을 사용할 수 있습니다.",
-          action: {
-            label: "나의 전략으로 이동",
-            onClick: () => router.push("/strategies"),
-          },
-        });
-        // 사용자의 전략 목록 관련 쿼리를 무효화하여 새로고침
-        queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-      }
+      toast.success(t("purchaseRequestSuccess"));
 
-      // 공통적으로 사용자 정보(예: ShopItem 보유 크레딧)를 갱신
+      // 구매와 관련된 모든 데이터를 최신 상태로 갱신
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["userInventory"] });
+      queryClient.invalidateQueries({ queryKey: ["userInventoryDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["purchasedStrategies"] });
+      queryClient.invalidateQueries({
+        queryKey: ["purchasedStrategiesDetails"],
+      });
       queryClient.invalidateQueries({ queryKey: ["user", "me"] });
       queryClient.invalidateQueries({ queryKey: ["userBalance"] });
     },

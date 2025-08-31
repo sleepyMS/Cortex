@@ -111,5 +111,15 @@ class PlanService:
         query = select(models.Plan).options(joinedload(models.Plan.features)).filter(models.Plan.id == plan_id)
         result = await db.execute(query)
         return result.scalar_one_or_none()
+    
+    async def get_plan_by_name(self, db: AsyncSession, plan_name: models.PlanType) -> Optional[models.Plan]:
+        """[신규] 이름으로 단일 플랜 정보를 Eager Loading하여 조회합니다."""
+        query = (
+            select(models.Plan)
+            .options(joinedload(models.Plan.features))
+            .filter(models.Plan.name == plan_name)
+        )
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
 
 plan_service = PlanService()

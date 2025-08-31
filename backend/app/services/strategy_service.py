@@ -3,7 +3,7 @@
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, select, cast, String
+from sqlalchemy import func, select, cast, String, or_
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Union
 import uuid
@@ -122,6 +122,10 @@ class StrategyService:
                 models.Backtest.strategy_id,
                 models.BacktestResult.total_return_pct,
                 models.BacktestResult.win_rate_pct,
+                models.BacktestResult.mdd_pct,
+                models.BacktestResult.sharpe_ratio,
+                models.BacktestResult.profit_factor,
+                models.BacktestResult.sortino_ratio, 
                 func.row_number().over(
                     partition_by=models.Backtest.strategy_id,
                     order_by=models.Backtest.created_at.desc()
@@ -132,15 +136,28 @@ class StrategyService:
             .subquery('latest_backtest')
         )
 
+        purchased_strategy_ids_subquery = (
+            select(models.UserPurchasedStrategy.strategy_id)
+            .filter(models.UserPurchasedStrategy.user_id == user_id)
+        )
+
         query = select(
             models.Strategy,
             latest_backtest_subquery.c.total_return_pct,
-            latest_backtest_subquery.c.win_rate_pct
+            latest_backtest_subquery.c.win_rate_pct,
+            latest_backtest_subquery.c.mdd_pct,
+            latest_backtest_subquery.c.sharpe_ratio,
+            latest_backtest_subquery.c.profit_factor,
+            latest_backtest_subquery.c.sortino_ratio,
         ).outerjoin(
             latest_backtest_subquery,
             (models.Strategy.id == latest_backtest_subquery.c.strategy_id) & (latest_backtest_subquery.c.row_num == 1)
-        ).filter(models.Strategy.author_id == user_id)
-
+        ).filter(
+            or_(
+                models.Strategy.author_id == user_id,
+                models.Strategy.id.in_(purchased_strategy_ids_subquery)
+            )
+        )
         if is_public_filter is not None: query = query.filter(models.Strategy.is_public == is_public_filter)
         if search_query: query = query.filter(models.Strategy.name.ilike(f"%{search_query}%"))
         if indicator_filter:
@@ -156,11 +173,17 @@ class StrategyService:
         results = await db.execute(query.offset(skip).limit(limit))
         
         strategies_with_summary = []
-        for strategy, total_return, win_rate in results:
+        for strategy, total_return, win_rate, mdd, sharpe, profit, sortino in results:
             strategy.latest_backtest_summary = None
             if total_return is not None:
+                # API 응답 시에는 camelCase를 사용합니다.
                 strategy.latest_backtest_summary = schemas.BacktestResultSummaryForCard(
-                    total_return_pct=total_return, win_rate_pct=win_rate
+                    totalReturnPct=total_return, 
+                    winRatePct=win_rate,
+                    mddPct=mdd,
+                    sharpeRatio=sharpe,
+                    profitFactor=profit,
+                    sortinoRatio=sortino
                 )
             strategies_with_summary.append(strategy)
         

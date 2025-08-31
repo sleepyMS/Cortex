@@ -60,6 +60,9 @@ celery_app.conf.task_routes = {
     # 자동매매 봇과 데이터 수집은 'io_bound_queue'로 보냅니다.
     'run_all_active_bots': {'queue': 'io_bound_queue'},
     'fetch_and_store_ohlcv': {'queue': 'io_bound_queue'},
+    'fulfill_order_task': {'queue': 'io_bound_queue'},
+    'dispatch_event': {'queue': 'io_bound_queue'},
+    'send_order_notification_task': {'queue': 'io_bound_queue'},
 }
 
 # --- 4. 기타 설정 ---

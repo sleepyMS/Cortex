@@ -390,4 +390,89 @@ class OHLCV1h(Base):
     low = Column(Float, nullable=False)
     close = Column(Float, nullable=False)
     volume = Column(Float, nullable=False)
-    
+
+# file: backend/app/models.py (파일 하단에 추가)
+
+# ==============================================================================
+# 6. 마켓플레이스 및 인벤토리 관련 모델 (신규 추가)
+# ==============================================================================
+
+class ProductType(str, enum.Enum):
+    STRATEGY = "STRATEGY"
+    SHOP_ITEM = "SHOP_ITEM"
+
+class InventoryType(str, enum.Enum):
+    UNLOCK = "UNLOCK"      # 한 번만 구매 가능
+    CONSUMABLE = "CONSUMABLE"  # 여러 번 구매 및 소진 가능
+
+class OrderStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELED = "CANCELED"
+
+class ShopItemDetail(Base):
+    """상점 아이템의 고유 속성(메타데이터)을 저장하는 테이블"""
+    __tablename__ = "shop_item_details"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    item_type = Column(String, unique=True, nullable=False, comment="e.g., OPTIMIZATION_COUPON")
+    display_properties = Column(JSON, nullable=False, comment="icon, tier, stats for UI")
+
+class MarketplaceProduct(Base):
+    """모든 판매 상품(전략, 아이템)의 통합 모델"""
+    __tablename__ = "marketplace_products"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    price = Column(Float, nullable=False)
+    product_type = Column(Enum(ProductType), nullable=False, index=True)
+    inventory_type = Column(Enum(InventoryType), nullable=False)
+    linked_resource_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="strategies.id or shop_item_details.id")
+    seller_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    metadata_ = Column("metadata", JSON, default={}) # 카테고리, 포지션 타입 등 저장
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class MarketplaceOrder(Base):
+    """결제 요청 단위인 '주문' 모델"""
+    __tablename__ = "marketplace_orders"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    buyer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    total_amount = Column(Float, nullable=False)
+    status = Column(Enum(OrderStatus), default=OrderStatus.PENDING, index=True)
+    payment_gateway = Column(String, nullable=True)
+    gateway_transaction_id = Column(String, unique=True, index=True, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    items = relationship("MarketplaceOrderItem", back_populates="order", cascade="all, delete-orphan")
+
+class MarketplaceOrderItem(Base):
+    """주문에 포함된 개별 상품 항목 모델"""
+    __tablename__ = "marketplace_order_items"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_orders.id"), nullable=False)
+    product_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_products.id"), nullable=False)
+    quantity = Column(Integer, default=1)
+    price_at_purchase = Column(Float, nullable=False)
+    order = relationship("MarketplaceOrder", back_populates="items")
+
+class UserPurchasedStrategy(Base):
+    """사용자가 구매한 전략의 '소유권' 모델"""
+    __tablename__ = "user_purchased_strategies"
+    __table_args__ = (UniqueConstraint('user_id', 'strategy_id', name='_user_strategy_uc'),)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False, index=True)
+    order_item_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_order_items.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+class UserInventory(Base):
+    """사용자가 보유한 '소모성 아이템' 모델"""
+    __tablename__ = "user_inventory"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    product_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_products.id"), nullable=False)
+    order_item_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_order_items.id"), nullable=False)
+    is_used = Column(Boolean, default=False, index=True)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

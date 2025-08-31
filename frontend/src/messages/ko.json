@@ -537,7 +537,8 @@
     "positionTypeShortOnly": "숏(Short) 전용",
     "positionTypeLongShort": "롱/숏 혼합",
     "platformFee": "플랫폼 수수료 ({fee}%)",
-    "estimatedEarnings": "예상 수령액"
+    "estimatedEarnings": "예상 수령액",
+    "typeMismatchWarning": "선택하신 유형이 자동 분석 결과와 다릅니다. 의도한 선택인지 확인해주세요."
   },
   "RuleBlock": {
     "addIndicatorOrValue": "+ 지표 / 값 추가",
@@ -746,6 +747,7 @@
       "initialCapitalLabel": "초기 자본금",
       "leverageLabel": "레버리지",
       "feePctLabel": "거래 수수료 (%)",
+      "slippagePctLabel": "거래 슬리피지 (%)",
       "trailingStopLabel": "트레일링 스탑 (Trailing Stop)",
       "trailingStopDescription": "이익을 보호하기 위해 손절 라인을 자동으로 조정합니다.",
       "activationPctLabel": "발동 수익률 (%)",
@@ -898,5 +900,19 @@
       "purchaseButton": "구매하기",
       "purchasing": "처리 중..."
     }
+  },
+  "StrategyPerformanceBadges": {
+    "totalReturnLabel": "총수익률",
+    "totalReturnTooltip": "백테스팅 전체 기간의 누적 수익률입니다.",
+    "winRateLabel": "승률",
+    "winRateTooltip": "전체 거래 중 수익을 낸 거래의 비율입니다.",
+    "mddLabel": "최대 낙폭 (MDD)",
+    "mddTooltip": "자산 최고점 대비 가장 큰 하락률입니다. 낮을수록 안정적입니다.",
+    "sharpeLabel": "샤프 지수",
+    "sharpeTooltip": "변동성(위험) 대비 초과수익의 정도를 나타냅니다. 높을수록 효율적인 투자를 의미합니다.",
+    "profitFactorLabel": "수익비",
+    "profitFactorTooltip": "총 수익을 총 손실로 나눈 값입니다. 1.0 이상이어야 수익성이 있습니다.",
+    "sortinoLabel": "소르티노 지수",
+    "sortinoTooltip": "하락 위험(음의 변동성) 대비 초과수익을 측정합니다. 샤프 지수보다 정교한 위험 조정 지표입니다."
   }
 }

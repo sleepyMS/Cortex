@@ -106,7 +106,6 @@ class BacktestService:
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
 
-        # ▼▼▼ [핵심 수정] 'parameters' 객체를 명시적으로 구성합니다. ▼▼▼
         # 3-1. 저장할 파라미터 객체를 'BacktestParametersPayload' 스키마로 생성합니다.
         params_to_store = schemas.BacktestParametersPayload(
             start_date=backtest_create.start_date,
@@ -123,12 +122,11 @@ class BacktestService:
             parameters=params_to_store.model_dump(mode='json'),
             strategy_snapshot=strategy_snapshot_dict
         )
-        # ▲▲▲ [수정 완료] ▲▲▲
         
         db.add(db_backtest)
         await db.flush()
         
-        # 4. Celery 태스크 전송 및 Task ID 저장 (기존과 동일)
+        # 4. Celery 태스크 전송 및 Task ID 저장 
         try:
             # countdown=1 보다 tasks.py 내부의 재시도 로직이 더 효율적입니다.
             async_result = run_backtest.delay(backtest_id=str(db_backtest.id))

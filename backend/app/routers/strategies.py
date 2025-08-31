@@ -7,22 +7,19 @@ from typing import List, Optional
 import uuid
 
 from .. import schemas, models, security
-# ▼▼▼ [수정] 비동기 의존성 및 팩토리 함수, 서비스 임포트 정리 ▼▼▼
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.strategy_service import strategy_service
-from ..services.market_data_service import market_data_service
+from ..services.marketplace_service import marketplace_service
 from ..services.signal_service import signal_service
 from ..limiter import limiter
-# ▲▲▲ [수정] ▲▲▲
+from ..schemas import StrategyListPayload 
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/strategies", tags=["Strategies"])
 
-# ▼▼▼ [추가] 라우터 파일 내에서 필요한 의존성을 직접 생성 ▼▼▼
 # Strategy 모델은 소유자 필드가 'author_id'이므로 명시해줍니다.
 get_verified_strategy = create_owner_verifier(models.Strategy, owner_field="author_id")
-# ▲▲▲ [추가] ▲▲▲
 
 
 # --- 전략 CRUD 엔드포인트 ---
@@ -59,20 +56,15 @@ async def get_strategies(
     limit: int = Query(100, ge=1, le=1000),
     search_query: Optional[str] = Query(None, description="Search by strategy name"),
     sort_by: Optional[str] = Query(None, description="Sort order (e.g., 'updated_at_desc', 'name_asc')"),
-    is_public_filter: Optional[str] = Query(None, description="Filter by public status ('true' or 'false')"),
+    is_public_filter: Optional[bool] = Query(None, description="Filter by public status"),
     indicator_filter: Optional[str] = Query(None, description="Filter by key indicator (e.g., 'RSI', 'MACD')")
 ):
     """현재 로그인된 사용자의 저장된 전략 목록을 비동기로 조회합니다."""
-    is_public_filter_bool: Optional[bool] = None
-    if is_public_filter == "true":
-        is_public_filter_bool = True
-    elif is_public_filter == "false":
-        is_public_filter_bool = False
-
+    
     strategies = await strategy_service.get_strategies(
         db, user_id=current_user.id, skip=skip, limit=limit,
         search_query=search_query, sort_by=sort_by,
-        is_public_filter=is_public_filter_bool, indicator_filter=indicator_filter
+        is_public_filter=is_public_filter, indicator_filter=indicator_filter
     )
     logger.info(f"User {current_user.email} fetched {len(strategies)} strategies.")
     return strategies
@@ -123,6 +115,36 @@ async def delete_strategy(
         await db.rollback()
         logger.error(f"Error deleting strategy {strategy_to_delete.id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 삭제 중 서버 오류가 발생했습니다.")
+    
+@router.post("/{strategy_id}/list", response_model=schemas.StrategyProduct, status_code=status.HTTP_201_CREATED, summary="List a strategy on the marketplace")
+async def list_strategy_on_marketplace(
+    payload: StrategyListPayload,
+    strategy_to_list: models.Strategy = Depends(get_verified_strategy), # 소유권 자동 검증
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    사용자의 특정 전략을 마켓플레이스에 상품으로 등록하거나 업데이트합니다.
+    """
+    try:
+        # marketplace_service에 실제 로직을 위임
+        product = await marketplace_service.list_strategy_as_product(
+            db=db, 
+            strategy=strategy_to_list, 
+            listing_data=payload,
+            seller=current_user
+        )
+        await db.commit()
+        logger.info(f"Strategy '{strategy_to_list.name}' listed on marketplace by user {current_user.email}.")
+        return product
+    except HTTPException as e:
+        await db.rollback()
+        raise e
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error listing strategy {strategy_to_list.id} for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략을 마켓에 등록하는 중 오류가 발생했습니다.")
+
 
 
 # --- 전략 분석 관련 엔드포인트 ---

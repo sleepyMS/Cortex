@@ -73,6 +73,7 @@ const formSchema = z
     initialCapital: z.coerce.number().min(1),
     leverage: z.coerce.number().min(1).max(125),
     feePct: z.coerce.number().min(0).max(1),
+    slippagePct: z.coerce.number().min(0).max(1),
     overrides: z.array(parameterOverrideSchema).optional(),
     trailingStopEnabled: z.boolean().default(false),
     trailingStopActivationPct: z.coerce.number().min(0).optional(),
@@ -108,7 +109,8 @@ export function BacktestSetupForm() {
     defaultValues: {
       initialCapital: 10000,
       leverage: 1,
-      feePct: 0.04,
+      feePct: 0.05,
+      slippagePct: 0.01,
       dateRange: {
         from: startOfDay(addDays(new Date(), -365)),
         to: startOfDay(new Date()),
@@ -207,6 +209,7 @@ export function BacktestSetupForm() {
         parameters: {
           leverage: data.leverage,
           fee: data.feePct,
+          slippage: data.slippagePct,
           overrides: data.overrides,
         },
       };
@@ -330,7 +333,7 @@ export function BacktestSetupForm() {
                         </FormItem>
                       )}
                     />
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       <FormField
                         control={methods.control}
                         name="initialCapital"
@@ -373,7 +376,27 @@ export function BacktestSetupForm() {
                               <Input
                                 type="number"
                                 step="0.01"
-                                placeholder="0.04"
+                                placeholder="0.05"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={methods.control}
+                        name="slippagePct"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t("standard.slippagePctLabel")}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.01"
                                 {...field}
                               />
                             </FormControl>
