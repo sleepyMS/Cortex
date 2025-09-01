@@ -304,12 +304,12 @@ class StrategyUpdate(CamelCaseModel):
         return value
 
 class BacktestResultSummaryForCard(CamelCaseModel):
-    totalReturnPct: Optional[float] = None
-    winRatePct: Optional[float] = None
-    mddPct: Optional[float] = None
-    sharpeRatio: Optional[float] = None
-    profitFactor: Optional[float] = None
-    sortinoRatio: Optional[float] = None
+    total_return_pct: Optional[float] = None
+    win_rate_pct: Optional[float] = None
+    mdd_pct: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    profit_factor: Optional[float] = None
+    sortino_ratio: Optional[float] = None
 
 class Strategy(CamelCaseModel):
     id: uuid.UUID

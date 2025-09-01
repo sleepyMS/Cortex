@@ -6,11 +6,9 @@ import logging
 from typing import List, Optional
 import uuid
 
-# ▼▼▼ [수정] 비동기 의존성 및 서비스 임포트 정리 ▼▼▼
 from .. import schemas, models, security
 from ..dependencies import get_current_user, get_async_db, get_current_active_user, get_current_admin_user
 from ..services.user_service import user_service
-# ▲▲▲ [수정] ▲▲▲
 
 logger = logging.getLogger(__name__)
 
@@ -152,3 +150,33 @@ async def delete_user_by_id(
     await db.commit()
     logger.info(f"Admin {current_admin_user.email} deleted user ID: {user_id}.")
     return
+
+# --- 현재 사용자 자산 조회 엔드포인트 ---
+
+@router.get(
+    "/me/inventory",
+    response_model=List[schemas.UserInventoryItemResponse],
+    summary="Get current user's inventory items"
+)
+async def get_my_inventory(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """현재 로그인된 사용자가 보유한 모든 아이템(쿠폰 등) 목록을 조회합니다."""
+    inventory_items = await user_service.get_user_inventory(db, current_user.id)
+    # Pydantic이 자동으로 SQLAlchemy 모델을 응답 스키마로 변환해줍니다.
+    return inventory_items
+
+
+@router.get(
+    "/me/purchased-strategies",
+    response_model=List[schemas.UserPurchasedStrategyResponse],
+    summary="Get strategies purchased by the current user"
+)
+async def get_my_purchased_strategies(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """현재 로그인된 사용자가 마켓플레이스에서 구매한 모든 전략 목록을 조회합니다."""
+    purchased_strategies = await user_service.get_purchased_strategies(db, current_user.id)
+    return purchased_strategies

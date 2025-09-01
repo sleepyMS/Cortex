@@ -178,12 +178,12 @@ class StrategyService:
             if total_return is not None:
                 # API 응답 시에는 camelCase를 사용합니다.
                 strategy.latest_backtest_summary = schemas.BacktestResultSummaryForCard(
-                    totalReturnPct=total_return, 
-                    winRatePct=win_rate,
-                    mddPct=mdd,
-                    sharpeRatio=sharpe,
-                    profitFactor=profit,
-                    sortinoRatio=sortino
+                    total_return_pct=total_return, 
+                    win_rate_pct=win_rate,
+                    mdd_pct=mdd,
+                    sharpe_ratio=sharpe,
+                    profit_factor=profit,
+                    sortino_ratio=sortino
                 )
             strategies_with_summary.append(strategy)
         

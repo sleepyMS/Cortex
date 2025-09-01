@@ -148,6 +148,7 @@ class Strategy(Base):
     author = relationship("User", back_populates="strategies")
     backtests = relationship("Backtest", back_populates="strategy", cascade="all, delete-orphan")
     live_bots = relationship("LiveBot", back_populates="strategy", cascade="all, delete-orphan")
+    purchases = relationship("UserPurchasedStrategy", back_populates="strategy")
 
 class Backtest(Base):
     """백테스팅 실행 기록 모델"""
@@ -434,6 +435,11 @@ class MarketplaceProduct(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    seller = relationship("User")
+    shop_item_detail = relationship("ShopItemDetail", 
+                                  primaryjoin="and_(MarketplaceProduct.linked_resource_id==foreign(ShopItemDetail.id), MarketplaceProduct.product_type=='SHOP_ITEM')",
+                                  uselist=False, lazy="joined")
+
 class MarketplaceOrder(Base):
     """결제 요청 단위인 '주문' 모델"""
     __tablename__ = "marketplace_orders"
@@ -444,7 +450,10 @@ class MarketplaceOrder(Base):
     payment_gateway = Column(String, nullable=True)
     gateway_transaction_id = Column(String, unique=True, index=True, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    buyer = relationship("User")
     items = relationship("MarketplaceOrderItem", back_populates="order", cascade="all, delete-orphan")
+
 
 class MarketplaceOrderItem(Base):
     """주문에 포함된 개별 상품 항목 모델"""
@@ -454,7 +463,9 @@ class MarketplaceOrderItem(Base):
     product_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_products.id"), nullable=False)
     quantity = Column(Integer, default=1)
     price_at_purchase = Column(Float, nullable=False)
+
     order = relationship("MarketplaceOrder", back_populates="items")
+    product = relationship("MarketplaceProduct")
 
 class UserPurchasedStrategy(Base):
     """사용자가 구매한 전략의 '소유권' 모델"""
@@ -466,6 +477,10 @@ class UserPurchasedStrategy(Base):
     order_item_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_order_items.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+    user = relationship("User")
+    strategy = relationship("Strategy")
+    order_item = relationship("MarketplaceOrderItem")
+
 class UserInventory(Base):
     """사용자가 보유한 '소모성 아이템' 모델"""
     __tablename__ = "user_inventory"
@@ -476,3 +491,8 @@ class UserInventory(Base):
     is_used = Column(Boolean, default=False, index=True)
     used_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+    product = relationship("MarketplaceProduct")
+    order_item = relationship("MarketplaceOrderItem")
+

@@ -274,5 +274,71 @@ class UserService:
             return username
         base_username = username[:90] if len(username) > 90 else username
         return f"{base_username}_{secrets.token_hex(4)}"
+    
+    async def get_user_inventory(self, db: AsyncSession, user_id: uuid.UUID) -> List[schemas.UserInventoryItemResponse]:
+        """[수정] DB 모델을 조회한 후, API 응답 스키마에 맞게 수동으로 데이터를 조립하여 반환합니다."""
+        query = (
+            select(models.UserInventory)
+            .options(
+                # Product와 그 판매자 정보, 그리고 ShopItemDetail 정보까지 한번에 로드
+                joinedload(models.UserInventory.product)
+                    .joinedload(models.MarketplaceProduct.seller),
+                joinedload(models.UserInventory.product)
+                    .joinedload(models.MarketplaceProduct.shop_item_detail) # ShopItemDetail 모델 관계 추가 필요
+            )
+            .filter(models.UserInventory.user_id == user_id)
+            .order_by(models.UserInventory.created_at.desc())
+        )
+        result = await db.execute(query)
+        inventory_models = result.scalars().unique().all()
 
+        # DB 모델 객체 리스트를 Pydantic 스키마 객체 리스트로 변환
+        response_items = []
+        for item in inventory_models:
+            if not item.product: continue # 데이터 무결성 체크
+
+            response_items.append(schemas.UserInventoryItemResponse(
+                instance_id=item.id,
+                product_id=item.product_id,
+                name=item.product.name,
+                description=item.product.description,
+                display_properties=item.product.shop_item_detail.display_properties if item.product.shop_item_detail else {},
+                quantity=item.quantity, # UserInventory 모델에 quantity가 있어야 함
+                purchased_at=item.created_at,
+                is_used=item.is_used,
+                used_at=item.used_at
+            ))
+        return response_items
+
+    async def get_purchased_strategies(self, db: AsyncSession, user_id: uuid.UUID) -> List[schemas.UserPurchasedStrategyResponse]:
+        """[수정] DB 모델을 조회한 후, API 응답 스키마에 맞게 수동으로 데이터를 조립하여 반환합니다."""
+        query = (
+            select(models.UserPurchasedStrategy)
+            .options(
+                # Strategy와 그 author 정보까지 한번에 로드
+                joinedload(models.UserPurchasedStrategy.strategy)
+                    .joinedload(models.Strategy.author),
+                # 구매 시점의 가격 정보를 위해 OrderItem -> Product 관계 로드
+                joinedload(models.UserPurchasedStrategy.order_item)
+                    .joinedload(models.MarketplaceOrderItem.product)
+            )
+            .filter(models.UserPurchasedStrategy.user_id == user_id)
+            .order_by(models.UserPurchasedStrategy.created_at.desc())
+        )
+        result = await db.execute(query)
+        purchased_models = result.scalars().unique().all()
+
+        response_items = []
+        for purchase in purchased_models:
+            if not purchase.strategy or not purchase.strategy.author or not purchase.order_item: continue
+
+            response_items.append(schemas.UserPurchasedStrategyResponse(
+                purchase_id=purchase.id,
+                strategy_id=purchase.strategy_id,
+                name=purchase.strategy.name,
+                author_username=purchase.strategy.author.username,
+                price_paid=purchase.order_item.price_at_purchase,
+                purchased_at=purchase.created_at
+            ))
+        return response_items
 user_service = UserService()

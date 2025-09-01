@@ -16,7 +16,7 @@ from app.limiter import limiter
 from app.services.plan_service import plan_service
 from app.routers import (
     auth, users, backtests, strategies, api_keys,
-    plans, subscriptions, live_bots, community, admin, market_data, websockets, indicators, webhook
+    plans, subscriptions, live_bots, community, admin, market_data, marketplace, websockets, indicators, webhook
 )
 
 # .env 파일 로드
@@ -90,6 +90,7 @@ app.include_router(api_keys.router, prefix=API_PREFIX, tags=["API Keys"])
 app.include_router(plans.router, prefix=API_PREFIX, tags=["Subscription Plans"])
 app.include_router(subscriptions.router, prefix=API_PREFIX, tags=["Subscriptions"])
 app.include_router(market_data.router, prefix=API_PREFIX, tags=["Market Data"])
+app.include_router(marketplace.router, prefix=API_PREFIX, tags=["Marketplace"])
 app.include_router(community.router, prefix=API_PREFIX, tags=["Community"])
 app.include_router(admin.router, prefix=API_PREFIX, tags=["Admin"])
 app.include_router(websockets.router, prefix=API_PREFIX, tags=["WebSocket"])

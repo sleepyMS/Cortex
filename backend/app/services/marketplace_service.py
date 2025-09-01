@@ -70,9 +70,9 @@ class MarketplaceService:
         total_items = await db.scalar(count_query) or 0
         
         # 정렬 로직
-        if filters.sortBy == "price_asc": query = query.order_by(asc(models.MarketplaceProduct.price))
-        elif filters.sortBy == "price_desc": query = query.order_by(desc(models.MarketplaceProduct.price))
-        elif filters.sortBy == "totalReturnPct_desc" and filters.product_type == models.ProductType.STRATEGY:
+        if filters.sort_by == "price_asc": query = query.order_by(asc(models.MarketplaceProduct.price))
+        elif filters.sort_by == "price_desc": query = query.order_by(desc(models.MarketplaceProduct.price))
+        elif filters.sort_by == "totalReturnPct_desc" and filters.product_type == models.ProductType.STRATEGY:
             query = query.order_by(desc(latest_backtest_subquery.c.total_return_pct).nullslast())
         else: query = query.order_by(desc(models.MarketplaceProduct.created_at))
 
@@ -87,7 +87,7 @@ class MarketplaceService:
             for product, username, total_return, mdd, win_rate in db_results:
                 product.author = schemas.ProductAuthor(username=username)
                 product.latest_backtest_summary = schemas.BacktestResultSummaryForCard(
-                    totalReturnPct=total_return, mddPct=mdd, winRatePct=win_rate
+                    total_return_pct=total_return, mdd_pct=mdd, win_rate_pct=win_rate
                 )
                 products_response.append(schemas.StrategyProduct.model_validate(product))
         else: # SHOP_ITEM
@@ -233,12 +233,12 @@ class MarketplaceService:
 
         # Pydantic 스키마를 사용하여 명확한 객체로 변환
         return schemas.BacktestResultSummaryForCard(
-            totalReturnPct=summary_data.total_return_pct,
-            winRatePct=summary_data.win_rate_pct,
-            mddPct=summary_data.mdd_pct,
-            sharpeRatio=summary_data.sharpe_ratio,
-            profitFactor=summary_data.profit_factor,
-            sortinoRatio=summary_data.sortino_ratio
+            total_return_pct=summary_data.total_return_pct,
+            win_rate_pct=summary_data.win_rate_pct,
+            mdd_pct=summary_data.mdd_pct,
+            sharpe_ratio=summary_data.sharpe_ratio,
+            profit_factor=summary_data.profit_factor,
+            sortino_ratio=summary_data.sortino_ratio
         )
     
     async def get_strategy_product_detail(self, db: AsyncSession, product: models.MarketplaceProduct) -> schemas.StrategyProductDetail:
