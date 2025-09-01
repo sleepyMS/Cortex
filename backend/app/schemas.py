@@ -618,9 +618,6 @@ class StrategyProductDetail(StrategyProduct):
     전략 상품의 모든 상세 정보를 포함하는 스키마.
     (전략 규칙, 상세 백테스트 결과 등)
     """
-    # [변경] from_attributes(구 orm_mode)가 True여야 relationship 필드를 자동으로 변환합니다.
-    model_config = ConfigDict(from_attributes=True)
-
     # Strategy 모델 전체를 포함하여 프론트엔드가 필요한 모든 규칙 정보를 제공
     strategy_details: Strategy 
     
@@ -630,9 +627,7 @@ class StrategyProductDetail(StrategyProduct):
 class ShopItemProductDetail(ShopItemProduct):
     """
     상점 아이템의 모든 상세 정보를 포함하는 스키마.
-    """
-    model_config = ConfigDict(from_attributes=True)
-    
+    """    
     # display_properties는 이미 ShopItemProduct에 포함되어 있으므로
     # 추가적으로 필요한 상세 정보가 있다면 여기에 필드를 정의합니다.
     # 예: "how_to_use": "최적화 페이지에서 쿠폰을 선택하여 사용하세요."
