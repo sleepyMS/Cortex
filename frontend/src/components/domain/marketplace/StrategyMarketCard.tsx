@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
 
 /**
  * StrategyMarketCard 컴포넌트에 전달될 props 타입 정의
@@ -73,7 +74,20 @@ export const StrategyMarketCard = ({
   isPurchasing,
 }: StrategyMarketCardProps) => {
   const t = useTranslations("Marketplace.strategyMarketCard");
-  const { summaryMetrics: metrics } = strategy;
+  // ▼▼▼ [핵심 수정] ▼▼▼
+  // strategy 객체에서 summaryMetrics 대신 올바른 이름인 latestBacktestSummary를 사용합니다.
+  // 이 값을 metrics 라는 변수 이름으로 사용합니다.
+  const { latestBacktestSummary: metrics } = strategy;
+
+  // ▼▼▼ [핵심 수정] ▼▼▼
+  // metrics 변수가 null일 경우, 모든 값이 0인 기본 객체를 사용합니다.
+  // Null 병합 연산자(??)는 왼쪽 값이 null 또는 undefined일 때 오른쪽 값을 반환합니다.
+  const displayMetrics = metrics ?? {
+    totalReturnPct: 0,
+    mddPct: 0,
+    winRatePct: 0,
+  };
+  // ▲▲▲ [핵심 수정] ▲▲▲
 
   /**
    * isOwned와 isPurchasing 상태에 따라 올바른 구매 버튼을 렌더링하는 함수
@@ -110,34 +124,45 @@ export const StrategyMarketCard = ({
         aria-label={`${strategy.name} 상세 정보 보기`}
       >
         <CardHeader>
-          <CardDescription className="font-medium text-primary">
-            {t("authorPrefix")} {strategy.author.username}
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <CardDescription className="font-medium text-primary">
+              {t("authorPrefix")} {strategy.author.username}
+            </CardDescription>
+            {strategy.productMetadata?.category && (
+              <Badge variant="outline">
+                {strategy.productMetadata.category}
+              </Badge>
+            )}
+          </div>
           <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
             {strategy.name}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-grow items-center justify-around text-center py-6">
           <StatItem
-            Icon={metrics.totalReturnPct >= 0 ? ArrowUpRight : ArrowDownRight}
+            Icon={
+              displayMetrics.totalReturnPct >= 0 ? ArrowUpRight : ArrowDownRight
+            }
             label={t("totalReturn")}
-            value={metrics.totalReturnPct}
+            value={displayMetrics.totalReturnPct}
             unit="%"
             colorClass={
-              metrics.totalReturnPct >= 0 ? "text-emerald-500" : "text-rose-500"
+              displayMetrics.totalReturnPct >= 0
+                ? "text-emerald-500"
+                : "text-rose-500"
             }
           />
           <StatItem
             Icon={ArrowDownRight}
             label={t("mdd")}
-            value={metrics.mddPct}
+            value={displayMetrics.mddPct}
             unit="%"
             colorClass="text-amber-600"
           />
           <StatItem
             Icon={Target}
             label={t("winRate")}
-            value={metrics.winRatePct}
+            value={displayMetrics.winRatePct}
             unit="%"
             colorClass="text-sky-500"
           />

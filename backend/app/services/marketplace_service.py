@@ -23,10 +23,9 @@ class MarketplaceService:
         self, db: AsyncSession, filters: schemas.ProductFilters
     ) -> Dict[str, Any]:
         """필터와 페이지네이션을 적용하여 상품 목록을 조회합니다."""
-        
-        # 전략(STRATEGY)과 아이템(SHOP_ITEM)에 따라 쿼리 구성이 달라집니다.
+
         if filters.product_type == models.ProductType.STRATEGY:
-            # --- 전략 상품 조회 로직 ---
+            # --- 1. 전략 상품 조회 로직 ---
             latest_backtest_subquery = (
                 select(
                     models.Backtest.strategy_id,
@@ -46,50 +45,101 @@ class MarketplaceService:
                 .subquery('latest_backtest')
             )
             
-            query = select(models.MarketplaceProduct, models.User.username, latest_backtest_subquery.c.total_return_pct, latest_backtest_subquery.c.mdd_pct, latest_backtest_subquery.c.win_rate_pct)\
-                .join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
-                .outerjoin(latest_backtest_subquery, 
-                    (models.MarketplaceProduct.linked_resource_id == latest_backtest_subquery.c.strategy_id) & (latest_backtest_subquery.c.row_num == 1))\
-                .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.STRATEGY)
+            # [핵심 개선] SELECT 구문에 모든 성과 지표 컬럼을 포함시킵니다.
+            query = select(
+                models.MarketplaceProduct,
+                models.User.username,
+                models.BacktestResult.total_return_pct,
+                models.BacktestResult.mdd_pct,
+                models.BacktestResult.win_rate_pct,
+                models.BacktestResult.profit_factor,
+                models.BacktestResult.sharpe_ratio,
+                models.BacktestResult.sortino_ratio,
+            ).join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
+             .outerjoin(
+                models.Backtest, 
+                models.MarketplaceProduct.representative_backtest_id == models.Backtest.id
+             ).outerjoin(
+                models.BacktestResult,
+                models.Backtest.id == models.BacktestResult.backtest_id
+             ).filter(
+                models.MarketplaceProduct.is_active == True,
+                models.MarketplaceProduct.product_type == models.ProductType.STRATEGY
+             )
 
         else: # models.ProductType.SHOP_ITEM
-            # --- 상점 아이템 조회 로직 ---
-            query = select(models.MarketplaceProduct, models.User.username, models.ShopItemDetail.display_properties)\
-                .join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
-                .join(models.ShopItemDetail, models.MarketplaceProduct.linked_resource_id == models.ShopItemDetail.id)\
-                .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.SHOP_ITEM)
+            # --- 2. 상점 아이템 조회 로직 ---
+            query = select(
+                models.MarketplaceProduct, 
+                models.User.username, 
+                models.ShopItemDetail.display_properties
+            ).join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
+             .join(models.ShopItemDetail, models.MarketplaceProduct.linked_resource_id == models.ShopItemDetail.id)\
+             .filter(
+                models.MarketplaceProduct.is_active == True,
+                models.MarketplaceProduct.product_type == models.ProductType.SHOP_ITEM
+             )
 
-        # 공통 필터 적용
+        # --- 3. 공통 필터 및 페이지네이션 로직 ---
         if filters.search_term:
             query = query.filter(models.MarketplaceProduct.name.ilike(f"%{filters.search_term}%"))
         if filters.categories:
-            query = query.filter(models.MarketplaceProduct.metadata_['category'].astext.in_(filters.categories))
+            query = query.filter(models.MarketplaceProduct.product_metadata['category'].astext.in_(filters.categories))
 
-        # 총 아이템 개수 계산
         count_query = select(func.count()).select_from(query.alias())
         total_items = await db.scalar(count_query) or 0
         
-        # 정렬 로직
-        if filters.sort_by == "price_asc": query = query.order_by(asc(models.MarketplaceProduct.price))
-        elif filters.sort_by == "price_desc": query = query.order_by(desc(models.MarketplaceProduct.price))
+        if filters.sort_by == "price_asc":
+            query = query.order_by(asc(models.MarketplaceProduct.price))
+        elif filters.sort_by == "price_desc":
+            query = query.order_by(desc(models.MarketplaceProduct.price))
         elif filters.sort_by == "totalReturnPct_desc" and filters.product_type == models.ProductType.STRATEGY:
             query = query.order_by(desc(latest_backtest_subquery.c.total_return_pct).nullslast())
-        else: query = query.order_by(desc(models.MarketplaceProduct.created_at))
+        else:
+            query = query.order_by(desc(models.MarketplaceProduct.created_at))
 
-        # 페이지네이션 적용
         query = query.offset((filters.page - 1) * filters.limit).limit(filters.limit)
         
         db_results = await db.execute(query)
         
-        # Pydantic 스키마로 변환
+        # --- 4. 최종 응답 데이터 조립 ---
         products_response = []
         if filters.product_type == models.ProductType.STRATEGY:
-            for product, username, total_return, mdd, win_rate in db_results:
-                product.author = schemas.ProductAuthor(username=username)
-                product.latest_backtest_summary = schemas.BacktestResultSummaryForCard(
-                    total_return_pct=total_return, mdd_pct=mdd, win_rate_pct=win_rate
-                )
-                products_response.append(schemas.StrategyProduct.model_validate(product))
+            
+            # [로깅 추가] 디버깅을 위해 DB결과를 리스트로 변환
+            result_list = list(db_results)
+            logger.warning(f"Found {len(result_list)} strategy products in DB.")
+
+            for db_result_tuple in result_list:
+                # [로깅 추가] 데이터베이스에서 반환된 RAW TUPLE 전체를 출력
+                logger.warning(f"DB RAW RESULT TUPLE: {db_result_tuple}")
+
+                (product, username, total_return, mdd, win_rate, 
+                 profit_factor, sharpe_ratio, sortino_ratio) = db_result_tuple
+                
+                # [로깅 추가] 가장 중요한 total_return 값을 명시적으로 확인
+                logger.warning(f"EXTRACTED total_return FOR PRODUCT '{product.name}': {total_return}")
+
+                summary_data = None
+                if total_return is not None:
+                    summary_data = schemas.BacktestResultSummaryForCard(
+                        total_return_pct=total_return,
+                        mdd_pct=mdd,
+                        win_rate_pct=win_rate,
+                        profit_factor=profit_factor,
+                        sharpe_ratio=sharpe_ratio,
+                        sortino_ratio=sortino_ratio
+                    )
+                
+                # [로깅 추가] 조건문 이후 생성된 summary_data 객체를 확인
+                logger.warning(f"CREATED summary_data FOR PRODUCT '{product.name}': {summary_data}")
+
+                data_to_validate = product.__dict__
+                data_to_validate['author'] = schemas.ProductAuthor(username=username)
+                data_to_validate['latest_backtest_summary'] = summary_data
+                
+                validated_product = schemas.StrategyProduct.model_validate(data_to_validate, from_attributes=True)
+                products_response.append(validated_product)
         else: # SHOP_ITEM
             for product, username, display_properties in db_results:
                 product.author = schemas.ProductAuthor(username=username)
@@ -118,7 +168,8 @@ class MarketplaceService:
         if existing_product:
             existing_product.price = listing_data.price
             existing_product.description = listing_data.description
-            existing_product.metadata_ = metadata
+            existing_product.product_metadata = metadata
+            existing_product.representative_backtest_id = listing_data.representative_backtest_id
             existing_product.is_active = True
             product = existing_product
         else:
@@ -126,10 +177,19 @@ class MarketplaceService:
                 name=strategy.name, description=listing_data.description or strategy.description,
                 price=listing_data.price, product_type=models.ProductType.STRATEGY,
                 inventory_type=models.InventoryType.UNLOCK, linked_resource_id=strategy.id,
-                seller_id=seller.id, metadata_=metadata
+                seller_id=seller.id, product_metadata=metadata,
+                representative_backtest_id=listing_data.representative_backtest_id
             )
             db.add(product)
+
         await db.flush()
+
+        # ▼▼▼ [로깅 추가] ▼▼▼
+        # 서비스에서 반환 직전의 SQLAlchemy 객체 상태를 확인합니다.
+        # __dict__ 를 통해 객체의 내부 속성들을 모두 출력합니다.
+        logger.info(f"[MarketplaceService] 반환 직전 Product 객체 속성: {product.__dict__}")
+        # ▲▲▲ [로깅 추가] ▲▲▲
+        
         return product
 
     async def create_order(self, db: AsyncSession, payload: schemas.OrderCreate, buyer: models.User) -> models.MarketplaceOrder:
@@ -196,10 +256,6 @@ class MarketplaceService:
     async def _get_latest_backtest_summary(
         self, db: AsyncSession, strategy_id: uuid.UUID
     ) -> Optional[schemas.BacktestResultSummaryForCard]:
-        """
-        특정 전략 ID에 대한 가장 최근의 '완료된' 백테스트 요약 정보를 조회합니다.
-        (StrategyService의 기능을 직접 호출하는 대신, 독립성을 위해 자체적으로 구현)
-        """
         latest_backtest_subquery = (
             select(
                 models.Backtest.id.label("backtest_id")
@@ -215,6 +271,7 @@ class MarketplaceService:
 
         query = (
             select(
+                latest_backtest_subquery.c.backtest_id,
                 models.BacktestResult.total_return_pct,
                 models.BacktestResult.win_rate_pct,
                 models.BacktestResult.mdd_pct,
@@ -226,13 +283,13 @@ class MarketplaceService:
         )
 
         result = await db.execute(query)
-        summary_data = result.first() # .first()는 튜플을 반환하거나 결과가 없으면 None을 반환
+        summary_data = result.first()
 
         if not summary_data:
             return None
 
-        # Pydantic 스키마를 사용하여 명확한 객체로 변환
         return schemas.BacktestResultSummaryForCard(
+            backtest_id=summary_data.backtest_id,
             total_return_pct=summary_data.total_return_pct,
             win_rate_pct=summary_data.win_rate_pct,
             mdd_pct=summary_data.mdd_pct,
@@ -285,6 +342,29 @@ class MarketplaceService:
                 'representative_backtest': representative_backtest_model,
             }
         )
+    
+    async def unlist_strategy_product(self, db: AsyncSession, strategy: models.Strategy):
+        """전략 ID에 연결된 마켓플레이스 상품을 찾아 비활성화합니다."""
+        product = await db.scalar(
+            select(models.MarketplaceProduct)
+            .filter(models.MarketplaceProduct.linked_resource_id == strategy.id)
+        )
+        if not product:
+            raise HTTPException(status_code=404, detail="마켓플레이스에 등록된 상품을 찾을 수 없습니다.")
+        
+        product.is_active = False
+        await db.flush()
+
+    async def check_strategy_purchase(
+        self, db: AsyncSession, user_id: uuid.UUID, strategy_id: uuid.UUID
+    ) -> bool:
+        """사용자가 특정 전략을 구매했는지 여부를 확인합니다."""
+        query = select(models.UserPurchasedStrategy).filter_by(
+            user_id=user_id, 
+            strategy_id=strategy_id
+        )
+        result = await db.execute(select(query.exists()))
+        return result.scalar_one()
 
 # 서비스 인스턴스 생성
 marketplace_service = MarketplaceService()

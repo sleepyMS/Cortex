@@ -2,7 +2,7 @@
 
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import func, select, cast, String, or_
 from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional, Union
@@ -106,8 +106,17 @@ class StrategyService:
         return result.scalar_one_or_none()
 
     async def get_strategy_by_id_with_author(self, db: AsyncSession, strategy_id: uuid.UUID) -> Optional[models.Strategy]:
-        """ID로 단일 전략을 조회하며, 작성자(author) 정보도 함께 로드합니다."""
-        query = select(models.Strategy).options(joinedload(models.Strategy.author)).filter(models.Strategy.id == strategy_id)
+        """ID로 단일 전략을 조회하며, 작성자와 모든 백테스트 이력도 함께 로드합니다."""
+        query = (
+            select(models.Strategy)
+            .options(
+                joinedload(models.Strategy.author),
+                # Strategy 모델의 'backtests' 관계를 함께 로드하도록 지정합니다.
+                # selectinload는 N+1 문제를 방지하는 효율적인 로딩 방식입니다.
+                selectinload(models.Strategy.backtests)
+            )
+            .filter(models.Strategy.id == strategy_id)
+        )
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
@@ -149,6 +158,9 @@ class StrategyService:
             latest_backtest_subquery.c.sharpe_ratio,
             latest_backtest_subquery.c.profit_factor,
             latest_backtest_subquery.c.sortino_ratio,
+        ).options(
+            # [핵심 수정] backtests를 로드할 때, 각 backtest의 result 관계도 함께 로드합니다.
+            selectinload(models.Strategy.backtests).joinedload(models.Backtest.result)
         ).outerjoin(
             latest_backtest_subquery,
             (models.Strategy.id == latest_backtest_subquery.c.strategy_id) & (latest_backtest_subquery.c.row_num == 1)

@@ -32,13 +32,16 @@ export const StrategyDetailHeader = ({
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             {strategy.name}
           </h1>
-          {strategy.tags && (
+          {strategy.productMetadata?.category && (
             <div className="flex flex-wrap gap-2 mt-3">
-              {strategy.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))}
+              <Badge variant="secondary" className="text-sm py-1">
+                <Tag className="mr-2 h-4 w-4" />
+                {strategy.productMetadata.category}
+              </Badge>
+              {/* 포지션 타입도 함께 표시하면 더 많은 정보를 제공할 수 있습니다. */}
+              <Badge variant="outline" className="text-sm py-1">
+                {strategy.productMetadata.positionType}
+              </Badge>
             </div>
           )}
         </div>

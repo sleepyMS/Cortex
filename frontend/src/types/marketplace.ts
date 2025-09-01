@@ -3,83 +3,86 @@
 import { Backtest } from "./backtest";
 import { LucideIconName } from "@/lib/iconMap";
 
+// =================================================================
+// [신규] 백엔드의 BaseProduct 스키마에 대응하는 기본 상품 타입
+// 모든 마켓플레이스 상품(전략, 아이템)이 공통으로 가지는 속성을 정의합니다.
+// =================================================================
+export interface BaseProduct {
+  id: string;
+  name: string;
+  price: number;
+  author: {
+    username: string;
+    avatarUrl?: string;
+  };
+  productType: "STRATEGY" | "SHOP_ITEM";
+  inventoryType: "UNLOCK" | "CONSUMABLE";
+  // [핵심] 백엔드에서 camelCase로 변환되어 넘어오는 productMetadata 필드
+  productMetadata: {
+    category: string;
+    positionType: "LongOnly" | "ShortOnly" | "LongShort";
+    // 아이템의 경우 다른 메타데이터가 올 수 있으므로 확장성을 위해 any 허용
+    [key: string]: any;
+  };
+}
+
+// =================================================================
+// [개선] BaseProduct를 상속하여 전략 상품 타입을 정의합니다.
+// 중복 코드가 사라지고, productMetadata를 포함하게 됩니다.
+// =================================================================
+export interface MarketplaceStrategy extends BaseProduct {
+  // [핵심 수정] summaryMetrics -> latestBacktestSummary로 변경
+  latestBacktestSummary: {
+    backtestId: string | null;
+    totalReturnPct: number;
+    mddPct: number;
+    winRatePct: number;
+    profitFactor: number;
+    sharpeRatio: number;
+    sortinoRatio: number;
+  } | null; // 백테스트 결과가 없을 수 있으므로 null 허용
+}
+
+// =================================================================
+// [개선] BaseProduct를 상속하여 전략 상세 정보 타입을 정의합니다.
+// =================================================================
+export interface MarketplaceStrategyDetail extends BaseProduct {
+  description: string;
+  // 대표 백테스트의 전체 결과 데이터를 포함합니다.
+  representativeBacktest: Backtest;
+}
+
+// ShopItem과 UserInventoryItem 타입은 현재 구조에서 변경할 필요가 없습니다.
+// 그대로 유지합니다.
+
 /**
  * 아이템 샵에서 판매될 단일 아이템의 정보입니다.
  * UI 렌더링을 위한 displayProperties를 포함합니다.
  */
 export interface ShopItem {
   id: string;
-  type: "OPTIMIZATION_COUPON" | "BACKTEST_CREDIT" | "COSMETIC_ITEM"; // 향후 확장 가능
+  type: "OPTIMIZATION_COUPON" | "BACKTEST_CREDIT" | "COSMETIC_ITEM";
   name: string;
   description: string;
   price: number;
-
-  /**
-   * [신규] 아이템의 재고 유형을 정의합니다.
-   * - 'UNLOCK': 한 번만 구매 가능한 아이템 (e.g., 전략, 꾸미기 아이템)
-   * - 'CONSUMABLE': 여러 번 구매하여 수량을 쌓을 수 있는 아이템 (e.g., 쿠폰, 크레딧)
-   */
   inventoryType: "UNLOCK" | "CONSUMABLE";
-
   displayProperties: {
     icon: LucideIconName;
     tier?: "BRONZE" | "SILVER" | "GOLD";
     stats: {
-      label: string; // 예: "최적화 횟수"
-      value: string; // 예: "100회"
+      label: string;
+      value: string;
     }[];
   };
 }
 
 /**
  * 사용자가 보유한 아이템의 정보입니다.
- * (다음 단계에서 사용될 타입)
  */
 export interface UserInventoryItem {
-  instanceId: string; // 사용자가 보유한 아이템의 고유 ID
-  itemId: string; // ShopItem의 ID
+  instanceId: string;
+  itemId: string;
   name: string;
   isUsed: boolean;
   metadata: ShopItem["displayProperties"];
-}
-
-/**
- * 마켓플레이스에 표시될 단일 전략의 정보입니다.
- */
-export interface MarketplaceStrategy {
-  id: string;
-  name: string;
-  author: {
-    username: string;
-    avatarUrl?: string; // 프로필 이미지 (선택 사항)
-  };
-  price: number;
-  description: string;
-  // 대표 성과 지표
-  summaryMetrics: {
-    totalReturnPct: number;
-    mddPct: number;
-    winRatePct: number;
-  };
-  tags?: string[]; // 향후 확장용 (예: ["Scalping", "Swing", "Trending"])
-  createdAt: string; // 최신순 정렬을 위해 추가
-}
-
-/**
- * 마켓플레이스 전략 상세 페이지에서 사용할 전체 데이터 구조입니다.
- * GET /api/marketplace/strategies/{id} 응답의 형태입니다.
- */
-export interface MarketplaceStrategyDetail {
-  id: string;
-  name: string;
-  author: {
-    username: string;
-    avatarUrl?: string;
-  };
-  price: number;
-  description: string;
-  tags?: string[];
-
-  // 이 전략을 대표하는 백테스트의 전체 결과 데이터를 포함합니다.
-  representativeBacktest: Backtest;
 }

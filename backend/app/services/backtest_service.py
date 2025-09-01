@@ -2,7 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from fastapi import HTTPException, status
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -97,7 +97,7 @@ class BacktestService:
         if executed_today >= max_backtests:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"일일 백테스트 제한({max_backtests}회)을 초과했습니다.")
 
-        strategy = await self.strategy_service.get_strategy_by_id(db, backtest_create.strategy_id)
+        strategy = await self.strategy_service.get_strategy_by_id_with_author(db, backtest_create.strategy_id)
         if not strategy or strategy.author_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
         
@@ -147,7 +147,8 @@ class BacktestService:
         """사용자 본인의 백테스팅 기록 목록을 비동기로 조회합니다."""
         query = select(models.Backtest).options(
             joinedload(models.Backtest.result),
-            joinedload(models.Backtest.strategy)
+            joinedload(models.Backtest.strategy).selectinload(models.Strategy.backtests)
+
         ).filter(models.Backtest.user_id == user_id)
 
         if status_filter:
@@ -163,9 +164,14 @@ class BacktestService:
     async def get_backtest_by_id(self, db: AsyncSession, backtest_id: uuid.UUID) -> Optional[models.Backtest]:
         """ID로 단일 백테스팅 기록을 Eager Loading하여 비동기로 조회합니다."""
         query = select(models.Backtest).options(
+            # 기존 joinedload 옵션들은 그대로 유지합니다.
             joinedload(models.Backtest.result),
             joinedload(models.Backtest.user),
-            joinedload(models.Backtest.strategy)
+            
+            # Strategy를 로드할 때(joinedload), 그 하위의 backtests 관계도 미리 로드(selectinload)하도록
+            # 옵션을 연쇄적으로 적용합니다.
+            joinedload(models.Backtest.strategy).selectinload(models.Strategy.backtests)
+
         ).filter(models.Backtest.id == backtest_id)
         result = await db.execute(query)
         return result.scalar_one_or_none()

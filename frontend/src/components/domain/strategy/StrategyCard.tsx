@@ -26,6 +26,7 @@ import {
   Lock,
   Loader2,
   ShoppingCart,
+  XCircle,
 } from "lucide-react";
 
 // --- UI 컴포넌트 임포트 ---
@@ -105,6 +106,21 @@ export function StrategyCard({
       ),
   });
 
+  const unlistStrategyMutation = useMutation({
+    mutationFn: (strategyId: string) =>
+      apiClient.delete(`/strategies/${strategyId}/list`),
+    onSuccess: () => {
+      toast.success(t("unlistSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
+    },
+    onError: (error: any) =>
+      toast.error(
+        t("unlistError", {
+          error: error?.response?.data?.detail || error.message,
+        })
+      ),
+  });
+
   const handleDelete = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
@@ -123,6 +139,14 @@ export function StrategyCard({
     event.stopPropagation();
     event.preventDefault();
     onOpenListingModal(strategy);
+  };
+
+  const handleUnlistFromMarketplace = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (confirm(t("confirmUnlist", { strategyName: strategy.name }))) {
+      unlistStrategyMutation.mutate(strategy.id);
+    }
   };
 
   // --- 드롭다운 메뉴 UI ---
@@ -149,10 +173,33 @@ export function StrategyCard({
         {t("deployLiveBot")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={handleListOnMarketplace}>
-        <ShoppingCart className="mr-2 h-4 w-4" />
-        {strategy.marketplaceListing ? t("editListing") : t("listOnMarket")}
-      </DropdownMenuItem>
+      {strategy.marketplaceListing ? (
+        // 이미 등록된 경우: 수정 및 판매 중단 메뉴
+        <>
+          <DropdownMenuItem onClick={handleListOnMarketplace}>
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            {t("editListing")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handleUnlistFromMarketplace}
+            className="text-amber-600 focus:text-amber-700"
+            disabled={unlistStrategyMutation.isPending}
+          >
+            {unlistStrategyMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <XCircle className="mr-2 h-4 w-4" />
+            )}
+            {t("unlistFromMarket")}
+          </DropdownMenuItem>
+        </>
+      ) : (
+        // 등록되지 않은 경우: 등록 메뉴
+        <DropdownMenuItem onClick={handleListOnMarketplace}>
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          {t("listOnMarket")}
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem onClick={handleTogglePublic}>
         {togglePublicMutation.isPending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

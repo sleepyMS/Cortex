@@ -68,11 +68,23 @@ async def get_backtests(
 
 @router.get("/{backtest_id}", response_model=schemas.Backtest, summary="Get details and result of a specific backtest")
 async def get_backtest_by_id(
-    backtest: models.Backtest = Depends(get_verified_backtest)
+    backtest_id: uuid.UUID, # [수정] 의존성 주입 대신 backtest_id를 직접 받습니다.
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    특정 ID의 백테스팅 작업 상세 정보 및 결과를 조회합니다. (소유권 자동 검증)
+    특정 ID의 백테스팅 작업 상세 정보 및 결과를 조회합니다.
+    (소유권 검증 및 모든 연관 데이터 Eager Loading 포함)
     """
+    # 1. [핵심] 우리가 수정한, Eager Loading 로직이 포함된 서비스 함수를 직접 호출합니다.
+    backtest = await backtest_service.get_backtest_by_id(db, backtest_id)
+
+    # 2. 서비스 함수 호출 후, 소유권을 수동으로 검증합니다.
+    if not backtest:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="백테스트를 찾을 수 없습니다.")
+    if backtest.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 백테스트에 접근할 권한이 없습니다.")
+
     logger.info(f"User (ID: {backtest.user_id}) accessed backtest: {backtest.id}.")
     return backtest
 

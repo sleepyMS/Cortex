@@ -1,26 +1,16 @@
 // file: frontend/src/components/domain/strategy/StrategyListingForm.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useFormContext, useWatch } from "react-hook-form";
+import * as z from "zod";
+
 import { Strategy } from "@/types/strategy";
-import { Info } from "lucide-react";
 
 // UI 컴포넌트
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/Select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
+import { Checkbox } from "@/components/ui/Checkbox";
 import {
   Form,
   FormControl,
@@ -30,14 +20,19 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/Form";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { Input } from "@/components/ui/Input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
 import { Separator } from "@/components/ui/Separator";
 import { Spinner } from "@/components/ui/Spinner";
-import { toast } from "sonner";
 
-// --- 설정값 (향후 백엔드에서 받아오거나 환경 변수로 관리 가능) ---
-
-// 백엔드와 협의된 카테고리 목록
+// --- 설정값 ---
 const STRATEGY_CATEGORIES = [
   "Scalping",
   "Swing",
@@ -45,102 +40,39 @@ const STRATEGY_CATEGORIES = [
   "Grid",
   "Arbitrage",
 ];
-// 플랫폼 수수료 (%)
 const PLATFORM_FEE_PERCENT = 15;
 
-// --- Zod 스키마를 사용한 폼 유효성 검사 ---
+// --- Zod 스키마 및 타입 (부모와 공유) ---
 const listingFormSchema = z.object({
-  price: z.coerce
-    .number({ invalid_type_error: "가격을 숫자로 입력해주세요." })
-    .min(0, "가격은 0 이상이어야 합니다.")
-    .multipleOf(0.01, "가격은 소수점 둘째 자리까지만 입력 가능합니다."),
-  category: z
-    .string({ required_error: "카테고리를 선택해주세요." })
-    .min(1, "카테고리를 선택해주세요."),
-  positionType: z.enum(["LongOnly", "ShortOnly", "LongShort"], {
-    required_error: "포지션 타입을 선택해주세요.",
-  }),
-  termsAccepted: z.boolean().refine((val) => val === true, {
-    message: "판매 약관에 동의해야 합니다.",
-  }),
+  price: z.coerce.number().min(0).multipleOf(0.01),
+  category: z.string().min(1),
+  representativeBacktestId: z.string().optional(),
+  positionType: z.enum(["LongOnly", "ShortOnly", "LongShort"]),
+  termsAccepted: z.boolean().refine((val) => val === true),
 });
-
 type ListingFormValues = z.infer<typeof listingFormSchema>;
 
+// --- Props 타입 정의 ---
 interface StrategyListingFormProps {
-  strategy: Strategy;
-  onSubmit: (values: ListingFormValues) => void;
+  // 부모로부터 form.handleSubmit(onSubmit)으로 생성된 함수를 전달받음
+  onSubmit: (e?: React.BaseSyntheticEvent) => Promise<void>;
   isSubmitting: boolean;
+  strategy: Strategy;
 }
 
 export const StrategyListingForm = ({
-  strategy,
   onSubmit,
   isSubmitting,
+  strategy,
 }: StrategyListingFormProps) => {
   const t = useTranslations("StrategyListingForm");
-  // --- [핵심 개선] 폼 초기화 전에 전략 타입을 미리 분석 ---
-  const autoDetectedPositionType = useMemo(() => {
-    const hasLong = strategy.longEntryRules?.blocks.length > 0;
-    const hasShort = strategy.shortEntryRules?.blocks.length > 0;
 
-    if (hasLong && hasShort) return "LongShort";
-    if (hasLong) return "LongOnly";
-    if (hasShort) return "ShortOnly";
+  // 부모의 <Form> Provider로부터 form의 control 객체를 가져옴
+  const { control } = useFormContext<ListingFormValues>();
 
-    return strategy.marketplaceListing?.positionType || "LongShort";
-  }, [strategy]);
-
-  const form = useForm<ListingFormValues>({
-    resolver: zodResolver(listingFormSchema),
-    mode: "onChange",
-    defaultValues: {
-      price: strategy.marketplaceListing?.price || 10.0,
-      category: strategy.marketplaceListing?.category || "",
-      positionType: autoDetectedPositionType, // 분석된 초기값을 직접 주입
-      termsAccepted: false,
-    },
-  });
-
-  // --- 2. [핵심 수정] 알림 기능 로직 ---
-  const [initialAutoType, setInitialAutoType] = useState<string>(
-    autoDetectedPositionType
-  );
-  const isInitialRender = useRef(true);
-
-  // 현재 사용자가 선택한 라디오 버튼 값
-  const currentPositionType = useWatch({
-    control: form.control,
-    name: "positionType",
-  });
-
-  // [핵심 수정] `strategy` 데이터가 변경될 때마다 폼 값과 초기 분석 값을 `reset`
-  useEffect(() => {
-    form.reset({
-      ...form.getValues(), // 다른 필드 값은 유지
-      positionType: autoDetectedPositionType, // 포지션 타입만 갱신
-    });
-    setInitialAutoType(autoDetectedPositionType);
-  }, [autoDetectedPositionType, form]);
-
-  // [핵심 수정] 사용자가 값을 변경했을 때만 알림을 띄우도록 로직 수정
-  useEffect(() => {
-    // 최초 렌더링 시에는 알림을 띄우지 않음
-    if (isInitialRender.current) {
-      isInitialRender.current = false;
-      return;
-    }
-
-    // 현재 선택값이 있고, 그것이 초기 분석값과 다를 경우에만 알림
-    if (currentPositionType && currentPositionType !== initialAutoType) {
-      toast.info(t("typeMismatchWarning"), {
-        icon: <Info className="h-4 w-4" />,
-      });
-    }
-  }, [currentPositionType, initialAutoType, t]);
-  // 가격 필드의 값을 실시간으로 감지하여 수수료 계산
+  // control 객체를 사용하여 특정 필드의 값을 실시간으로 감지
   const price = useWatch({
-    control: form.control,
+    control,
     name: "price",
   });
 
@@ -148,163 +80,155 @@ export const StrategyListingForm = ({
   const estimatedEarnings = price - platformFee;
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* 가격 및 카테고리 (가로 2열 배치) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("priceLabel")}</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g., 29.99"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>{t("priceDescription")}</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("categoryLabel")}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("categoryPlaceholder")} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {STRATEGY_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>{t("categoryDescription")}</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* 포지션 타입 */}
+    // 부모에 <Form> Provider가 있으므로, 여기서는 실제 <form> 태그만 사용
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* 가격 및 카테고리 (가로 2열 배치) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <FormField
-          control={form.control}
-          name="positionType"
+          control={control}
+          name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("positionTypeLabel")}</FormLabel>
-              <FormDescription className="pb-2">
-                {t("positionTypeDescription")}
-              </FormDescription>
+              <FormLabel>{t("priceLabel")}</FormLabel>
               <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex flex-col sm:flex-row sm:gap-4"
-                >
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="LongOnly" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      {t("positionTypeLongOnly")}
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="ShortOnly" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      {t("positionTypeShortOnly")}
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="LongShort" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      {t("positionTypeLongShort")}
-                    </FormLabel>
-                  </FormItem>
-                </RadioGroup>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 29.99"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-
-        {/* 수수료 및 예상 수령액 정보 */}
-        <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
-              {t("platformFee", { fee: PLATFORM_FEE_PERCENT })}
-            </span>
-            <span>- ${platformFee.toFixed(2)}</span>
-          </div>
-          <Separator />
-          <div className="flex justify-between font-semibold">
-            <span className="text-foreground">{t("estimatedEarnings")}</span>
-            <span className="text-primary">
-              ${estimatedEarnings.toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        {/* 판매 약관 동의 */}
         <FormField
-          control={form.control}
-          name="termsAccepted"
+          control={control}
+          name="category"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>{t("termsLabel")}</FormLabel>
-                <FormDescription>
-                  {t.rich("termsDescription", {
-                    link: (chunks) => (
-                      <Link
-                        href="/terms/marketplace"
-                        target="_blank"
-                        className="underline hover:text-primary transition-colors"
-                      >
-                        {chunks}
-                      </Link>
-                    ),
-                  })}
-                </FormDescription>
-                <FormMessage />
-              </div>
+            <FormItem>
+              <FormLabel>{t("categoryLabel")}</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("categoryPlaceholder")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {STRATEGY_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
             </FormItem>
           )}
         />
+      </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
-          {strategy.marketplaceListing
-            ? t("updateButton")
-            : t("registerButton")}
-        </Button>
-      </form>
-    </Form>
+      {/* 포지션 타입 */}
+      <FormField
+        control={control}
+        name="positionType"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{t("positionTypeLabel")}</FormLabel>
+            <FormDescription className="pb-2">
+              {t("positionTypeDescription")}
+            </FormDescription>
+            <FormControl>
+              <RadioGroup
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                className="flex flex-row items-center gap-x-6 gap-y-2 flex-wrap"
+              >
+                <FormItem className="flex items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <RadioGroupItem value="LongOnly" />
+                  </FormControl>
+                  <FormLabel className="font-normal">
+                    {t("positionTypeLongOnly")}
+                  </FormLabel>
+                </FormItem>
+                <FormItem className="flex items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <RadioGroupItem value="ShortOnly" />
+                  </FormControl>
+                  <FormLabel className="font-normal">
+                    {t("positionTypeShortOnly")}
+                  </FormLabel>
+                </FormItem>
+                <FormItem className="flex items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <RadioGroupItem value="LongShort" />
+                  </FormControl>
+                  <FormLabel className="font-normal">
+                    {t("positionTypeLongShort")}
+                  </FormLabel>
+                </FormItem>
+              </RadioGroup>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <Separator />
+
+      {/* 수수료 및 예상 수령액 정보 */}
+      <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">
+            {t("platformFee", { fee: PLATFORM_FEE_PERCENT })}
+          </span>
+          <span>- ${platformFee.toFixed(2)}</span>
+        </div>
+        <Separator />
+        <div className="flex justify-between font-semibold">
+          <span className="text-foreground">{t("estimatedEarnings")}</span>
+          <span className="text-primary">${estimatedEarnings.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* 판매 약관 동의 */}
+      <FormField
+        control={control}
+        name="termsAccepted"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel>{t("termsLabel")}</FormLabel>
+              <FormDescription>
+                {t.rich("termsDescription", {
+                  link: (chunks) => (
+                    <Link
+                      href="/terms/marketplace"
+                      target="_blank"
+                      className="underline hover:text-primary transition-colors"
+                    >
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </FormDescription>
+              <FormMessage />
+            </div>
+          </FormItem>
+        )}
+      />
+
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
+        {strategy.marketplaceListing ? t("updateButton") : t("registerButton")}
+      </Button>
+    </form>
   );
 };

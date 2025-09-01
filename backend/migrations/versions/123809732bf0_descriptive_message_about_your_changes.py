@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 989d253c3efb
+Revision ID: 123809732bf0
 Revises: 
-Create Date: 2025-09-01 16:19:31.463492
+Create Date: 2025-09-01 22:24:10.161719
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '989d253c3efb'
+revision: str = '123809732bf0'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -116,24 +116,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_marketplace_orders_gateway_transaction_id'), 'marketplace_orders', ['gateway_transaction_id'], unique=True)
     op.create_index(op.f('ix_marketplace_orders_status'), 'marketplace_orders', ['status'], unique=False)
-    op.create_table('marketplace_products',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('name', sa.String(), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('price', sa.Float(), nullable=False),
-    sa.Column('product_type', sa.Enum('STRATEGY', 'SHOP_ITEM', name='producttype'), nullable=False),
-    sa.Column('inventory_type', sa.Enum('UNLOCK', 'CONSUMABLE', name='inventorytype'), nullable=False),
-    sa.Column('linked_resource_id', sa.UUID(), nullable=False, comment='strategies.id or shop_item_details.id'),
-    sa.Column('seller_id', sa.UUID(), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('metadata', sa.JSON(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['seller_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_marketplace_products_linked_resource_id'), 'marketplace_products', ['linked_resource_id'], unique=False)
-    op.create_index(op.f('ix_marketplace_products_product_type'), 'marketplace_products', ['product_type'], unique=False)
     op.create_table('password_reset_tokens',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -259,16 +241,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_live_bots_celery_task_id'), 'live_bots', ['celery_task_id'], unique=False)
-    op.create_table('marketplace_order_items',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('order_id', sa.UUID(), nullable=False),
-    sa.Column('product_id', sa.UUID(), nullable=False),
-    sa.Column('quantity', sa.Integer(), nullable=True),
-    sa.Column('price_at_purchase', sa.Float(), nullable=False),
-    sa.ForeignKeyConstraint(['order_id'], ['marketplace_orders.id'], ),
-    sa.ForeignKeyConstraint(['product_id'], ['marketplace_products.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('backtest_results',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('backtest_id', sa.UUID(), nullable=False),
@@ -304,6 +276,26 @@ def upgrade() -> None:
     sa.UniqueConstraint('backtest_id')
     )
     op.create_index(op.f('ix_community_posts_created_at'), 'community_posts', ['created_at'], unique=False)
+    op.create_table('marketplace_products',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('price', sa.Float(), nullable=False),
+    sa.Column('product_type', sa.Enum('STRATEGY', 'SHOP_ITEM', name='producttype'), nullable=False),
+    sa.Column('inventory_type', sa.Enum('UNLOCK', 'CONSUMABLE', name='inventorytype'), nullable=False),
+    sa.Column('linked_resource_id', sa.UUID(), nullable=False, comment='strategies.id or shop_item_details.id'),
+    sa.Column('seller_id', sa.UUID(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('metadata', sa.JSON(), nullable=True),
+    sa.Column('representative_backtest_id', sa.UUID(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['representative_backtest_id'], ['backtests.id'], ),
+    sa.ForeignKeyConstraint(['seller_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_marketplace_products_linked_resource_id'), 'marketplace_products', ['linked_resource_id'], unique=False)
+    op.create_index(op.f('ix_marketplace_products_product_type'), 'marketplace_products', ['product_type'], unique=False)
     op.create_table('trade_logs',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('backtest_id', sa.UUID(), nullable=True),
@@ -322,6 +314,37 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_trade_logs_timestamp'), 'trade_logs', ['timestamp'], unique=False)
+    op.create_table('comments',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('post_id', sa.UUID(), nullable=False),
+    sa.Column('author_id', sa.UUID(), nullable=False),
+    sa.Column('content', sa.String(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['post_id'], ['community_posts.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('likes',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('post_id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['post_id'], ['community_posts.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'post_id', name='_user_post_uc')
+    )
+    op.create_table('marketplace_order_items',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('order_id', sa.UUID(), nullable=False),
+    sa.Column('product_id', sa.UUID(), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=True),
+    sa.Column('price_at_purchase', sa.Float(), nullable=False),
+    sa.ForeignKeyConstraint(['order_id'], ['marketplace_orders.id'], ),
+    sa.ForeignKeyConstraint(['product_id'], ['marketplace_products.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('user_inventory',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -351,47 +374,29 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_user_purchased_strategies_strategy_id'), 'user_purchased_strategies', ['strategy_id'], unique=False)
     op.create_index(op.f('ix_user_purchased_strategies_user_id'), 'user_purchased_strategies', ['user_id'], unique=False)
-    op.create_table('comments',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('post_id', sa.UUID(), nullable=False),
-    sa.Column('author_id', sa.UUID(), nullable=False),
-    sa.Column('content', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['post_id'], ['community_posts.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_table('likes',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.Column('post_id', sa.UUID(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['post_id'], ['community_posts.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('user_id', 'post_id', name='_user_post_uc')
-    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_table('likes')
-    op.drop_table('comments')
     op.drop_index(op.f('ix_user_purchased_strategies_user_id'), table_name='user_purchased_strategies')
     op.drop_index(op.f('ix_user_purchased_strategies_strategy_id'), table_name='user_purchased_strategies')
     op.drop_table('user_purchased_strategies')
     op.drop_index(op.f('ix_user_inventory_user_id'), table_name='user_inventory')
     op.drop_index(op.f('ix_user_inventory_is_used'), table_name='user_inventory')
     op.drop_table('user_inventory')
+    op.drop_table('marketplace_order_items')
+    op.drop_table('likes')
+    op.drop_table('comments')
     op.drop_index(op.f('ix_trade_logs_timestamp'), table_name='trade_logs')
     op.drop_table('trade_logs')
+    op.drop_index(op.f('ix_marketplace_products_product_type'), table_name='marketplace_products')
+    op.drop_index(op.f('ix_marketplace_products_linked_resource_id'), table_name='marketplace_products')
+    op.drop_table('marketplace_products')
     op.drop_index(op.f('ix_community_posts_created_at'), table_name='community_posts')
     op.drop_table('community_posts')
     op.drop_table('backtest_results')
-    op.drop_table('marketplace_order_items')
     op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
     op.drop_table('live_bots')
     op.drop_index(op.f('ix_backtests_celery_task_id'), table_name='backtests')
@@ -405,9 +410,6 @@ def downgrade() -> None:
     op.drop_table('plan_features')
     op.drop_index(op.f('ix_password_reset_tokens_jti'), table_name='password_reset_tokens')
     op.drop_table('password_reset_tokens')
-    op.drop_index(op.f('ix_marketplace_products_product_type'), table_name='marketplace_products')
-    op.drop_index(op.f('ix_marketplace_products_linked_resource_id'), table_name='marketplace_products')
-    op.drop_table('marketplace_products')
     op.drop_index(op.f('ix_marketplace_orders_status'), table_name='marketplace_orders')
     op.drop_index(op.f('ix_marketplace_orders_gateway_transaction_id'), table_name='marketplace_orders')
     op.drop_table('marketplace_orders')

@@ -133,6 +133,9 @@ export interface TpslLogic {
   atrStopLossMultiplier?: number | null;
   atrTakeProfitMultiplier?: number | null;
   atrPeriod?: number | null;
+  trailingStopEnabled?: boolean;
+  trailingStopActivationPct?: number | null;
+  trailingStopCallbackPct?: number | null;
 }
 
 // 타겟 코인 및 자산 배분율
@@ -141,35 +144,59 @@ export interface TargetCoin {
   allocationPct: number;
 }
 
-// --- 전체 전략 객체 타입 (API 응답과 일치) ---
+// 전략의 간소화된 백테스트 이력 타입
+export interface BacktestHistoryItem {
+  id: string;
+  createdAt: string;
+  // totalReturnPct 등을 직접 갖는 대신, result 객체를 포함합니다.
+  result: {
+    totalReturnPct: number;
+    winRatePct: number;
+    mddPct: number;
+  } | null; // 백테스트 결과가 없을 수도 있으므로 null 허용
+}
+
+export interface MarketplaceListing {
+  productId: string; // 이전 listingId에서 productId로 이름 변경 (DB 모델과 일관성)
+  price: number;
+  category: string;
+  positionType: "LongOnly" | "ShortOnly" | "LongShort";
+  representativeBacktestId?: string | null;
+}
+
+// --- 4. 전체 전략 객체 타입 ---
 export interface Strategy {
-  id: string; // UUID 형식이므로 string
+  id: string;
   authorId: string;
   name: string;
-  description: string;
+  description: string | null; // Nullable 타입 명시
   isPublic: boolean;
-  longEntryRules: PositionRules;
-  longExitRules: PositionRules;
-  shortEntryRules: PositionRules;
-  shortExitRules: PositionRules;
-  tpslLogic: any;
-  targetCoins: any[];
+
+  longEntryRules: PositionRules | null;
+  longExitRules: PositionRules | null;
+  shortEntryRules: PositionRules | null;
+  shortExitRules: PositionRules | null;
+
+  // [수정] any -> 명확한 타입으로 변경
+  tpslLogic: TpslLogic | null;
+  targetCoins: TargetCoin[];
+
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | null; // Nullable 타입 명시
   paidFeatureLevel: "Basic" | "Trader" | "Pro";
 
-  /** [추가] 가장 최근 백테스트 요약 정보 (성과 뱃지 표시용) */
-  latestBacktestSummary?: {
+  // 나의 전략 페이지에서 성과 뱃지 표시용
+  latestBacktestSummary: {
     totalReturnPct: number | null;
     winRatePct: number | null;
     mddPct: number | null;
-    sharpeRatio: number | null;
-    profitFactor: number | null;
-    sortinoRatio: number | null;
   } | null;
 
-  /** [추가] 마켓플레이스 등록 정보 (등록된 경우에만 존재) */
-  marketplaceListing?: MarketplaceListing | null;
+  // 마켓플레이스 등록 정보 (등록된 경우에만 존재)
+  marketplaceListing: MarketplaceListing | null;
+
+  // [핵심 추가] 대표 백테스트 선택 UI를 위한 전체 백테스트 이력
+  backtests: BacktestHistoryItem[];
 }
 
 // --- UI 상호작용을 위한 컨텍스트 타입 ---

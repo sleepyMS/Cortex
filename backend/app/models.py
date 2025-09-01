@@ -431,7 +431,8 @@ class MarketplaceProduct(Base):
     linked_resource_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="strategies.id or shop_item_details.id")
     seller_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    metadata_ = Column("metadata", JSON, default={}) # 카테고리, 포지션 타입 등 저장
+    product_metadata = Column("metadata", JSON, default={}) # 카테고리, 포지션 타입 등 저장
+    representative_backtest_id = Column(UUID(as_uuid=True), ForeignKey("backtests.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -302,14 +302,33 @@ class StrategyUpdate(CamelCaseModel):
         if value:
             return sanitize_html(value)
         return value
+    
+class BacktestResultForHistory(CamelCaseModel):
+    total_return_pct: float
+    win_rate_pct: float
+    mdd_pct: float
+
+class BacktestHistoryItem(CamelCaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    result: Optional[BacktestResultForHistory] = None
 
 class BacktestResultSummaryForCard(CamelCaseModel):
+    backtest_id: Optional[uuid.UUID] = None 
     total_return_pct: Optional[float] = None
     win_rate_pct: Optional[float] = None
     mdd_pct: Optional[float] = None
     sharpe_ratio: Optional[float] = None
     profit_factor: Optional[float] = None
     sortino_ratio: Optional[float] = None
+
+class MarketplaceListing(CamelCaseModel):
+    """전략의 마켓플레이스 등록 정보를 위한 스키마"""
+    product_id: uuid.UUID
+    price: float
+    category: str
+    position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
+    representative_backtest_id: Optional[uuid.UUID] = None
 
 class Strategy(CamelCaseModel):
     id: uuid.UUID
@@ -327,6 +346,11 @@ class Strategy(CamelCaseModel):
     updated_at: Optional[datetime] = None
     paid_feature_level: PlanType = PlanType.BASIC
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
+    marketplace_listing: Optional[MarketplaceListing] = None # MarketplaceListing 타입이 정의되어 있다고 가정
+
+    # [핵심 추가] backtests 필드를 List 형태로 추가합니다.
+    # Pydantic이 DB 모델의 backtests 관계를 자동으로 읽어 이 리스트를 채웁니다.
+    backtests: List[BacktestHistoryItem] = Field(default_factory=list)
 
     @field_validator('target_coins', mode='before')
     @classmethod
@@ -587,6 +611,7 @@ class StrategyListPayload(CamelCaseModel):
     category: str
     position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
     description: Optional[str] = None
+    representative_backtest_id: Optional[uuid.UUID] = None
 
 
 # --- API 응답(Response) 스키마 ---
@@ -602,12 +627,12 @@ class BaseProduct(CamelCaseModel):
     price: float
     product_type: ProductType
     inventory_type: InventoryType
-    metadata_: Dict[str, Any] = Field(..., alias="metadata")
+    product_metadata: Dict[str, Any] 
     author: Optional[ProductAuthor] = None
 
 class StrategyProduct(BaseProduct):
     """전략 상품 목록에 표시될 정보"""
-    summary_metrics: Optional[BacktestResultSummaryForCard] = Field(None, alias="latestBacktestSummary")
+    latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
 
 class ShopItemProduct(BaseProduct):
     """상점 아이템 목록에 표시될 정보"""
