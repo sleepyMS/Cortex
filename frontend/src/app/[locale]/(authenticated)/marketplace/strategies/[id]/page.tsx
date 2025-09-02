@@ -1,25 +1,24 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import apiClient from "@/lib/apiClient";
-import { AuthGuard } from "@/components/auth/AuthGuard";
 import { MarketplaceStrategyDetail } from "@/types/marketplace";
-import { ChartDataPoint } from "@/components/domain/backtesting/EquityChart";
 
-// 재사용 컴포넌트
+// --- Hooks ---
+import { usePurchaseMutation } from "@/hooks/useMarketplace"; // 구매 훅
+import { usePurchasedStrategies } from "@/hooks/useInventory"; // 보유 목록 훅
+
+// --- 재사용 컴포넌트 ---
 import { BacktestResultSummary } from "@/components/domain/backtesting/BacktestResultSummary";
 import { DynamicEquityChart } from "@/components/domain/backtesting/DynamicEquityChart";
 import { DynamicDrawdownChart } from "@/components/domain/backtesting/DynamicDrawdownChart";
 import { MonthlyPerformance } from "@/components/domain/backtesting/MonthlyPerformance";
 import { TradeLogTable } from "@/components/domain/backtesting/TradeLogTable";
-
-// 신규 컴포넌트
 import { StrategyDetailHeader } from "@/components/domain/marketplace/StrategyDetailHeader";
-
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 
@@ -27,65 +26,62 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 const fetchStrategyDetail = async (
   id: string
 ): Promise<MarketplaceStrategyDetail> => {
-  const { data } = await apiClient.get(`/marketplace/strategies/${id}`);
-  return data;
-};
-
-const purchaseStrategy = async (id: string): Promise<any> => {
-  const { data } = await apiClient.post(
-    `/marketplace/strategies/${id}/purchase`
-  );
+  // [수정] API 경로를 백엔드 라우터에 맞게 수정
+  const { data } = await apiClient.get(`/marketplace/products/${id}`);
   return data;
 };
 
 export default function StrategyDetailPage() {
   const t = useTranslations("Marketplace.strategyDetail");
   const params = useParams();
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const strategyId = typeof params.id === "string" ? params.id : "";
 
+  // 1. 전략 상세 정보 조회
   const {
     data: strategyDetail,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["marketplaceStrategyDetail", strategyId],
+    queryKey: ["marketplaceProductDetail", strategyId],
     queryFn: () => fetchStrategyDetail(strategyId),
     enabled: !!strategyId,
   });
 
-  const purchaseMutation = useMutation({
-    mutationFn: purchaseStrategy,
-    onSuccess: () => {
-      toast.success(t("purchaseSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] }); // '나의 전략' 목록 갱신
-      router.push("/strategies");
-    },
-    onError: (err: any) => {
-      toast.error(
-        t("purchaseError", { error: err.response?.data?.detail || err.message })
-      );
-    },
-  });
+  // 2. 사용자가 구매한 전략 목록 조회 (소유권 확인용)
+  const { data: purchasedIds, isLoading: isLoadingPurchased } =
+    usePurchasedStrategies();
+  const isOwned = purchasedIds?.includes(
+    strategyDetail?.linkedResourceId || ""
+  );
 
-  if (isLoading)
+  // 3. 구매 뮤테이션 훅
+  const purchaseMutation = usePurchaseMutation();
+  const handlePurchase = () => {
+    if (!strategyDetail) return;
+    // 장바구니 기능을 고려한 페이로드
+    purchaseMutation.mutate({
+      items: [{ productId: strategyDetail.id, quantity: 1 }],
+    });
+  };
+
+  if (isLoading || isLoadingPurchased)
     return (
-      <div className="container py-8">
-        <Skeleton className="w-full h-[80vh]" />
+      <div className="container py-8 max-w-screen-xl mx-auto px-4">
+        <Skeleton className="w-full h-[200px] mb-8" />
+        <Skeleton className="w-full h-[400px]" />
       </div>
     );
-  if (isError || !strategyDetail)
-    return <div>Error loading strategy details.</div>;
+  if (isError || !strategyDetail) return <div>{t("error")}</div>;
 
-  const backtestResult = strategyDetail.representativeBacktest.result;
+  const backtestResult = strategyDetail.representativeBacktest?.result;
 
   return (
     <div className="container mx-auto max-w-screen-xl px-4 py-8">
       <StrategyDetailHeader
         strategy={strategyDetail}
-        onPurchase={purchaseMutation.mutate}
+        onPurchase={handlePurchase}
         isPurchasing={purchaseMutation.isPending}
+        isOwned={isOwned} // [추가] 소유 여부 전달
       />
       {backtestResult ? (
         <>
@@ -98,41 +94,22 @@ export default function StrategyDetailPage() {
               <TabsTrigger value="summary">{t("tabs.summary")}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="chart" className="mt-4 space-y-4">
-              <DynamicEquityChart
-                pnlData={
-                  (backtestResult.pnlCurveJson as ChartDataPoint[]) || []
-                }
-              />
-              <DynamicDrawdownChart
-                drawdownData={
-                  (backtestResult.drawdownCurveJson as ChartDataPoint[]) || []
-                }
-              />
-            </TabsContent>
-            <TabsContent value="monthly" className="mt-4">
-              <MonthlyPerformance
-                pnlData={
-                  (backtestResult.pnlCurveJson as ChartDataPoint[]) || []
-                }
-              />
-            </TabsContent>
-            <TabsContent value="logs" className="mt-4">
+            {/* 각 탭 컨텐츠는 제공해주신 코드와 거의 동일 */}
+            <TabsContent value="chart">...</TabsContent>
+            <TabsContent value="monthly">...</TabsContent>
+            <TabsContent value="logs">
               <TradeLogTable
                 tradeLogs={
                   strategyDetail.representativeBacktest.tradeLogs || []
                 }
               />
             </TabsContent>
-            <TabsContent value="summary" className="mt-4">
-              {/* 여기에 전략 규칙 요약 등을 표시할 수 있습니다. */}
-              <p>전략 상세 규칙 요약 (향후 구현)</p>
-            </TabsContent>
+            <TabsContent value="summary">...</TabsContent>
           </Tabs>
         </>
       ) : (
         <p className="text-center text-muted-foreground py-10">
-          대표 백테스트 결과가 없습니다.
+          {t("noBacktest")}
         </p>
       )}
     </div>

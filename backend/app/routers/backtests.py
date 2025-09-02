@@ -10,6 +10,7 @@ from .. import schemas, models, security
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.backtest_service import backtest_service
 from ..limiter import limiter
+from ..tasks import run_backtest
 
 logger = logging.getLogger(__name__)
 
@@ -28,22 +29,38 @@ async def create_backtest(
     """
     새로운 백테스팅 작업을 요청합니다. 작업은 비동기적으로 처리됩니다.
     """
-    # 예외 발생 시 안전하게 로깅하기 위해 이메일을 미리 변수에 저장합니다.
     user_email_for_log = current_user.email
     
     try:
+        # 1. 서비스 호출: DB 객체만 생성 (아직 미커밋)
         new_backtest = await backtest_service.create_backtest_job(db, current_user, backtest_create)
+        
+        # 2. [핵심 수정] DB 트랜잭션을 먼저 커밋합니다.
         await db.commit()
-        # Eager Loading을 위해 ID로 다시 조회
+        await db.refresh(new_backtest) # 커밋 후 최신 상태를 DB에서 다시 로드
+
+        # 3. [핵심 수정] 커밋이 성공한 후에 Celery 작업을 전송합니다.
+        try:
+            async_result = run_backtest.delay(backtest_id=str(new_backtest.id))
+            # Task ID를 DB에 업데이트하고 다시 커밋합니다.
+            new_backtest.celery_task_id = async_result.id
+            await db.commit()
+            logger.info(f"Celery task dispatched for Backtest ID: {new_backtest.id} with Celery Task ID: {async_result.id}.")
+        except Exception as e:
+            logger.error(f"Failed to dispatch Celery task for Backtest ID {new_backtest.id}: {e}", exc_info=True)
+            new_backtest.status = 'failed_dispatch'
+            await db.commit() # 실패 상태도 커밋
+            raise HTTPException(status_code=500, detail="백테스트 작업 시작에 실패했습니다.")
+        
         created_backtest = await backtest_service.get_backtest_by_id(db, new_backtest.id)
         logger.info(f"Backtest job (ID: {created_backtest.id}) requested for user {user_email_for_log}.")
         return created_backtest
+
     except HTTPException as e:
         await db.rollback()
         raise e
     except Exception as e:
         await db.rollback()
-        # 미리 저장해둔 변수를 사용하여 안전하게 로깅합니다.
         logger.error(f"Error creating backtest job for user {user_email_for_log}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 작업 생성 중 서버 오류가 발생했습니다.")
 

@@ -15,7 +15,6 @@ from .. import models, schemas
 from ..services.plan_service import plan_service
 from ..services.strategy_service import strategy_service
 from ..celery_app import celery_app
-from ..tasks import run_backtest
 
 
 logger = logging.getLogger(__name__)
@@ -101,20 +100,18 @@ class BacktestService:
         if not strategy or strategy.author_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
         
-        # 2. '전략 스냅샷' 생성 (기존과 동일)
+        # 2. '전략 스냅샷' 생성 
         strategy_dict = schemas.Strategy.from_orm(strategy).model_dump(mode='json', by_alias=True)
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
 
-        # 3-1. 저장할 파라미터 객체를 'BacktestParametersPayload' 스키마로 생성합니다.
         params_to_store = schemas.BacktestParametersPayload(
             start_date=backtest_create.start_date,
             end_date=backtest_create.end_date,
             initial_capital=backtest_create.initial_capital,
-            parameters=backtest_create.parameters # leverage, fee, overrides, tpsl_logic 등
+            parameters=backtest_create.parameters
         )
-
-        # 3-2. 백테스트 DB 레코드를 생성합니다.
+        
         db_backtest = models.Backtest(
             user_id=user.id,
             strategy_id=backtest_create.strategy_id,
@@ -126,17 +123,8 @@ class BacktestService:
         db.add(db_backtest)
         await db.flush()
         
-        # 4. Celery 태스크 전송 및 Task ID 저장 
-        try:
-            # countdown=1 보다 tasks.py 내부의 재시도 로직이 더 효율적입니다.
-            async_result = run_backtest.delay(backtest_id=str(db_backtest.id))
-            
-            db_backtest.celery_task_id = async_result.id
-            logger.info(f"Celery task dispatched for Backtest ID: {db_backtest.id} with Celery Task ID: {async_result.id}.")
-        except Exception as e:
-            logger.error(f"Failed to dispatch Celery task for Backtest ID {db_backtest.id}: {e}", exc_info=True)
-            db_backtest.status = 'failed_dispatch'
-            raise HTTPException(status_code=500, detail="백테스트 작업 시작에 실패했습니다.")
+        # [핵심 수정] Celery 태스크 전송 및 Task ID 저장 로직을 여기서 제거합니다.
+        # 이 로직은 이제 라우터가 담당합니다.
 
         return db_backtest
     

@@ -219,6 +219,7 @@ class MarketplaceService:
         for item in order.items:
             product = item.product # 이미 로드된 상품 정보 사용
             if product.inventory_type == models.InventoryType.UNLOCK:
+                db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
                 ownership_exists = await db.scalar(select(models.UserPurchasedStrategy).filter_by(user_id=order.buyer_id, strategy_id=product.linked_resource_id))
                 if not ownership_exists:
                     db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
@@ -302,46 +303,57 @@ class MarketplaceService:
         """
         전략 상품에 특화된 모든 상세 정보를 조합하여 반환합니다.
         """
-        # 1. Product에 연결된 원본 Strategy 정보를 Eager Loading하여 조회합니다.
+        # 1. 원본 Strategy 정보 조회 (기존과 동일)
         strategy = await db.scalar(
             select(models.Strategy)
-            .options(joinedload(models.Strategy.author)) # 작성자 정보 함께 로드
+            .options(joinedload(models.Strategy.author))
             .filter(models.Strategy.id == product.linked_resource_id)
         )
         if not strategy:
-            logger.error(f"Data integrity error: MarketplaceProduct {product.id} links to non-existent Strategy {product.linked_resource_id}")
+            logger.error(f"Data integrity error: Product {product.id} links to non-existent Strategy {product.linked_resource_id}")
             raise HTTPException(status_code=404, detail="연결된 전략 정보를 찾을 수 없습니다.")
 
-        # 2. 내부 헬퍼 함수를 호출하여 최신 성과 요약(KPI)을 가져옵니다.
-        latest_summary_model = await self._get_latest_backtest_summary(db, strategy.id)
-        
-        # 3. 최신 성과를 만든 '대표 백테스트'의 전체 정보를 조회합니다.
-        #    (프론트엔드에서 차트, 월별 성과 등을 그리기 위해 필요)
+        # 2. 대표 백테스트의 전체 정보 조회 (기존과 동일)
         representative_backtest_model = None
-        if latest_summary_model and latest_summary_model.backtest_id:
-            # Backtest와 그 하위 result, strategy 정보까지 함께 로드
+        if product.representative_backtest_id:
+            # [핵심 수정] 쿼리 옵션을 연쇄적으로 적용하여 중첩된 관계까지 모두 Eager Loading합니다.
             representative_backtest_model = await db.scalar(
                 select(models.Backtest)
                 .options(
                     joinedload(models.Backtest.result),
-                    joinedload(models.Backtest.strategy)
+                    selectinload(models.Backtest.trade_logs),
+                    # Backtest의 strategy를 로드하고(joinedload),
+                    # 그 strategy의 backtests 목록도 미리 로드하도록(selectinload) 체이닝합니다.
+                    joinedload(models.Backtest.strategy).selectinload(models.Strategy.backtests)
                 )
-                .filter(models.Backtest.id == latest_summary_model.backtest_id)
+                .filter(models.Backtest.id == product.representative_backtest_id)
             )
+            
+        # 3. [핵심 수정] Pydantic 모델에 전달할 데이터를 하나의 딕셔너리로 조합합니다.
+        
+        # 3-1. 기본이 될 `product` ORM 객체를 딕셔너리로 변환합니다.
+        #      (주의: pydantic 스키마를 통해 변환해야 relationship 필드 등이 올바르게 처리됩니다.)
+        base_data = schemas.BaseProduct.model_validate(product, from_attributes=True).model_dump()
+        
+        # 3-2. 추가하거나 덮어쓸 데이터를 정의합니다.
+        update_data = {
+            'author': strategy.author,
+            'description': strategy.description,
+            'long_entry_rules': strategy.long_entry_rules,
+            'long_exit_rules': strategy.long_exit_rules,
+            'short_entry_rules': strategy.short_entry_rules,
+            'short_exit_rules': strategy.short_exit_rules,
+            'tpsl_logic': strategy.tpsl_logic,
+            'target_coins': strategy.target_coins,
+            'latest_backtest_summary': representative_backtest_model.result if representative_backtest_model else None,
+            'representative_backtest': representative_backtest_model
+        }
+        
+        # 3-3. 두 딕셔너리를 병합합니다.
+        final_data = {**base_data, **update_data}
 
-        # 4. Pydantic의 model_validate를 사용하여 모든 데이터를 최종 응답 스키마에 조합합니다.
-        #    - 기본 product 객체의 속성을 복사
-        #    - update 딕셔너리로 상세 정보를 덮어쓰거나 추가
-        return schemas.StrategyProductDetail.model_validate(
-            product,
-            from_attributes=True,
-            update={
-                'author': strategy.author,
-                'strategy_details': strategy,
-                'latest_backtest_summary': latest_summary_model,
-                'representative_backtest': representative_backtest_model,
-            }
-        )
+        # 4. 최종적으로 완성된 단일 딕셔너리를 사용하여 모델 유효성 검사를 수행합니다.
+        return schemas.StrategyProductDetail.model_validate(final_data)
     
     async def unlist_strategy_product(
         self, db: AsyncSession, product_id: uuid.UUID, current_user_id: uuid.UUID

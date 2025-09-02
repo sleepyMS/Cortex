@@ -5,17 +5,20 @@ import { MarketplaceStrategyDetail } from "@/types/marketplace";
 import { Button } from "@/components/ui/Button";
 import { Tag, UserCircle, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { CheckCircle } from "lucide-react"; // [추가]
 
 interface StrategyDetailHeaderProps {
   strategy: MarketplaceStrategyDetail;
-  onPurchase: (strategyId: string) => void;
+  onPurchase: () => void; // [수정] 인자 없이 호출
   isPurchasing: boolean;
+  isOwned: boolean; // [추가]
 }
 
 export const StrategyDetailHeader = ({
   strategy,
   onPurchase,
   isPurchasing,
+  isOwned,
 }: StrategyDetailHeaderProps) => {
   const t = useTranslations("Marketplace.strategyDetail");
 
@@ -46,18 +49,22 @@ export const StrategyDetailHeader = ({
           )}
         </div>
         <div className="md:text-right flex-shrink-0">
-          <p className="text-sm text-muted-foreground">Price</p>
+          <p className="text-sm text-muted-foreground">{t("price")}</p>
           <p className="text-4xl font-bold text-primary mb-4">
             ${strategy.price.toFixed(2)}
           </p>
-          <Button
-            size="lg"
-            onClick={() => onPurchase(strategy.id)}
-            disabled={isPurchasing}
-          >
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            {isPurchasing ? "처리 중..." : t("purchaseButton")}
-          </Button>
+
+          {isOwned ? ( // [수정] isOwned 값에 따라 조건부 렌더링
+            <Button size="lg" disabled>
+              <CheckCircle className="mr-2 h-5 w-5" />
+              {t("ownedButton")}
+            </Button>
+          ) : (
+            <Button size="lg" onClick={onPurchase} disabled={isPurchasing}>
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              {isPurchasing ? t("purchasingButton") : t("purchaseButton")}
+            </Button>
+          )}
         </div>
       </div>
       {strategy.description && (
