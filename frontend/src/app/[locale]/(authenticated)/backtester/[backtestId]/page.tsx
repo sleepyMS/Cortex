@@ -28,6 +28,7 @@ import { TradeLog } from "@/types/tradelog";
 
 // --- 최종 분석 컴포넌트 임포트 ---
 import { BacktestResultSummary } from "@/components/domain/backtesting/BacktestResultSummary";
+import { DetailedMetrics } from "@/components/domain/backtesting/DetailedMetrics"; // 새로 추가
 import { DynamicEquityChart } from "@/components/domain/backtesting/DynamicEquityChart";
 import { DynamicDrawdownChart } from "@/components/domain/backtesting/DynamicDrawdownChart";
 import { MonthlyPerformance } from "@/components/domain/backtesting/MonthlyPerformance";
@@ -290,6 +291,9 @@ export default function BacktestDetailPage({
           <div className="flex flex-col space-y-8">
             {/* 1. 요약 지표 */}
             <BacktestResultSummary result={backtest.result} />
+
+            {/* 2. 상세 지표 (새로 추가) */}
+            <DetailedMetrics result={backtest.result} />
 
             {/* 2. 자산 곡선 차트 */}
             <DynamicEquityChart pnlData={backtest.result.pnlCurveJson || []} />

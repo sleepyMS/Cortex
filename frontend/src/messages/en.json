@@ -495,7 +495,9 @@
   "StrategyListingPreview": {
     "noDescription": "No description provided.",
     "performanceTitle": "Recent Performance",
-    "indicatorsTitle": "Key Indicators"
+    "indicatorsTitle": "Key Indicators",
+    "selectedBacktestDetails": "Selected Representative Backtest Details",
+    "perfSummary": "Key Performance Summary"
   },
   "StrategyListingForm": {
     "title": "List Your Strategy on the Marketplace",
@@ -598,6 +600,8 @@
     "sortByNewest": "Newest",
     "sortByLastUpdated": "Last Updated",
     "sortByNameAsc": "Name (A-Z)",
+    "indicatorFilterPlaceholder": "Filter by Indicator",
+    "indicatorFilterAll": "All Indicators",
     "loadingStrategies": "Loading strategies...",
     "errorLoadingTitle": "Error",
     "fetchError": "Failed to load data.",
@@ -640,7 +644,11 @@
     "deleteError": "Delete failed: {error}",
     "togglePublicSuccess": "Strategy is now public.",
     "togglePrivateSuccess": "Strategy is now private.",
-    "togglePublicError": "Status change failed: {error}"
+    "togglePublicError": "Status change failed: {error}",
+    "editListing": "Edit Market Listing",
+    "unlistFromMarket": "Unlist from Market",
+    "confirmUnlist": "Confirm Unlisting",
+    "selling": "Selling"
   },
   "StrategyBacktestHistory": {
     "title": "Recent Backtests for This Strategy",
@@ -813,6 +821,43 @@
     "jobNotCompletedTitle": "{status, select, failed {Backtest Failed} canceled {Backtest Canceled} other {Job Not Completed}}",
     "jobNotCompletedMessage": "This backtest did not complete successfully.",
     "unknownStatus": "Unknown backtest status.",
+    "DetailedMetrics": {
+      "title": "Detailed Metrics",
+      "overallScore": "Overall Score",
+      "categoryHeader": "Category",
+      "metricHeader": "Metric",
+      "valueHeader": "Value",
+      "daysUnit": "days",
+      "categoryProfit": "Profitability",
+      "cagr": "Compound Annual Growth Rate (CAGR)",
+      "avgProfitLossRatio": "Average Profit/Loss Ratio",
+      "kRatio": "K-Ratio",
+      "categoryRiskAdjusted": "Risk-Adjusted Return",
+      "sharpeRatio": "Sharpe Ratio",
+      "sortinoRatio": "Sortino Ratio",
+      "calmarRatio": "Calmar Ratio",
+      "categoryRiskAndPain": "Risk & Pain Index",
+      "ulcerIndex": "Ulcer Index",
+      "longestFlatDays": "Longest Flat Period",
+      "categoryTradeChars": "Trade Characteristics",
+      "avgHoldingPeriodDays": "Average Holding Period",
+      "tooltips": {
+        "overallScore": "This score represents the overall performance of the strategy. It is calculated by a weighted average of four key categories—Profitability, Risk-Adjusted Performance, Resilience, and Profit Stability—to provide a balanced evaluation of the strategy's quality.\n\n[Formula]\n(Profitability Score x 0.3) +\n(Risk-Adjusted Score x 0.3) +\n(Resilience Score x 0.3) +\n(Profit Stability Score x 0.1)\n\n* Profitability = Based on Profit Factor\n* Risk-Adjusted = Based on Sortino Ratio\n* Resilience = Based on Calmar Ratio\n* Profit Stability = Based on K-Ratio",
+        "categoryProfit": "A group of metrics indicating how effectively this strategy generated profits.",
+        "cagr": "The compound annual growth rate over the investment period. It is a key metric showing how much the asset has grown over time.",
+        "avgProfitLossRatio": "The value obtained by dividing the profit from the average winning trade by the loss from the average losing trade. A value greater than 1 means a higher expected return.",
+        "kRatio": "A metric that measures the stability and consistency of returns. A higher K-Ratio is closer to an ideal, steadily upward-sloping equity curve.",
+        "categoryRiskAdjusted": "A group of metrics that evaluate how high a return was achieved relative to the risk taken, rather than simple returns.",
+        "sharpeRatio": "Represents the excess return relative to volatility (risk). It is the most widely used risk-adjusted performance metric; the higher, the better.",
+        "sortinoRatio": "Similar to the Sharpe Ratio, but it calculates the risk-adjusted return by considering only downside volatility (actual risk), excluding upward volatility.",
+        "calmarRatio": "Represents the compound annual growth rate relative to the maximum drawdown (MDD). It shows how well the strategy recovers from large losses.",
+        "categoryRiskAndPain": "A group of metrics that measure the potential losses and psychological distress an investor might experience while running the strategy.",
+        "ulcerIndex": "A metric that quantifies the 'investor's heartburn' by comprehensively considering the depth, duration, and recovery speed of drawdowns. The lower, the better.",
+        "longestFlatDays": "The longest period during which the asset failed to reach a new high, moving sideways. It signifies the amount of time an investor must endure.",
+        "categoryTradeChars": "A group of metrics for understanding the operational style of the strategy, such as trade frequency and holding period.",
+        "avgHoldingPeriodDays": "The average period a position is held in a single trade."
+      }
+    },
     "Tabs": {
       "summary": "Summary",
       "chart": "Equity Curve",
@@ -872,5 +917,16 @@
     "profitFactorTooltip": "The gross profit divided by the gross loss. A value greater than 1.0 is required to be profitable.",
     "sortinoLabel": "Sortino Ratio",
     "sortinoTooltip": "Measures excess return per unit of downside risk. A refinement of the Sharpe Ratio that only penalizes for negative volatility."
+  },
+  "Inventory": {
+    "pageTitle": "Inventory",
+    "pageDescription": "Check and manage the items you own.",
+    "tabs": {
+      "ALL": "All",
+      "OPTIMIZATION_COUPON": "Optimization Coupons",
+      "BACKTEST_CREDIT": "Backtest Credits"
+    },
+    "emptyTitle": "Your Inventory is Empty",
+    "emptyDescription": "Purchase various items from the Marketplace to enhance your strategies."
   }
 }

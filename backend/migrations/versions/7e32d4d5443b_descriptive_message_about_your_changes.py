@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 123809732bf0
+Revision ID: 7e32d4d5443b
 Revises: 
-Create Date: 2025-09-01 22:24:10.161719
+Create Date: 2025-09-02 22:23:22.354235
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '123809732bf0'
+revision: str = '7e32d4d5443b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -255,9 +255,17 @@ def upgrade() -> None:
     sa.Column('profit_factor', sa.Float(), nullable=True),
     sa.Column('sortino_ratio', sa.Float(), nullable=True),
     sa.Column('cagr_pct', sa.Float(), nullable=True),
+    sa.Column('calmar_ratio', sa.Float(), nullable=True),
+    sa.Column('ulcer_index', sa.Float(), nullable=True),
+    sa.Column('avg_profit_loss_ratio', sa.Float(), nullable=True),
+    sa.Column('k_ratio', sa.Float(), nullable=True),
+    sa.Column('longest_flat_days', sa.Integer(), nullable=True),
+    sa.Column('avg_holding_period_days', sa.Float(), nullable=True),
     sa.Column('total_trades', sa.Integer(), nullable=True),
     sa.Column('winning_trades', sa.Integer(), nullable=True),
     sa.Column('losing_trades', sa.Integer(), nullable=True),
+    sa.Column('backtest_score', sa.Float(), nullable=True),
+    sa.Column('score_factors', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.ForeignKeyConstraint(['backtest_id'], ['backtests.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('backtest_id')

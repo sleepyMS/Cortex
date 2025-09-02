@@ -4,7 +4,9 @@ import pandas as pd
 import pandas_ta as ta
 import numpy as np
 from typing import Dict, List, Tuple, Optional
-from .. import schemas 
+from scipy.stats import linregress # K-Ratio 계산을 위해 import
+from datetime import timedelta     # 평균 보유 기간 계산을 위해 import
+from .. import schemas
 
 class BacktestingEngine:
     """
@@ -27,7 +29,7 @@ class BacktestingEngine:
              self.data = self.data.sort_index()
 
         # --- 2. 파라미터 설정 ---
-        self.exec_params = execution_params 
+        self.exec_params = execution_params
         
         self.initial_capital = self.exec_params.initial_capital
         inner_params = self.exec_params.parameters
@@ -35,19 +37,17 @@ class BacktestingEngine:
         self.fee_pct = inner_params.fee
         self.slippage_pct = inner_params.slippage
         
-        # TP/SL 규칙은 '전략 정보(strategy_params)' Pydantic 객체에서 직접 가져옵니다.
         self.tpsl_logic = strategy_params.tpsl_logic if strategy_params.tpsl_logic else schemas.TpslLogic()
         
         # --- 3. ATR 기반 TP/SL을 위한 지표 사전 계산 ---
         if self.tpsl_logic and self.tpsl_logic.atr_period:
             atr_period = self.tpsl_logic.atr_period
-            # pandas-ta는 컬럼 이름이 소문자여야 안정적으로 동작합니다.
             ohlcv_lower = ohlcv_df.rename(columns=str.lower)
             self.data.ta.atr(
-                high=ohlcv_lower['high'], 
-                low=ohlcv_lower['low'], 
-                close=ohlcv_lower['close'], 
-                length=atr_period, 
+                high=ohlcv_lower['high'],
+                low=ohlcv_lower['low'],
+                close=ohlcv_lower['close'],
+                length=atr_period,
                 append=True
             )
             self.data.rename(columns={f"ATR_{atr_period}": f"atr_{atr_period}"}, inplace=True)
@@ -73,14 +73,16 @@ class BacktestingEngine:
         self.gross_loss = 0.0
         self.entry_commission = 0.0
 
+        # 평균 보유 기간 계산을 위한 변수 
+        self.entry_timestamp = None
+        self.total_holding_period = timedelta(0)
+
     def run(self) -> Tuple[Dict, List[Dict]]:
         """메인 시뮬레이션 루프를 실행합니다."""
         if self.data.empty:
             return self._calculate_summary_stats(), self.trade_logs
 
         for timestamp, row in self.data.iterrows():
-            # 시뮬레이션 루프 내 실행 순서가 매우 중요합니다.
-            # 1. TP/SL 체크 -> 2. 신호 처리 -> 3. 최종 자산 기록
             self._check_tp_sl(timestamp, row)
             self._process_signals(timestamp, row)
             self._update_equity(timestamp, row['close'])
@@ -213,22 +215,25 @@ class BacktestingEngine:
         """
         [최종 수정 버전] 진입과 청산의 로직과 변수 범위를 명확하게 분리합니다.
         """
-        # --- 공통 변수 초기화 ---
+        # ... 공통 변수 초기화 ...
         commission = 0.0
         pnl = None
         quantity = 0.0
         trade_price = price
 
-        # 슬리피지 적용
-        if side == 'buy':
-            trade_price *= (1 + self.slippage_pct / 100)
-        else: # side == 'sell'
-            trade_price *= (1 - self.slippage_pct / 100)
+        if side == 'buy': trade_price *= (1 + self.slippage_pct / 100)
+        else: trade_price *= (1 - self.slippage_pct / 100)
 
         # --- 1. 포지션 진입 로직 ---
         if is_entry:
             if self.position_size != 0: return
 
+            self.position_type = 'long' if side == 'buy' else 'short'
+            
+            self.entry_timestamp = timestamp
+            
+            self.sl_price, self.tp_price = self._calculate_initial_tp_sl(self.data.loc[timestamp])
+            
             invest_amount = self.balance * self.leverage * 0.99
             quantity = invest_amount / trade_price
             
@@ -245,10 +250,7 @@ class BacktestingEngine:
             self.position_size = quantity if side == 'buy' else -quantity
             self.position_avg_price = trade_price
             self.entry_price = trade_price
-            self.position_type = 'long' if side == 'buy' else 'short'
-
-            self.sl_price, self.tp_price = self._calculate_initial_tp_sl(self.data.loc[timestamp])
-        
+            
             if self.position_type == 'long':
                 self.highest_price_since_entry = self.entry_price
             elif self.position_type == 'short':
@@ -259,6 +261,10 @@ class BacktestingEngine:
         # --- 2. 포지션 청산 로직 ---
         else:
             if self.position_size == 0: return
+
+            if self.entry_timestamp:
+                self.total_holding_period += (timestamp - self.entry_timestamp)
+                self.entry_timestamp = None
 
             raw_pnl = 0.0
             quantity = abs(self.position_size)
@@ -292,6 +298,7 @@ class BacktestingEngine:
             self.highest_price_since_entry = 0.0
             self.lowest_price_since_entry = float('inf')
 
+
         # --- 3. 거래 로그 기록 ---
         log_balance = self.balance + self.invested_capital
         log = {
@@ -300,6 +307,7 @@ class BacktestingEngine:
             "reason": reason,
         }
         self.trade_logs.append(log)
+
 
     def _update_equity(self, timestamp, current_price: float):
         """
@@ -311,10 +319,8 @@ class BacktestingEngine:
         elif self.position_type == 'short':
             unrealized_pnl = (self.position_avg_price - current_price) * abs(self.position_size)
 
-        # 총자산 = 현재 보유 현금 + 투입된 원금 + 현재 미실현 손익
         equity = self.balance + self.invested_capital + unrealized_pnl
         
-        # timestamp는 pandas의 Timestamp 객체이므로 .timestamp() 메서드를 사용하고 정수(int)로 변환합니다.
         unix_timestamp = int(timestamp.timestamp())
         self.equity_curve.append({'time': unix_timestamp, 'value': equity})
 
@@ -327,61 +333,123 @@ class BacktestingEngine:
         equity_df = pd.DataFrame(self.equity_curve).sort_values('time').set_index('time')
         equity_df.index = pd.to_datetime(equity_df.index, unit='s')
         
+        # --- 기본 지표 계산 ---
         final_equity = equity_df['value'].iloc[-1]
         total_return_pct = ((final_equity - self.initial_capital) / self.initial_capital) * 100
         
         peak = equity_df['value'].expanding(min_periods=1).max()
         drawdown = (equity_df['value'] - peak) / peak
         mdd_pct = drawdown.min() * 100 if not drawdown.empty else 0.0
+        
         drawdown_curve = (drawdown * 100).round(2)
         drawdown_curve_json = [
-            {'time': int(idx.timestamp()), 'value': val} 
+            {'time': int(idx.timestamp()), 'value': val}
             for idx, val in drawdown_curve.items()
         ]
         
         total_trades = self.winning_trades + self.losing_trades
         win_rate_pct = (self.winning_trades / total_trades) * 100 if total_trades > 0 else 0.0
         
-        # Profit Factor: 총 손실이 0이면 0.0으로 처리 (또는 gross_profit 값으로 처리할 수도 있음)
         profit_factor = self.gross_profit / abs(self.gross_loss) if self.gross_loss != 0 else 0.0
         
+        # --- 일간 수익률 기반 지표 계산 ---
         daily_returns = equity_df['value'].resample('D').last().pct_change().dropna()
 
         sharpe_ratio = 0.0
-        annualized_std = daily_returns.std() * np.sqrt(365)
-        # Sharpe Ratio: 연간 표준편차가 0보다 클 때만 계산
-        if not daily_returns.empty and annualized_std > 0:
-            annualized_return = daily_returns.mean() * 365
-            sharpe_ratio = annualized_return / annualized_std
-        
         cagr = 0.0
+        sortino_ratio = 0.0
+
         if not daily_returns.empty:
-            days = (daily_returns.index[-1] - daily_returns.index[0]).days
+            annualized_return = daily_returns.mean() * 365
+            annualized_std = daily_returns.std() * np.sqrt(365)
+            
+            if annualized_std > 0:
+                sharpe_ratio = annualized_return / annualized_std
+
+            days = (equity_df.index[-1] - equity_df.index[0]).days
             if days > 30:
                 years = days / 365.0
-                if years > 0:
-                    cagr = ((final_equity / self.initial_capital) ** (1 / years) - 1) * 100
+                cagr = ((final_equity / self.initial_capital) ** (1 / years) - 1) * 100
 
-        downside_returns = daily_returns[daily_returns < 0]
-        annualized_downside_std = downside_returns.std() * np.sqrt(365)
+            downside_returns = daily_returns[daily_returns < 0]
+            annualized_downside_std = downside_returns.std() * np.sqrt(365)
+            if annualized_downside_std > 0:
+                sortino_ratio = annualized_return / annualized_downside_std
+        
+        # Calmar Ratio
+        mdd_abs = abs(mdd_pct)
+        calmar_ratio = cagr / mdd_abs if mdd_abs > 0 else 0.0
 
-        sortino_ratio = 0.0
-        # Sortino Ratio: 하방 표준편차가 0보다 클 때만 계산
-        if not downside_returns.empty and annualized_downside_std > 0:
-            annualized_return = daily_returns.mean() * 365
-            sortino_ratio = annualized_return / annualized_downside_std
+        # Average Profit/Loss Ratio
+        avg_profit = self.gross_profit / self.winning_trades if self.winning_trades > 0 else 0.0
+        avg_loss = abs(self.gross_loss / self.losing_trades) if self.losing_trades > 0 else 0.0
+        avg_profit_loss_ratio = avg_profit / avg_loss if avg_loss > 0 else 0.0
+
+        # Ulcer Index
+        ulcer_index = np.sqrt(np.sum(drawdown**2) / len(drawdown)) * 100 if not drawdown.empty else 0.0
+
+        # Longest Flat Days
+        peak_dates = equity_df[equity_df['value'] >= peak]
+        longest_flat_duration = peak_dates.index.to_series().diff().max() if not peak_dates.empty else timedelta(0)
+        longest_flat_days = longest_flat_duration.days
+
+        # Average Holding Period
+        avg_holding_period_seconds = self.total_holding_period.total_seconds() / total_trades if total_trades > 0 else 0.0
+        avg_holding_period_days = avg_holding_period_seconds / (24 * 3600)
+
+        # K-Ratio
+        k_ratio = 0.0
+        if not daily_returns.empty and len(daily_returns) > 1:
+            log_equity = np.log(equity_df['value'])
+            x = np.arange(len(log_equity))
+            slope, intercept, r_value, p_value, std_err = linregress(x, log_equity)
+            if std_err > 0:
+                # 연율화된 기울기 / (표준오차 * 관측치 개수의 제곱근)
+                # K-Ratio는 보통 연간 단위로 계산하므로, 일일 데이터의 경우 기울기에 252(거래일) 또는 365(전체일)를 곱해 연율화합니다.
+                annual_slope = slope * 365
+                k_ratio = (annual_slope / (std_err * np.sqrt(len(x)))) * (1 / np.sqrt(365))
+
+        # 1. 항목별 점수 변환
+        profitability_score = (profit_factor / 2.0) * 100 if profit_factor is not None else 0
+        risk_adjusted_score = (sortino_ratio / 3.0) * 100 if sortino_ratio is not None else 0
+        resilience_score = (calmar_ratio / 1.0) * 100 if calmar_ratio is not None else 0
+        consistency_score = (k_ratio / 1.5) * 100 if k_ratio is not None else 0
+
+        # 2. 가중 평균으로 최종 점수 계산
+        backtest_score = (
+            (profitability_score * 0.3) +
+            (risk_adjusted_score * 0.3) +
+            (resilience_score * 0.3) +
+            (consistency_score * 0.1)
+        )
+
+        # 3. API 응답 및 툴팁에 사용할 상세 데이터 구조화
+        score_factors = {
+            "profitability": {"name": "수익성", "metric": "Profit Factor", "value": profit_factor, "target": 2.0, "score": profitability_score, "weight": 30},
+            "riskAdjusted": {"name": "위험 조정 성과", "metric": "Sortino Ratio", "value": sortino_ratio, "target": 3.0, "score": risk_adjusted_score, "weight": 30},
+            "resilience": {"name": "회복탄력성", "metric": "Calmar Ratio", "value": calmar_ratio, "target": 1.0, "score": resilience_score, "weight": 30},
+            "consistency": {"name": "수익 안정성", "metric": "K-Ratio", "value": k_ratio, "target": 1.5, "score": consistency_score, "weight": 10}
+        }
 
         return {
             "total_return_pct": round(total_return_pct, 2),
             "mdd_pct": round(mdd_pct, 2),
             "win_rate_pct": round(win_rate_pct, 2),
             "profit_factor": round(profit_factor, 2),
+            "sharpe_ratio": round(sharpe_ratio, 2),
             "sortino_ratio": round(sortino_ratio, 2),
             "cagr_pct": round(cagr, 2),
             "total_trades": total_trades,
             "winning_trades": self.winning_trades,
             "losing_trades": self.losing_trades,
             "pnl_curve_json": self.equity_curve,
-            "sharpe_ratio": round(sharpe_ratio, 2),
             "drawdown_curve_json": drawdown_curve_json,
+            "calmar_ratio": round(calmar_ratio, 2),
+            "avg_profit_loss_ratio": round(avg_profit_loss_ratio, 2),
+            "ulcer_index": round(ulcer_index, 2),
+            "longest_flat_days": longest_flat_days,
+            "avg_holding_period_days": round(avg_holding_period_days, 2),
+            "k_ratio": round(k_ratio, 2),
+            "backtest_score": round(backtest_score, 2),
+            "score_factors": score_factors
         }

@@ -191,9 +191,17 @@ class BacktestResult(Base):
     profit_factor = Column(Float, nullable=True)
     sortino_ratio = Column(Float, nullable=True)
     cagr_pct = Column(Float, nullable=True)
+    calmar_ratio = Column(Float, nullable=True)
+    ulcer_index = Column(Float, nullable=True)
+    avg_profit_loss_ratio = Column(Float, nullable=True)
+    k_ratio = Column(Float, nullable=True)
+    longest_flat_days = Column(Integer, nullable=True)
+    avg_holding_period_days = Column(Float, nullable=True)
     total_trades = Column(Integer, nullable=True)
     winning_trades = Column(Integer, nullable=True)
     losing_trades = Column(Integer, nullable=True)
+    backtest_score = Column(Float, nullable=True)
+    score_factors = Column(JSONB, nullable=True)
 
     backtest = relationship("Backtest", back_populates="result")
 

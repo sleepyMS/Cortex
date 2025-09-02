@@ -184,9 +184,9 @@ export const StrategyListingPreview = ({
 
                 {selectedBacktest && selectedBacktest.result && (
                   <div className="mt-4 p-4 bg-muted/50 rounded-md border bg-card text-card-foreground shadow-sm space-y-2">
-                    <h4 className="font-semibold text-base text-center mb-2">
+                    {/* <h5 className="font-semibold text-base mb-2">
                       {t("selectedBacktestDetails")}
-                    </h4>
+                    </h5> */}
                     <div className="flex flex-col gap-2">
                       <StatDisplay
                         label={tCard("totalReturn")}

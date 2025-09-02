@@ -305,7 +305,20 @@ class StrategyUpdate(CamelCaseModel):
         if value:
             return sanitize_html(value)
         return value
-    
+
+class MarketplaceListing(CamelCaseModel):
+    """전략의 마켓플레이스 등록 정보를 위한 스키마"""
+    product_id: uuid.UUID
+    price: float
+    category: str
+    position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
+    representative_backtest_id: Optional[uuid.UUID] = None
+
+class StrategySummary(CamelCaseModel):
+    """다른 스키마에 중첩될 때 사용될 가벼운 전략 정보"""
+    id: uuid.UUID
+    name: str
+
 class BacktestResultForHistory(CamelCaseModel):
     total_return_pct: float
     win_rate_pct: float
@@ -324,19 +337,12 @@ class BacktestResultSummaryForCard(CamelCaseModel):
     sharpe_ratio: Optional[float] = None
     profit_factor: Optional[float] = None
     sortino_ratio: Optional[float] = None
-
-class MarketplaceListing(CamelCaseModel):
-    """전략의 마켓플레이스 등록 정보를 위한 스키마"""
-    product_id: uuid.UUID
-    price: float
-    category: str
-    position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
-    representative_backtest_id: Optional[uuid.UUID] = None
-
-class StrategySummary(CamelCaseModel):
-    """다른 스키마에 중첩될 때 사용될 가벼운 전략 정보"""
-    id: uuid.UUID
-    name: str
+    calmar_ratio: Optional[float] = None
+    avg_profit_loss_ratio: Optional[float] = None
+    ulcer_index: Optional[float] = None
+    longest_flat_days: Optional[int] = None
+    avg_holding_period_days: Optional[float] = None
+    k_ratio: Optional[float] = None
 
 class StrategyInList(StrategyBase):
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
@@ -445,6 +451,16 @@ class BacktestResultSummary(CamelCaseModel):
     total_trades: Optional[int] = None
     winning_trades: Optional[int] = None
     losing_trades: Optional[int] = None
+    
+    calmar_ratio: Optional[float] = None
+    avg_profit_loss_ratio: Optional[float] = None
+    ulcer_index: Optional[float] = None
+    longest_flat_days: Optional[int] = None
+    avg_holding_period_days: Optional[float] = None
+    k_ratio: Optional[float] = None
+
+    backtest_score: Optional[float] = None
+    score_factors: Optional[Any] = None
 
 class BacktestParametersPayload(CamelCaseModel):
     start_date: datetime

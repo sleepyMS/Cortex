@@ -7,6 +7,7 @@ import { TradeLog } from "./tradelog";
  * 백엔드로부터 받는 상세 백테스트 결과 객체의 전체 형태입니다.
  */
 export interface BacktestResult {
+  backtestScore?: number;
   totalReturnPct: number | null;
   mddPct: number | null;
   winRatePct: number | null;
@@ -18,8 +19,15 @@ export interface BacktestResult {
   winningTrades?: number | null;
   losingTrades?: number | null;
   pnlCurveJson: { time: number; value: number }[] | null;
+  calmarRatio?: number | null;
+  avgProfitLossRatio?: number | null;
+  ulcerIndex?: number | null;
+  longestFlatDays?: number | null;
+  avgHoldingPeriodDays?: number | null;
+  kRatio?: number | null;
   drawdownCurveJson?: { time: number; value: number }[] | null;
 }
+
 /**
  * 백테스트 상세 페이지(`/backtester/[backtestId]`)에서 사용하는
  * 완전한 형태의 Backtest 객체 타입입니다.

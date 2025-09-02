@@ -64,34 +64,34 @@ const statsConfig = (t: any) => [
     Icon: () => Target,
     description: t("winRateDesc"),
   },
-  {
-    key: "sharpeRatio",
-    title: t("sharpeRatio"),
-    getValue: (r: BacktestResult) => r.sharpeRatio?.toFixed(2) ?? "N/A",
-    Icon: () => ShieldCheck,
-    description: t("sharpeRatioDesc"),
-  },
-  {
-    key: "sortinoRatio",
-    title: t("sortinoRatio"),
-    getValue: (r: BacktestResult) => r.sortinoRatio?.toFixed(2) ?? "N/A",
-    Icon: () => ShieldCheck,
-    description: t("sortinoRatioDesc"),
-  },
-  {
-    key: "profitFactor",
-    title: t("profitFactor"),
-    getValue: (r: BacktestResult) => r.profitFactor?.toFixed(2) ?? "N/A",
-    Icon: () => Percent,
-    description: t("profitFactorDesc"),
-  },
   // {
-  //   key: "totalTrades",
-  //   title: t("totalTrades"),
-  //   getValue: (r: BacktestResult) => r.totalTrades?.toString() ?? "N/A",
-  //   Icon: () => BarChartHorizontal,
-  //   description: t("totalTradesDesc"),
+  //   key: "sharpeRatio",
+  //   title: t("sharpeRatio"),
+  //   getValue: (r: BacktestResult) => r.sharpeRatio?.toFixed(2) ?? "N/A",
+  //   Icon: () => ShieldCheck,
+  //   description: t("sharpeRatioDesc"),
   // },
+  // {
+  //   key: "sortinoRatio",
+  //   title: t("sortinoRatio"),
+  //   getValue: (r: BacktestResult) => r.sortinoRatio?.toFixed(2) ?? "N/A",
+  //   Icon: () => ShieldCheck,
+  //   description: t("sortinoRatioDesc"),
+  // },
+  // {
+  //   key: "profitFactor",
+  //   title: t("profitFactor"),
+  //   getValue: (r: BacktestResult) => r.profitFactor?.toFixed(2) ?? "N/A",
+  //   Icon: () => Percent,
+  //   description: t("profitFactorDesc"),
+  // },
+  {
+    key: "totalTrades",
+    title: t("totalTrades"),
+    getValue: (r: BacktestResult) => r.totalTrades?.toString() ?? "N/A",
+    Icon: () => BarChartHorizontal,
+    description: t("totalTradesDesc"),
+  },
 ];
 
 export const BacktestResultSummary = ({
@@ -108,7 +108,7 @@ export const BacktestResultSummary = ({
         <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => (
                 <StatCard key={i} title="" value="" isLoading />

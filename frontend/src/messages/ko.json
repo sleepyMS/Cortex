@@ -495,7 +495,9 @@
   "StrategyListingPreview": {
     "noDescription": "설명 없음",
     "performanceTitle": "최근 성과",
-    "indicatorsTitle": "핵심 지표"
+    "indicatorsTitle": "핵심 지표",
+    "selectedBacktestDetails": "선택된 대표 백테스트 상세 정보",
+    "perfSummary": "주요 성과 요약"
   },
   "StrategyListingForm": {
     "title": "전략 마켓 등록",
@@ -598,6 +600,8 @@
     "sortByNewest": "최신 생성순",
     "sortByLastUpdated": "최신 수정순",
     "sortByNameAsc": "이름 오름차순",
+    "indicatorFilterPlaceholder": "지표로 필터링",
+    "indicatorFilterAll": "모든 지표",
     "loadingStrategies": "전략 목록을 불러오는 중...",
     "errorLoadingTitle": "오류",
     "fetchError": "데이터를 불러오는 데 실패했습니다.",
@@ -640,7 +644,11 @@
     "deleteError": "삭제 실패: {error}",
     "togglePublicSuccess": "전략이 공개되었습니다.",
     "togglePrivateSuccess": "전략이 비공개로 전환되었습니다.",
-    "togglePublicError": "상태 변경 실패: {error}"
+    "togglePublicError": "상태 변경 실패: {error}",
+    "editListing": "마켓 등록 정보 수정",
+    "unlistFromMarket": "마켓에서 내리기",
+    "confirmUnlist": "등록 취소 확인",
+    "selling": "판매 중"
   },
   "StrategyBacktestHistory": {
     "title": "이 전략의 최근 백테스트",
@@ -813,6 +821,44 @@
     "jobNotCompletedTitle": "{status, select, failed {백테스트 실패} canceled {백테스트 취소됨} other {작업 미완료}}",
     "jobNotCompletedMessage": "이 백테스트는 정상적으로 완료되지 않았습니다.",
     "unknownStatus": "알 수 없는 백테스트 상태입니다.",
+    "DetailedMetrics": {
+      "title": "상세 지표",
+      "overallScore": "종합 점수",
+      "categoryHeader": "분류",
+      "metricHeader": "지표",
+      "valueHeader": "값",
+      "daysUnit": "일",
+      "categoryProfit": "수익성",
+      "cagr": "연평균 복리 수익률 (CAGR)",
+      "avgProfitLossRatio": "평균 손익비",
+      "kRatio": "K-Ratio",
+      "categoryRiskAdjusted": "위험 조정 수익",
+      "sharpeRatio": "샤프 지수",
+      "sortinoRatio": "소르티노 지수",
+      "calmarRatio": "칼마 지수",
+      "categoryRiskAndPain": "위험 및 고통 지수",
+      "ulcerIndex": "얼서 지수",
+      "longestFlatDays": "최장 횡보 기간",
+      "categoryTradeChars": "거래 특성",
+      "avgHoldingPeriodDays": "평균 보유 기간",
+
+      "tooltips": {
+        "overallScore": "전략의 종합적인 성과를 나타내는 점수입니다. 수익성, 위험 조정 성과, 회복탄력성, 수익 안정성 네 가지 항목을 가중 평균하여 전략의 균형 잡힌 품질을 평가합니다.\n\n[계산 수식]\n(수익성 점수 x 0.3) +\n(위험 조정 성과 점수 x 0.3) +\n(회복탄력성 점수 x 0.3) +\n(수익 안정성 점수 x 0.1)\n\n* 수익성 = 수익 팩터 기반\n* 위험 조정 성과 = 소르티노 지수 기반\n* 회복탄력성 = 칼마 지수 기반\n* 수익 안정성 = K-Ratio 기반",
+        "categoryProfit": "이 전략이 얼마나 효과적으로 수익을 창출했는지를 나타내는 지표 그룹입니다.",
+        "cagr": "투자기간 동안의 연평균 복리 수익률입니다. 시간이 지남에 따라 자산이 얼마나 성장했는지를 보여주는 핵심 지표입니다.",
+        "avgProfitLossRatio": "평균 수익 거래의 이익금을 평균 손실 거래의 손실금으로 나눈 값입니다. 1보다 클수록 기대 수익이 높다는 의미입니다.",
+        "kRatio": "수익률의 안정성과 일관성을 측정하는 지표입니다. K-Ratio가 높을수록 꾸준히 우상향하는 이상적인 수익 곡선에 가깝습니다.",
+        "categoryRiskAdjusted": "단순 수익률이 아닌, 감수한 위험 대비 얼마나 높은 수익을 얻었는지를 평가하는 지표 그룹입니다.",
+        "sharpeRatio": "변동성(위험) 대비 초과 수익률을 나타냅니다. 가장 널리 사용되는 위험 조정 성과 지표로, 높을수록 좋습니다.",
+        "sortinoRatio": "샤프 지수와 유사하지만, 상승 변동성은 제외하고 오직 하락 변동성(실제 위험)만을 고려하여 위험 조정 수익률을 계산합니다.",
+        "calmarRatio": "최대 낙폭(MDD) 대비 연평균 복리 수익률을 나타냅니다. 전략이 큰 손실로부터 얼마나 잘 회복하는지를 보여줍니다.",
+        "categoryRiskAndPain": "전략을 운영하는 동안 투자자가 겪을 수 있는 잠재적인 손실과 심리적 고통의 정도를 측정하는 지표 그룹입니다.",
+        "ulcerIndex": "최대 낙폭의 깊이, 기간, 회복 속도를 종합적으로 고려하여 '투자자의 속쓰림'을 수치화한 지표입니다. 낮을수록 좋습니다.",
+        "longestFlatDays": "자산이 전고점을 경신하지 못하고 횡보한 최장 기간입니다. 투자자가 인내해야 하는 시간을 의미합니다.",
+        "categoryTradeChars": "거래 빈도, 보유 기간 등 전략의 운영 스타일을 파악할 수 있는 지표 그룹입니다.",
+        "avgHoldingPeriodDays": "한 번의 거래에서 평균적으로 포지션을 보유한 기간입니다."
+      }
+    },
     "Tabs": {
       "summary": "성과 요약",
       "chart": "자산 곡선",
@@ -917,5 +963,16 @@
     "profitFactorTooltip": "총 수익을 총 손실로 나눈 값입니다. 1.0 이상이어야 수익성이 있습니다.",
     "sortinoLabel": "소르티노 지수",
     "sortinoTooltip": "하락 위험(음의 변동성) 대비 초과수익을 측정합니다. 샤프 지수보다 정교한 위험 조정 지표입니다."
+  },
+  "Inventory": {
+    "pageTitle": "인벤토리",
+    "pageDescription": "보유하고 있는 아이템을 확인하고 관리할 수 있습니다.",
+    "tabs": {
+      "ALL": "전체",
+      "OPTIMIZATION_COUPON": "최적화 쿠폰",
+      "BACKTEST_CREDIT": "백테스트 크레딧"
+    },
+    "emptyTitle": "인벤토리가 비어있습니다.",
+    "emptyDescription": "마켓플레이스에서 다양한 아이템을 구매하고 전략을 강화해보세요."
   }
 }
