@@ -144,11 +144,16 @@ class BacktestService:
         self, db: AsyncSession, user_id: uuid.UUID, skip: int, limit: int,
         status_filter: Optional[str], strategy_id_filter: Optional[uuid.UUID]
     ) -> List[models.Backtest]:
-        """사용자 본인의 백테스팅 기록 목록을 비동기로 조회합니다."""
+        """
+        사용자 본인의 백테스팅 기록 '목록'을 위한 데이터를 조회합니다.
+        무거운 중첩 관계(strategy.backtests)는 로드하지 않습니다.
+        """
         query = select(models.Backtest).options(
+            # 목록 표시에 필요한 result와 strategy의 기본 정보만 Eager Loading합니다.
             joinedload(models.Backtest.result),
-            joinedload(models.Backtest.strategy).selectinload(models.Strategy.backtests)
-
+            joinedload(models.Backtest.strategy)
+        # [수정] 불필요하고 성능을 저하시키는 중첩 Eager Loading을 제거합니다.
+        # .selectinload(models.Strategy.backtests) <-- 이 부분을 삭제
         ).filter(models.Backtest.user_id == user_id)
 
         if status_filter:

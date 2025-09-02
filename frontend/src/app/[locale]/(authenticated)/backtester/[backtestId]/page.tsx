@@ -163,6 +163,7 @@ export default function BacktestDetailPage({
           `/backtests/${backtestId}/trade_logs`
         );
         tradeLogs = tradeLogsRes.data;
+        console.log(backtestRes);
       }
       return {
         backtest: backtestRes.data as Backtest,
@@ -250,6 +251,7 @@ export default function BacktestDetailPage({
     }
 
     const { backtest, tradeLogs } = data;
+    console.log(backtest);
 
     switch (backtest.status) {
       case "pending":

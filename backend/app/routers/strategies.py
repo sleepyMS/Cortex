@@ -12,7 +12,7 @@ from ..services.strategy_service import strategy_service
 from ..services.marketplace_service import marketplace_service
 from ..services.signal_service import signal_service
 from ..limiter import limiter
-from ..schemas import StrategyListPayload, StrategyProduct
+from ..schemas import StrategyInList 
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ async def create_strategy(
         logger.error(f"Error creating strategy for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 생성 중 서버 오류가 발생했습니다.")
 
-@router.get("/", response_model=List[schemas.Strategy], summary="Get list of user's strategies")
+@router.get("/", response_model=List[schemas.StrategyInList], summary="Get list of user's strategies")
 async def get_strategies(
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db),
@@ -113,18 +113,22 @@ async def update_strategy(
 ):
     """특정 ID의 전략을 비동기로 업데이트합니다."""
     try:
-        updated_strategy = await strategy_service.update_strategy(db, strategy_to_update, strategy_update)
+        updated_strategy_instance = await strategy_service.update_strategy(db, strategy_to_update, strategy_update)
         await db.commit()
-        await db.refresh(updated_strategy)
-        logger.info(f"Strategy '{updated_strategy.name}' updated by user (ID: {updated_strategy.author_id}).")
-        return updated_strategy
+
+        # 응답으로 반환하기 전에, Eager Loading이 적용된 함수로 객체를 '다시 조회'합니다.
+        strategy_for_response = await strategy_service.get_strategy_by_id_with_author(
+            db, updated_strategy_instance.id
+        )
+        
+        logger.info(f"Strategy '{strategy_for_response.name}' updated by user (ID: {strategy_for_response.author_id}).")
+        return strategy_for_response
     except HTTPException as e:
-        await db.rollback()
-        raise e
+        await db.rollback(); raise e
     except Exception as e:
-        await db.rollback()
+        await db.rollback();
         logger.error(f"Error updating strategy {strategy_to_update.id}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 업데이트 중 서버 오류가 발생했습니다.")
+        raise HTTPException(status_code=500, detail="전략 업데이트 중 서버 오류가 발생했습니다.")
 
 @router.delete("/{strategy_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a specific strategy")
 async def delete_strategy(
@@ -143,72 +147,6 @@ async def delete_strategy(
         await db.rollback()
         logger.error(f"Error deleting strategy {strategy_to_delete.id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 삭제 중 서버 오류가 발생했습니다.")
-    
-@router.post(
-    "/{strategy_id}/list",
-    response_model=StrategyProduct,
-    status_code=status.HTTP_201_CREATED,
-    summary="List a strategy on the marketplace"
-)
-async def list_strategy_on_marketplace(
-    payload: StrategyListPayload,
-    strategy_to_list: models.Strategy = Depends(get_verified_strategy),
-    db: AsyncSession = Depends(get_async_db),
-    current_user: models.User = Depends(get_current_active_user)
-) -> StrategyProduct:
-    """사용자의 특정 전략을 마켓플레이스에 상품으로 등록하거나 업데이트합니다."""
-    try:
-        # 1. 핵심 비즈니스 로직은 서비스 계층에 위임합니다.
-        product = await marketplace_service.list_strategy_as_product(
-            db=db,
-            strategy=strategy_to_list,
-            listing_data=payload,
-            seller=current_user
-        )
-        # 2. 서비스 계층에서 처리된 내용을 데이터베이스에 최종 반영합니다.
-        await db.commit()
-
-        # 3. 관계 필드(seller)가 응답에 올바르게 포함되도록 객체 상태를 갱신합니다.
-        await db.refresh(product, attribute_names=['seller'])
-
-        logger.info(f"Strategy '{strategy_to_list.name}' listed on marketplace by user {current_user.email}.")
-        
-        # 4. 스키마 문제가 해결되었으므로, SQLAlchemy 모델 객체를 직접 반환하면
-        #    FastAPI가 response_model을 참조하여 자동으로 안전하게 JSON으로 변환합니다.
-        return product
-
-    except HTTPException as e:
-        # HTTP 예외 발생 시 트랜잭션을 롤백하고 예외를 다시 발생시킵니다.
-        await db.rollback()
-        raise e
-    except Exception as e:
-        # 그 외 모든 예외 발생 시 트랜잭션을 롤백하고 상세한 서버 에러 로그를 남깁니다.
-        await db.rollback()
-        logger.error(
-            f"Error listing strategy {strategy_to_list.id} for user {current_user.email}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(status_code=500, detail="전략을 마켓에 등록하는 중 서버 오류가 발생했습니다.")
-
-
-@router.delete(
-    "/{strategy_id}/list",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Unlist a strategy from the marketplace"
-)
-async def unlist_strategy_from_marketplace(
-    strategy_to_unlist: models.Strategy = Depends(get_verified_strategy),
-    db: AsyncSession = Depends(get_async_db)
-):
-    """특정 전략을 마켓플레이스에서 판매 중단(비활성화) 처리합니다."""
-    try:
-        await marketplace_service.unlist_strategy_product(db, strategy_to_unlist)
-        await db.commit()
-        logger.info(f"Strategy '{strategy_to_unlist.name}' unlisted from marketplace.")
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Error unlisting strategy {strategy_to_unlist.id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="판매 중단 처리 중 오류가 발생했습니다.")
     
     
 # --- 전략 분석 관련 엔드포인트 ---

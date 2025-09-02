@@ -343,17 +343,33 @@ class MarketplaceService:
             }
         )
     
-    async def unlist_strategy_product(self, db: AsyncSession, strategy: models.Strategy):
-        """전략 ID에 연결된 마켓플레이스 상품을 찾아 비활성화합니다."""
-        product = await db.scalar(
-            select(models.MarketplaceProduct)
-            .filter(models.MarketplaceProduct.linked_resource_id == strategy.id)
-        )
-        if not product:
-            raise HTTPException(status_code=404, detail="마켓플레이스에 등록된 상품을 찾을 수 없습니다.")
+    async def unlist_strategy_product(
+        self, db: AsyncSession, product_id: uuid.UUID, current_user_id: uuid.UUID
+    ):
+        """
+        상품 ID를 사용하여 마켓플레이스 상품을 비활성화(판매 중단)합니다.
+        판매자 본인만 이 작업을 수행할 수 있도록 소유권을 검증합니다.
+        """
+        # 1. 전달받은 product_id로 상품을 조회합니다.
+        product = await db.get(models.MarketplaceProduct, product_id)
         
+        # 2. 상품이 없거나, 요청한 사용자가 판매자가 아니면 에러를 발생시킵니다. (보안 강화)
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="판매 중단할 상품을 찾을 수 없습니다.")
+        
+        if product.seller_id != current_user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="자신의 상품만 판매 중단할 수 있습니다.")
+
+        # 3. 이미 비활성화된 경우, 불필요한 DB 작업을 방지합니다.
+        if not product.is_active:
+            logger.info(f"Product {product_id} is already inactive.")
+            return
+
+        # 4. is_active 플래그를 False로 변경하여 판매 중단 처리합니다.
         product.is_active = False
         await db.flush()
+        logger.info(f"Product {product_id} has been successfully unlisted.")
+
 
     async def check_strategy_purchase(
         self, db: AsyncSession, user_id: uuid.UUID, strategy_id: uuid.UUID

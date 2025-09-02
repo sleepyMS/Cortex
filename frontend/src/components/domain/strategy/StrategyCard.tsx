@@ -6,11 +6,16 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { Strategy } from "@/types/strategy";
-import apiClient from "@/lib/apiClient";
+
+// --- Hooks ---
+import {
+  useDeleteStrategyMutation,
+  useTogglePublicStrategyMutation,
+  useUnlistStrategyMutation,
+} from "@/hooks/useStrategyMutations";
 
 // --- 아이콘 임포트 ---
 import {
@@ -21,12 +26,12 @@ import {
   BarChart2,
   Eye,
   EyeOff,
-  Copy,
   Globe,
   Lock,
   Loader2,
   ShoppingCart,
   XCircle,
+  Store,
 } from "lucide-react";
 
 // --- UI 컴포넌트 임포트 ---
@@ -66,61 +71,13 @@ export function StrategyCard({
 }: StrategyCardProps) {
   const t = useTranslations("StrategyCard");
   const router = useRouter();
-  const queryClient = useQueryClient();
 
-  // --- 뮤테이션 및 핸들러 ---
-  const deleteStrategyMutation = useMutation({
-    mutationFn: (strategyId: string) =>
-      apiClient.delete(`/strategies/${strategyId}`),
-    onSuccess: () => {
-      toast.success(t("deleteSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-    },
-    onError: (error: any) =>
-      toast.error(
-        t("deleteError", {
-          error: error?.response?.data?.detail || error.message,
-        })
-      ),
-  });
+  // --- [핵심 수정] 중앙 관리 훅 사용 ---
+  const deleteStrategyMutation = useDeleteStrategyMutation();
+  const togglePublicMutation = useTogglePublicStrategyMutation();
+  const unlistStrategyMutation = useUnlistStrategyMutation();
 
-  const togglePublicMutation = useMutation({
-    mutationFn: (strategy: Strategy) =>
-      apiClient.put(`/strategies/${strategy.id}`, {
-        isPublic: !strategy.isPublic,
-      }),
-    onSuccess: (response: any) => {
-      const updatedStrategy = response.data;
-      toast.success(
-        updatedStrategy.isPublic
-          ? t("togglePublicSuccess")
-          : t("togglePrivateSuccess")
-      );
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-    },
-    onError: (error: any) =>
-      toast.error(
-        t("togglePublicError", {
-          error: error?.response?.data?.detail || error.message,
-        })
-      ),
-  });
-
-  const unlistStrategyMutation = useMutation({
-    mutationFn: (strategyId: string) =>
-      apiClient.delete(`/strategies/${strategyId}/list`),
-    onSuccess: () => {
-      toast.success(t("unlistSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
-    },
-    onError: (error: any) =>
-      toast.error(
-        t("unlistError", {
-          error: error?.response?.data?.detail || error.message,
-        })
-      ),
-  });
-
+  // --- 이벤트 핸들러 ---
   const handleDelete = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
@@ -132,7 +89,11 @@ export function StrategyCard({
   const handleTogglePublic = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
-    togglePublicMutation.mutate(strategy);
+    // [수정] 훅의 요구사항에 맞게 payload를 객체 형태로 전달
+    togglePublicMutation.mutate({
+      strategyId: strategy.id,
+      isPublic: strategy.isPublic,
+    });
   };
 
   const handleListOnMarketplace = (event: React.MouseEvent) => {
@@ -144,8 +105,15 @@ export function StrategyCard({
   const handleUnlistFromMarketplace = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
+
+    const productId = strategy.marketplaceListing?.productId;
+    if (!productId) {
+      toast.error("상품 ID를 찾을 수 없어 판매 중단할 수 없습니다.");
+      return;
+    }
+
     if (confirm(t("confirmUnlist", { strategyName: strategy.name }))) {
-      unlistStrategyMutation.mutate(strategy.id);
+      unlistStrategyMutation.mutate(productId);
     }
   };
 
@@ -174,7 +142,7 @@ export function StrategyCard({
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       {strategy.marketplaceListing ? (
-        // 이미 등록된 경우: 수정 및 판매 중단 메뉴
+        // 1. 이미 마켓에 등록된 경우
         <>
           <DropdownMenuItem onClick={handleListOnMarketplace}>
             <ShoppingCart className="mr-2 h-4 w-4" />
@@ -194,13 +162,16 @@ export function StrategyCard({
           </DropdownMenuItem>
         </>
       ) : (
-        // 등록되지 않은 경우: 등록 메뉴
+        // 2. 마켓에 등록되지 않은 경우
         <DropdownMenuItem onClick={handleListOnMarketplace}>
           <ShoppingCart className="mr-2 h-4 w-4" />
           {t("listOnMarket")}
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem onClick={handleTogglePublic}>
+      <DropdownMenuItem
+        onClick={handleTogglePublic}
+        disabled={togglePublicMutation.isPending}
+      >
         {togglePublicMutation.isPending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : strategy.isPublic ? (
@@ -254,6 +225,16 @@ export function StrategyCard({
           <div className="hidden lg:block">
             <KeyIndicatorBadges strategy={strategy} />
           </div>
+          {/* 판매중일 경우 배지를 표시합니다. */}
+          {strategy.marketplaceListing && (
+            <Badge
+              variant="secondary"
+              className="hidden sm:flex bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100"
+            >
+              <Store className="mr-1 h-3.5 w-3.5" />
+              {t("selling")}
+            </Badge>
+          )}
           <Badge
             className={cn(
               "flex items-center gap-1.5",
@@ -304,23 +285,39 @@ export function StrategyCard({
             <CardTitle className="text-xl font-bold text-foreground pr-2">
               {strategy.name}
             </CardTitle>
-            <Badge
-              className={cn(
-                "flex items-center gap-1.5",
-                strategy.isPublic
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-slate-100 text-slate-800"
+
+            {/* [수정] 두 배지를 함께 묶어주는 div */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* '판매중' 배지를 여기에 추가합니다. */}
+              {strategy.marketplaceListing && (
+                <Badge
+                  variant="secondary"
+                  className="bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100"
+                >
+                  <Store className="mr-1 h-3.5 w-3.5" />
+                  {t("selling")}
+                </Badge>
               )}
-            >
-              {strategy.isPublic ? (
-                <Globe className="h-3.5 w-3.5" />
-              ) : (
-                <Lock className="h-3.5 w-3.5" />
-              )}
-              <span>
-                {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
-              </span>
-            </Badge>
+
+              {/* 기존 '공개/비공개' 배지 */}
+              <Badge
+                className={cn(
+                  "flex items-center gap-1.5",
+                  strategy.isPublic
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-slate-100 text-slate-800"
+                )}
+              >
+                {strategy.isPublic ? (
+                  <Globe className="h-3.5 w-3.5" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5" />
+                )}
+                <span>
+                  {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
+                </span>
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 flex-grow">

@@ -6,7 +6,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, models
-from ..dependencies import get_async_db, get_current_active_user
+from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.marketplace_service import marketplace_service
 from ..services.payment_service import payment_service # 결제 서비스 import
 
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # [수정] 파일명에 맞춰 router.py가 아닌 marketplace.py로 명명
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
 
+get_verified_strategy = create_owner_verifier(models.Strategy, owner_field="author_id")
 
 @router.get(
     "/products",
@@ -88,3 +89,62 @@ async def create_order(
         await db.rollback()
         logger.error(f"Error creating order for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="주문 생성 중 오류가 발생했습니다.")
+    
+@router.post(
+    "/listings",
+    response_model=schemas.StrategyProduct,
+    status_code=status.HTTP_201_CREATED,
+    summary="List a strategy on the marketplace"
+)
+async def list_strategy_on_marketplace(
+    payload: schemas.StrategyListPayload,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """사용자의 특정 전략을 마켓플레이스에 상품으로 등록하거나 업데이트합니다."""
+    # 소유권 검증을 위해 전략을 먼저 조회합니다.
+    strategy_to_list = await db.get(models.Strategy, payload.strategy_id)
+    if not strategy_to_list or strategy_to_list.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="자신의 전략만 마켓에 등록할 수 있습니다.")
+    
+    try:
+        product = await marketplace_service.list_strategy_as_product(
+            db=db, strategy=strategy_to_list, listing_data=payload, seller=current_user
+        )
+        await db.commit()
+        await db.refresh(product, attribute_names=['seller'])
+        logger.info(f"Strategy '{strategy_to_list.name}' listed on marketplace by user {current_user.email}.")
+        return product
+    except HTTPException as e:
+        await db.rollback(); raise e
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error listing strategy {strategy_to_list.id} for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="전략을 마켓에 등록하는 중 서버 오류가 발생했습니다.")
+
+@router.delete(
+    "/listings/{product_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Unlist a strategy from the marketplace"
+)
+async def unlist_strategy_from_marketplace(
+    product_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """특정 상품(리스팅)을 마켓플레이스에서 판매 중단 처리합니다."""
+    try:
+        # [수정] 이제 이 호출은 서비스 함수의 정의와 정확히 일치합니다.
+        await marketplace_service.unlist_strategy_product(
+            db=db, 
+            product_id=product_id, 
+            current_user_id=current_user.id
+        )
+        await db.commit()
+        logger.info(f"Marketplace product ID {product_id} unlisted by user {current_user.email}.")
+    except HTTPException as e:
+        await db.rollback(); raise e
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error unlisting product {product_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="판매 중단 처리 중 오류가 발생했습니다.")

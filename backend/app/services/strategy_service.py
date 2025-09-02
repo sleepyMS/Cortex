@@ -106,14 +106,16 @@ class StrategyService:
         return result.scalar_one_or_none()
 
     async def get_strategy_by_id_with_author(self, db: AsyncSession, strategy_id: uuid.UUID) -> Optional[models.Strategy]:
-        """ID로 단일 전략을 조회하며, 작성자와 모든 백테스트 이력도 함께 로드합니다."""
+        """
+        ID로 단일 전략의 모든 상세 정보(작성자, 백테스트 이력)를 Eager Loading하여 조회합니다.
+        오직 '상세 조회' 시에만 사용됩니다.
+        """
         query = (
             select(models.Strategy)
             .options(
                 joinedload(models.Strategy.author),
                 # Strategy 모델의 'backtests' 관계를 함께 로드하도록 지정합니다.
-                # selectinload는 N+1 문제를 방지하는 효율적인 로딩 방식입니다.
-                selectinload(models.Strategy.backtests)
+                selectinload(models.Strategy.backtests).joinedload(models.Backtest.result)
             )
             .filter(models.Strategy.id == strategy_id)
         )
@@ -125,16 +127,16 @@ class StrategyService:
         search_query: Optional[str], sort_by: Optional[str], is_public_filter: Optional[bool],
         indicator_filter: Optional[str]
     ) -> List[models.Strategy]:
-        """사용자의 전략 목록을 조회하며, 최신 백테스트 요약 정보도 함께 반환합니다."""
+        """
+        사용자의 전략 '목록'을 위한 데이터를 조회합니다.
+        """
+        # ... (latest_backtest_subquery 와 purchased_strategy_ids_subquery 는 이전과 동일) ...
         latest_backtest_subquery = (
             select(
                 models.Backtest.strategy_id,
-                models.BacktestResult.total_return_pct,
-                models.BacktestResult.win_rate_pct,
-                models.BacktestResult.mdd_pct,
-                models.BacktestResult.sharpe_ratio,
-                models.BacktestResult.profit_factor,
-                models.BacktestResult.sortino_ratio, 
+                models.BacktestResult.total_return_pct, models.BacktestResult.win_rate_pct,
+                models.BacktestResult.mdd_pct, models.BacktestResult.sharpe_ratio,
+                models.BacktestResult.profit_factor, models.BacktestResult.sortino_ratio,
                 func.row_number().over(
                     partition_by=models.Backtest.strategy_id,
                     order_by=models.Backtest.created_at.desc()
@@ -144,12 +146,31 @@ class StrategyService:
             .filter(models.Backtest.status == 'completed')
             .subquery('latest_backtest')
         )
-
         purchased_strategy_ids_subquery = (
             select(models.UserPurchasedStrategy.strategy_id)
             .filter(models.UserPurchasedStrategy.user_id == user_id)
         )
 
+        # 3. [핵심 수정] 마켓플레이스 상품 정보 서브쿼리에서 .astext 대신 cast를 사용합니다.
+        marketplace_info_subquery = (
+            select(
+                models.MarketplaceProduct.id.label("product_id"),
+                models.MarketplaceProduct.linked_resource_id.label("strategy_id"),
+                models.MarketplaceProduct.price,
+                # [수정] JSON 필드에서 'category' 키의 값을 text로 추출
+                models.MarketplaceProduct.product_metadata.op('->>')('category').label("category"),
+                # [수정] JSON 필드에서 'positionType' 키의 값을 text로 추출
+                models.MarketplaceProduct.product_metadata.op('->>')('positionType').label("position_type"),
+                models.MarketplaceProduct.representative_backtest_id
+            )
+            .where(
+                models.MarketplaceProduct.product_type == models.ProductType.STRATEGY,
+                models.MarketplaceProduct.is_active == True
+            )
+            .subquery('marketplace_info')
+        )
+
+        # 4. 기본 쿼리 (이전과 동일)
         query = select(
             models.Strategy,
             latest_backtest_subquery.c.total_return_pct,
@@ -158,45 +179,59 @@ class StrategyService:
             latest_backtest_subquery.c.sharpe_ratio,
             latest_backtest_subquery.c.profit_factor,
             latest_backtest_subquery.c.sortino_ratio,
+            marketplace_info_subquery.c.product_id,
+            marketplace_info_subquery.c.price,
+            marketplace_info_subquery.c.category,
+            marketplace_info_subquery.c.position_type,
+            marketplace_info_subquery.c.representative_backtest_id
         ).options(
-            # [핵심 수정] backtests를 로드할 때, 각 backtest의 result 관계도 함께 로드합니다.
             selectinload(models.Strategy.backtests).joinedload(models.Backtest.result)
         ).outerjoin(
             latest_backtest_subquery,
             (models.Strategy.id == latest_backtest_subquery.c.strategy_id) & (latest_backtest_subquery.c.row_num == 1)
+        ).outerjoin(
+            marketplace_info_subquery,
+            models.Strategy.id == marketplace_info_subquery.c.strategy_id
         ).filter(
             or_(
                 models.Strategy.author_id == user_id,
                 models.Strategy.id.in_(purchased_strategy_ids_subquery)
             )
         )
-        if is_public_filter is not None: query = query.filter(models.Strategy.is_public == is_public_filter)
-        if search_query: query = query.filter(models.Strategy.name.ilike(f"%{search_query}%"))
+        
+        # 5. 필터링 및 정렬 로직 (이전과 동일)
+        if is_public_filter is not None:
+            query = query.filter(models.Strategy.is_public == is_public_filter)
+        if search_query:
+            query = query.filter(models.Strategy.name.ilike(f"%{search_query}%"))
         if indicator_filter:
             like_pattern = f'%\"indicatorKey\": \"{indicator_filter}\"%'
             query = query.filter(
-                (cast(models.Strategy.long_entry_rules, String).like(like_pattern)) | (cast(models.Strategy.long_exit_rules, String).like(like_pattern)) |
-                (cast(models.Strategy.short_entry_rules, String).like(like_pattern)) | (cast(models.Strategy.short_exit_rules, String).like(like_pattern))
+                (cast(models.Strategy.long_entry_rules, String).like(like_pattern)) |
+                (cast(models.Strategy.long_exit_rules, String).like(like_pattern)) |
+                (cast(models.Strategy.short_entry_rules, String).like(like_pattern)) |
+                (cast(models.Strategy.short_exit_rules, String).like(like_pattern))
             )
             
-        if sort_by == "updated_at_desc": query = query.order_by(models.Strategy.updated_at.desc().nullslast())
-        else: query = query.order_by(models.Strategy.created_at.desc())
+        if sort_by == "updated_at_desc":
+            query = query.order_by(models.Strategy.updated_at.desc().nullslast())
+        else:
+            query = query.order_by(models.Strategy.created_at.desc())
 
         results = await db.execute(query.offset(skip).limit(limit))
         
         strategies_with_summary = []
-        for strategy, total_return, win_rate, mdd, sharpe, profit, sortino in results:
+        # 6. 조회된 결과를 Pydantic 스키마에 맞게 가공 (이전과 동일)
+        for row in results.all():
+            strategy = row.Strategy
             strategy.latest_backtest_summary = None
-            if total_return is not None:
-                # API 응답 시에는 camelCase를 사용합니다.
-                strategy.latest_backtest_summary = schemas.BacktestResultSummaryForCard(
-                    total_return_pct=total_return, 
-                    win_rate_pct=win_rate,
-                    mdd_pct=mdd,
-                    sharpe_ratio=sharpe,
-                    profit_factor=profit,
-                    sortino_ratio=sortino
-                )
+            if row.total_return_pct is not None:
+                strategy.latest_backtest_summary = schemas.BacktestResultSummaryForCard.model_validate(row._asdict())
+            
+            strategy.marketplace_listing = None
+            if row.product_id:
+                strategy.marketplace_listing = schemas.MarketplaceListing.model_validate(row._asdict())
+
             strategies_with_summary.append(strategy)
         
         return strategies_with_summary

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { useDebounce } from "use-debounce";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { toast } from "sonner";
 
 import apiClient from "@/lib/apiClient";
 import { Strategy } from "@/types/strategy";
@@ -131,48 +132,30 @@ export default function StrategiesPage() {
   const [indicatorFilter, setIndicatorFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("updated_at_desc");
   const [isListingModalOpen, setIsListingModalOpen] = useState(false);
+
+  // 모달을 열기 위해 사용자가 클릭한 '요약' 전략 정보
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(
     null
   );
 
-  // 모달에 표시될 상세 전략 정보와 로딩 상태를 위한 별도의 상태
+  // API로부터 받아온 '상세' 전략 정보 (모달 UI의 진실의 원천)
   const [strategyDetail, setStrategyDetail] = useState<Strategy | null>(null);
+
+  const [autoDetectedPositionType, setAutoDetectedPositionType] = useState<
+    string | null
+  >(null);
 
   const { ref, inView } = useInView();
   const listStrategyMutation = useListStrategyMutation();
 
-  // --- 폼 상태 관리 (상태 끌어올리기) ---
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingFormSchema),
     mode: "onChange",
   });
 
-  // 모달이 열릴 때마다 선택된 전략의 정보로 폼을 리셋
-  useEffect(() => {
-    if (selectedStrategy) {
-      const hasLong = (selectedStrategy.longEntryRules?.blocks.length ?? 0) > 0;
-      const hasShort =
-        (selectedStrategy.shortEntryRules?.blocks.length ?? 0) > 0;
-      let autoDetectedPositionType: "LongOnly" | "ShortOnly" | "LongShort" =
-        "LongShort";
-      if (hasLong && !hasShort) autoDetectedPositionType = "LongOnly";
-      if (!hasLong && hasShort) autoDetectedPositionType = "ShortOnly";
+  const watchedPositionType = form.watch("positionType");
 
-      form.reset({
-        price: selectedStrategy.marketplaceListing?.price || 10.0,
-        category: selectedStrategy.marketplaceListing?.category || "",
-        positionType:
-          selectedStrategy.marketplaceListing?.positionType ||
-          autoDetectedPositionType,
-        representativeBacktestId:
-          selectedStrategy.marketplaceListing?.representativeBacktestId ||
-          undefined,
-        termsAccepted: false,
-      });
-    }
-  }, [selectedStrategy, form]);
-
-  // --- 데이터 페칭 ---
+  // --- 데이터 페칭 (전략 목록) ---
   const {
     data,
     isLoading,
@@ -209,56 +192,93 @@ export default function StrategiesPage() {
     initialPageParam: 0,
   });
 
+  // --- 데이터 페칭 (전략 상세 정보) ---
   const {
-    data: strategyDetailData, // 반환된 데이터의 이름을 명확히 지정
-    isSuccess, // 성공 상태를 나타내는 boolean
+    data: strategyDetailData,
+    isSuccess,
     isFetching,
     refetch: fetchStrategyDetail,
   } = useQuery({
     queryKey: ["strategyDetail", selectedStrategy?.id],
     queryFn: async () => {
-      if (!selectedStrategy) return null;
+      if (!selectedStrategy?.id) return null;
       const res = await apiClient.get(`/strategies/${selectedStrategy.id}`);
-      return res.data;
+      return res.data as Strategy;
     },
-    enabled: false, // onSuccess, onError 옵션 제거
+    enabled: false,
   });
 
-  // isSuccess 상태를 감지하는 useEffect를 상세 데이터가 도착했을 때의 처리 로직으로 변경
+  // --- 핵심 로직: 상세 데이터 로딩 성공 후 모든 관련 상태를 업데이트 ---
   useEffect(() => {
     if (isSuccess && strategyDetailData) {
-      // 1. 상세 데이터 상태 업데이트
       setStrategyDetail(strategyDetailData);
 
-      // 2. 폼 기본값 설정 로직
-      const { marketplaceListing, backtests } = strategyDetailData;
+      const hasLong =
+        (strategyDetailData.longEntryRules?.blocks.length ?? 0) > 0;
+      const hasShort =
+        (strategyDetailData.shortEntryRules?.blocks.length ?? 0) > 0;
+      let autoDetectedType: "LongOnly" | "ShortOnly" | "LongShort" =
+        "LongShort";
+      if (hasLong && !hasShort) autoDetectedType = "LongOnly";
+      if (!hasLong && hasShort) autoDetectedType = "ShortOnly";
 
-      // 2-1. 가장 최신 백테스트를 찾습니다. (날짜로 정렬)
+      // [수정] 이미 저장된 리스팅 정보가 없을 때만 autoDetectedPositionType state를 설정합니다.
+      if (!strategyDetailData.marketplaceListing?.positionType) {
+        setAutoDetectedPositionType(autoDetectedType);
+      } else {
+        setAutoDetectedPositionType(null); // 기존 정보가 있으면 비교 로직을 비활성화합니다.
+      }
+
       const latestBacktest =
-        backtests && backtests.length > 0
-          ? [...backtests].sort(
+        strategyDetailData.backtests && strategyDetailData.backtests.length > 0
+          ? [...strategyDetailData.backtests].sort(
               (a, b) =>
                 new Date(b.createdAt).getTime() -
                 new Date(a.createdAt).getTime()
             )[0]
           : null;
 
-      // 2-2. 폼 값을 리셋합니다.
       form.reset({
-        price: marketplaceListing?.price || 10.0,
-        category: marketplaceListing?.category || "",
-        positionType: marketplaceListing?.positionType || "LongOnly", // 필요시 자동탐지 로직 추가
-        termsAccepted: false,
-
-        // 이미 등록된 상품이면 저장된 값을, 아니라면 가장 최신 백테스트 ID를 기본값으로 설정
+        price: strategyDetailData.marketplaceListing?.price ?? 10.0,
+        category: strategyDetailData.marketplaceListing?.category ?? "",
+        positionType:
+          strategyDetailData.marketplaceListing?.positionType ||
+          autoDetectedType,
         representativeBacktestId:
-          marketplaceListing?.representativeBacktestId ||
+          strategyDetailData.marketplaceListing?.representativeBacktestId ||
           latestBacktest?.id ||
           undefined,
+        termsAccepted: false,
       });
+
+      if (!strategyDetailData.marketplaceListing?.positionType) {
+        toast.info(
+          `전략 분석 결과, '${autoDetectedType}' 타입으로 자동 선택되었습니다.`
+        );
+      }
     }
   }, [isSuccess, strategyDetailData, form]);
 
+  // [추가] 사용자가 positionType을 변경할 때마다 경고를 띄우는 로직
+  useEffect(() => {
+    // 1. 자동 분석된 타입이 있고,
+    // 2. 현재 선택된 타입이 있으며,
+    // 3. 두 타입이 다를 경우에만 경고 토스트를 띄웁니다.
+    if (
+      autoDetectedPositionType &&
+      watchedPositionType &&
+      watchedPositionType !== autoDetectedPositionType
+    ) {
+      toast.warning(
+        "자동 분석된 포지션 타입과 다른 옵션을 선택하셨습니다. 이 전략은 선택된 타입으로 거래 시 의도와 다르게 동작할 수 있습니다."
+        // {
+        //   id: "position-type-warning", // ID를 부여하여 중복 토스트 방지
+        // }
+      );
+    }
+  }, [watchedPositionType, autoDetectedPositionType]);
+
+  // 무한 스크롤 로직
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -269,26 +289,25 @@ export default function StrategiesPage() {
 
   // --- 이벤트 핸들러 ---
   const handleOpenListingModal = (strategy: Strategy) => {
-    // 1. 기본(요약) 정보를 먼저 설정하여 모달을 빠르게 엽니다.
+    setStrategyDetail(null); // 이전 데이터 지우고 로딩 상태로 전환
     setSelectedStrategy(strategy);
-    setStrategyDetail(strategy); // UI 깜빡임 방지를 위해 초기값 설정
     setIsListingModalOpen(true);
   };
 
-  // 모달이 열리면 상세 정보 로딩을 트리거합니다.
+  // 모달이 열리면 상세 데이터 로딩 트리거
   useEffect(() => {
     if (isListingModalOpen && selectedStrategy) {
-      console.log(
-        `[LOG 1] Modal opened. Attempting to fetch details for strategy ID: ${selectedStrategy.id}`
-      );
       fetchStrategyDetail();
     }
   }, [isListingModalOpen, selectedStrategy, fetchStrategyDetail]);
 
-  const handleListingSubmit = (values: any) => {
+  const handleListingSubmit = (values: ListingFormValues) => {
     if (!selectedStrategy) return;
     listStrategyMutation.mutate(
-      { strategyId: selectedStrategy.id, listingData: values },
+      {
+        strategyId: selectedStrategy.id,
+        ...values,
+      },
       {
         onSuccess: () => {
           setIsListingModalOpen(false);
@@ -329,7 +348,7 @@ export default function StrategiesPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
-      {/* 1. 페이지 헤더: 제목, 뷰 모드, 새 전략 생성 버튼 */}
+      {/* 1. 페이지 헤더 */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
         <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
         <div className="flex items-center gap-2">
@@ -411,10 +430,10 @@ export default function StrategiesPage() {
         </Select>
       </div>
 
-      {/* 3. 전략 목록 또는 로딩/에러 상태 렌더링 */}
+      {/* 3. 전략 목록 */}
       {renderContent()}
 
-      {/* 4. 무한 스크롤 감지를 위한 하단 영역 */}
+      {/* 4. 무한 스크롤 감지 영역 */}
       <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
         {isFetchingNextPage && <Spinner />}
         {!hasNextPage && strategies.length > 0 && (
@@ -427,13 +446,11 @@ export default function StrategiesPage() {
       {/* 5. 마켓 등록/수정 모달 */}
       <Dialog open={isListingModalOpen} onOpenChange={setIsListingModalOpen}>
         <DialogContent className="max-w-4xl p-0">
-          {/* 상세 정보 로딩 중일 때 스피너 표시 */}
-          {isFetching ? (
+          {isFetching || !strategyDetail ? (
             <div className="flex items-center justify-center h-[600px]">
               <Spinner size="lg" />
             </div>
           ) : (
-            // Form Provider가 두 패널을 모두 감싸도록 최상단에 위치
             <Form {...form}>
               <div className="grid grid-cols-1 md:grid-cols-5">
                 {/* 좌측: 미리보기 패널 */}
@@ -446,35 +463,31 @@ export default function StrategiesPage() {
                       {t("modalPreviewDescription")}
                     </DialogDescription>
                   </DialogHeader>
-                  {strategyDetail && (
-                    <StrategyListingPreview
-                      strategy={strategyDetail}
-                      control={form.control}
-                    />
-                  )}
+                  <StrategyListingPreview
+                    strategy={strategyDetail}
+                    control={form.control}
+                  />
                 </div>
 
                 {/* 우측: 설정 폼 패널 */}
                 <div className="col-span-3 p-8 overflow-y-auto max-h-[90vh]">
                   <DialogHeader className="mb-6">
                     <DialogTitle className="text-2xl font-bold">
-                      {selectedStrategy?.marketplaceListing
+                      {strategyDetail.marketplaceListing
                         ? t("modalEditTitle")
                         : t("modalRegisterTitle")}
                     </DialogTitle>
                     <DialogDescription>
                       {t("modalDescription", {
-                        strategyName: selectedStrategy?.name,
+                        strategyName: strategyDetail.name,
                       })}
                     </DialogDescription>
                   </DialogHeader>
-                  {strategyDetail && (
-                    <StrategyListingForm
-                      onSubmit={form.handleSubmit(handleListingSubmit)}
-                      isSubmitting={listStrategyMutation.isPending}
-                      strategy={strategyDetail}
-                    />
-                  )}
+                  <StrategyListingForm
+                    onSubmit={form.handleSubmit(handleListingSubmit)}
+                    isSubmitting={listStrategyMutation.isPending}
+                    strategy={strategyDetail}
+                  />
                 </div>
               </div>
             </Form>

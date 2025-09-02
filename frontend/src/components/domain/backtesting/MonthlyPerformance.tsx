@@ -36,7 +36,6 @@ const calculateMonthlyReturns = (pnlData: ChartDataPoint[]) => {
   pnlData.forEach((d) => {
     // UNIX 타임스탬프(초 단위)를 Date 객체로 올바르게 변환합니다.
     const date = fromUnixTime(d.time);
-    // ▲▲▲ [수정 완료] ▲▲▲
     const year = getYear(date);
     const month = getMonth(date);
     const key = `${year}-${month}`;

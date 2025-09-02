@@ -50,7 +50,7 @@ class UserAdminUpdate(CamelCaseModel):
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
     is_email_verified: Optional[bool] = None
-    role: Optional[Literal["user", "admin", "Basic", "Trader", "Pro"]] = None
+    role: Optional[Literal["user", "admin"]] = None
     new_password: Optional[str] = Field(None, min_length=8, max_length=255)
 
 class Token(CamelCaseModel):
@@ -138,8 +138,10 @@ class SubscriptionSchema(CamelCaseModel):
     current_period_end: Optional[datetime]
     plan: PlanSchema
 
-class User(UserBase):
+class User(CamelCaseModel): # UserBase를 상속하지 않고 모든 필드를 명시
     id: uuid.UUID
+    email: EmailStr
+    username: Optional[str] = None
     is_active: bool
     is_email_verified: bool
     role: str
@@ -266,6 +268,7 @@ class TargetCoin(CamelCaseModel):
     allocation_pct: float = Field(100.0, ge=0, le=100)
 
 class StrategyBase(CamelCaseModel):
+    """전략 생성/수정 시 사용자로부터 입력을 받는 필드를 정의"""
     name: str = Field(..., min_length=3, max_length=100)
     description: str | None = Field(None, max_length=500)
     is_public: bool = False
@@ -330,32 +333,43 @@ class MarketplaceListing(CamelCaseModel):
     position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
     representative_backtest_id: Optional[uuid.UUID] = None
 
-class Strategy(CamelCaseModel):
+class StrategySummary(CamelCaseModel):
+    """다른 스키마에 중첩될 때 사용될 가벼운 전략 정보"""
+    id: uuid.UUID
+    name: str
+
+class StrategyInList(StrategyBase):
+    latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
+    marketplace_listing: Optional[MarketplaceListing] = None
+
+# --- [역할 2] API 응답을 위한 베이스 스키마 (신규 제안) ---
+class StrategyResponseBase(CamelCaseModel):
+    """API 응답용 스키마들이 공통으로 가지는 필드를 정의"""
     id: uuid.UUID
     author_id: uuid.UUID
     name: str
     description: Optional[str] = None
     is_public: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+class StrategyInList(StrategyResponseBase):
+    """'목록' 조회를 위한 가벼운 응답 스키마"""
+    latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
+    marketplace_listing: Optional[MarketplaceListing] = None
+
+class Strategy(StrategyResponseBase):
+    """'상세' 조회를 위한 완전한 응답 스키마"""
     long_entry_rules: Optional[PositionRules] = None
     long_exit_rules: Optional[PositionRules] = None
     short_entry_rules: Optional[PositionRules] = None
     short_exit_rules: Optional[PositionRules] = None
     tpsl_logic: Optional[TpslLogic] = None
-    target_coins: List[TargetCoin]
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    target_coins: List[TargetCoin] = Field(default_factory=list)
     paid_feature_level: PlanType = PlanType.BASIC
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
-    marketplace_listing: Optional[MarketplaceListing] = None # MarketplaceListing 타입이 정의되어 있다고 가정
-
-    # [핵심 추가] backtests 필드를 List 형태로 추가합니다.
-    # Pydantic이 DB 모델의 backtests 관계를 자동으로 읽어 이 리스트를 채웁니다.
+    marketplace_listing: Optional[MarketplaceListing] = None
     backtests: List[BacktestHistoryItem] = Field(default_factory=list)
-
-    @field_validator('target_coins', mode='before')
-    @classmethod
-    def validate_target_coins(cls, v):
-        return v if v is not None else []
     
 class ApiKeyCreate(CamelCaseModel):
     exchange: str = Field(..., min_length=2, max_length=50)
@@ -378,6 +392,18 @@ class ParameterOverride(CamelCaseModel):
     path: str
     value: Any
 
+class BacktestInList(CamelCaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    strategy_id: uuid.UUID
+    status: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    
+    # 목록에서는 간단한 결과 요약과 전략 이름 정도만 필요합니다.
+    result: Optional[BacktestResultSummaryForCard] = None
+    strategy: Optional[StrategySummary] = None
+    
 class BacktestExecutionParameters(CamelCaseModel):
     """백테스트 실행에 필요한 모든 상세 파라미터를 그룹화"""
     leverage: float = Field(1.0, gt=0, description="레버리지 배율")
@@ -427,17 +453,10 @@ class BacktestParametersPayload(CamelCaseModel):
     # leverage, fee, overrides, tpsl_logic 등을 포함하는 객체를 중첩시킵니다.
     parameters: BacktestExecutionParameters
 
-class Backtest(CamelCaseModel):
-    id: uuid.UUID
-    user_id: uuid.UUID
-    strategy_id: uuid.UUID
-    status: str
-    parameters: BacktestParametersPayload
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    result: Optional[BacktestResultSummary] = None
-    strategy: Optional[Strategy] = None
+class Backtest(BacktestInList):
+    parameters: Dict[str, Any]
+    strategy: Optional[Strategy] = None 
+    result: Optional[BacktestResultSummary] = None 
 
 class LiveBotCreate(CamelCaseModel):
     strategy_id: uuid.UUID
@@ -458,7 +477,7 @@ class LiveBot(CamelCaseModel):
     stopped_at: Optional[datetime] = None
     last_run_at: Optional[datetime] = None
     initial_capital: Optional[float] = None
-    strategy: Optional[Strategy] = None
+    strategy: Optional[StrategySummary] = None
     api_key: Optional[ApiKeyResponse] = None
 
 # ==============================================================================
@@ -607,6 +626,7 @@ class OrderCreate(CamelCaseModel):
 
 class StrategyListPayload(CamelCaseModel):
     """전략을 마켓플레이스에 등록하기 위한 요청 본문"""
+    strategy_id: uuid.UUID
     price: float = Field(..., ge=0)
     category: str
     position_type: Literal['LongOnly', 'ShortOnly', 'LongShort']
@@ -641,10 +661,15 @@ class ShopItemProduct(BaseProduct):
 class StrategyProductDetail(StrategyProduct):
     """
     전략 상품의 모든 상세 정보를 포함하는 스키마.
-    (전략 규칙, 상세 백테스트 결과 등)
+    원본 전략의 규칙을 '스냅샷' 형태로 복사하여 포함합니다.
     """
-    # Strategy 모델 전체를 포함하여 프론트엔드가 필요한 모든 규칙 정보를 제공
-    strategy_details: Strategy 
+    description: Optional[str] = None
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    target_coins: List[TargetCoin] = Field(default_factory=list)
     
     # 대표 백테스트의 전체 결과(차트 데이터, 거래 기록 등)를 포함
     representative_backtest: Optional[Backtest] = None

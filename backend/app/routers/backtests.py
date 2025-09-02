@@ -47,7 +47,7 @@ async def create_backtest(
         logger.error(f"Error creating backtest job for user {user_email_for_log}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 작업 생성 중 서버 오류가 발생했습니다.")
 
-@router.get("/", response_model=List[schemas.Backtest], summary="Get list of user's backtest records")
+@router.get("/", response_model=List[schemas.BacktestInList], summary="Get list of user's backtest records")
 async def get_backtests(
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db),
@@ -68,7 +68,7 @@ async def get_backtests(
 
 @router.get("/{backtest_id}", response_model=schemas.Backtest, summary="Get details and result of a specific backtest")
 async def get_backtest_by_id(
-    backtest_id: uuid.UUID, # [수정] 의존성 주입 대신 backtest_id를 직접 받습니다.
+    backtest_id: uuid.UUID, 
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
@@ -85,7 +85,9 @@ async def get_backtest_by_id(
     if backtest.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 백테스트에 접근할 권한이 없습니다.")
 
-    logger.info(f"User (ID: {backtest.user_id}) accessed backtest: {backtest.id}.")
+    logger.warning(f"User (ID: {backtest.user_id}) accessed backtest: {backtest.id}.")
+    logger.warning("[API] Returning backtest detail: %s", backtest)
+
     return backtest
 
 @router.get("/{backtest_id}/trade_logs", response_model=List[schemas.TradeLogEntry], summary="Get trade logs for a specific backtest")
