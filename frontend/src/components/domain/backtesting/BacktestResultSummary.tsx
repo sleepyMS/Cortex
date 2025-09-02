@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { StatCard } from "@/components/ui/StatCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -16,6 +17,7 @@ interface BacktestResult {
   mddPct: number | null;
   winRatePct: number | null;
   sharpeRatio?: number | null; // Optional properties
+  sortinoRatio?: number | null;
   profitFactor?: number | null;
   totalTrades?: number | null;
 }
@@ -70,50 +72,59 @@ const statsConfig = (t: any) => [
     description: t("sharpeRatioDesc"),
   },
   {
+    key: "sortinoRatio",
+    title: t("sortinoRatio"),
+    getValue: (r: BacktestResult) => r.sortinoRatio?.toFixed(2) ?? "N/A",
+    Icon: () => ShieldCheck,
+    description: t("sortinoRatioDesc"),
+  },
+  {
     key: "profitFactor",
     title: t("profitFactor"),
     getValue: (r: BacktestResult) => r.profitFactor?.toFixed(2) ?? "N/A",
     Icon: () => Percent,
     description: t("profitFactorDesc"),
   },
-  {
-    key: "totalTrades",
-    title: t("totalTrades"),
-    getValue: (r: BacktestResult) => r.totalTrades?.toString() ?? "N/A",
-    Icon: () => BarChartHorizontal,
-    description: t("totalTradesDesc"),
-  },
+  // {
+  //   key: "totalTrades",
+  //   title: t("totalTrades"),
+  //   getValue: (r: BacktestResult) => r.totalTrades?.toString() ?? "N/A",
+  //   Icon: () => BarChartHorizontal,
+  //   description: t("totalTradesDesc"),
+  // },
 ];
 
 export const BacktestResultSummary = ({
   result,
   isLoading,
 }: BacktestResultSummaryProps) => {
-  // 다국어 번역 함수
   const t = useTranslations("BacktestResultSummary");
   const config = statsConfig(t);
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {isLoading
-          ? // 로딩 중일 때 스켈레톤 UI 표시
-            Array.from({ length: 6 }).map((_, i) => (
-              <StatCard key={i} title="" value="" isLoading />
-            ))
-          : // 데이터가 있을 때 StatCard 렌더링
-            config.map((stat) => (
-              <StatCard
-                key={stat.key}
-                title={stat.title}
-                value={stat.getValue(result)}
-                icon={stat.Icon(result)}
-                colorClass={stat.colorClass ? stat.colorClass(result) : ""}
-                description={stat.description}
-              />
-            ))}
-      </div>
-    </div>
+    // 최상위 div를 Card 컴포넌트로 변경합니다.
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {isLoading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <StatCard key={i} title="" value="" isLoading />
+              ))
+            : config.map((stat) => (
+                <StatCard
+                  key={stat.key}
+                  title={stat.title}
+                  value={stat.getValue(result)}
+                  icon={stat.Icon(result)}
+                  colorClass={stat.colorClass ? stat.colorClass(result) : ""}
+                  description={stat.description}
+                />
+              ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

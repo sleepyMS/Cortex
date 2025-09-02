@@ -720,6 +720,8 @@
     "winRateDesc": "The percentage of trades that resulted in a profit.",
     "sharpeRatio": "Sharpe Ratio",
     "sharpeRatioDesc": "Measures return per unit of risk. A higher value indicates a more stable investment.",
+    "sortinoRatio": "Sortino Ratio",
+    "sortinoRatioDesc": "The excess return relative to downside risk. It considers only downward volatility as risk, providing a more accurate measure of downside risk than the Sharpe ratio. A higher value is better.",
     "profitFactor": "Profit Factor",
     "profitFactorDesc": "The gross profit divided by the gross loss. A value greater than 1 is profitable.",
     "totalTrades": "Total Trades",
@@ -798,7 +800,8 @@
       "share": "Share to Community",
       "shareWip": "Sharing feature is currently in development.",
       "loadingDate": "Loading date...",
-      "initialCapital": "Initial Capital: ${amount}"
+      "initialCapital": "Initial Capital: ${amount}",
+      "totalTrades": "Total transactions: {count}"
     },
     "errorTitle": "Error Loading Results",
     "errorMessage": "Failed to load data: {error}",

@@ -720,6 +720,8 @@
     "winRateDesc": "수익을 낸 거래의 비율입니다.",
     "sharpeRatio": "샤프 지수",
     "sharpeRatioDesc": "변동성 대비 수익률입니다. 높을수록 안정적인 투자를 의미합니다.",
+    "sortinoRatio": "소르니노 지수",
+    "sortinoRatioDesc": "손실 위험에 대한 초과 수익률입니다. 하락 변동성만 위험으로 간주하며, 샤프 지수보다 하락 위험을 더 정확하게 측정합니다. 높을수록 좋습니다.",
     "profitFactor": "수익비",
     "profitFactorDesc": "총 수익을 총 손실로 나눈 값입니다. 1보다 커야 수익성이 있습니다.",
     "totalTrades": "총 거래 횟수",
@@ -798,7 +800,8 @@
       "share": "커뮤니티에 공유",
       "shareWip": "공유 기능은 현재 준비 중입니다.",
       "loadingDate": "날짜 로딩 중...",
-      "initialCapital": "초기 자본금: ${amount}"
+      "initialCapital": "초기 자본금: ${amount}",
+      "totalTrades": "총 거래: {count}회"
     },
     "errorTitle": "결과 로딩 오류",
     "errorMessage": "데이터를 불러오는 데 실패했습니다: {error}",

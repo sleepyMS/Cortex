@@ -18,6 +18,7 @@ import {
   DollarSign,
   Repeat,
   Share2,
+  BarChartHorizontal,
 } from "lucide-react";
 
 import apiClient from "@/lib/apiClient";
@@ -40,7 +41,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 
 // --- 페이지 헤더 ---
-const PageHeader = ({ backtest }: { backtest: Backtest }) => {
+const PageHeader = ({
+  backtest,
+  totalTrades,
+}: {
+  backtest: Backtest;
+  totalTrades: number | null | undefined;
+}) => {
   const t = useTranslations("BacktestDetailPage.Header");
   const router = useRouter();
 
@@ -86,7 +93,7 @@ const PageHeader = ({ backtest }: { backtest: Backtest }) => {
               {t("rerun")}
             </Button>
             <Button
-              variant="default"
+              variant="primary"
               size="sm"
               onClick={handleShare}
               disabled={backtest.status !== "completed"}
@@ -121,6 +128,13 @@ const PageHeader = ({ backtest }: { backtest: Backtest }) => {
             })}
           </span>
         </div>
+        {/* 3. '총 거래 횟수'를 표시하는 UI 요소를 추가합니다. */}
+        {totalTrades !== null && typeof totalTrades !== "undefined" && (
+          <div className="flex items-center gap-2">
+            <BarChartHorizontal className="h-4 w-4" />
+            <span>{t("totalTrades", { count: totalTrades })}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -272,33 +286,25 @@ export default function BacktestDetailPage({
           return <Alert variant="destructive">{t("noResultData")}</Alert>;
         }
         return (
-          <Tabs defaultValue="summary" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="summary">{t("Tabs.summary")}</TabsTrigger>
-              <TabsTrigger value="chart">{t("Tabs.chart")}</TabsTrigger>
-              <TabsTrigger value="monthly">{t("Tabs.monthly")}</TabsTrigger>
-              <TabsTrigger value="logs">{t("Tabs.logs")}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="summary">
-              <BacktestResultSummary result={backtest.result} />
-            </TabsContent>
-            <TabsContent value="chart">
-              <DynamicEquityChart
-                pnlData={backtest.result.pnlCurveJson || []}
-              />
-              <DynamicDrawdownChart
-                drawdownData={backtest.result.drawdownCurveJson || []}
-              />
-            </TabsContent>
-            <TabsContent value="monthly">
-              <MonthlyPerformance
-                pnlData={backtest.result.pnlCurveJson || []}
-              />
-            </TabsContent>
-            <TabsContent value="logs">
-              <TradeLogTable tradeLogs={tradeLogs} />
-            </TabsContent>
-          </Tabs>
+          // <Tabs> 컴포넌트를 제거하고, div와 spacing으로 대체합니다.
+          <div className="flex flex-col space-y-8">
+            {/* 1. 요약 지표 */}
+            <BacktestResultSummary result={backtest.result} />
+
+            {/* 2. 자산 곡선 차트 */}
+            <DynamicEquityChart pnlData={backtest.result.pnlCurveJson || []} />
+
+            {/* 3. 드로우다운 곡선 차트 */}
+            <DynamicDrawdownChart
+              drawdownData={backtest.result.drawdownCurveJson || []}
+            />
+
+            {/* 4. 월별 수익률 표 */}
+            <MonthlyPerformance pnlData={backtest.result.pnlCurveJson || []} />
+
+            {/* 5. 상세 거래 기록 */}
+            <TradeLogTable tradeLogs={tradeLogs} />
+          </div>
         );
       case "failed":
       case "canceled":
@@ -320,7 +326,13 @@ export default function BacktestDetailPage({
 
   return (
     <div className="container mx-auto max-w-screen-xl px-4 py-8">
-      {data?.backtest && <PageHeader backtest={data.backtest} />}
+      {data?.backtest && (
+        <PageHeader
+          backtest={data.backtest}
+          // backtest.result 객체에서 totalTrades 값을 props로 전달합니다.
+          totalTrades={data.backtest.result?.totalTrades}
+        />
+      )}
       {renderContent()}
     </div>
   );
