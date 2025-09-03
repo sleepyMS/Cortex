@@ -1,12 +1,18 @@
-# file: backend/app/routers/subscriptions.py
+# file: backend/app/routers/subscriptions.py (최종 완성본)
+
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import uuid
 
 from .. import schemas, models
-from ..dependencies import get_async_db, get_current_active_user
+from ..dependencies import (
+    get_async_db,
+    get_current_active_user,
+    get_billing_toss_client,  # [수정] 빌링 클라이언트 의존성 추가
+)
 from ..services.subscription_service import subscription_service
+from ..gateways.toss_payments_client import TossPaymentsClient  # [수정] 타입 힌트를 위해 추가
 
 logger = logging.getLogger(__name__)
 
@@ -14,50 +20,60 @@ router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
 @router.get(
-    "/me", 
-    response_model=schemas.SubscriptionSchema, 
-    summary="Get current user's subscription details"
+    "/me",
+    response_model=schemas.SubscriptionSchema,
+    summary="Get current user's subscription details",
 )
 async def get_my_subscription(
     current_user: models.User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     현재 로그인된 사용자의 구독 상세 정보를 조회합니다.
     활성 구독이 없으면 시스템의 기본 'Basic' 플랜 정보를 반환합니다.
     """
-    subscription = await subscription_service.get_user_subscription_details(db, current_user)
-    if not subscription:
-        # 이 경우는 일반적으로 발생하지 않지만 (모든 유저는 Basic 플랜을 가져야 함), 예외 처리
-        raise HTTPException(status_code=404, detail="구독 정보를 찾을 수 없습니다.")
-    
+    subscription = await subscription_service.get_user_subscription_details(
+        db, current_user
+    )
+    # get_user_subscription_details가 항상 값을 반환하도록 수정되었으므로,
+    # 404 예외 처리는 사실상 필요 없어졌습니다.
     return subscription
 
-
 @router.post(
-    "/checkout", 
-    response_model=schemas.OrderCreateResponse, 
-    summary="Get payment info for subscription checkout"
+    "/register-card",
+    response_model=schemas.SubscriptionSchema,
+    summary="Register a card for subscription and trigger the first payment",
 )
-async def get_checkout_info(
-    checkout_request: schemas.CheckoutRequest,
+async def register_card_for_subscription(
+    request_data: schemas.BillingKeyRegistrationRequest,
     current_user: models.User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
 ):
     """
-    특정 플랜 구독을 위한 결제 정보를 생성하여 반환합니다.
-    프론트엔드는 이 정보를 사용하여 Toss Payments SDK를 초기화합니다.
+    (최종 개선) 카드 등록 및 첫 결제의 모든 과정을 서비스에 위임하고,
+    완성된 Pydantic 스키마 객체를 받아 응답합니다.
     """
     try:
-        checkout_info = await subscription_service.create_checkout_info(
-            db, current_user, checkout_request.plan_id
+        # 이제 이 함수는 DB commit까지 완료하고 안전한 Pydantic 객체를 반환합니다.
+        subscription_schema = (
+            await subscription_service.register_card_and_process_first_payment(
+                db=db,
+                user=current_user,
+                plan_id=request_data.plan_id,
+                auth_key=request_data.auth_key,
+                toss_client=toss_client,
+            )
         )
-        logger.info(f"Checkout info created for user {current_user.email} for plan ID {checkout_request.plan_id}.")
-        return checkout_info
+        logger.info(f"Subscription process completed for user {current_user.email}.")
+        return subscription_schema
+
     except HTTPException as e:
-        # 서비스 계층에서 발생한 HTTP 예외는 그대로 전달
+        # 서비스 내에서 오류가 발생하면 DB는 자동으로 롤백됩니다.
         raise e
     except Exception as e:
-        # 예상치 못한 서버 오류 처리
-        logger.error(f"Error creating checkout info for user {current_user.email}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="결제 정보 생성 중 서버 오류가 발생했습니다.")
+        logger.error(f"Error in register-card endpoint for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="카드 등록 중 예측하지 못한 서버 오류가 발생했습니다.",
+        )

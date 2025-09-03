@@ -110,6 +110,8 @@ class Subscription(Base):
     plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False)
     status = Column(String(50), nullable=False, default='active')
     current_period_end = Column(DateTime(timezone=True), nullable=True)
+    payment_gateway_customer_key = Column(String(255), nullable=True, comment="PG사 빌링키 (Toss 등)")
+    payment_method_details = Column(String(255), nullable=True, comment="카드 정보 요약 (현대카드 1234)")
     payment_gateway_sub_id = Column(String(255), unique=True, nullable=True)
     refresh_token = Column(String(512), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

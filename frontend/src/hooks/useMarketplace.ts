@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 import { useRouter } from "@/i18n/navigation";
 import { ShopItem, MarketplaceStrategy } from "@/types/marketplace";
+import { usePaymentMutation } from "./usePayment";
 
 // --- 타입 정의 ---
 
@@ -107,28 +108,13 @@ export const useProducts = (filters: ProductFilters) => {
  */
 export const usePurchaseMutation = () => {
   const t = useTranslations("Marketplace");
-  const queryClient = useQueryClient();
-  const router = useRouter();
+  const paymentMutation = usePaymentMutation(); // 결제 훅 사용
 
   return useMutation({
-    mutationFn: purchaseApiFn,
-    onSuccess: (data, variables) => {
-      // 결제 성공 후의 로직은 실제 결제(Toss Payments) 연동 시
-      // useSubscription.ts 처럼 SDK를 호출하는 방식으로 구체화됩니다.
-      // 여기서는 성공 후 데이터 갱신에 집중합니다.
-
-      toast.success(t("purchaseRequestSuccess"));
-
-      // 구매와 관련된 모든 데이터를 최신 상태로 갱신
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["userInventory"] });
-      queryClient.invalidateQueries({ queryKey: ["userInventoryDetails"] });
-      queryClient.invalidateQueries({ queryKey: ["purchasedStrategies"] });
-      queryClient.invalidateQueries({
-        queryKey: ["purchasedStrategiesDetails"],
-      });
-      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
-      queryClient.invalidateQueries({ queryKey: ["userBalance"] });
+    mutationFn: purchaseApiFn, // purchaseApiFn은 기존대로 사용
+    onSuccess: (checkoutData) => {
+      // 받은 정보로 실제 결제창 호출
+      paymentMutation.mutate(checkoutData);
     },
     onError: (err: any) => {
       toast.error(

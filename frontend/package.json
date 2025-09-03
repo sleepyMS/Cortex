@@ -29,6 +29,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-table": "^8.21.3",
+    "@tosspayments/tosspayments-sdk": "^2.3.7",
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

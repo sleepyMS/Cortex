@@ -6,26 +6,37 @@ import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl"; // 언어팩 사용을 위해 추가
+import { useTranslations } from "next-intl";
+import { useSubscriptionCheckoutMutation } from "@/hooks/useSubscription";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
+import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { toast } from "sonner";
 
 interface PricingCardProps {
+  planId: string;
   planName: string;
   price: string;
-  tagline: string; // 👈 추가
+  tagline: string;
   features: string[];
   isHighlighted?: boolean;
   isFree?: boolean;
 }
 
 export const PricingCard = ({
+  planId,
   planName,
   price,
-  tagline, // 👈 추가
+  tagline,
   features,
   isHighlighted = false,
   isFree = false,
 }: PricingCardProps) => {
-  const t = useTranslations("Pricing.card"); // 'Pricing.card' 네임스페이스 사용
+  const t = useTranslations("Pricing.card");
+  const { user } = useUserSubscription();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const checkoutMutation = useSubscriptionCheckoutMutation();
+
   const isTrader = planName === "Trader";
   const isPro = planName === "Pro";
   const isBasic = planName === "Basic";
@@ -88,6 +99,37 @@ export const PricingCard = ({
     }
   }
 
+  const handleSubscribeClick = async () => {
+    if (!user) {
+      toast.error("로그인이 필요합니다.");
+      return;
+    }
+
+    setIsRedirecting(true);
+    try {
+      const clientKey = process.env.NEXT_PUBLIC_TOSS_BILLING_CLIENT_KEY!;
+      const customerKey = String(user.id);
+
+      const tossPayments = await loadTossPayments(clientKey);
+      const payment = tossPayments.payment({ customerKey });
+
+      await payment.requestBillingAuth({
+        method: "CARD",
+        successUrl: `${window.location.origin}/payment/success-billing?planId=${planId}`,
+        failUrl: `${window.location.origin}/payment/fail-billing`,
+        customerEmail: user.email,
+        customerName: user.username || user.email,
+      });
+    } catch (error: any) {
+      if (error.code === "USER_CANCEL") {
+        toast.info("카드 등록을 취소했습니다.");
+      } else {
+        toast.error(`오류가 발생했습니다: ${error.message}`);
+      }
+      setIsRedirecting(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -142,11 +184,15 @@ export const PricingCard = ({
       </div>
 
       <Button
-        className={`w-full mt-10 text-lg font-semibold 
-          ${buttonStyle} 
-        `}
+        onClick={handleSubscribeClick} // 이제 이 함수는 비동기로 동작
+        className={`w-full mt-10 text-lg font-semibold ${buttonStyle}`}
+        disabled={checkoutMutation.isPending}
       >
-        {isFree ? t("button.start") : t("button.subscribe")}
+        {checkoutMutation.isPending
+          ? t("button.processing")
+          : isFree
+          ? t("button.start")
+          : t("button.subscribe")}
       </Button>
     </motion.div>
   );

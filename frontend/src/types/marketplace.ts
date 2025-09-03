@@ -86,3 +86,27 @@ export interface UserInventoryItem {
   isUsed: boolean;
   metadata: ShopItem["displayProperties"];
 }
+
+// 주문 상태를 나타내는 타입
+export type OrderStatus = "PENDING" | "COMPLETED" | "FAILED" | "CANCELED";
+
+// 주문에 포함된 개별 상품 아이템 타입
+export interface OrderItem {
+  quantity: number;
+  priceAtPurchase: number;
+  product: {
+    id: string;
+    name: string;
+    // 필요에 따라 다른 상품 정보 추가
+  };
+}
+
+// 최종 Order 타입
+export interface Order {
+  id: string; // UUID는 문자열로 처리
+  buyerId: string;
+  totalAmount: number;
+  status: OrderStatus;
+  createdAt: string; // ISO 8601 형식의 날짜 문자열
+  items: OrderItem[];
+}

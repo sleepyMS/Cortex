@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 import logging
 
 from .. import models, schemas
+from ..services.payment_service import payment_service 
 
 from ..event_bus import publish_event 
 
@@ -190,36 +191,98 @@ class MarketplaceService:
         db.add(new_order)
         await db.flush()
         return new_order
+    
+    def create_order_and_prepare_payment(
+        self, order: models.MarketplaceOrder, user: models.User
+    ) -> schemas.OrderCreateResponse:
+        """
+        생성된 주문을 바탕으로 PaymentService를 호출하여 SDK 결제 정보를 생성합니다.
+        """
+        return payment_service.prepare_payment_info_for_sdk(order=order, user=user)
+
         
-    async def fulfill_order(self, db: AsyncSession, order_id: uuid.UUID, gateway_transaction_id: str):
-        """ 순수한 비즈니스 로직. Celery Task에서 호출됨."""
+    async def fulfill_order(
+        self, db: AsyncSession, order_id: uuid.UUID, gateway_transaction_id: str
+    ):
+        """Celery Task에서 호출되는 주문 이행 비즈니스 로직."""
         logger.info(f"Fulfilling order: {order_id}")
-        order = await db.get(models.MarketplaceOrder, order_id, options=[selectinload(models.MarketplaceOrder.items).joinedload(models.MarketplaceOrderItem.product)])
-        
+        order = await db.get(
+            models.MarketplaceOrder,
+            order_id,
+            options=[
+                selectinload(models.MarketplaceOrder.items).joinedload(
+                    models.MarketplaceOrderItem.product
+                )
+            ],
+        )
+
         if not order or order.status != models.OrderStatus.PENDING:
             logger.warning(f"Order {order_id} not found or not in PENDING state.")
             return
 
         for item in order.items:
-            product = item.product # 이미 로드된 상품 정보 사용
+            product = item.product
             if product.inventory_type == models.InventoryType.UNLOCK:
-                db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
-                ownership_exists = await db.scalar(select(models.UserPurchasedStrategy).filter_by(user_id=order.buyer_id, strategy_id=product.linked_resource_id))
+                # [수정] 소유권이 없을 때만 자산을 지급하도록 로직을 간소화
+                ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(
+                    user_id=order.buyer_id, strategy_id=product.linked_resource_id
+                )
+                ownership_exists = await db.scalar(select(ownership_exists_query.exists()))
+
                 if not ownership_exists:
-                    db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
-                    logger.info(f"Granted UNLOCK asset (strategy: {product.linked_resource_id}) to user {order.buyer_id}")
-            
+                    db.add(
+                        models.UserPurchasedStrategy(
+                            user_id=order.buyer_id,
+                            strategy_id=product.linked_resource_id,
+                            order_item_id=item.id,
+                        )
+                    )
+                    logger.info(
+                        f"Granted UNLOCK asset (strategy: {product.linked_resource_id}) to user {order.buyer_id}"
+                    )
+
             elif product.inventory_type == models.InventoryType.CONSUMABLE:
                 for _ in range(item.quantity):
-                    db.add(models.UserInventory(user_id=order.buyer_id, product_id=product.id, order_item_id=item.id))
-                logger.info(f"Granted {item.quantity} CONSUMABLE asset(s) (product: {product.id}) to user {order.buyer_id}")
+                    db.add(
+                        models.UserInventory(
+                            user_id=order.buyer_id,
+                            product_id=product.id,
+                            order_item_id=item.id,
+                        )
+                    )
+                logger.info(
+                    f"Granted {item.quantity} CONSUMABLE asset(s) (product: {product.id}) to user {order.buyer_id}"
+                )
 
         order.status = models.OrderStatus.COMPLETED
         order.gateway_transaction_id = gateway_transaction_id
         await db.flush()
 
-        await publish_event("order.fulfilled", {"order_id": str(order_id), "buyer_id": str(order.buyer_id)})
-        logger.info(f"Successfully fulfilled order {order_id}. Published 'order.fulfilled' event.")
+        await publish_event(
+            "order.fulfilled",
+            {"order_id": str(order_id), "buyer_id": str(order.buyer_id)},
+        )
+        logger.info(
+            f"Successfully fulfilled order {order_id}. Published 'order.fulfilled' event."
+        )
+
+    async def get_order_by_id(self, db: AsyncSession, order_id: uuid.UUID) -> Optional[models.MarketplaceOrder]:
+        """
+        주문 ID로 특정 주문을 조회합니다.
+        성능 최적화를 위해 주문에 포함된 모든 아이템과 각 아이템의 상품 정보를
+        한 번의 쿼리로 함께 로드(Eager Loading)합니다.
+        """
+        query = (
+            select(models.MarketplaceOrder)
+            .options(
+                selectinload(models.MarketplaceOrder.items)  # 주문에 속한 'items' 목록을 로드
+                .joinedload(models.MarketplaceOrderItem.product) # 각 'item'에 연결된 'product' 정보를 로드
+            )
+            .filter(models.MarketplaceOrder.id == order_id)
+        )
+        
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
 
     async def get_product_details(self, db: AsyncSession, product_id: uuid.UUID) -> models.MarketplaceProduct:
         """ID로 단일 상품의 기본 정보를 조회합니다."""

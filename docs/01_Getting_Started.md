@@ -94,6 +94,10 @@ celery -A app.celery_app beat -l info
 
 - **확인:** 터미널에 Celery 로고와 함께 `[tasks]` 목록이 보이고 `ready` 상태가 되면 성공입니다. 이 터미널은 계속 실행 상태로 두어야 합니다.
 
+# 6. 웹훅용 ngrok 실행 (별도 터미널에서)
+
+ngrok http 8000
+
 ## 5. 프론트엔드 설정 및 실행
 
 > 새로운 터미널이 필요합니다.

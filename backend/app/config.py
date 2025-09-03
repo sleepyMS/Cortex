@@ -61,8 +61,16 @@ class PaymentSettings(BaseModel):
     IAMPORT_API_SECRET: Optional[str] = None
     IAMPORT_API_BASE_URL: str = "https://api.iamport.kr"
 
-    TOSS_PAYMENTS_SECRET_KEY: Optional[str] = None
+    # Toss Payments - General Marketplace (Payment Widget)
+    TOSS_WIDGET_CLIENT_KEY: Optional[str] = None
+    TOSS_WIDGET_SECRET_KEY: Optional[str] = None
+    
+    # Toss Payments - Subscriptions (Billing/Individual API)
+    TOSS_BILLING_CLIENT_KEY: Optional[str] = None
+    TOSS_BILLING_SECRET_KEY: Optional[str] = None
+    
     TOSS_PAYMENTS_API_BASE_URL: str = "https://api.tosspayments.com"
+
 
 
 class PlanFeatureSettings(BaseModel):

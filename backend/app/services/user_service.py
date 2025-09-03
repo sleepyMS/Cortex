@@ -276,7 +276,7 @@ class UserService:
         return f"{base_username}_{secrets.token_hex(4)}"
     
     async def get_user_inventory(self, db: AsyncSession, user_id: uuid.UUID) -> List[schemas.UserInventoryItemResponse]:
-        """[수정] DB 모델을 조회한 후, API 응답 스키마에 맞게 수동으로 데이터를 조립하여 반환합니다."""
+        """ DB 모델을 조회한 후, API 응답 스키마에 맞게 수동으로 데이터를 조립하여 반환합니다."""
         query = (
             select(models.UserInventory)
             .options(
@@ -311,7 +311,7 @@ class UserService:
         return response_items
 
     async def get_purchased_strategies(self, db: AsyncSession, user_id: uuid.UUID) -> List[schemas.UserPurchasedStrategyResponse]:
-        """[수정] DB 모델을 조회한 후, API 응답 스키마에 맞게 수동으로 데이터를 조립하여 반환합니다."""
+        """ DB 모델을 조회한 후, API 응답 스키마에 맞게 수동으로 데이터를 조립하여 반환합니다."""
         query = (
             select(models.UserPurchasedStrategy)
             .options(

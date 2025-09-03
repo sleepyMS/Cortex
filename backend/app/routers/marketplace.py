@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, models
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.marketplace_service import marketplace_service
-from ..services.payment_service import payment_service # 결제 서비스 import
+from ..services.payment_service import payment_service 
 
 logger = logging.getLogger(__name__)
 
-# [수정] 파일명에 맞춰 router.py가 아닌 marketplace.py로 명명
+# 파일명에 맞춰 router.py가 아닌 marketplace.py로 명명
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
 
 get_verified_strategy = create_owner_verifier(models.Strategy, owner_field="author_id")
@@ -67,28 +67,40 @@ async def get_product_detail(
     "/orders",
     response_model=schemas.OrderCreateResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create an order and get payment info"
+    summary="Create an order and get payment info",
 )
 async def create_order(
     payload: schemas.OrderCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_active_user),
 ):
-    """상품 구매를 위한 주문을 생성하고, Toss Payments 연동에 필요한 정보를 반환합니다."""
+    """
+    (개선) 상품 구매를 위한 주문 생성 및 결제 정보 반환의 모든 과정을
+    MarketplaceService에 위임하여 처리합니다.
+    """
     try:
-        pending_order = await marketplace_service.create_order(db, payload, current_user)
-        
-        # [수정] PaymentService를 통해 SDK에 필요한 정보 포맷
-        payment_info = payment_service.prepare_payment_info_for_sdk(order=pending_order, user=current_user)
-        
+        # 1. [기존과 동일] MarketplaceService를 통해 DB에 주문을 생성합니다.
+        pending_order = await marketplace_service.create_order(
+            db, payload, current_user
+        )
+
+        # 2. [수정] 서비스에 추가된 새 메서드를 호출하여 결제 정보를 가져옵니다.
+        payment_info = marketplace_service.create_order_and_prepare_payment(
+            order=pending_order, user=current_user
+        )
+
         await db.commit()
         return payment_info
     except HTTPException as e:
-        await db.rollback(); raise e
+        await db.rollback()
+        raise e
     except Exception as e:
         await db.rollback()
         logger.error(f"Error creating order for user {current_user.email}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="주문 생성 중 오류가 발생했습니다.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="주문 생성 중 오류가 발생했습니다.",
+        )
     
 @router.post(
     "/listings",
@@ -134,7 +146,7 @@ async def unlist_strategy_from_marketplace(
 ):
     """특정 상품(리스팅)을 마켓플레이스에서 판매 중단 처리합니다."""
     try:
-        # [수정] 이제 이 호출은 서비스 함수의 정의와 정확히 일치합니다.
+        # 이제 이 호출은 서비스 함수의 정의와 정확히 일치합니다.
         await marketplace_service.unlist_strategy_product(
             db=db, 
             product_id=product_id, 
@@ -148,3 +160,34 @@ async def unlist_strategy_from_marketplace(
         await db.rollback()
         logger.error(f"Error unlisting product {product_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="판매 중단 처리 중 오류가 발생했습니다.")
+    
+@router.get(
+    "/orders/{order_id}",
+    response_model=schemas.OrderResponse, # 기존에 정의한 OrderResponse 스키마 재활용
+    summary="Get order details by order ID"
+)
+async def get_order_by_id(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    주문 ID를 사용하여 특정 주문의 상세 정보와 최종 상태를 조회합니다.
+    주문 소유권자만 조회할 수 있습니다.
+    """
+    order = await marketplace_service.get_order_by_id(db, order_id)
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="주문을 찾을 수 없습니다."
+        )
+    
+    # 주문을 요청한 사용자와 현재 로그인한 사용자가 같은지 반드시 확인
+    if order.buyer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="주문에 접근할 권한이 없습니다."
+        )
+
+    return order

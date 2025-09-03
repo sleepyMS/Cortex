@@ -11,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .gateways.toss_payments_client import TossPaymentsClient
+
 # --- 1. 중앙 설정 및 모듈 임포트 ---
 from . import models
 from .config import settings  
@@ -93,6 +95,14 @@ def get_current_admin_user(
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
     return current_user
+
+def get_billing_toss_client() -> TossPaymentsClient:
+    """자동 결제(빌링)용 Toss Payments 클라이언트 의존성"""
+    return TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_BILLING_SECRET_KEY)
+
+def get_widget_toss_client() -> TossPaymentsClient:
+    """일반 결제(위젯)용 Toss Payments 클라이언트 의존성"""
+    return TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_WIDGET_SECRET_KEY)
 
 
 # ==============================================================================
@@ -213,3 +223,4 @@ async def get_existing_post(
     if not post:
         raise HTTPException(status_code=404, detail="댓글을 작성할 게시물을 찾을 수 없습니다.")
     return post
+

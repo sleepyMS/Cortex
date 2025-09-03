@@ -742,10 +742,13 @@ class OrderResponse(CamelCaseModel):
 
 class OrderCreateResponse(CamelCaseModel):
     """주문 생성(결제 요청) 성공 시 프론트엔드에 반환할 정보"""
-    order_id: uuid.UUID
+    order_id: str
     order_name: str
     amount: float
     customer_name: str
     customer_email: EmailStr
     # success_url, fail_url 등은 프론트엔드에서 동적으로 생성 가능
 
+class BillingKeyRegistrationRequest(CamelCaseModel):
+    plan_id: uuid.UUID = Field(..., description="구독하려는 플랜의 ID")
+    auth_key: str = Field(..., description="Toss Payments 프론트엔드 SDK로부터 받은 임시 인증 키")

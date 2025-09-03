@@ -3,7 +3,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
-import { Plan, Subscription } from "@/types/subscription"; // (새로운 타입 정의 필요)
+import { Plan, Subscription } from "@/types/subscription";
+import { usePaymentMutation } from "./usePayment";
+
+// 1. 뮤테이션에 전달할 데이터 타입을 정의합니다.
+interface RegisterCardPayload {
+  planId: string;
+  authKey: string;
+}
 
 // 1. 모든 구독 플랜 목록을 가져오는 훅
 export const usePlans = () => {
@@ -29,27 +36,41 @@ export const useSubscriptionCheckoutMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // API 명세서(06_API_Specification.md)의 POST /subscriptions/checkout 엔드포인트 사용
-    mutationFn: async (planId: string) => {
-      const response = await apiClient.post("/subscriptions/checkout", {
-        planId,
-      });
-      return response.data; // 백엔드는 여기서 결제에 필요한 정보를 반환해야 함
+    // 2. mutationFn이 새로운 payload 타입을 받도록 수정합니다.
+    mutationFn: async (payload: RegisterCardPayload) => {
+      // 3. API 엔드포인트 주소를 '/register-card'로 변경합니다.
+      const response = await apiClient.post(
+        "/subscriptions/register-card",
+        payload
+      );
+      return response.data;
     },
-    onSuccess: (checkoutData) => {
-      // 1. 백엔드로부터 받은 checkoutData로 토스 페이먼츠 SDK를 호출
-      // 예시: TossPayments.requestPayment('카드', checkoutData);
-      console.log("결제창을 띄우기 위한 데이터:", checkoutData);
-      toast.info("결제 페이지로 이동합니다...");
+    onSuccess: (updatedSubscription) => {
+      // 카드 등록 및 첫 결제 요청이 성공적으로 서버에 전달되었습니다.
+      // 실제 구독 상태는 웹훅이 처리하므로, 잠시 후 상태가 갱신될 것입니다.
+      toast.success(
+        "카드가 성공적으로 등록되었으며, 첫 구독료 결제가 시작되었습니다."
+      );
 
-      // 실제 결제 성공 여부는 백엔드 웹훅(Webhook)이 처리하므로,
-      // 프론트엔드는 결제창 호출 후 사용자의 구독 상태를 다시 조회하여 UI를 업데이트합니다.
-      queryClient.invalidateQueries({ queryKey: ["userSubscription", "me"] });
+      // 서버로부터 받은 최신 구독 정보로 캐시를 즉시 업데이트합니다.
+      queryClient.setQueryData(["userSubscription", "me"], updatedSubscription);
     },
     onError: (err: any) => {
-      toast.error(
-        err.response?.data?.detail || "결제 요청 중 오류가 발생했습니다."
-      );
+      let errorMessage = "카드 등록 중 오류가 발생했습니다.";
+
+      // FastAPI 422 오류 등 상세 메시지가 있는 경우, 첫 번째 메시지를 사용
+      if (
+        err.response?.data?.detail &&
+        Array.isArray(err.response.data.detail)
+      ) {
+        errorMessage = err.response.data.detail[0].msg;
+      }
+      // 일반적인 오류 메시지가 있는 경우
+      else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      }
+
+      toast.error(errorMessage);
     },
   });
 };

@@ -974,5 +974,26 @@
     },
     "emptyTitle": "인벤토리가 비어있습니다.",
     "emptyDescription": "마켓플레이스에서 다양한 아이템을 구매하고 전략을 강화해보세요."
+  },
+  "PaymentSuccessPage": {
+    "verifyingTitle": "결제 정보를 확인하고 있습니다...",
+    "verifyingDescription": "잠시만 기다려주세요. 페이지를 새로고침하지 마세요.",
+    "errorTitle": "오류 발생",
+    "successTitle": "결제가 성공적으로 완료되었습니다!",
+    "successDescription": "구매하신 상품이 인벤토리에 지급되었습니다.",
+    "failureTitle": "결제에 실패했습니다.",
+    "failureDescription": "문제가 지속되면 고객센터로 문의해주세요.",
+    "orderIdLabel": "주문번호",
+    "totalAmountLabel": "결제금액",
+    "goToInventory": "인벤토리로 가기",
+    "continueShopping": "쇼핑 계속하기"
+  },
+  "PaymentFailPage": {
+    "title": "결제에 실패했습니다",
+    "description": "결제 과정에서 오류가 발생했습니다. 아래 상세 내용을 확인해주세요.",
+    "errorDetailsTitle": "오류 상세 정보",
+    "orderIdLabel": "주문번호",
+    "retryPayment": "다시 시도하기",
+    "goToMarketplace": "마켓플레이스로 돌아가기"
   }
 }

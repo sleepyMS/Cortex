@@ -130,7 +130,6 @@ class StrategyService:
         """
         사용자의 전략 '목록'을 위한 데이터를 조회합니다.
         """
-        # ... (latest_backtest_subquery 와 purchased_strategy_ids_subquery 는 이전과 동일) ...
         latest_backtest_subquery = (
             select(
                 models.Backtest.strategy_id,
@@ -151,15 +150,15 @@ class StrategyService:
             .filter(models.UserPurchasedStrategy.user_id == user_id)
         )
 
-        # 3. [핵심 수정] 마켓플레이스 상품 정보 서브쿼리에서 .astext 대신 cast를 사용합니다.
+        # 3. 마켓플레이스 상품 정보 서브쿼리에서 .astext 대신 cast를 사용합니다.
         marketplace_info_subquery = (
             select(
                 models.MarketplaceProduct.id.label("product_id"),
                 models.MarketplaceProduct.linked_resource_id.label("strategy_id"),
                 models.MarketplaceProduct.price,
-                # [수정] JSON 필드에서 'category' 키의 값을 text로 추출
+                # JSON 필드에서 'category' 키의 값을 text로 추출
                 models.MarketplaceProduct.product_metadata.op('->>')('category').label("category"),
-                # [수정] JSON 필드에서 'positionType' 키의 값을 text로 추출
+                # JSON 필드에서 'positionType' 키의 값을 text로 추출
                 models.MarketplaceProduct.product_metadata.op('->>')('positionType').label("position_type"),
                 models.MarketplaceProduct.representative_backtest_id
             )
@@ -170,7 +169,7 @@ class StrategyService:
             .subquery('marketplace_info')
         )
 
-        # 4. 기본 쿼리 (이전과 동일)
+        # 4. 기본 쿼리 
         query = select(
             models.Strategy,
             latest_backtest_subquery.c.total_return_pct,
@@ -199,7 +198,7 @@ class StrategyService:
             )
         )
         
-        # 5. 필터링 및 정렬 로직 (이전과 동일)
+        # 5. 필터링 및 정렬 로직 
         if is_public_filter is not None:
             query = query.filter(models.Strategy.is_public == is_public_filter)
         if search_query:
@@ -221,7 +220,7 @@ class StrategyService:
         results = await db.execute(query.offset(skip).limit(limit))
         
         strategies_with_summary = []
-        # 6. 조회된 결과를 Pydantic 스키마에 맞게 가공 (이전과 동일)
+        # 6. 조회된 결과를 Pydantic 스키마에 맞게 가공
         for row in results.all():
             strategy = row.Strategy
             strategy.latest_backtest_summary = None

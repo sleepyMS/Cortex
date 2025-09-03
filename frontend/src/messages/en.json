@@ -928,5 +928,26 @@
     },
     "emptyTitle": "Your Inventory is Empty",
     "emptyDescription": "Purchase various items from the Marketplace to enhance your strategies."
+  },
+  "PaymentSuccessPage": {
+    "verifying Titles": "Checking payment information...",
+    "verifyingDescription": "Please wait. Do not refresh the page.",
+    "error Title": "Error Occurred",
+    "Success Title": "Payment completed successfully!",
+    "SuccessDescription": "Your purchase has been given to the inventory.",
+    "FailureTitle": "Payment failed",
+    "FailureDescription": "If the problem persists, please contact Customer Center",
+    "OrderIdLabel": "Order Number",
+    "totalAmountLabel": "Payment Amount",
+    "goToInventory": "GoToInventory",
+    "Continue Shopping": "Continue shopping"
+  },
+  "PaymentFailPage": {
+    "title": "Payment Failed",
+    "description": "An error occurred during the payment process. Please check the details below.",
+    "errorDetailsTitle": "Error Details",
+    "orderIdLabel": "Order ID",
+    "retryPayment": "Try Again",
+    "goToMarketplace": "Back to Marketplace"
   }
 }
