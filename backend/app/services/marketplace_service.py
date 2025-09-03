@@ -106,19 +106,12 @@ class MarketplaceService:
         products_response = []
         if filters.product_type == models.ProductType.STRATEGY:
             
-            # [로깅 추가] 디버깅을 위해 DB결과를 리스트로 변환
             result_list = list(db_results)
             logger.warning(f"Found {len(result_list)} strategy products in DB.")
 
             for db_result_tuple in result_list:
-                # [로깅 추가] 데이터베이스에서 반환된 RAW TUPLE 전체를 출력
-                logger.warning(f"DB RAW RESULT TUPLE: {db_result_tuple}")
-
                 (product, username, total_return, mdd, win_rate, 
                  profit_factor, sharpe_ratio, sortino_ratio) = db_result_tuple
-                
-                # [로깅 추가] 가장 중요한 total_return 값을 명시적으로 확인
-                logger.warning(f"EXTRACTED total_return FOR PRODUCT '{product.name}': {total_return}")
 
                 summary_data = None
                 if total_return is not None:
@@ -130,9 +123,6 @@ class MarketplaceService:
                         sharpe_ratio=sharpe_ratio,
                         sortino_ratio=sortino_ratio
                     )
-                
-                # [로깅 추가] 조건문 이후 생성된 summary_data 객체를 확인
-                logger.warning(f"CREATED summary_data FOR PRODUCT '{product.name}': {summary_data}")
 
                 data_to_validate = product.__dict__
                 data_to_validate['author'] = schemas.ProductAuthor(username=username)
@@ -183,12 +173,6 @@ class MarketplaceService:
             db.add(product)
 
         await db.flush()
-
-        # ▼▼▼ [로깅 추가] ▼▼▼
-        # 서비스에서 반환 직전의 SQLAlchemy 객체 상태를 확인합니다.
-        # __dict__ 를 통해 객체의 내부 속성들을 모두 출력합니다.
-        logger.info(f"[MarketplaceService] 반환 직전 Product 객체 속성: {product.__dict__}")
-        # ▲▲▲ [로깅 추가] ▲▲▲
         
         return product
 
@@ -208,7 +192,7 @@ class MarketplaceService:
         return new_order
         
     async def fulfill_order(self, db: AsyncSession, order_id: uuid.UUID, gateway_transaction_id: str):
-        """[수정] 순수한 비즈니스 로직. Celery Task에서 호출됨."""
+        """ 순수한 비즈니스 로직. Celery Task에서 호출됨."""
         logger.info(f"Fulfilling order: {order_id}")
         order = await db.get(models.MarketplaceOrder, order_id, options=[selectinload(models.MarketplaceOrder.items).joinedload(models.MarketplaceOrderItem.product)])
         
