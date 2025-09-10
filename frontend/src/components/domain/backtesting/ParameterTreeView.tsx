@@ -69,7 +69,6 @@ const ParameterInput = React.memo(
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    {/* [수정] Label에서 truncate 클래스 제거 */}
                     <Label
                       htmlFor={fieldPath}
                       className="text-xs text-muted-foreground cursor-help"
@@ -92,7 +91,6 @@ const ParameterInput = React.memo(
                     e.target.value === "" ? "" : parseFloat(e.target.value) || 0
                   )
                 }
-                // [수정] Input 너비를 w-24에서 w-20으로 줄임 (80px)
                 className={cn(
                   "h-8 w-24 text-right",
                   error && "border-destructive"
@@ -169,6 +167,11 @@ const directParamLabels: Record<string, string> = {
   lowerBound: "최소값",
   upperBound: "최대값",
   operandB: "비교값",
+  takeProfitPct: "Take Profit (%)",
+  stopLossPct: "Stop Loss (%)",
+  atrPeriod: "ATR 기간",
+  atrStopLossMultiplier: "ATR 손절 배수",
+  atrTakeProfitMultiplier: "ATR 익절 배수",
 };
 
 /**
@@ -185,7 +188,7 @@ const RuleBlock = React.memo(
   }: RuleBlockProps) => {
     const currentBlockPath = `${pathPrefix}.${blockIndex}`;
 
-    // [수정] 자식 파라미터는 제외하고 현재 블록의 파라미터만 정확히 필터링
+    // 자식 파라미터는 제외하고 현재 블록의 파라미터만 정확히 필터링
     const directBlockFields = fields.filter((f) => {
       if (!f.path.startsWith(currentBlockPath)) return false;
       const subPath = f.path.substring(currentBlockPath.length + 1);
@@ -204,11 +207,11 @@ const RuleBlock = React.memo(
             const pathParts = field.path.split(".");
             const paramKey = pathParts[pathParts.length - 1];
             const fieldPath = `overrides.${fields.indexOf(field)}.value`;
-            let label = paramKey; // 기본 레이블
+            let label = paramKey;
 
-            // [수정] 두 종류의 파라미터를 모두 처리
+            // 두 종류의 파라미터를 모두 처리
             if (field.path.includes(".values.")) {
-              // 1. 지표 파라미터 (기존 로직)
+              // 1. 지표 파라미터
               const operandKey = pathParts[pathParts.length - 3];
               const indicatorKey = (block as any)[operandKey]?.indicatorKey;
               const definition = indicatorDefinitions[indicatorKey];
@@ -217,7 +220,7 @@ const RuleBlock = React.memo(
                 paramDefinition?.label || paramKey
               }`;
             } else {
-              // 2. 블록 직접 파라미터 (신규 로직)
+              // 2. 블록 직접 파라미터
               label = directParamLabels[paramKey] || paramKey;
             }
 
@@ -233,7 +236,7 @@ const RuleBlock = React.memo(
           })}
         </div>
 
-        {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 (기존과 동일) */}
+        {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 */}
         {block.children && block.children.length > 0 && (
           <div className="mt-4 pl-4 border-l-2 border-amber-500/50 relative">
             <span className="absolute -left-px top-2 -translate-x-1/2 bg-card text-xs font-semibold text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/50">
@@ -264,28 +267,11 @@ RuleBlock.displayName = "RuleBlock";
  * TP/SL 설정 섹션 컴포넌트
  */
 const TpslSection = ({ control, fields }: { control: any; fields: any[] }) => {
+  // `overrides` 배열에서 "tpslLogic"으로 시작하는 모든 필드를 필터링
   const tpslFields = fields.filter((f) => f.path.startsWith("tpslLogic"));
+
+  // 표시할 TP/SL 파라미터가 없으면 아무것도 렌더링하지 않음
   if (tpslFields.length === 0) return null;
-
-  const renderInput = (
-    pathSuffix: string,
-    label: string,
-    Icon: React.ElementType
-  ) => {
-    const field = fields.find((f) => f.path === `tpslLogic.${pathSuffix}`);
-    if (!field) return null;
-
-    const fieldPath = `overrides.${fields.indexOf(field)}.value`;
-    return (
-      <ParameterInput
-        key={fieldPath}
-        control={control}
-        fieldPath={fieldPath}
-        label={label}
-        tooltip={`경로: ${field.path}`}
-      />
-    );
-  };
 
   return (
     <div>
@@ -294,9 +280,23 @@ const TpslSection = ({ control, fields }: { control: any; fields: any[] }) => {
         TP / SL 규칙
       </h4>
       <div className="p-3 rounded-md border bg-card grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-        {renderInput("takeProfitPct", "Take Profit (%)", Percent)}
-        {renderInput("stopLossPct", "Stop Loss (%)", Percent)}
+        {tpslFields.map((field) => {
+          const pathParts = field.path.split(".");
+          const paramKey = pathParts[pathParts.length - 1];
+          const fieldPath = `overrides.${fields.indexOf(field)}.value`;
+
+          return (
+            <ParameterInput
+              key={field.id}
+              control={control}
+              fieldPath={fieldPath}
+              label={directParamLabels[paramKey] || paramKey}
+              tooltip={`경로: ${field.path}`}
+            />
+          );
+        })}
       </div>
+      {/* ▲▲▲ [수정 완료] ▲▲▲ */}
     </div>
   );
 };
