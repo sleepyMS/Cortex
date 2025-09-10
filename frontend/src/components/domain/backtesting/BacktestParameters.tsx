@@ -213,6 +213,43 @@ const RuleSection = ({
 };
 
 /**
+ * 파라미터 값 하나를 표시하는 재사용 가능한 내부 컴포넌트
+ */
+const ParameterDisplay = ({
+  label,
+  value,
+  unit = "",
+  path,
+  overriddenPaths,
+}: any) => {
+  // overriddenPaths가 undefined일 경우를 대비해 기본값을 빈 Set으로 설정
+  const isOverridden = overriddenPaths?.has(path) || false;
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-1.5 font-semibold">
+        {isOverridden && (
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger>
+                <Zap className="h-4 w-4 text-yellow-500" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>이 값은 오버라이드 되었습니다.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        <span>
+          {value}
+          {unit}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/**
  * 백테스트 파라미터 표시를 위한 메인 컴포넌트
  */
 export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
@@ -255,7 +292,7 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   if (!snapshot) return null;
 
   const execParams = backtest.parameters.parameters;
-  const tpslParams = execParams.tpslLogic || {};
+  const tpslSnapshot = snapshot.tpslLogic || {}; // 스냅샷의 TP/SL 로직
 
   return (
     <Card>
@@ -264,49 +301,65 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* 1. 실행 파라미터 섹션 */}
         <div>
           <h4 className="text-base font-semibold mb-3">
             {t("executionParams")}
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 border rounded-lg bg-muted/50">
-            <div className="space-y-1">
-              <p className="text-muted-foreground">{t("leverage")}</p>
-              <p className="font-semibold">{execParams.leverage}x</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-muted-foreground">{t("fee")}</p>
-              <p className="font-semibold">{execParams.fee}%</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-muted-foreground">{t("slippage")}</p>
-              <p className="font-semibold">{execParams.slippage}%</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-muted-foreground">{t("trailingStop")}</p>
-              <p className="font-semibold">
-                {tpslParams.trailingStopEnabled ? t("enabled") : t("disabled")}
-              </p>
-            </div>
-            {tpslParams.trailingStopEnabled && (
-              <>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground">
-                    {t("trailingActivation")}
-                  </p>
-                  <p className="font-semibold">
-                    {tpslParams.trailingStopActivationPct}%
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground">
-                    {t("trailingCallback")}
-                  </p>
-                  <p className="font-semibold">
-                    {tpslParams.trailingStopCallbackPct}%
-                  </p>
-                </div>
-              </>
-            )}
+            <ParameterDisplay
+              label={t("leverage")}
+              value={execParams.leverage}
+              unit="x"
+              path="parameters.leverage"
+              overriddenPaths={overriddenPaths}
+            />
+            <ParameterDisplay
+              label={t("fee")}
+              value={execParams.fee}
+              unit="%"
+              path="parameters.fee"
+              overriddenPaths={overriddenPaths}
+            />
+            <ParameterDisplay
+              label={t("slippage")}
+              value={execParams.slippage}
+              unit="%"
+              path="parameters.slippage"
+              overriddenPaths={overriddenPaths}
+            />
+            <ParameterDisplay
+              label={t("trailingStop")}
+              value={
+                execParams.tpslLogic?.trailingStopEnabled
+                  ? t("enabled")
+                  : t("disabled")
+              }
+              path="parameters.tpslLogic.trailingStopEnabled"
+              overriddenPaths={overriddenPaths}
+            />
+          </div>
+        </div>
+
+        {/* ▼▼▼ [핵심 수정] TP/SL 파라미터 섹션 추가 ▼▼▼ */}
+        <div>
+          <h4 className="text-base font-semibold mb-3">TP / SL 규칙</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 border rounded-lg bg-muted/50">
+            {Object.entries(tpslSnapshot).map(([key, value]) => {
+              // 숫자 값을 가진 파라미터만 표시
+              if (typeof value !== "number") return null;
+              const path = `tpslLogic.${key}`;
+              return (
+                <ParameterDisplay
+                  key={path}
+                  label={t(key as any, {}, key)} // 번역이 없으면 키 값을 그대로 사용
+                  value={value}
+                  unit={key.toLowerCase().includes("pct") ? "%" : ""}
+                  path={path}
+                  overriddenPaths={overriddenPaths}
+                />
+              );
+            })}
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-8 pt-4 border-t">
