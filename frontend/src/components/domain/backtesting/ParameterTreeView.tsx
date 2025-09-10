@@ -30,11 +30,7 @@ function ParameterInput({
       name={fieldPath}
       render={({ field }) => (
         <div className="flex items-center justify-between gap-4">
-          <Label
-            htmlFor={fieldPath}
-            // ▼▼▼ [수정 2] 라벨의 고정 폭(w-24)과 잘림(truncate) 제거 ▼▼▼
-            className="text-xs text-muted-foreground"
-          >
+          <Label htmlFor={fieldPath} className="text-xs text-muted-foreground">
             {label}
           </Label>
           <Input
@@ -43,7 +39,6 @@ function ParameterInput({
             step="any"
             value={field.value}
             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-            // ▼▼▼ [수정 3] flex-1을 제거하고 작은 고정 폭(w-24) 부여 ▼▼▼
             className="h-8 w-24 text-right"
           />
         </div>

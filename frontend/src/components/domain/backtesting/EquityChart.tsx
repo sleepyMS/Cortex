@@ -6,7 +6,6 @@ import {
   ColorType,
   PriceScaleMode,
   LineStyle,
-  // v5에서는 SeriesToken을 직접 임포트합니다.
   AreaSeries,
   LineSeries,
   type UTCTimestamp,
@@ -42,12 +41,6 @@ const EquityChart: React.FC<EquityChartProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // ▼▼▼ [핵심 수정] ▼▼▼
-    // "Object is disposed" 에러를 유발하는 상단의 정리 로직을 완전히 제거합니다.
-    // 차트 정리는 오직 useEffect의 return 클린업 함수에서만 처리합니다.
-    // if (chartRef.current) { ... } 블록 삭제
-    // ▲▲▲ [수정 완료] ▲▲▲
-
     const chart = createChart(containerRef.current, {
       height,
       layout: {
@@ -79,7 +72,6 @@ const EquityChart: React.FC<EquityChartProps> = ({
     });
     chartRef.current = chart;
 
-    // 사용자의 올바른 v5 시리즈 추가 구문
     const area = chart.addSeries(AreaSeries, {
       lineColor: dark ? "rgba(129,140,248,1)" : "#2563EB",
       topColor: dark ? "rgba(129,140,248,0.40)" : "rgba(37,99,235,0.40)",
