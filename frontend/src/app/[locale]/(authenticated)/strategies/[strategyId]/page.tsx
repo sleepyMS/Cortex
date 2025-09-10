@@ -434,7 +434,7 @@ export default function StrategyEditorPage({
     },
     onSuccess: (data: any) => {
       toast.success(
-        t(isEditMode ? "form.updateSuccess" : "form.saveSuccess", {
+        t(isEditMode ? "form.saveSuccess" : "form.saveSuccess", {
           strategyName: data.name,
         })
       );

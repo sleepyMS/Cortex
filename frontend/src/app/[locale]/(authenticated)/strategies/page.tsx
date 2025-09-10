@@ -139,7 +139,7 @@ export default function StrategiesPage() {
   );
 
   // API로부터 받아온 '상세' 전략 정보 (모달 UI의 진실의 원천)
-  const [strategyDetail, setStrategyDetail] = useState<Strategy | null>(null);
+  // const [strategyDetail, setStrategyDetail] = useState<Strategy | null>(null);
 
   const [autoDetectedPositionType, setAutoDetectedPositionType] = useState<
     string | null
@@ -211,7 +211,7 @@ export default function StrategiesPage() {
   // --- 핵심 로직: 상세 데이터 로딩 성공 후 모든 관련 상태를 업데이트 ---
   useEffect(() => {
     if (isSuccess && strategyDetailData) {
-      setStrategyDetail(strategyDetailData);
+      // setStrategyDetail(strategyDetailData);
 
       const hasLong =
         (strategyDetailData.longEntryRules?.blocks.length ?? 0) > 0;
@@ -289,7 +289,7 @@ export default function StrategiesPage() {
 
   // --- 이벤트 핸들러 ---
   const handleOpenListingModal = (strategy: Strategy) => {
-    setStrategyDetail(null); // 이전 데이터 지우고 로딩 상태로 전환
+    // setStrategyDetail(null); // 이전 데이터 지우고 로딩 상태로 전환
     setSelectedStrategy(strategy);
     setIsListingModalOpen(true);
   };
@@ -344,6 +344,14 @@ export default function StrategiesPage() {
         ))}
       </div>
     );
+  };
+
+  const handleModalOpenChange = (isOpen: boolean) => {
+    setIsListingModalOpen(isOpen);
+    if (!isOpen) {
+      // 모달이 닫힐 때 선택된 전략 상태를 초기화합니다.
+      setSelectedStrategy(null);
+    }
   };
 
   return (
@@ -444,9 +452,9 @@ export default function StrategiesPage() {
       </div>
 
       {/* 5. 마켓 등록/수정 모달 */}
-      <Dialog open={isListingModalOpen} onOpenChange={setIsListingModalOpen}>
+      <Dialog open={isListingModalOpen} onOpenChange={handleModalOpenChange}>
         <DialogContent className="max-w-4xl p-0">
-          {isFetching || !strategyDetail ? (
+          {isFetching || !strategyDetailData ? (
             <div className="flex items-center justify-center h-[600px]">
               <Spinner size="lg" />
             </div>
@@ -464,7 +472,7 @@ export default function StrategiesPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <StrategyListingPreview
-                    strategy={strategyDetail}
+                    strategy={strategyDetailData}
                     control={form.control}
                   />
                 </div>
@@ -473,20 +481,20 @@ export default function StrategiesPage() {
                 <div className="col-span-3 p-8 overflow-y-auto max-h-[90vh]">
                   <DialogHeader className="mb-6">
                     <DialogTitle className="text-2xl font-bold">
-                      {strategyDetail.marketplaceListing
+                      {strategyDetailData.marketplaceListing
                         ? t("modalEditTitle")
                         : t("modalRegisterTitle")}
                     </DialogTitle>
                     <DialogDescription>
                       {t("modalDescription", {
-                        strategyName: strategyDetail.name,
+                        strategyName: strategyDetailData.name,
                       })}
                     </DialogDescription>
                   </DialogHeader>
                   <StrategyListingForm
                     onSubmit={form.handleSubmit(handleListingSubmit)}
                     isSubmitting={listStrategyMutation.isPending}
-                    strategy={strategyDetail}
+                    strategy={strategyDetailData}
                   />
                 </div>
               </div>

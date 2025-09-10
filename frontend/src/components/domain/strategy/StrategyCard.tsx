@@ -225,7 +225,6 @@ export function StrategyCard({
           <div className="hidden lg:block">
             <KeyIndicatorBadges strategy={strategy} />
           </div>
-          {/* 판매중일 경우 배지를 표시합니다. */}
           {strategy.marketplaceListing && (
             <Badge
               variant="secondary"
@@ -285,10 +284,7 @@ export function StrategyCard({
             <CardTitle className="text-xl font-bold text-foreground pr-2">
               {strategy.name}
             </CardTitle>
-
-            {/* [수정] 두 배지를 함께 묶어주는 div */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* '판매중' 배지를 여기에 추가합니다. */}
               {strategy.marketplaceListing && (
                 <Badge
                   variant="secondary"
@@ -298,8 +294,6 @@ export function StrategyCard({
                   {t("selling")}
                 </Badge>
               )}
-
-              {/* 기존 '공개/비공개' 배지 */}
               <Badge
                 className={cn(
                   "flex items-center gap-1.5",
