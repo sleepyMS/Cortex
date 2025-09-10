@@ -23,19 +23,28 @@ export interface OutputDefinition {
   max?: number;
 }
 
+export interface IndicatorOutput {
+  key: string;
+  label: string;
+  min?: number;
+  max?: number;
+}
+
 /**
  * 백엔드 /indicators/metadata API로부터 받는 단일 지표의 전체 메타데이터 구조입니다.
  */
 export interface IndicatorMetadata {
-  key: string;
+  // 백엔드 API가 indicatorKey를 포함하여 배열로 내려준다고 가정
+  indicatorKey: string;
   kind: string;
   label: string;
   description: string;
   category: string;
   paneType: "overlay" | "pane";
+  // 'parameters'는 객체(Record) 형태가 맞습니다.
   parameters: Record<string, ParameterDefinition>;
-  outputs: OutputDefinition[];
+  outputs: IndicatorOutput[];
+  constraints?: string[];
   supportedTimeframes: string[];
   supportedLogics: string[];
-  constraints?: string[];
 }

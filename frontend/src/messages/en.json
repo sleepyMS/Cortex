@@ -858,6 +858,25 @@
         "avgHoldingPeriodDays": "The average period a position is held in a single trade."
       }
     },
+    "Parameters": {
+      "title": "Backtest Parameters",
+      "description": "The exact settings and strategy rule snapshot used to run this backtest.",
+      "executionParams": "Execution Parameters",
+      "leverage": "Leverage",
+      "fee": "Fee (%)",
+      "slippage": "Slippage (%)",
+      "trailingStop": "Trailing Stop",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "trailingActivation": "Activation Profit (%)",
+      "trailingCallback": "Callback (%)",
+      "longEntry": "Long Entry Rules",
+      "longExit": "Long Exit Rules",
+      "shortEntry": "Short Entry Rules",
+      "shortExit": "Short Exit Rules",
+      "overriddenTooltip": "This value was overridden from the original strategy.",
+      "noRules": "No rules set"
+    },
     "Tabs": {
       "summary": "Summary",
       "chart": "Equity Curve",

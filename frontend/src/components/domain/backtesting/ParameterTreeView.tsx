@@ -2,8 +2,10 @@
 "use client";
 
 import React from "react";
-import { useFormContext, Controller } from "react-hook-form";
-import { LogicBlock, PositionRules } from "@/types/strategy";
+import { Controller, useFormContext } from "react-hook-form";
+import { LogicBlock, Strategy } from "@/types/strategy";
+import { IndicatorMetadata } from "@/types/indicator";
+
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import {
@@ -13,124 +15,301 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/Card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/Tooltip";
+import { cn } from "@/lib/utils";
+import { Percent, SlidersHorizontal } from "lucide-react";
 
-// 단일 파라미터 입력 UI
-function ParameterInput({
-  fieldPath,
-  label,
-  control,
-}: {
-  fieldPath: string;
-  label: string;
+// --- Props 타입 정의 ---
+
+interface ParameterTreeViewProps {
+  strategy: Strategy;
+  indicatorDefinitions: Record<string, IndicatorMetadata>;
   control: any;
-}) {
-  return (
-    <Controller
-      control={control}
-      name={fieldPath}
-      render={({ field }) => (
-        <div className="flex items-center justify-between gap-4">
-          <Label htmlFor={fieldPath} className="text-xs text-muted-foreground">
-            {label}
-          </Label>
-          <Input
-            id={fieldPath}
-            type="number"
-            step="any"
-            value={field.value}
-            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-            className="h-8 w-24 text-right"
-          />
-        </div>
-      )}
-    />
-  );
+  fields: any[]; // useFieldArray로부터 받은 overrides 필드
 }
 
-// 재귀적으로 규칙과 파라미터를 렌더링하는 함수
-function RecursiveRenderer({
-  blocks,
-  pathPrefix,
-  fields,
-  control,
-}: {
-  blocks: LogicBlock[];
+interface RuleBlockProps {
+  block: LogicBlock;
+  blockIndex: number;
   pathPrefix: string;
-  fields: any[];
+  indicatorDefinitions: Record<string, IndicatorMetadata>;
   control: any;
-}) {
-  const t = (key: string) =>
-    ({ orOperator: "또는 (OR)", andOperator: "그리고 (AND)" }[key] || key);
+  fields: any[];
+}
 
-  return (
-    <div className="space-y-3">
-      {blocks.map((block, index) => (
-        <React.Fragment key={block.id}>
-          {index > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">
-                {t("orOperator")}
-              </span>
-              <div className="flex-grow border-t border-dashed"></div>
+// --- 헬퍼 컴포넌트 및 함수 ---
+
+/**
+ * 단일 파라미터 입력 UI (메모이제이션으로 불필요한 리렌더링 방지)
+ */
+const ParameterInput = React.memo(
+  ({
+    fieldPath,
+    label,
+    tooltip,
+    control,
+  }: {
+    fieldPath: string;
+    label: string;
+    tooltip: string;
+    control: any;
+  }) => {
+    return (
+      <Controller
+        control={control}
+        name={fieldPath}
+        render={({ field, fieldState: { error } }) => (
+          <div>
+            <div className="grid grid-cols-[1fr_auto] items-center gap-4">
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* [수정] Label에서 truncate 클래스 제거 */}
+                    <Label
+                      htmlFor={fieldPath}
+                      className="text-xs text-muted-foreground cursor-help"
+                    >
+                      {label}
+                    </Label>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="start">
+                    <p className="text-xs font-mono">{tooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Input
+                id={fieldPath}
+                type="number"
+                step="any"
+                {...field}
+                onChange={(e) =>
+                  field.onChange(
+                    e.target.value === "" ? "" : parseFloat(e.target.value) || 0
+                  )
+                }
+                // [수정] Input 너비를 w-24에서 w-20으로 줄임 (80px)
+                className={cn(
+                  "h-8 w-24 text-right",
+                  error && "border-destructive"
+                )}
+              />
             </div>
-          )}
-
-          <div className="p-3 rounded-md border bg-muted/50">
-            {/* 블록 내부의 파라미터들을 찾아서 렌더링 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-              {fields
-                .filter((f) =>
-                  f.path.startsWith(`${pathPrefix}.blocks.${index}`)
-                )
-                .map((field) => {
-                  const pathParts = field.path.split(".");
-                  const paramKey = pathParts[pathParts.length - 1]; // "length"
-                  const operandKey = pathParts[pathParts.length - 3]; // "mainLine"
-
-                  // 현재 블록에서 operand 객체(예: block.mainLine)를 가져옵니다.
-                  const operand = (block as any)[operandKey];
-                  // operand 객체에서 indicatorKey(예: "EMA")를 추출합니다.
-                  const indicatorKey = operand?.indicatorKey || "";
-
-                  // indicatorKey를 포함하여 더 명확한 라벨을 생성합니다.
-                  const label = `${indicatorKey} ${operandKey} ${paramKey}`;
-
-                  return (
-                    <ParameterInput
-                      key={field.id}
-                      control={control}
-                      fieldPath={`overrides.${fields.indexOf(field)}.value`}
-                      label={label}
-                    />
-                  );
-                })}
-            </div>
-
-            {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 */}
-            {block.children && block.children.length > 0 && (
-              <div className="mt-3 pl-4 border-l-2 border-primary/50 relative">
-                <span className="absolute -left-[1px] top-2 -translate-x-1/2 bg-muted text-xs font-semibold text-primary px-1">
-                  {t("andOperator")}
-                </span>
-                <div className="pt-3">
-                  <RecursiveRenderer
-                    blocks={block.children}
-                    pathPrefix={`${pathPrefix}.blocks.${index}.children`}
-                    fields={fields}
-                    control={control}
-                  />
-                </div>
-              </div>
+            {error && (
+              <p className="text-xs text-destructive text-right mt-1">
+                {error.message}
+              </p>
             )}
           </div>
-        </React.Fragment>
-      ))}
+        )}
+      />
+    );
+  }
+);
+ParameterInput.displayName = "ParameterInput";
+
+/**
+ * 피연산자(Operand)를 사람이 읽기 쉬운 형태로 변환
+ */
+const formatOperand = (
+  operand: any,
+  definitions: Record<string, IndicatorMetadata>
+): string => {
+  if (typeof operand !== "object" || operand === null) {
+    return String(operand);
+  }
+  if (operand.indicatorKey) {
+    const def = definitions[operand.indicatorKey];
+    const params = Object.entries(operand.values)
+      .map(([key, value]) => `${value}`)
+      .join(", ");
+    return `${def?.label || operand.indicatorKey}(${params})`;
+  }
+  return "?";
+};
+
+/**
+ * 규칙(Block) 객체를 사람이 읽기 쉬운 문장으로 변환
+ */
+const formatRuleTitle = (
+  block: LogicBlock,
+  definitions: Record<string, IndicatorMetadata>
+): string => {
+  try {
+    switch (block.type) {
+      case "comparison":
+        return `${formatOperand(block.operandA, definitions)} ${
+          block.operator
+        } ${formatOperand(block.operandB, definitions)}`;
+      case "crossover":
+        const crossDirectionText =
+          block.crossDirection === "above" ? "상향 돌파" : "하향 돌파";
+        return `${formatOperand(block.mainLine, definitions)}가 ${formatOperand(
+          block.signalLine,
+          definitions
+        )}를 ${crossDirectionText}`;
+      case "state":
+        return `${formatOperand(block.indicator, definitions)}가 ${
+          block.lowerBound
+        }과(와) ${block.upperBound} 사이`;
+      default:
+        return `${block.type} 규칙`;
+    }
+  } catch (e) {
+    return "규칙 해석 오류";
+  }
+};
+
+// --- 간단한 한글 레이블 맵 ---
+const directParamLabels: Record<string, string> = {
+  lowerBound: "최소값",
+  upperBound: "최대값",
+  operandB: "비교값",
+};
+
+/**
+ * 단일 규칙 블록을 재귀적으로 렌더링하는 핵심 컴포넌트
+ */
+const RuleBlock = React.memo(
+  ({
+    block,
+    blockIndex,
+    pathPrefix,
+    indicatorDefinitions,
+    control,
+    fields,
+  }: RuleBlockProps) => {
+    const currentBlockPath = `${pathPrefix}.${blockIndex}`;
+
+    // [수정] 자식 파라미터는 제외하고 현재 블록의 파라미터만 정확히 필터링
+    const directBlockFields = fields.filter((f) => {
+      if (!f.path.startsWith(currentBlockPath)) return false;
+      const subPath = f.path.substring(currentBlockPath.length + 1);
+      // 'children'으로 시작하는 경로는 자식의 파라미터이므로 제외
+      return !subPath.startsWith("children");
+    });
+
+    return (
+      <div className="p-3 rounded-md border bg-card">
+        <p className="text-sm font-semibold text-primary mb-3">
+          {formatRuleTitle(block, indicatorDefinitions)}
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+          {directBlockFields.map((field) => {
+            const pathParts = field.path.split(".");
+            const paramKey = pathParts[pathParts.length - 1];
+            const fieldPath = `overrides.${fields.indexOf(field)}.value`;
+            let label = paramKey; // 기본 레이블
+
+            // [수정] 두 종류의 파라미터를 모두 처리
+            if (field.path.includes(".values.")) {
+              // 1. 지표 파라미터 (기존 로직)
+              const operandKey = pathParts[pathParts.length - 3];
+              const indicatorKey = (block as any)[operandKey]?.indicatorKey;
+              const definition = indicatorDefinitions[indicatorKey];
+              const paramDefinition = definition?.parameters[paramKey];
+              label = `${definition?.label || indicatorKey} - ${
+                paramDefinition?.label || paramKey
+              }`;
+            } else {
+              // 2. 블록 직접 파라미터 (신규 로직)
+              label = directParamLabels[paramKey] || paramKey;
+            }
+
+            return (
+              <ParameterInput
+                key={field.id}
+                control={control}
+                fieldPath={fieldPath}
+                label={label}
+                tooltip={`경로: ${field.path}`}
+              />
+            );
+          })}
+        </div>
+
+        {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 (기존과 동일) */}
+        {block.children && block.children.length > 0 && (
+          <div className="mt-4 pl-4 border-l-2 border-amber-500/50 relative">
+            <span className="absolute -left-px top-2 -translate-x-1/2 bg-card text-xs font-semibold text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/50">
+              AND
+            </span>
+            <div className="pt-4 space-y-3">
+              {block.children.map((childBlock, childIndex) => (
+                <RuleBlock
+                  key={childBlock.id}
+                  block={childBlock}
+                  blockIndex={childIndex}
+                  pathPrefix={`${currentBlockPath}.children.blocks`}
+                  indicatorDefinitions={indicatorDefinitions}
+                  control={control}
+                  fields={fields}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+RuleBlock.displayName = "RuleBlock";
+
+/**
+ * TP/SL 설정 섹션 컴포넌트
+ */
+const TpslSection = ({ control, fields }: { control: any; fields: any[] }) => {
+  const tpslFields = fields.filter((f) => f.path.startsWith("tpslLogic"));
+  if (tpslFields.length === 0) return null;
+
+  const renderInput = (
+    pathSuffix: string,
+    label: string,
+    Icon: React.ElementType
+  ) => {
+    const field = fields.find((f) => f.path === `tpslLogic.${pathSuffix}`);
+    if (!field) return null;
+
+    const fieldPath = `overrides.${fields.indexOf(field)}.value`;
+    return (
+      <ParameterInput
+        key={fieldPath}
+        control={control}
+        fieldPath={fieldPath}
+        label={label}
+        tooltip={`경로: ${field.path}`}
+      />
+    );
+  };
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <SlidersHorizontal className="h-4 w-4 text-primary" />
+        TP / SL 규칙
+      </h4>
+      <div className="p-3 rounded-md border bg-card grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+        {renderInput("takeProfitPct", "Take Profit (%)", Percent)}
+        {renderInput("stopLossPct", "Stop Loss (%)", Percent)}
+      </div>
     </div>
   );
-}
+};
 
-// 메인 컴포넌트
-export const ParameterTreeView = ({ strategy, control, fields }: any) => {
+/**
+ * 파라미터 오버라이드를 위한 메인 컴포넌트
+ */
+export const ParameterTreeView = ({
+  strategy,
+  indicatorDefinitions,
+  control,
+  fields,
+}: ParameterTreeViewProps) => {
   const sections = [
     {
       title: "롱 진입 규칙",
@@ -154,19 +333,33 @@ export const ParameterTreeView = ({ strategy, control, fields }: any) => {
     },
   ];
 
-  const hasAnyParams = fields.length > 0;
-  if (!hasAnyParams) return null;
+  if (fields.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>파라미터 오버라이드</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            선택된 전략에 수정 가능한 파라미터가 없습니다.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>파라미터 오버라이드</CardTitle>
         <CardDescription>
-          규칙의 구조를 유지한 채 파라미터 값만 간편하게 수정합니다.
+          전략의 구조를 보면서 파라미터 값만 간편하게 수정하여 테스트합니다.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {sections.map((sec) => {
+      <CardContent className="space-y-6">
+        <TpslSection control={control} fields={fields} />
+
+        {sections.map((sec, secIndex) => {
           const sectionFields = fields.filter((f: any) =>
             f.path.startsWith(sec.type)
           );
@@ -180,12 +373,29 @@ export const ParameterTreeView = ({ strategy, control, fields }: any) => {
           return (
             <div key={sec.type}>
               <h4 className="text-sm font-semibold mb-2">{sec.title}</h4>
-              <RecursiveRenderer
-                blocks={sec.rules.blocks}
-                pathPrefix={sec.type}
-                fields={sectionFields}
-                control={control}
-              />
+              <div className="space-y-3">
+                {sec.rules.blocks.map((block, blockIndex) => (
+                  <React.Fragment key={block.id}>
+                    <RuleBlock
+                      block={block}
+                      blockIndex={blockIndex}
+                      pathPrefix={`${sec.type}.blocks`}
+                      indicatorDefinitions={indicatorDefinitions}
+                      control={control}
+                      fields={fields}
+                    />
+                    {blockIndex < sec.rules.blocks.length - 1 && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-grow border-t border-dashed"></div>
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          OR
+                        </span>
+                        <div className="flex-grow border-t border-dashed"></div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
           );
         })}

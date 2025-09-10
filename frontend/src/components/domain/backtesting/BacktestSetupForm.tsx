@@ -1,22 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { addDays, startOfDay, parseISO } from "date-fns";
+import { addDays, startOfDay } from "date-fns";
 import Link from "next/link";
 import { PlusCircle, Loader2, CheckCircle, Lock } from "lucide-react";
 
 import apiClient from "@/lib/apiClient";
-import { Strategy, LogicBlock } from "@/types/strategy";
+import { Strategy, LogicBlock, IndicatorMetadata } from "@/types/strategy";
 import { cn } from "@/lib/utils";
+import { useIndicatorStore } from "@/store/indicatorStore";
 
 import {
   Form,
@@ -52,7 +52,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Switch } from "@/components/ui/Switch";
 import { ParameterTreeView } from "./ParameterTreeView";
 
-// --- Zod Form Schema (overrides 필드 포함) ---
+// --- Zod 폼 유효성 검사 스키마 ---
 const parameterOverrideSchema = z.object({
   path: z.string(),
   value: z.any(),
@@ -70,7 +70,9 @@ const formSchema = z
         message: "종료일은 시작일보다 이후여야 합니다.",
         path: ["to"],
       }),
-    initialCapital: z.coerce.number().min(1),
+    initialCapital: z.coerce
+      .number()
+      .min(1, "초기 자본금은 1 이상이어야 합니다."),
     leverage: z.coerce.number().min(1).max(125),
     feePct: z.coerce.number().min(0).max(1),
     slippagePct: z.coerce.number().min(0).max(1),
@@ -81,7 +83,6 @@ const formSchema = z
   })
   .refine(
     (data) => {
-      // 트레일링 스탑이 활성화되면, 나머지 두 필드는 반드시 값이 있어야 함
       if (data.trailingStopEnabled) {
         return (
           data.trailingStopActivationPct !== undefined &&
@@ -92,16 +93,26 @@ const formSchema = z
     },
     {
       message: "활성화 및 콜백 %를 입력해야 합니다.",
-      path: ["trailingStopCallbackPct"], // 에러 메시지를 표시할 필드
+      path: ["trailingStopCallbackPct"],
     }
   );
 type FormValues = z.infer<typeof formSchema>;
 
+// --- 메인 컴포넌트 ---
 export function BacktestSetupForm() {
   const t = useTranslations("BacktestSetupForm");
   const router = useRouter();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
+
+  const { metadata: indicatorMetadataArray, isLoaded } = useIndicatorStore();
+
+  const indicatorDefinitions = useMemo(() => {
+    if (!isLoaded) return {};
+    return indicatorMetadataArray.reduce((acc, meta) => {
+      acc[meta.indicatorKey] = meta;
+      return acc;
+    }, {} as Record<string, IndicatorMetadata>);
+  }, [indicatorMetadataArray, isLoaded]);
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -117,15 +128,12 @@ export function BacktestSetupForm() {
       },
       overrides: [],
       trailingStopEnabled: false,
-      trailingStopActivationPct: 2, // 예시 기본값
-      trailingStopCallbackPct: 1.5, // 예시 기본값
     },
   });
-  const { control } = methods;
-
+  const { control, watch } = methods;
   const { fields, replace } = useFieldArray({ control, name: "overrides" });
-  const watchedStrategyId = methods.watch("strategyId");
-  const watchedTrailingStop = methods.watch("trailingStopEnabled");
+  const watchedStrategyId = watch("strategyId");
+  const watchedTrailingStop = watch("trailingStopEnabled");
 
   const { data: strategies, isLoading: isLoadingStrategies } = useQuery<
     Strategy[]
@@ -142,41 +150,57 @@ export function BacktestSetupForm() {
       enabled: !!watchedStrategyId,
     });
 
-  // [핵심] 선택된 전략이 변경될 때마다 파라미터를 추출하여 폼 상태를 업데이트하는 '두뇌' 역할
+  // [핵심] 전략 변경 시 모든 파라미터를 재귀적으로 추출하여 폼 상태를 업데이트
   useEffect(() => {
     if (!selectedStrategy) {
       replace([]);
       return;
     }
 
-    const extractParams = (
+    const extractParamsRecursive = (
       blocks: LogicBlock[],
       pathPrefix: string
     ): { path: string; value: any }[] => {
       let params: { path: string; value: any }[] = [];
       blocks.forEach((block, index) => {
-        const currentPath = `${pathPrefix}.blocks.${index}`;
-        Object.keys(block).forEach((key) => {
-          const potentialOperand = (block as any)[key];
+        const currentPath = `${pathPrefix}.${index}`;
+
+        // 블록의 모든 키를 순회
+        for (const key in block) {
+          if (key === "children" || key === "id" || key === "type") continue;
+
+          const value = (block as any)[key];
+
+          // 1. 기존 로직: 지표(indicator) 내부의 파라미터 추출
           if (
-            potentialOperand &&
-            typeof potentialOperand === "object" &&
-            potentialOperand.values
+            value &&
+            typeof value === "object" &&
+            "indicatorKey" in value &&
+            "values" in value
           ) {
-            Object.entries(potentialOperand.values).forEach(
-              ([paramKey, value]) => {
+            for (const [paramKey, paramValue] of Object.entries(value.values)) {
+              if (typeof paramValue === "number") {
                 params.push({
                   path: `${currentPath}.${key}.values.${paramKey}`,
-                  value,
+                  value: paramValue,
                 });
               }
-            );
+            }
           }
-        });
+          // 2. 신규 로직: 블록에 직접 속한 숫자형 파라미터 추출 (예: lowerBound, operandB)
+          else if (typeof value === "number") {
+            params.push({ path: `${currentPath}.${key}`, value: value });
+          }
+        }
+
+        // 3. 자식 블록 재귀 호출 (기존과 동일)
         if (block.children && block.children.length > 0) {
           params = [
             ...params,
-            ...extractParams(block.children, `${currentPath}.children`),
+            ...extractParamsRecursive(
+              block.children,
+              `${currentPath}.children.blocks`
+            ),
           ];
         }
       });
@@ -184,18 +208,31 @@ export function BacktestSetupForm() {
     };
 
     let allParams: { path: string; value: any }[] = [];
-    const ruleKeys = [
+    const ruleKeys: (keyof Strategy)[] = [
       "longEntryRules",
       "longExitRules",
       "shortEntryRules",
       "shortExitRules",
     ];
+
     ruleKeys.forEach((key) => {
-      const rules = selectedStrategy[key as keyof Strategy];
-      if (rules?.blocks) {
-        allParams = [...allParams, ...extractParams(rules.blocks, key)];
+      const rules = selectedStrategy[key];
+      if (rules && rules.blocks) {
+        allParams = [
+          ...allParams,
+          ...extractParamsRecursive(rules.blocks, `${key}.blocks`),
+        ];
       }
     });
+
+    if (selectedStrategy.tpslLogic) {
+      for (const [key, value] of Object.entries(selectedStrategy.tpslLogic)) {
+        if (typeof value === "number") {
+          allParams.push({ path: `tpslLogic.${key}`, value });
+        }
+      }
+    }
+
     replace(allParams);
   }, [selectedStrategy, replace]);
 
@@ -211,6 +248,12 @@ export function BacktestSetupForm() {
           fee: data.feePct,
           slippage: data.slippagePct,
           overrides: data.overrides,
+          tpslLogic: {
+            // Trailing Stop 로직을 parameters.tpslLogic으로 전달
+            trailingStopEnabled: data.trailingStopEnabled,
+            trailingStopActivationPct: data.trailingStopActivationPct,
+            trailingStopCallbackPct: data.trailingStopCallbackPct,
+          },
         },
       };
       return apiClient.post("/backtests", payload);
@@ -231,13 +274,18 @@ export function BacktestSetupForm() {
   const onSubmit = (values: FormValues) =>
     createBacktestMutation.mutate(values);
 
-  const getTpslLogicText = (tpslLogic: any) => {
-    if (!tpslLogic) return t("summary.notSet");
-    if (tpslLogic.atrPeriod) return t("summary.tpslTypes.atr");
-    if (tpslLogic.takeProfitPct || tpslLogic.stopLossPct)
-      return t("summary.tpslTypes.percentage");
-    return t("summary.tpslSet");
-  };
+  if (!isLoaded) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          <Skeleton className="h-[600px] w-full" />
+        </div>
+        <div className="lg:col-span-1 sticky top-24">
+          <Skeleton className="h-[400px] w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <FormProvider {...methods}>
@@ -248,9 +296,11 @@ export function BacktestSetupForm() {
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="standard">{t("tabs.standard")}</TabsTrigger>
                 <TabsTrigger value="walk_forward" disabled>
+                  <Lock className="h-4 w-4 mr-2" />
                   {t("tabs.walkForward")}
                 </TabsTrigger>
                 <TabsTrigger value="monte_carlo" disabled>
+                  <Lock className="h-4 w-4 mr-2" />
                   {t("tabs.monteCarlo")}
                 </TabsTrigger>
               </TabsList>
@@ -264,7 +314,7 @@ export function BacktestSetupForm() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <FormField
-                      control={methods.control}
+                      control={control}
                       name="strategyId"
                       render={({ field }) => (
                         <FormItem>
@@ -288,7 +338,7 @@ export function BacktestSetupForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {strategies && strategies.length > 0 ? (
+                              {strategies?.length ? (
                                 strategies.map((s) => (
                                   <SelectItem key={s.id} value={s.id}>
                                     {s.name}
@@ -299,12 +349,12 @@ export function BacktestSetupForm() {
                                   <p className="text-sm text-muted-foreground mb-3">
                                     {t("standard.noStrategiesFound")}
                                   </p>
-                                  <Link href="/strategies/new">
-                                    <Button size="sm">
+                                  <Button asChild size="sm">
+                                    <Link href="/strategies/new">
                                       <PlusCircle className="mr-2 h-4 w-4" />
                                       {t("standard.goToCreateStrategy")}
-                                    </Button>
-                                  </Link>
+                                    </Link>
+                                  </Button>
                                 </div>
                               )}
                             </SelectContent>
@@ -314,7 +364,7 @@ export function BacktestSetupForm() {
                       )}
                     />
                     <FormField
-                      control={methods.control}
+                      control={control}
                       name="dateRange"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
@@ -335,7 +385,7 @@ export function BacktestSetupForm() {
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       <FormField
-                        control={methods.control}
+                        control={control}
                         name="initialCapital"
                         render={({ field }) => (
                           <FormItem>
@@ -354,7 +404,7 @@ export function BacktestSetupForm() {
                         )}
                       />
                       <FormField
-                        control={methods.control}
+                        control={control}
                         name="leverage"
                         render={({ field }) => (
                           <FormItem>
@@ -367,7 +417,7 @@ export function BacktestSetupForm() {
                         )}
                       />
                       <FormField
-                        control={methods.control}
+                        control={control}
                         name="feePct"
                         render={({ field }) => (
                           <FormItem>
@@ -385,7 +435,7 @@ export function BacktestSetupForm() {
                         )}
                       />
                       <FormField
-                        control={methods.control}
+                        control={control}
                         name="slippagePct"
                         render={({ field }) => (
                           <FormItem>
@@ -405,97 +455,74 @@ export function BacktestSetupForm() {
                         )}
                       />
                     </div>
-                    <Separator className="col-span-1 sm:col-span-3" />
-                    <div className="col-span-1 sm:col-span-3">
-                      <FormField
-                        control={methods.control}
-                        name="trailingStopEnabled"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                              <FormLabel>
-                                {t("standard.trailingStopLabel")}
-                              </FormLabel>
-                              <FormDescription>
-                                {t("standard.trailingStopDescription")}
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
-                      {watchedTrailingStop && (
-                        <>
-                          <FormField
-                            control={methods.control}
-                            name="trailingStopActivationPct"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  {t("standard.activationPctLabel")}
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="2.0"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={methods.control}
-                            name="trailingStopCallbackPct"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  {t("standard.callbackPctLabel")}
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="1.5"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </>
+                    <Separator />
+                    <FormField
+                      control={control}
+                      name="trailingStopEnabled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>
+                              {t("standard.trailingStopLabel")}
+                            </FormLabel>
+                            <FormDescription>
+                              {t("standard.trailingStopDescription")}
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
                       )}
-                    </div>
+                    />
+                    {watchedTrailingStop && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={control}
+                          name="trailingStopActivationPct"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {t("standard.activationPctLabel")}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="2.0"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={control}
+                          name="trailingStopCallbackPct"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {t("standard.callbackPctLabel")}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="1.5"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
                   </CardContent>
-                </Card>
-              </TabsContent>
-              {/* WIP 탭 (기존 유지) */}
-              <TabsContent value="walk_forward">
-                <Card className="text-center p-10 flex flex-col items-center justify-center h-full">
-                  <Lock className="h-12 w-12 text-muted-foreground" />
-                  <CardTitle className="mt-4">{t("wip.title")}</CardTitle>
-                  <CardDescription className="mt-2">
-                    {t("wip.description")}
-                  </CardDescription>
-                </Card>
-              </TabsContent>
-              <TabsContent value="monte_carlo">
-                <Card className="text-center p-10 flex flex-col items-center justify-center h-full">
-                  <Lock className="h-12 w-12 text-muted-foreground" />
-                  <CardTitle className="mt-4">{t("wip.title")}</CardTitle>
-                  <CardDescription className="mt-2">
-                    {t("wip.description")}
-                  </CardDescription>
                 </Card>
               </TabsContent>
             </Tabs>
@@ -503,6 +530,7 @@ export function BacktestSetupForm() {
             {!isLoadingStrategyDetails && selectedStrategy && (
               <ParameterTreeView
                 strategy={selectedStrategy}
+                indicatorDefinitions={indicatorDefinitions}
                 control={control}
                 fields={fields}
               />
@@ -516,7 +544,7 @@ export function BacktestSetupForm() {
               </CardHeader>
               <CardContent className="space-y-4 min-h-[180px]">
                 {isLoadingStrategyDetails && watchedStrategyId ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pt-4">
                     <Skeleton className="h-5 w-3/4" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-2/3" />
@@ -539,22 +567,9 @@ export function BacktestSetupForm() {
                       <span className="font-medium">
                         {t("summary.targetCoins")}
                       </span>
-                      <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
-                        {selectedStrategy.targetCoins?.length > 0 ? (
-                          selectedStrategy.targetCoins.map((c: any) => (
-                            <Badge key={c.ticker} variant="secondary">
-                              {c.ticker}
-                            </Badge>
-                          ))
-                        ) : (
-                          <Badge variant="outline">{t("summary.notSet")}</Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{t("summary.tpsl")}</span>
-                      <Badge variant="outline">
-                        {getTpslLogicText(selectedStrategy.tpslLogic)}
+                      <Badge variant="secondary">
+                        {selectedStrategy.targetCoins?.[0]?.ticker ||
+                          t("summary.notSet")}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">

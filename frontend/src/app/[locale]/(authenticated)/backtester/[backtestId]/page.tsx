@@ -28,11 +28,12 @@ import { TradeLog } from "@/types/tradelog";
 
 // --- 최종 분석 컴포넌트 임포트 ---
 import { BacktestResultSummary } from "@/components/domain/backtesting/BacktestResultSummary";
-import { DetailedMetrics } from "@/components/domain/backtesting/DetailedMetrics"; // 새로 추가
+import { DetailedMetrics } from "@/components/domain/backtesting/DetailedMetrics";
 import { DynamicEquityChart } from "@/components/domain/backtesting/DynamicEquityChart";
 import { DynamicDrawdownChart } from "@/components/domain/backtesting/DynamicDrawdownChart";
 import { MonthlyPerformance } from "@/components/domain/backtesting/MonthlyPerformance";
 import { TradeLogTable } from "@/components/domain/backtesting/TradeLogTable";
+import { BacktestParameters } from "@/components/domain/backtesting/BacktestParameters";
 
 // --- UI 컴포넌트 ---
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
@@ -292,21 +293,24 @@ export default function BacktestDetailPage({
             {/* 1. 요약 지표 */}
             <BacktestResultSummary result={backtest.result} />
 
-            {/* 2. 상세 지표 (새로 추가) */}
+            {/* 2. 상세 지표 */}
             <DetailedMetrics result={backtest.result} />
 
-            {/* 2. 자산 곡선 차트 */}
+            {/* 3. 백테스팅 파라미터 */}
+            <BacktestParameters backtest={backtest} />
+
+            {/* 4. 자산 곡선 차트 */}
             <DynamicEquityChart pnlData={backtest.result.pnlCurveJson || []} />
 
-            {/* 3. 드로우다운 곡선 차트 */}
+            {/* 5. 드로우다운 곡선 차트 */}
             <DynamicDrawdownChart
               drawdownData={backtest.result.drawdownCurveJson || []}
             />
 
-            {/* 4. 월별 수익률 표 */}
+            {/* 6. 월별 수익률 표 */}
             <MonthlyPerformance pnlData={backtest.result.pnlCurveJson || []} />
 
-            {/* 5. 상세 거래 기록 */}
+            {/* 7. 상세 거래 기록 */}
             <TradeLogTable tradeLogs={tradeLogs} />
           </div>
         );

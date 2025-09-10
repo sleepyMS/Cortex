@@ -471,6 +471,7 @@ class BacktestParametersPayload(CamelCaseModel):
 
 class Backtest(BacktestInList):
     parameters: Dict[str, Any]
+    strategy_snapshot: Optional[Dict[str, Any]] = None
     strategy: Optional[Strategy] = None 
     result: Optional[BacktestResultSummary] = None 
 

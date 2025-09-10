@@ -28,6 +28,11 @@ export interface BacktestResult {
   drawdownCurveJson?: { time: number; value: number }[] | null;
 }
 
+interface Overrides {
+  path: string;
+  value: number;
+}
+
 /**
  * 백테스트 상세 페이지(`/backtester/[backtestId]`)에서 사용하는
  * 완전한 형태의 Backtest 객체 타입입니다.
@@ -39,6 +44,12 @@ export interface Backtest {
     startDate: string;
     endDate: string;
     initialCapital: number;
+    parameters: {
+      fee: number;
+      leverage: number;
+      slippage: number;
+      overrides: Overrides[];
+    };
   };
   // [핵심] result 속성이 위에서 정의한 완전한 BacktestResult 타입을 사용하도록 합니다.
   result: BacktestResult | null;
