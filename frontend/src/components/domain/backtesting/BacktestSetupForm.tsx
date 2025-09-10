@@ -236,6 +236,31 @@ export function BacktestSetupForm() {
     replace(allParams);
   }, [selectedStrategy, replace]);
 
+  const getTpslLogicText = (tpslLogic: any) => {
+    // tpslLogic 객체가 없거나 내용이 비어있으면 "미설정"
+    if (
+      !tpslLogic ||
+      Object.keys(tpslLogic).every(
+        (k) =>
+          tpslLogic[k] === null ||
+          tpslLogic[k] === undefined ||
+          tpslLogic[k] === false
+      )
+    ) {
+      return t("summary.notSet");
+    }
+    // ATR 관련 설정이 있으면 "ATR 기반"
+    if (tpslLogic.atrPeriod) {
+      return t("summary.tpslTypes.atr");
+    }
+    // 고정 비율 설정이 있으면 "고정 비율"
+    if (tpslLogic.takeProfitPct || tpslLogic.stopLossPct) {
+      return t("summary.tpslTypes.percentage");
+    }
+    // 그 외의 경우 (매우 드묾)
+    return t("summary.tpslSet");
+  };
+
   const createBacktestMutation = useMutation({
     mutationFn: (data: FormValues) => {
       const payload = {
@@ -570,6 +595,12 @@ export function BacktestSetupForm() {
                       <Badge variant="secondary">
                         {selectedStrategy.targetCoins?.[0]?.ticker ||
                           t("summary.notSet")}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{t("summary.tpsl")}</span>
+                      <Badge variant="outline">
+                        {getTpslLogicText(selectedStrategy.tpslLogic)}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
