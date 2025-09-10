@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Archive,
-  CalendarDays,
+  Clock,
   HelpCircle,
 } from "lucide-react";
 
@@ -150,11 +150,6 @@ export const BacktestCard = ({
                 {currentStatus.label}
               </Badge>
             </div>
-            <CardDescription>
-              {t("runAt", {
-                date: format(new Date(backtest.createdAt), "yyyy-MM-dd HH:mm"),
-              })}
-            </CardDescription>
           </CardHeader>
           <CardContent className="flex-grow space-y-4">
             <div className="flex justify-around text-center">
@@ -210,8 +205,12 @@ export const BacktestCard = ({
         </Link>
         <CardFooter className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
           <div className="flex items-center gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5" />
-            <span>{dateRangeString}</span>
+            <Clock className="h-3.5 w-3.5" />
+            <span>
+              {t("runAt", {
+                date: format(new Date(backtest.createdAt), "yyyy-MM-dd HH:mm"),
+              })}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <currentStatus.Icon
