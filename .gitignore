@@ -19,3 +19,5 @@ db_data/
 node_modules/
 .next/
 *.log
+
+backend/venv/
