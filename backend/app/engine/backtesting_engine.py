@@ -110,7 +110,7 @@ class BacktestingEngine:
                 self._execute_trade(timestamp, row['close'], 'buy', is_entry=False)
 
     def _calculate_initial_tp_sl(self, row: pd.Series) -> Tuple[Optional[float], Optional[float]]:
-        """[수정] Pydantic 객체 속성에 직접 접근하여 최초 TP/SL 가격을 계산합니다."""
+        """Pydantic 객체 속성에 직접 접근하여 최초 TP/SL 가격을 계산합니다."""
         sl_price, tp_price = None, None
         
         atr_period = self.tpsl_logic.atr_period

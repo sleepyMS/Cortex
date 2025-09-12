@@ -928,6 +928,64 @@
       }
     }
   },
+  "Marketplace": {
+    "title": "Marketplace",
+    "description": "Explore strategies verified by other traders, or share your own to generate new revenue.",
+    "strategyMarketTab": "Strategy Market",
+    "itemShopTab": "Item Shop",
+    "comingSoon": "Coming Soon",
+    "searchPlaceholder": "Search by strategy name...",
+    "sortBy": "Sort by",
+    "sort": {
+      "newest": "Newest",
+      "highestReturn": "Highest Return",
+      "lowestMdd": "Lowest MDD"
+    },
+    "loadingStrategies": "Loading strategies...",
+    "emptyTitle": "No strategies for sale yet",
+    "emptyDescription": "Be the first strategy seller on Cortex!",
+    "purchaseButton": "Purchase",
+    "purchasing": "Processing...",
+    "purchaseSuccess": "Item purchased successfully!",
+    "purchaseError": "Purchase failed: {error}",
+    "loadError": "Failed to load products: {error}",
+    "strategyDetail": {
+      "priceLabel": "Price",
+      "purchaseButton": "Purchase Strategy",
+      "purchasingButton": "Purchasing...",
+      "ownedButton": "Owned",
+      "authorPrefix": "by",
+      "backtestPeriod": "Backtest Period"
+    },
+    "strategyMarketCard": {
+      "authorPrefix": "by",
+      "totalReturn": "Total Return",
+      "mdd": "Max Drawdown",
+      "winRate": "Win Rate",
+      "price": "Price",
+      "purchaseButton": "Purchase",
+      "purchasing": "Processing..."
+    },
+    "StrategyInfoCard": {
+      "title": "Strategy Overview",
+      "description": "A summary of this strategy's key information.",
+      "noDescription": "No detailed description is available for this strategy.",
+      "vitals": {
+        "title": "Key Characteristics",
+        "period": "Backtest Period",
+        "profitFactor": "Profit Factor",
+        "sharpeRatio": "Sharpe Ratio",
+        "winRate": "Win Rate",
+        "avgHoldingPeriod": "Avg. Holding Period",
+        "avgHoldingPeriodValue": "{days} days",
+        "totalTrades": "Total Trades"
+      }
+    },
+    "AuthorCard": {
+      "title": "Seller Information",
+      "viewProfile": "View Profile"
+    }
+  },
   "StrategyPerformanceBadges": {
     "totalReturnLabel": "Total Return",
     "totalReturnTooltip": "The cumulative return over the entire backtesting period.",

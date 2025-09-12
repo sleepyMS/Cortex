@@ -1,14 +1,15 @@
 # file: backend/app/routers/marketplace.py
 import uuid
-from typing import List, Union
+from typing import List, Union, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, models
-from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
+from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none, create_owner_verifier
 from ..services.marketplace_service import marketplace_service
 from ..services.payment_service import payment_service 
+from .. import security
 
 logger = logging.getLogger(__name__)
 
@@ -41,20 +42,25 @@ async def get_products(
 
 @router.get(
     "/products/{product_id}",
-    response_model=Union[schemas.StrategyProductDetail, schemas.ShopItemProductDetail],
+    response_model=Union[schemas.StrategyProductDetailOwned, schemas.StrategyProductDetailPublic],
     summary="Get details of a single marketplace product"
 )
 async def get_product_detail(
     product_id: uuid.UUID,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: Optional[models.User] = Depends(get_current_user_or_none)
 ):
-    """특정 상품 하나의 상세 정보를 타입에 맞춰 조회합니다."""
-    # 1. 기본 상품 정보 조회
+    """
+    상품의 상세 정보를 조회합니다.
+    사용자의 로그인 여부에 따라 반환되는 정보의 상세 수준이 달라집니다.
+    """
     product = await marketplace_service.get_product_details(db, product_id)
     
-    # 2. 상품 타입에 따라 적절한 서비스 함수를 호출하여 상세 정보 조합
     if product.product_type == models.ProductType.STRATEGY:
-        return await marketplace_service.get_strategy_product_detail(db, product)
+        # 이제 current_user는 User 객체이거나 None일 수 있습니다.
+        return await marketplace_service.get_strategy_product_detail(
+            db, product, current_user
+        )
     
     elif product.product_type == models.ProductType.SHOP_ITEM:
         return await marketplace_service.get_shop_item_product_detail(db, product)

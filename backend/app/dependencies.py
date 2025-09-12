@@ -149,6 +149,40 @@ def create_owner_verifier(
         return instance
     return verifier
 
+async def get_current_user_or_none(
+    token: Annotated[Optional[str], Depends(oauth2_scheme)], # token을 Optional로 변경
+    db: Annotated[AsyncSession, Depends(get_async_db)]
+) -> Optional[models.User]:
+    """
+    JWT 토큰이 제공된 경우에만 사용자를 조회하고, 없거나 유효하지 않으면 None을 반환합니다.
+    절대로 HTTPException을 발생시키지 않습니다.
+    """
+    if not token:
+        return None # 토큰이 없으면 즉시 None 반환
+
+    try:
+        payload = jwt.decode(token, settings.AUTH.SECRET_KEY, algorithms=[settings.AUTH.ALGORITHM])
+        email: Optional[str] = payload.get("sub")
+        if not email:
+            return None # 페이로드에 이메일이 없으면 None 반환
+    except JWTError:
+        return None # 토큰이 유효하지 않으면 None 반환
+
+    # Eager Loading을 사용하여 필요한 관계를 한 번에 로드 (성능 최적화)
+    query = (
+        select(models.User)
+        .options(joinedload(models.User.subscription).joinedload(models.Subscription.plan).joinedload(models.Plan.features))
+        .filter(models.User.email == email)
+    )
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    
+    # 사용자가 DB에 없거나 비활성 상태여도 그냥 None 반환
+    if not user or not user.is_active:
+        return None
+        
+    return user
+
 # --- 커뮤니티 관련 소유권 검증 (비동기 전환) ---
 
 async def get_viewable_post(

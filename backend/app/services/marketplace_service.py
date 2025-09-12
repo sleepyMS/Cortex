@@ -1,6 +1,6 @@
 # file: backend/app/services/marketplace_service.py
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
@@ -346,11 +346,18 @@ class MarketplaceService:
             sortino_ratio=summary_data.sortino_ratio
         )
     
-    async def get_strategy_product_detail(self, db: AsyncSession, product: models.MarketplaceProduct) -> schemas.StrategyProductDetail:
+    async def get_strategy_product_detail(
+        self, 
+        db: AsyncSession, 
+        product: models.MarketplaceProduct, 
+        current_user: Optional[models.User]
+    ) -> Union[schemas.StrategyProductDetailOwned, schemas.StrategyProductDetailPublic]:
         """
-        전략 상품에 특화된 모든 상세 정보를 조합하여 반환합니다.
+        전략 상품의 상세 정보를 조회합니다.
+        - 사용자가 전략을 소유한 경우, 모든 규칙을 포함한 상세 정보를 반환합니다.
+        - 소유하지 않은 경우(비로그인 포함), 규칙을 제외한 공개 정보만 반환합니다.
         """
-        # 1. 원본 Strategy 정보 조회 (기존과 동일)
+        # 1. 상품에 연결된 원본 전략 정보 조회 (판매자 정보 포함)
         strategy = await db.scalar(
             select(models.Strategy)
             .options(joinedload(models.Strategy.author))
@@ -360,47 +367,45 @@ class MarketplaceService:
             logger.error(f"Data integrity error: Product {product.id} links to non-existent Strategy {product.linked_resource_id}")
             raise HTTPException(status_code=404, detail="연결된 전략 정보를 찾을 수 없습니다.")
 
-        # 2. 대표 백테스트의 전체 정보 조회 (기존과 동일)
+        # 2. 사용자의 소유권 확인
+        is_owned = False
+        if current_user:
+            # check_strategy_purchase 함수를 호출하여 소유 여부를 확인합니다.
+            is_owned = await self.check_strategy_purchase(db, current_user.id, strategy.id)
+
+        # 3. 공개 정보인 대표 백테스트 결과 조회
+        # (주의: trade_logs와 같이 민감할 수 있는 정보는 여기서 로드하지 않습니다.)
         representative_backtest_model = None
         if product.representative_backtest_id:
-            # [핵심 수정] 쿼리 옵션을 연쇄적으로 적용하여 중첩된 관계까지 모두 Eager Loading합니다.
             representative_backtest_model = await db.scalar(
                 select(models.Backtest)
                 .options(
                     joinedload(models.Backtest.result),
-                    selectinload(models.Backtest.trade_logs),
-                    # Backtest의 strategy를 로드하고(joinedload),
-                    # 그 strategy의 backtests 목록도 미리 로드하도록(selectinload) 체이닝합니다.
                     joinedload(models.Backtest.strategy).selectinload(models.Strategy.backtests)
                 )
                 .filter(models.Backtest.id == product.representative_backtest_id)
             )
             
-        # 3. [핵심 수정] Pydantic 모델에 전달할 데이터를 하나의 딕셔너리로 조합합니다.
-        
-        # 3-1. 기본이 될 `product` ORM 객체를 딕셔너리로 변환합니다.
-        #      (주의: pydantic 스키마를 통해 변환해야 relationship 필드 등이 올바르게 처리됩니다.)
-        base_data = schemas.BaseProduct.model_validate(product, from_attributes=True).model_dump()
-        
-        # 3-2. 추가하거나 덮어쓸 데이터를 정의합니다.
-        update_data = {
-            'author': strategy.author,
-            'description': strategy.description,
-            'long_entry_rules': strategy.long_entry_rules,
-            'long_exit_rules': strategy.long_exit_rules,
-            'short_entry_rules': strategy.short_entry_rules,
-            'short_exit_rules': strategy.short_exit_rules,
-            'tpsl_logic': strategy.tpsl_logic,
-            'target_coins': strategy.target_coins,
-            'latest_backtest_summary': representative_backtest_model.result if representative_backtest_model else None,
+        # 4. Pydantic 모델에 전달할 데이터 소스들을 하나의 딕셔너리로 조합
+        # Pydantic이 필요한 필드를 product, strategy, author 객체 등에서 자동으로 찾아 변환합니다.
+        combined_data_for_validation = {
+            **product.__dict__,
+            **strategy.__dict__,
+            'author': strategy.author, # 관계 필드는 명시적으로 전달
             'representative_backtest': representative_backtest_model
         }
-        
-        # 3-3. 두 딕셔너리를 병합합니다.
-        final_data = {**base_data, **update_data}
 
-        # 4. 최종적으로 완성된 단일 딕셔너리를 사용하여 모델 유효성 검사를 수행합니다.
-        return schemas.StrategyProductDetail.model_validate(final_data)
+        # 5. 소유권 여부에 따라 다른 스키마로 데이터를 검증하고 반환
+        if is_owned:
+            # 소유자일 경우: 모든 정보가 포함된 'Owned' 스키마로 반환
+            return schemas.StrategyProductDetailOwned.model_validate(
+                combined_data_for_validation, from_attributes=True
+            )
+        else:
+            # 비구매자일 경우: 민감 정보가 제외된 'Public' 스키마로 반환
+            return schemas.StrategyProductDetailPublic.model_validate(
+                combined_data_for_validation, from_attributes=True
+            )
     
     async def unlist_strategy_product(
         self, db: AsyncSession, product_id: uuid.UUID, current_user_id: uuid.UUID

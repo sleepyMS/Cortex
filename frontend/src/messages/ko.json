@@ -951,18 +951,12 @@
     "purchaseError": "구매에 실패했습니다: {error}",
     "loadError": "상품을 불러오는 데 실패했습니다: {error}",
     "strategyDetail": {
-      "title": "전략 상세 정보",
-      "authorPrefix": "by",
+      "priceLabel": "가격",
       "purchaseButton": "전략 구매하기",
-      "purchaseSuccess": "전략을 성공적으로 구매했습니다. '나의 전략' 페이지에서 확인하세요.",
-      "purchaseError": "전략 구매에 실패했습니다: {error}",
-      "descriptionCardTitle": "전략 상세 설명",
-      "tabs": {
-        "summary": "성과 요약",
-        "chart": "자산 곡선",
-        "monthly": "월별 성과",
-        "logs": "거래 기록"
-      }
+      "purchasingButton": "구매 진행 중...",
+      "ownedButton": "보유 중인 전략",
+      "authorPrefix": "by",
+      "backtestPeriod": "백테스트 기간"
     },
     "strategyMarketCard": {
       "authorPrefix": "by",
@@ -972,6 +966,25 @@
       "price": "가격",
       "purchaseButton": "구매하기",
       "purchasing": "처리 중..."
+    },
+    "StrategyInfoCard": {
+      "title": "전략 개요",
+      "description": "이 전략의 핵심적인 정보 요약입니다.",
+      "noDescription": "이 전략에 대한 상세 설명이 없습니다.",
+      "vitals": {
+        "title": "주요 특성",
+        "period": "백테스트 기간",
+        "profitFactor": "수익 팩터",
+        "sharpeRatio": "샤프 지수",
+        "winRate": "승률",
+        "avgHoldingPeriod": "평균 보유 기간",
+        "avgHoldingPeriodValue": "{days} 일",
+        "totalTrades": "총 거래 횟수"
+      }
+    },
+    "AuthorCard": {
+      "title": "판매자 정보",
+      "viewProfile": "프로필 보기"
     }
   },
   "StrategyPerformanceBadges": {

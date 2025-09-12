@@ -675,21 +675,27 @@ class ShopItemProduct(BaseProduct):
     """상점 아이템 목록에 표시될 정보"""
     display_properties: Dict[str, Any]
 
-class StrategyProductDetail(StrategyProduct):
+class StrategyProductDetailPublic(StrategyProduct):
     """
-    전략 상품의 모든 상세 정보를 포함하는 스키마.
-    원본 전략의 규칙을 '스냅샷' 형태로 복사하여 포함합니다.
+    비구매자에게 보여줄 공개용 상세 정보.
+    전략 규칙 등 민감한 정보는 모두 제외됩니다.
     """
     description: Optional[str] = None
+    representative_backtest: Optional[Backtest] = None # 대표 백테스트 결과는 공개
+    
+    # long_entry_rules 등 민감 정보는 여기에 포함시키지 않습니다.
+
+class StrategyProductDetailOwned(StrategyProductDetailPublic):
+    """
+    구매한 사용자에게만 보여줄 소유자용 상세 정보.
+    공개용 정보를 상속받고, 추가로 모든 전략 규칙을 포함합니다.
+    """
     long_entry_rules: Optional[PositionRules] = None
     long_exit_rules: Optional[PositionRules] = None
     short_entry_rules: Optional[PositionRules] = None
     short_exit_rules: Optional[PositionRules] = None
     tpsl_logic: Optional[TpslLogic] = None
     target_coins: List[TargetCoin] = Field(default_factory=list)
-    
-    # 대표 백테스트의 전체 결과(차트 데이터, 거래 기록 등)를 포함
-    representative_backtest: Optional[Backtest] = None
 
 class ShopItemProductDetail(ShopItemProduct):
     """
