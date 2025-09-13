@@ -1,5 +1,9 @@
+// file: src/components/domain/dashboard/AccountSettingsTab.tsx
 "use client";
-import { useTranslations } from "next-intl";
+
+import { ChangePasswordForm } from "@/components/domain/settings/ChangePasswordForm";
+import { SubscriptionCard } from "@/components/domain/settings/SubscriptionCard";
+import { NotificationSettingsCard } from "@/components/domain/settings/NotificationSettingsCard";
 import {
   Card,
   CardContent,
@@ -7,35 +11,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-// 예시: 비밀번호 변경 컴포넌트
-import { ChangePasswordForm } from "@/components/domain/settings/ChangePasswordForm";
-// 예시: API 키 관리 컴포넌트
-import { ApiKeyManager } from "@/components/domain/settings/ApiKeyManager";
+import { DangerZoneCard } from "../settings/DangerZoneCard";
 
 export function AccountSettingsTab() {
-  const t = useTranslations("Dashboard.settings");
-
   return (
     <div className="space-y-8">
+      {/* 1. 구독 관리 카드 */}
+      <SubscriptionCard />
+
+      {/* 2. 알림 설정 카드 */}
+      <NotificationSettingsCard />
+
+      {/* 3. 비밀번호 변경 카드 */}
       <Card>
         <CardHeader>
-          <CardTitle>{t("password.title")}</CardTitle>
-          <CardDescription>{t("password.description")}</CardDescription>
+          <CardTitle>비밀번호 변경</CardTitle>
+          <CardDescription>
+            계정 보안을 위해 주기적으로 비밀번호를 변경하는 것을 권장합니다.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ChangePasswordForm />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("apiKeys.title")}</CardTitle>
-          <CardDescription>{t("apiKeys.description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ApiKeyManager />
-        </CardContent>
-      </Card>
-      {/* 구독 관리, 계정 삭제 등 추가 가능 */}
+
+      {/* 4. 계정 삭제 등 위험 구역 카드 */}
+      <DangerZoneCard />
     </div>
   );
 }

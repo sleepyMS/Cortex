@@ -28,6 +28,24 @@ async def read_users_me(
     logger.info(f"User {current_user.email} requested their profile.")
     return current_user
 
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Delete current user's account")
+async def delete_me(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    현재 로그인된 사용자의 계정을 영구적으로 삭제합니다.
+    DB cascade 설정에 따라 모든 관련 데이터가 함께 삭제됩니다.
+    """
+    # user_service에 이미 admin용으로 만들어 둔 delete_user 함수를 재사용합니다.
+    success = await user_service.delete_user(db, current_user.id)
+    if not success:
+        # 이 경우는 거의 발생하지 않지만, 방어적으로 코드를 작성합니다.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="삭제할 사용자를 찾을 수 없습니다.")
+    
+    # commit은 get_async_db 의존성이 처리해줍니다.
+    logger.info(f"User account for {current_user.email} (ID: {current_user.id}) has been permanently deleted.")
+    return
 
 @router.put("/me/profile", response_model=schemas.User, summary="Update current user's profile information")
 async def update_users_me_profile(

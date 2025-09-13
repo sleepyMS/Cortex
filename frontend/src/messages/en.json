@@ -454,7 +454,7 @@
         },
         "deleteDialog": {
           "title": "Are you absolutely sure?",
-          "description": "This will permanently delete the API key for '{exchange}'. This action cannot be undone.",
+          "description": "This will permanently delete the API key for {exchange}. This action cannot be undone.",
           "cancel": "Cancel",
           "confirm": "Delete"
         }
@@ -1096,7 +1096,7 @@
     },
     "searchPlaceholder": "Search by item name...",
     "noResultsTitle": "No Results Found",
-    "noResultsDescription": "No results found for '{searchTerm}'. Try searching for something else.",
+    "noResultsDescription": "No results found for {searchTerm}. Try searching for something else.",
     "purchasedStrategies": {
       "emptyTitle": "No Purchased Strategies",
       "emptyDescription": "Find powerful trading strategies on the marketplace."

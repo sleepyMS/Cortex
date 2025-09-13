@@ -454,9 +454,54 @@
         },
         "deleteDialog": {
           "title": "정말로 삭제하시겠습니까?",
-          "description": "'{exchange}' 거래소의 API 키를 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+          "description": "{exchange} 거래소의 API 키를 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
           "cancel": "취소",
           "confirm": "삭제"
+        }
+      },
+      "subscription": {
+        "title": "구독 관리",
+        "description": "현재 구독 플랜 및 결제 정보를 관리합니다.",
+        "currentPlan": "현재 플랜",
+        "status": "상태",
+        "active": "활성",
+        "canceled": "취소됨",
+        "endDate": "갱신/만료일",
+        "notApplicable": "해당 없음",
+        "dailyBacktests": "일일 백테스트 한도",
+        "changePlanButton": "플랜 변경하기",
+        "billingHistoryButton": "결제 내역 보기"
+      },
+      "notifications": {
+        "title": "알림 설정",
+        "description": "다양한 이벤트에 대한 알림 수신 여부를 설정합니다.",
+        "botTrades": {
+          "label": "자동매매 체결",
+          "description": "자동매매 봇이 거래를 실행했을 때 알림을 받습니다."
+        },
+        "communityComments": {
+          "label": "커뮤니티 댓글",
+          "description": "내 게시물에 새로운 댓글이 달렸을 때 알림을 받습니다."
+        },
+        "billingReminders": {
+          "label": "결제 미리 알림",
+          "description": "구독 갱신일 또는 결제 관련 중요 정보를 받습니다."
+        },
+        "saveButton": "설정 저장"
+      },
+      "dangerZone": {
+        "title": "위험 구역",
+        "description": "이곳의 작업은 되돌릴 수 없으니 신중하게 진행해주세요.",
+        "deleteButton": "계정 영구 삭제",
+        "deleteSuccess": "계정이 영구적으로 삭제되었습니다.",
+        "deleteError": "계정 삭제에 실패했습니다: {error}",
+        "dialog": {
+          "title": "정말로 계정을 삭제하시겠습니까?",
+          "description1": "이 작업은 되돌릴 수 없습니다. 당신의 모든 전략, 백테스트 기록, 구매 내역, API 키가 영구적으로 삭제됩니다.",
+          "description2": "계속 진행하려면 아래에 당신의 사용자 이름을 정확히 입력해주세요.",
+          "confirmLabel": "{username}을(를) 입력하세요.",
+          "cancel": "취소",
+          "confirm": "계정 삭제"
         }
       }
     }
@@ -1097,7 +1142,7 @@
     },
     "searchPlaceholder": "아이템 이름으로 검색...",
     "noResultsTitle": "검색 결과가 없습니다",
-    "noResultsDescription": "'{searchTerm}'에 대한 검색 결과가 없습니다. 다른 키워드로 검색해보세요.",
+    "noResultsDescription": "{searchTerm}에 대한 검색 결과가 없습니다. 다른 키워드로 검색해보세요.",
     "purchasedStrategies": {
       "emptyTitle": "구매한 전략이 없습니다",
       "emptyDescription": "마켓플레이스에서 강력한 트레이딩 전략을 찾아보세요."

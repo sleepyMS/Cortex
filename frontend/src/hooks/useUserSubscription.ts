@@ -1,18 +1,19 @@
+// file: frontend/src/hooks/useUserSubscription.ts
 "use client";
 
 import { useUserStore } from "@/store/userStore";
 
 export function useUserSubscription() {
-  const { user } = useUserStore();
+  const { user, isAuthInitialized } = useUserStore();
 
-  // 1. 스토어에서 직접 구독 정보와 기본값을 가져옵니다.
   const subscription = user?.subscription;
   const features = subscription?.plan?.features;
 
-  // 2. 백엔드에서 받은 데이터를 기반으로 현재 플랜과 기능들을 동적으로 계산합니다.
+  // --- 필요한 모든 데이터를 추출하고 명확한 이름으로 할당합니다. ---
+  const status = subscription?.status || "inactive";
+  const endDate = subscription?.currentPeriodEnd || null;
   const currentPlan = subscription?.plan?.name || "Basic";
 
-  // 3. 더 이상 하드코딩된 객체가 필요 없습니다.
   const allowedTimeframes = features?.supportedTimeframes.split(",") || [
     "1h",
     "4h",
@@ -22,17 +23,19 @@ export function useUserSubscription() {
   const liveBotsLimit = features?.liveBotsLimit ?? 0;
   const maxCoinsPerBacktest = features?.maxCoinsPerBacktest ?? 1;
 
-  // 4. 플랜 등급에 따른 파생 상태 계산
   const isTrader = currentPlan === "Trader";
   const isPro = currentPlan === "Pro";
   const isProOrTrader = isTrader || isPro;
 
   return {
     user,
-    isLoading: false,
-    error: null,
-    currentPlan,
+    // isAuthInitialized가 false이면 아직 사용자 정보를 로딩 중이라는 의미입니다.
+    isLoading: !isAuthInitialized,
+    subscription,
     features,
+    status,
+    endDate,
+    currentPlan,
     allowedTimeframes,
     maxBacktestsPerDay,
     liveBotsLimit,

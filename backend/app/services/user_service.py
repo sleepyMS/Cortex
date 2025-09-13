@@ -13,6 +13,7 @@ import asyncio
 
 from .. import models, schemas
 from ..security import get_password_hash, verify_password
+from ..celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -259,10 +260,70 @@ class UserService:
         return user
         
     async def delete_user(self, db: AsyncSession, user_id: uuid.UUID) -> bool:
-        """사용자를 삭제합니다 (Hard Delete)."""
+        """
+        사용자 계정을 Soft Delete 처리하고,
+        연관된 모든 자산(자동매매 봇, 마켓 상품, 소셜 계정)을 안전하게 정리합니다.
+        """
         user = await self.get_user_by_id(db, user_id)
-        if not user: return False
-        await db.delete(user)
+        if not user:
+            return False
+
+        # 1. 이 사용자가 실행 중인 모든 활성/일시중지 봇을 찾아 'stopped' 상태로 변경합니다.
+        stop_bots_stmt = (
+            update(models.LiveBot)
+            .where(
+                models.LiveBot.user_id == user_id,
+                models.LiveBot.status.in_(['active', 'paused', 'initializing'])
+            )
+            .values(
+                status='stopped',
+                stopped_at=datetime.now(timezone.utc)
+            )
+        )
+        await db.execute(stop_bots_stmt)
+        logger.info(f"Stopped all active/paused live bots for user {user.email} before deletion.")
+
+        # --- 2. 마켓플레이스 상품 판매 중단 ---
+        unlist_stmt = (
+            update(models.MarketplaceProduct)
+            .where(
+                models.MarketplaceProduct.seller_id == user_id,
+                models.MarketplaceProduct.is_active == True,
+            )
+            .values(is_active=False)
+        )
+        await db.execute(unlist_stmt)
+        logger.info(f"Deactivated all active marketplace products for user {user.email} before deletion.")
+
+        # --- 3. 소셜 계정 연결 해제 ---
+        social_accounts_query = select(models.SocialAccount).filter(
+            models.SocialAccount.user_id == user_id
+        )
+        result = await db.execute(social_accounts_query)
+        social_accounts_to_delete = result.scalars().all()
+
+        for account in social_accounts_to_delete:
+            await db.delete(account)
+        
+        if social_accounts_to_delete:
+            logger.info(f"Deleted {len(social_accounts_to_delete)} social accounts for user {user.email} before soft deletion.")
+
+        # --- 4. 개인 식별 정보 익명화 ---
+        unique_id_str = str(user.id)
+        user.username = f"deleted_user_{unique_id_str.split('-')[0]}"
+        user.email = f"deleted_user_{unique_id_str}@cortex.com"
+        user.hashed_password = None
+        user.bio = None
+        user.social_links = None
+        
+        # --- 5. 계정 비활성화 ---
+        user.is_active = False
+        user.is_email_verified = False
+
+        # --- 6. 모든 세션 강제 로그아웃 ---
+        await self.revoke_all_refresh_tokens(db, user.id)
+        
+        db.add(user)
         await db.flush()
         return True
 
