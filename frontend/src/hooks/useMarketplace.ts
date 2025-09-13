@@ -3,23 +3,24 @@
 
 import {
   useQuery,
+  keepPreviousData,
   useMutation,
   useQueryClient,
-  useInfiniteQuery,
 } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
-import { useRouter } from "@/i18n/navigation";
-import { ShopItem, MarketplaceStrategy } from "@/types/marketplace";
+import {
+  ShopItem,
+  MarketplaceStrategy,
+  PaginatedProductsResponse,
+} from "@/types/marketplace";
 import { usePaymentMutation } from "./usePayment";
 
-// --- 타입 정의 ---
+// =================================================================
+// 1. 타입 정의 (Types)
+// =================================================================
 
-/**
- * 상품 목록 조회를 위한 필터 및 페이지네이션 파라미터 타입
- * 이 객체가 변경되면 useProducts 훅이 자동으로 데이터를 다시 가져옵니다.
- */
 export interface ProductFilters {
   page: number;
   limit: number;
@@ -30,24 +31,6 @@ export interface ProductFilters {
   positionTypes?: ("LongOnly" | "ShortOnly" | "LongShort")[];
 }
 
-/**
- * 페이지네이션된 상품 목록 API의 응답 타입
- */
-export interface PaginatedProductsResponse {
-  products: (MarketplaceStrategy | ShopItem)[];
-  meta: {
-    totalItems: number;
-    itemCount: number;
-    itemsPerPage: number;
-    totalPages: number;
-    currentPage: number;
-  };
-}
-
-/**
- * 통합 구매 요청을 위한 데이터 타입
- * 장바구니 기능을 고려하여 배열 형태로 설계합니다.
- */
 export interface PurchasePayload {
   items: {
     productId: string;
@@ -55,11 +38,10 @@ export interface PurchasePayload {
   }[];
 }
 
-// --- API 호출 함수 ---
+// =================================================================
+// 2. API 호출 함수 (API Functions)
+// =================================================================
 
-/**
- * [통합] 필터링된 상품 목록을 서버에서 가져옵니다.
- */
 const fetchProducts = async (
   filters: ProductFilters
 ): Promise<PaginatedProductsResponse> => {
@@ -80,41 +62,44 @@ const fetchProducts = async (
   return data;
 };
 
-/**
- * [통합] 상품 구매(주문 생성)를 요청하는 API를 호출합니다.
- */
 const purchaseApiFn = async (payload: PurchasePayload): Promise<any> => {
-  // 백엔드의 통합 결제 요청 엔드포인트 호출
   const { data } = await apiClient.post("/marketplace/orders", payload);
-  return data; // 백엔드는 Toss Payments 연동에 필요한 정보를 반환
+  return data;
 };
 
-// --- 커스텀 훅 ---
+// =================================================================
+// 3. 커스텀 훅 (Custom Hooks)
+// =================================================================
+
+// --- Query Hooks ---
 
 /**
- * [완성] 마켓플레이스의 모든 상품(전략, 아이템)을 필터링 및 페이지네이션하여 조회하는 훅
- * @param filters - 상품 조회를 위한 필터 조건
+ * 마켓플레이스의 상품 목록을 필터링 및 페이지네이션하여 조회하는 훅
  */
 export const useProducts = (filters: ProductFilters) => {
   return useQuery({
-    queryKey: ["products", filters], // 필터 객체 전체를 queryKey에 포함시켜, 변경 시 자동 재조회
+    queryKey: ["products", filters],
     queryFn: () => fetchProducts(filters),
-    keepPreviousData: true, // 페이지 이동 시 UX 향상을 위해 이전 데이터 유지
+    placeholderData: keepPreviousData,
   });
 };
 
+// --- Mutation Hooks ---
+
 /**
- * [완성] 마켓플레이스 상품을 구매하는 뮤테이션 훅
+ * 마켓플레이스 상품을 구매하는 뮤테이션 훅
  */
 export const usePurchaseMutation = () => {
   const t = useTranslations("Marketplace");
-  const paymentMutation = usePaymentMutation(); // 결제 훅 사용
+  const queryClient = useQueryClient();
+  const paymentMutation = usePaymentMutation();
 
   return useMutation({
-    mutationFn: purchaseApiFn, // purchaseApiFn은 기존대로 사용
+    mutationFn: purchaseApiFn,
     onSuccess: (checkoutData) => {
-      // 받은 정보로 실제 결제창 호출
       paymentMutation.mutate(checkoutData);
+      queryClient.invalidateQueries({ queryKey: ["userInventory"] });
+      queryClient.invalidateQueries({ queryKey: ["purchasedStrategies"] });
     },
     onError: (err: any) => {
       toast.error(

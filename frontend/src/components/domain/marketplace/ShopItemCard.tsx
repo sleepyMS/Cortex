@@ -44,7 +44,7 @@ export const ShopItemCard = ({
 
   // 백엔드에서 받은 아이콘 이름으로 실제 아이콘 컴포넌트를 동적으로 선택
   const IconComponent =
-    ICON_MAP[item.displayProperties.icon] || ICON_MAP.HelpCircle;
+    ICON_MAP[item.productMetadata.icon] || ICON_MAP.HelpCircle;
 
   // 아이템 등급(tier)에 따라 다른 Badge 스타일을 반환하는 함수
   const getTierClass = (tier?: string) => {
@@ -91,22 +91,23 @@ export const ShopItemCard = ({
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg pr-2">{item.name}</CardTitle>
-          {item.displayProperties.tier && (
+          {/* [수정] displayProperties를 productMetadata로 변경 */}
+          {item.productMetadata.tier && (
             <Badge
               className={cn(
                 "shrink-0",
-                getTierClass(item.displayProperties.tier)
+                getTierClass(item.productMetadata.tier)
               )}
             >
-              {item.displayProperties.tier}
+              {item.productMetadata.tier}
             </Badge>
           )}
         </div>
         <CardDescription>{item.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col justify-end space-y-3 text-sm">
-        {/* 백엔드에서 보내준 stats 배열을 동적으로 렌더링 */}
-        {item.displayProperties.stats.map((stat, index) => (
+        {/* [수정] displayProperties를 productMetadata로 변경 */}
+        {item.productMetadata.stats?.map((stat, index) => (
           <div
             key={index}
             className="flex items-center gap-3 text-muted-foreground"

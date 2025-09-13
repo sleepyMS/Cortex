@@ -4,14 +4,21 @@
 import React, { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Store } from "lucide-react";
-import { MarketplaceStrategy, ShopItem } from "@/types/marketplace";
+import {
+  MarketplaceStrategy,
+  ShopItem,
+  PaginatedProductsResponse,
+} from "@/types/marketplace";
 
-// --- 데이터 로직 ---
+// --- 1. 데이터 공급자 (Hooks) ---
 import { useProducts, ProductFilters } from "@/hooks/useMarketplace";
 import { usePurchaseMutation } from "@/hooks/useMarketplace";
-import { useUserInventory, usePurchasedStrategies } from "@/hooks/useInventory";
+import {
+  useUserInventoryQuery,
+  usePurchasedStrategiesQuery,
+} from "@/hooks/useInventory";
 
-// --- UI 컴포넌트 ---
+// --- 2. 연주자 (Presentational Components) ---
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
@@ -32,24 +39,23 @@ import { Spinner } from "@/components/ui/Spinner";
 
 type PurchasableProduct = MarketplaceStrategy | ShopItem;
 
+// --- 3. 지휘자 (Page Component) ---
 export default function MarketplacePage() {
   const t = useTranslations("Marketplace");
 
-  // --- 1. 중앙 상태 관리: 모든 상태를 이 페이지에서 제어 ---
+  // --- 상태 관리 ---
   const [activeTab, setActiveTab] = useState<"STRATEGY" | "SHOP_ITEM">(
     "STRATEGY"
   );
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<
     Omit<ProductFilters, "page" | "limit" | "productType">
-  >({
-    sortBy: "createdAt_desc",
-  });
+  >({ sortBy: "createdAt_desc" });
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [productToPurchase, setProductToPurchase] =
     useState<PurchasableProduct | null>(null);
 
-  // --- 2. 통합 데이터 로직 ---
+  // --- 데이터 로직 ---
   const {
     data: response,
     isLoading,
@@ -58,18 +64,25 @@ export default function MarketplacePage() {
     refetch,
   } = useProducts({
     page,
-    limit: 12, // 한 페이지에 보여줄 아이템 개수
+    limit: 12,
     productType: activeTab,
     ...filters,
   });
-  const { data: ownedItemIds = [] } = useUserInventory();
-  const { data: purchasedStrategyIds = [] } = usePurchasedStrategies();
+
+  const { data: ownedItemIds = [] } = useUserInventoryQuery({
+    select: (data) => data.map((item) => item.itemId),
+  });
+
+  const { data: purchasedStrategyIds = [] } = usePurchasedStrategiesQuery({
+    select: (data) => data.map((strategy) => strategy.strategyId),
+  });
+
   const purchaseMutation = usePurchaseMutation();
 
   const products = response?.products || [];
   const totalPages = response?.meta.totalPages || 1;
 
-  // --- 3. 이벤트 핸들러 (useCallback으로 최적화) ---
+  // --- 이벤트 핸들러 ---
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value as "STRATEGY" | "SHOP_ITEM");
     setPage(1);
@@ -87,7 +100,6 @@ export default function MarketplacePage() {
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
-
   const handlePurchaseClick = useCallback((product: PurchasableProduct) => {
     setProductToPurchase(product);
     setIsConfirmModalOpen(true);
@@ -106,7 +118,7 @@ export default function MarketplacePage() {
     );
   }, [productToPurchase, purchaseMutation]);
 
-  // --- 4. 최종 렌더링 ---
+  // --- UI 렌더링 ---
   return (
     <AuthGuard>
       <TooltipProvider delayDuration={100}>
@@ -136,7 +148,6 @@ export default function MarketplacePage() {
               </TabsTrigger>
               <TabsTrigger value="SHOP_ITEM">{t("itemShopTab")}</TabsTrigger>
             </TabsList>
-
             <div className="mt-8">
               {activeTab === "STRATEGY" && (
                 <MarketplaceFilter
@@ -144,7 +155,6 @@ export default function MarketplacePage() {
                   isFetching={isFetching}
                 />
               )}
-              {/* ProductGrid 컴포넌트에 모든 데이터와 핸들러를 props로 전달 */}
               <ProductGrid
                 isLoading={isLoading}
                 isError={isError}

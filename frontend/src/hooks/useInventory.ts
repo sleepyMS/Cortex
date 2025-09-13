@@ -61,11 +61,16 @@ type UserInventoryQueryOptions = Omit<
  * [통합] 사용자의 전체 인벤토리 상세 목록을 조회하는 단일 훅입니다.
  * select 옵션을 통해 ID 목록만 가져오는 등의 파생 데이터 조회가 가능합니다.
  */
-export const useUserInventoryQuery = (options?: UserInventoryQueryOptions) => {
+export const useUserInventoryQuery = <TData = UserInventoryItem[]>(
+  options?: Omit<
+    UseQueryOptions<UserInventoryItem[], Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
   return useQuery({
-    queryKey: ["userInventory"], // 단일하고 명확한 쿼리 키
+    queryKey: ["userInventory"],
     queryFn: fetchUserInventory,
-    ...options, // select, enabled 등의 옵션을 외부에서 주입
+    ...options,
   });
 };
 
@@ -77,11 +82,14 @@ type PurchasedStrategiesQueryOptions = Omit<
 /**
  * [통합] 사용자가 구매한 전체 전략 상세 목록을 조회하는 단일 훅입니다.
  */
-export const usePurchasedStrategiesQuery = (
-  options?: PurchasedStrategiesQueryOptions
+export const usePurchasedStrategiesQuery = <TData = PurchasedStrategy[]>(
+  options?: Omit<
+    UseQueryOptions<PurchasedStrategy[], Error, TData>,
+    "queryKey" | "queryFn"
+  >
 ) => {
   return useQuery({
-    queryKey: ["purchasedStrategies"], // 단일하고 명확한 쿼리 키
+    queryKey: ["purchasedStrategies"],
     queryFn: fetchPurchasedStrategies,
     ...options,
   });

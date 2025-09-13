@@ -2,7 +2,6 @@
 
 import { Backtest } from "./backtest";
 import { LucideIconName } from "@/lib/iconMap";
-// [추가] 전략 규칙 타입을 import합니다. 실제 경로에 맞게 수정해주세요.
 import { PositionRules, TpslLogic, TargetCoin } from "./strategy";
 
 // =================================================================
@@ -10,7 +9,7 @@ import { PositionRules, TpslLogic, TargetCoin } from "./strategy";
 // =================================================================
 
 /**
- * [신규] 모든 상품의 판매자 정보를 위한 공통 타입
+ * 모든 상품의 판매자 정보를 위한 공통 타입
  */
 export interface ProductAuthor {
   username?: string;
@@ -18,7 +17,7 @@ export interface ProductAuthor {
 }
 
 /**
- * [신규] 전략 상품에만 해당하는 메타데이터 타입
+ * 전략 상품에만 해당하는 메타데이터 타입
  */
 export interface StrategyMetadata {
   category: string;
@@ -27,16 +26,19 @@ export interface StrategyMetadata {
 }
 
 /**
- * [신규] 상점 아이템에만 해당하는 메타데이터 타입
+ * 상점 아이템에만 해당하는 메타데이터 타입
  */
 export interface ShopItemMetadata {
   icon: LucideIconName;
   tier?: "BRONZE" | "SILVER" | "GOLD";
-  // 필요에 따라 다른 아이템 관련 메타데이터 추가
+  stats: {
+    label: string;
+    value: string;
+  }[];
 }
 
 /**
- * [개선] 모든 마켓플레이스 상품의 기반이 되는 제네릭 타입
+ * 모든 마켓플레이스 상품의 기반이 되는 제네릭 타입
  */
 export interface BaseProduct<T> {
   id: string;
@@ -54,7 +56,7 @@ export interface BaseProduct<T> {
 // =================================================================
 
 /**
- * [개선] 전략 상품 목록에 사용될 타입. BaseProduct를 상속.
+ * 전략 상품 목록에 사용될 타입. BaseProduct를 상속.
  */
 export interface MarketplaceStrategy extends BaseProduct<StrategyMetadata> {
   latestBacktestSummary: {
@@ -69,7 +71,7 @@ export interface MarketplaceStrategy extends BaseProduct<StrategyMetadata> {
 }
 
 /**
- * [개선] 전략 상품 상세 정보 타입. 소유권에 따라 규칙 정보가 선택적으로 포함됨.
+ * 전략 상품 상세 정보 타입. 소유권에 따라 규칙 정보가 선택적으로 포함됨.
  */
 export interface MarketplaceStrategyDetail extends MarketplaceStrategy {
   representativeBacktest: Backtest | null;
@@ -83,14 +85,14 @@ export interface MarketplaceStrategyDetail extends MarketplaceStrategy {
 }
 
 /**
- * [개선] 상점 아이템 타입. BaseProduct를 상속하여 중복 제거.
+ * 상점 아이템 타입. BaseProduct를 상속하여 중복 제거.
  */
 export interface ShopItem extends BaseProduct<ShopItemMetadata> {
   // ShopItem에만 특화된 속성이 있다면 여기에 추가
 }
 
 /**
- * [신규] 상품 목록 API의 페이지네이션 응답 전체를 위한 타입
+ * 상품 목록 API의 페이지네이션 응답 전체를 위한 타입
  */
 export interface PaginatedProductsResponse {
   products: (MarketplaceStrategy | ShopItem)[];
