@@ -8,16 +8,17 @@ import { useParams } from "next/navigation";
 
 import apiClient from "@/lib/apiClient";
 import { MarketplaceStrategyDetail } from "@/types/marketplace";
+import { AreaData, UTCTimestamp } from "lightweight-charts";
 
 // --- Hooks ---
 import { usePurchaseMutation } from "@/hooks/useMarketplace";
-import { usePurchasedStrategies } from "@/hooks/useInventory";
+import { usePurchasedStrategiesQuery } from "@/hooks/useInventory";
 
 // --- UI 컴포넌트 ---
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { Terminal } from "lucide-react";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 // --- 도메인 컴포넌트 ---
 import { BacktestResultSummary } from "@/components/domain/backtesting/BacktestResultSummary";
@@ -47,7 +48,7 @@ const SkeletonPage = () => (
         <Skeleton className="w-full h-[400px]" />
       </div>
       <div className="lg:col-span-1 space-y-6">
-        <Skeleton className="w-full h-[200px]" />
+        <Skeleton className="w-full h-[300px]" />
         <Skeleton className="w-full h-[100px]" />
       </div>
     </div>
@@ -73,10 +74,12 @@ export default function StrategyDetailPage() {
   });
 
   const { data: purchasedIds, isLoading: isLoadingPurchased } =
-    usePurchasedStrategies();
-  const isOwned = purchasedIds?.includes(
-    strategyDetail?.linkedResourceId || ""
-  );
+    usePurchasedStrategiesQuery({
+      select: (data) => data.map((strategy) => strategy.strategyId),
+    });
+
+  const isOwned =
+    purchasedIds?.includes(strategyDetail?.linkedResourceId || "") || false;
 
   const purchaseMutation = usePurchaseMutation();
   const handlePurchase = () => {
@@ -108,44 +111,59 @@ export default function StrategyDetailPage() {
   const backtestResult = strategyDetail.representativeBacktest?.result;
 
   return (
-    <div className="container mx-auto max-w-screen-xl px-4 py-8">
-      <StrategyDetailHeader
-        strategy={strategyDetail}
-        onPurchase={handlePurchase}
-        isPurchasing={purchaseMutation.isPending}
-        isOwned={isOwned}
-      />
+    <AuthGuard>
+      <div className="container mx-auto max-w-screen-xl px-4 py-8">
+        <StrategyDetailHeader
+          strategy={strategyDetail}
+          onPurchase={handlePurchase}
+          isPurchasing={purchaseMutation.isPending}
+          isOwned={isOwned}
+        />
 
-      {backtestResult ? (
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* 왼쪽 영역: 성과 데이터 */}
-          <div className="lg:col-span-2 space-y-6">
-            <BacktestResultSummary result={backtestResult} />
-            <DynamicEquityChart pnlData={backtestResult.pnlCurveJson || []} />
-            <DynamicDrawdownChart
-              drawdownData={backtestResult.drawdownCurveJson || []}
-            />
-            <DetailedMetrics result={backtestResult} />
-            <MonthlyPerformance pnlData={backtestResult.pnlCurveJson || []} />
-          </div>
+        {backtestResult ? (
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* 왼쪽 영역: 스크롤 가능한 성과 데이터 */}
+            <div className="lg:col-span-2 space-y-6">
+              <BacktestResultSummary result={backtestResult} />
+              <DynamicEquityChart
+                pnlData={
+                  (backtestResult.pnlCurveJson ||
+                    []) as AreaData<UTCTimestamp>[]
+                }
+              />
+              <DynamicDrawdownChart
+                drawdownData={
+                  (backtestResult.drawdownCurveJson ||
+                    []) as AreaData<UTCTimestamp>[]
+                }
+              />
+              <DetailedMetrics result={backtestResult} />
+              <MonthlyPerformance
+                pnlData={
+                  (backtestResult.pnlCurveJson ||
+                    []) as AreaData<UTCTimestamp>[]
+                }
+              />
+            </div>
 
-          {/* 오른쪽 영역: 전략 정보 및 신뢰 지표 */}
-          <div className="lg:col-span-1 space-y-6 sticky top-24">
-            <StrategyInfoCard
-              strategy={strategyDetail}
-              backtestResult={backtestResult}
-            />
-            {strategyDetail.author && (
-              <AuthorCard author={strategyDetail.author} />
-            )}
-            {/* <ReviewsSection strategyId={strategyId} /> */}
+            {/* 오른쪽 영역: 고정된 전략 정보 및 신뢰 지표 */}
+            <div className="lg:col-span-1 space-y-6 sticky top-24">
+              <StrategyInfoCard
+                strategy={strategyDetail}
+                backtestResult={backtestResult}
+              />
+              {strategyDetail.author && (
+                <AuthorCard author={strategyDetail.author} />
+              )}
+              {/* <ReviewsSection strategyId={strategyId} /> */}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="text-center py-20 border rounded-lg mt-8 bg-muted/30">
-          <p className="text-muted-foreground">{t("noBacktest")}</p>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div className="text-center py-20 border rounded-lg mt-8 bg-muted/30">
+            <p className="text-muted-foreground">{t("noBacktest")}</p>
+          </div>
+        )}
+      </div>
+    </AuthGuard>
   );
 }

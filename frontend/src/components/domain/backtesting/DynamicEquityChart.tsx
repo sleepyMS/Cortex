@@ -3,6 +3,12 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ChartDataPoint } from "./EquityChart"; // 타입 공유
+import {
+  createChart,
+  ColorType,
+  UTCTimestamp,
+  AreaData,
+} from "lightweight-charts";
 
 // 'EquityChart' 컴포넌트를 dynamic import로 불러오기
 // ssr: false 옵션이 핵심입니다.
@@ -17,7 +23,7 @@ const EquityChartClient = dynamic(() => import("./EquityChart"), {
 
 interface DynamicEquityChartProps {
   // result 객체에서 pnl_curve_json을 추출하여 내려줍니다.
-  pnlData: ChartDataPoint[];
+  pnlData: AreaData<UTCTimestamp>[];
   benchmarkData?: ChartDataPoint[]; // Optional benchmark data
   title?: string;
 }

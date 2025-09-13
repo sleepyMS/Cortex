@@ -48,6 +48,7 @@ export interface BaseProduct<T> {
   author: ProductAuthor;
   productType: "STRATEGY" | "SHOP_ITEM";
   inventoryType: "UNLOCK" | "CONSUMABLE";
+  linkedResourceId: string;
   productMetadata: T; // 제네릭을 사용하여 상품 타입별 메타데이터를 강제
 }
 
