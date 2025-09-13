@@ -413,6 +413,7 @@ class ApiKeyResponse(CamelCaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     exchange: str
+    api_key_preview: Optional[str] = None
     memo: Optional[str] = None
     is_active: bool
     created_at: datetime

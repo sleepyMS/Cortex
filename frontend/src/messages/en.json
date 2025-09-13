@@ -18,6 +18,7 @@
     "inventory": "Inventory",
     "assets": "Asset Management",
     "profile": "Profile Management",
+    "apiKeys": "API Keys",
     "settings": "Account Settings",
     "upgradePlan": "Upgrade Plan"
   },
@@ -324,6 +325,7 @@
       "overview": "Overview",
       "assets": "Asset Management",
       "profile": "Profile Management",
+      "apiKeys": "API Keys",
       "settings": "Account Settings"
     },
     "overview": {
@@ -429,6 +431,7 @@
         "deleteError": "Failed to delete API key: {error}",
         "table": {
           "exchange": "Exchange",
+          "apiKeyPreview": "API Key",
           "memo": "Memo",
           "registeredAt": "Registered At",
           "actions": "Actions",

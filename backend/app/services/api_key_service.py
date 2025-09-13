@@ -17,7 +17,7 @@ class ApiKeyService:
     사용자 거래소 API 키의 CRUD 및 암호화/복호화를 담당하는 비동기 서비스.
     """
 
-    async def create_api_key(self, db: AsyncSession, user_id: uuid.UUID, api_key_create: schemas.ApiKeyCreate) -> models.ApiKey:
+    async def create_api_key(self, db: AsyncSession, user_id: uuid.UUID, api_key_create: schemas.ApiKeyCreate) -> schemas.ApiKeyResponse:
         """새로운 API 키를 암호화하여 데이터베이스에 비동기로 저장합니다."""
         # 동일한 사용자-거래소 쌍에 대한 활성 키가 이미 있는지 확인
         query = select(models.ApiKey).filter(
@@ -39,17 +39,20 @@ class ApiKeyService:
             logger.error(f"Encryption failed for user {user_id}'s API key: {e}", exc_info=True)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="API 키 암호화에 실패했습니다.")
 
+        key_preview = f"{api_key_create.api_key[:4]}...{api_key_create.api_key[-4:]}"
+
         db_api_key = models.ApiKey(
             user_id=user_id,
             exchange=api_key_create.exchange,
             api_key_encrypted=encrypted_api_key,
             secret_key_encrypted=encrypted_secret_key,
+            api_key_preview=key_preview,
             memo=api_key_create.memo,
             is_active=api_key_create.is_active
         )
         db.add(db_api_key)
         await db.flush()
-        return db_api_key
+        return schemas.ApiKeyResponse.model_validate(db_api_key, from_attributes=True)
 
     async def get_api_keys_by_user(self, db: AsyncSession, user_id: uuid.UUID) -> List[models.ApiKey]:
         """사용자의 API 키 목록을 비동기로 조회합니다."""

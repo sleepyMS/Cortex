@@ -62,6 +62,7 @@ import { Input } from "@/components/ui/Input";
 interface ApiKey {
   id: string;
   exchange: string;
+  apiKeyPreview: string;
   memo: string | null;
   isActive: boolean;
   createdAt: string;
@@ -262,6 +263,7 @@ export function ApiKeyManagerTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("table.exchange")}</TableHead>
+                <TableHead>{t("table.apiKeyPreview")}</TableHead>
                 <TableHead>{t("table.memo")}</TableHead>
                 <TableHead>{t("table.registeredAt")}</TableHead>
                 <TableHead className="text-right">
@@ -275,6 +277,9 @@ export function ApiKeyManagerTab() {
                   <TableRow key={key.id}>
                     <TableCell className="font-medium">
                       {key.exchange}
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      {key.apiKeyPreview || "-"}
                     </TableCell>
                     <TableCell>{key.memo || "-"}</TableCell>
                     <TableCell>

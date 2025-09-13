@@ -325,7 +325,7 @@ export function DashboardOverviewTab() {
         <div className="flex justify-center space-x-4">
           <Button
             variant="outline"
-            onClick={() => router.push("/settings/keys")}
+            onClick={() => router.push("/dashboard?tab=apiKeys")}
           >
             <KeyRound className="mr-2 h-4 w-4" /> {t("manageApiKeys")}
           </Button>

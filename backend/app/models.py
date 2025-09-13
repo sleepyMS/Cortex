@@ -261,6 +261,7 @@ class ApiKey(Base):
     exchange = Column(String(100), nullable=False)
     api_key_encrypted = Column(String(512), nullable=False)
     secret_key_encrypted = Column(String(512), nullable=False)
+    api_key_preview = Column(String(20), nullable=True, comment="API 키 앞 4자리...뒤 4자리")
     memo = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

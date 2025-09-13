@@ -27,14 +27,15 @@ async def create_api_key(
 ):
     """새로운 거래소 API 키를 등록하고 암호화하여 저장합니다."""
     try:
-        new_api_key = await api_key_service.create_api_key(db, current_user.id, api_key_create)
-        await db.commit()
-        await db.refresh(new_api_key)
+        new_api_key_response = await api_key_service.create_api_key(db, current_user.id, api_key_create)
         logger.info(f"New API key created for user {current_user.email}.")
-        return new_api_key
+        return new_api_key_response
+    except HTTPException as e:
+        # get_async_db가 rollback을 처리하므로 여기서는 re-raise만 합니다.
+        raise e
     except Exception as e:
-        await db.rollback()
         logger.error(f"Error creating API key for user {current_user.email}: {e}", exc_info=True)
+        # get_async_db가 rollback을 처리합니다.
         raise HTTPException(status_code=500, detail="API 키 생성 중 서버 오류가 발생했습니다.")
 
 @router.get("/", response_model=List[schemas.ApiKeyResponse], summary="Get list of user's API keys")
@@ -47,7 +48,7 @@ async def get_api_keys(
     logger.info(f"User {current_user.email} fetched {len(api_keys)} API keys.")
     return api_keys
 
-@router.delete("/{api_key_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete an API key")
+@router.delete("/{apikey_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete an API key")
 async def delete_api_key(
     api_key_to_delete: models.ApiKey = Depends(get_verified_api_key),
     db: AsyncSession = Depends(get_async_db)
