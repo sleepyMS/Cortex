@@ -76,7 +76,10 @@ class SubscriptionService:
                 detail="무료 플랜은 결제할 수 없습니다.",
             )
 
-        order_id = f"SUB_{user.id}_P_{plan_id}_{uuid.uuid4()}"
+        short_user = str(user.id).replace('-', '')[:8]        # 8 chars
+        short_plan = str(plan_id).replace('-', '')[:8]       # 8 chars
+        short_nonce = uuid.uuid4().hex[:12]                  # 12 chars
+        order_id = f"SUB_{short_user}_P_{short_plan}_{short_nonce}"  # 총 길이 << 64
         order_name = f"Cortex {target_plan.name.value} 플랜 구독"
 
         return schemas.OrderCreateResponse(
