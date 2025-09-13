@@ -1,4 +1,4 @@
-# file: backend/app/routers/subscriptions.py (최종 완성본)
+# file: backend/app/routers/subscriptions.py 
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,10 +9,10 @@ from .. import schemas, models
 from ..dependencies import (
     get_async_db,
     get_current_active_user,
-    get_billing_toss_client,  # [수정] 빌링 클라이언트 의존성 추가
+    get_billing_toss_client, 
 )
 from ..services.subscription_service import subscription_service
-from ..gateways.toss_payments_client import TossPaymentsClient  # [수정] 타입 힌트를 위해 추가
+from ..gateways.toss_payments_client import TossPaymentsClient  
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,6 @@ async def get_my_subscription(
     subscription = await subscription_service.get_user_subscription_details(
         db, current_user
     )
-    # get_user_subscription_details가 항상 값을 반환하도록 수정되었으므로,
-    # 404 예외 처리는 사실상 필요 없어졌습니다.
     return subscription
 
 @router.post(
@@ -51,7 +49,7 @@ async def register_card_for_subscription(
     toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
 ):
     """
-    (최종 개선) 카드 등록 및 첫 결제의 모든 과정을 서비스에 위임하고,
+    카드 등록 및 첫 결제의 모든 과정을 서비스에 위임하고,
     완성된 Pydantic 스키마 객체를 받아 응답합니다.
     """
     try:

@@ -1,4 +1,4 @@
-# file: backend/app/services/subscription_service.py (최종 완성본)
+# file: backend/app/services/subscription_service.py 
 
 import uuid
 from datetime import datetime, timezone
@@ -111,7 +111,7 @@ class SubscriptionService:
             f"{card_info.get('company', '')} {card_info.get('number', '')}" if card_info else None
         )
 
-        # 2. 구독 정보 생성 또는 업데이트 (이전과 동일)
+        # 2. 구독 정보 생성 또는 업데이트 
         if subscription:
             subscription.plan_id = plan_id
             subscription.payment_gateway_customer_key = billing_key
@@ -127,10 +127,10 @@ class SubscriptionService:
             )
             db.add(subscription)
         
-        # 3. [핵심] 변경사항을 DB 세션에 반영하고 ID를 확정합니다. (commit은 아직 안 함)
+        # 3. 변경사항을 DB 세션에 반영하고 ID를 확정합니다. (commit은 아직 안 함)
         await db.flush()
 
-        # 4. [핵심] 방금 생성/수정한 객체를 ID를 이용해 DB에서 '다시 조회'합니다.
+        # 4. 방금 생성/수정한 객체를 ID를 이용해 DB에서 '다시 조회'합니다.
         #    이때 필요한 모든 연관 관계(plan -> features)를 Eager Loading합니다.
         #    이것이 최종적으로 반환될 완전한 객체입니다.
         complete_subscription = await db.get(
@@ -147,7 +147,7 @@ class SubscriptionService:
 
         return complete_subscription
 
-    ## [신규] 라우터의 비즈니스 로직을 모두 담당하는 고수준 메서드
+    ## 라우터의 비즈니스 로직을 모두 담당하는 고수준 메서드
     async def register_card_and_process_first_payment(
         self,
         db: AsyncSession,
@@ -160,10 +160,10 @@ class SubscriptionService:
         카드 등록부터 첫 결제, DB 업데이트까지 처리한 후,
         DB 세션이 닫히기 전에 안전하게 Pydantic 스키마로 변환하여 반환합니다.
         """
-        # 1. 주문 정보 생성 (기존과 동일)
+        # 1. 주문 정보 생성
         checkout_info = await self.create_checkout_info(db, user, plan_id)
 
-        # 2. 빌링키 발급 및 첫 결제 (기존과 동일)
+        # 2. 빌링키 발급 및 첫 결제
         billing_data = await payment_service.issue_and_charge_first_subscription(
             toss_client=toss_client, auth_key=auth_key, user=user, checkout_info=checkout_info,
         )
@@ -171,15 +171,15 @@ class SubscriptionService:
         if not billing_key:
             raise HTTPException(status_code=500, detail="빌링키 정보를 가져올 수 없습니다.")
 
-        # 3. 구독 정보 생성 또는 업데이트 (기존과 동일)
+        # 3. 구독 정보 생성 또는 업데이트 
         subscription_model = await self.update_billing_key(
             db=db, user=user, plan_id=plan_id, billing_key=billing_key, card_info=billing_data.get("card"),
         )
 
-        # 4. [핵심] DB에 변경사항을 커밋합니다. (이제 라우터가 아닌 서비스에서 커밋)
+        # 4. DB에 변경사항을 커밋합니다. 
         await db.commit()
         
-        # 5. [핵심] 커밋된 최신 정보를 DB에서 다시 조회하여 완전한 객체를 만듭니다.
+        # 5. 커밋된 최신 정보를 DB에서 다시 조회하여 완전한 객체를 만듭니다.
         #    이것이 Lazy Loading을 피하는 가장 확실한 방법입니다.
         complete_subscription = await db.get(
             models.Subscription,
@@ -191,7 +191,7 @@ class SubscriptionService:
         if not complete_subscription:
             raise HTTPException(status_code=500, detail="구독 정보를 처리하는 중 오류가 발생했습니다.")
 
-        # 6. [핵심] DB 세션이 닫히기 전에, SQLAlchemy 모델을 Pydantic 스키마로 변환합니다.
+        # 6. DB 세션이 닫히기 전에, SQLAlchemy 모델을 Pydantic 스키마로 변환합니다.
         #    이 과정에서 필요한 모든 데이터(plan, features)를 읽어옵니다.
         subscription_schema = schemas.SubscriptionSchema.model_validate(complete_subscription)
 
@@ -208,7 +208,6 @@ class SubscriptionService:
         """
         결제 성공 이벤트 수신 후, 실제 구독을 생성하거나 업데이트하는 함수.
         """
-        # (기존 코드와 동일)
         user_uuid = uuid.UUID(user_id)
         target_plan = await plan_service.get_plan_by_name(
             db, models.PlanType(plan_name)

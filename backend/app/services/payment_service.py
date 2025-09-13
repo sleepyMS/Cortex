@@ -50,7 +50,7 @@ class PaymentService:
         # 3. customerKey와 함께 결제 요청
         await toss_client.charge_billing_key(
             billing_key=billing_key,
-            customer_key=str(user.id), # 👈 customerKey 전달
+            customer_key=str(user.id), 
             payload=charge_payload
         )
 
