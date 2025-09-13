@@ -10,6 +10,7 @@ import { AssetManagementTab } from "@/components/domain/dashboard/AssetManagemen
 import { ProfileManagementTab } from "@/components/domain/dashboard/ProfileManagementTab";
 import { AccountSettingsTab } from "@/components/domain/dashboard/AccountSettingsTab";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { ApiKeyManagerTab } from "@/components/domain/dashboard/ApiKeyManagerTab";
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard.tabs");
@@ -46,10 +47,11 @@ export default function DashboardPage() {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
           <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
           <TabsTrigger value="assets">{t("assets")}</TabsTrigger>
           <TabsTrigger value="profile">{t("profile")}</TabsTrigger>
+          <TabsTrigger value="apiKeys">{t("apiKeys")}</TabsTrigger>
           <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
         </TabsList>
 
@@ -61,6 +63,9 @@ export default function DashboardPage() {
         </TabsContent>
         <TabsContent value="profile" className="mt-6">
           <ProfileManagementTab />
+        </TabsContent>
+        <TabsContent value="apiKeys" className="mt-6">
+          <ApiKeyManagerTab />
         </TabsContent>
         <TabsContent value="settings" className="mt-6">
           <AccountSettingsTab />

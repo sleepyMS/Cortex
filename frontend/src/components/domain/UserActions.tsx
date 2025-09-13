@@ -25,6 +25,7 @@ import {
   Sparkles,
   User,
   Box,
+  KeyRound,
 } from "lucide-react";
 
 // 플랜별 버튼 스타일을 관리하는 함수
@@ -103,6 +104,12 @@ export function UserActions() {
               <Link href="/dashboard?tab=profile">
                 <User className="mr-2 h-4 w-4" />
                 <span>{t("profile")}</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard?tab=apiKeys">
+                <KeyRound className="mr-2 h-4 w-4" />
+                <span>{t("apiKeys")}</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

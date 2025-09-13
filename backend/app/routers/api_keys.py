@@ -13,7 +13,7 @@ from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api-keys", tags=["API Keys"])
+router = APIRouter(prefix="/api_keys", tags=["API Keys"])
 
 get_verified_api_key = create_owner_verifier(models.ApiKey)
 
