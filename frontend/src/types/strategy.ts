@@ -231,7 +231,7 @@ export interface RuleBlockProps {
 }
 
 /**
- * [신규] 마켓플레이스 등록 정보 타입
+ * 마켓플레이스 등록 정보 타입
  */
 export interface MarketplaceListing {
   /** 마켓 등록 ID */
@@ -252,4 +252,19 @@ export interface MarketplaceListing {
   positionType: "LongOnly" | "ShortOnly" | "LongShort";
   /** 마켓에 등록된 시각 */
   listedAt: string;
+}
+
+/**
+ * 목록 조회를 위한 가벼운 전략 정보 타입.
+ * 백엔드의 `StrategyInList` 스키마와 일치합니다.
+ */
+export interface StrategyInList {
+  id: string;
+  authorId: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+  // 필요에 따라 latestBacktestSummary, marketplaceListing 등 추가 가능
 }

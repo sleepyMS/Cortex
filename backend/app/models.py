@@ -510,17 +510,17 @@ class UserPurchasedStrategy(Base):
     order_item = relationship("MarketplaceOrderItem")
 
 class UserInventory(Base):
-    """사용자가 보유한 '소모성 아이템' 모델"""
+    """[개선] 사용자가 보유한 '소모성 아이템'의 수량을 관리하는 모델"""
     __tablename__ = "user_inventory"
+    __table_args__ = (UniqueConstraint('user_id', 'product_id', name='_user_product_uc'),)
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     product_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_products.id"), nullable=False)
-    order_item_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_order_items.id"), nullable=False)
-    is_used = Column(Boolean, default=False, index=True)
-    used_at = Column(DateTime(timezone=True), nullable=True)
+    quantity = Column(Integer, nullable=False, default=1, server_default="1")
+    
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User")
     product = relationship("MarketplaceProduct")
-    order_item = relationship("MarketplaceOrderItem")
-

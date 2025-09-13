@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
+import { StrategyInList } from "@/types/strategy";
 
 // UI 컴포넌트
 import { Button } from "@/components/ui/Button";
@@ -103,7 +104,7 @@ export function ProfileManagementTab() {
     });
 
   const { data: myStrategies, isLoading: isLoadingStrategies } = useQuery<
-    MyStrategy[]
+    StrategyInList[]
   >({
     queryKey: ["myStrategiesForProfile", user?.id],
     queryFn: async () => (await apiClient.get("/strategies")).data, // 현재 유저의 전략 목록 API

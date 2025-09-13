@@ -744,16 +744,13 @@ class UserPurchasedStrategyResponse(CamelCaseModel):
     purchased_at: datetime
 
 class UserInventoryItemResponse(CamelCaseModel):
-    """인벤토리 아이템 정보 응답"""
-    instance_id: uuid.UUID
+    """[개선] 인벤토리 아이템 정보 응답 (수량 기반)"""
     product_id: uuid.UUID
     name: str
     description: str
     display_properties: Dict[str, Any]
-    quantity: int
-    purchased_at: datetime
-    is_used: bool
-    used_at: Optional[datetime]
+    quantity: int 
+    purchased_at: datetime # 최초 구매일 또는 마지막 구매일 (정책에 따라 결정)
 
 class OrderItemResponse(CamelCaseModel):
     """주문 내역에 포함된 아이템 정보"""

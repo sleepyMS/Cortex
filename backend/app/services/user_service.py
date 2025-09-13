@@ -305,11 +305,8 @@ class UserService:
         query = (
             select(models.UserInventory)
             .options(
-                # Product와 그 판매자 정보, 그리고 ShopItemDetail 정보까지 한번에 로드
                 joinedload(models.UserInventory.product)
-                    .joinedload(models.MarketplaceProduct.seller),
-                joinedload(models.UserInventory.product)
-                    .joinedload(models.MarketplaceProduct.shop_item_detail) # ShopItemDetail 모델 관계 추가 필요
+                    .joinedload(models.MarketplaceProduct.shop_item_detail)
             )
             .filter(models.UserInventory.user_id == user_id)
             .order_by(models.UserInventory.created_at.desc())
@@ -317,21 +314,17 @@ class UserService:
         result = await db.execute(query)
         inventory_models = result.scalars().unique().all()
 
-        # DB 모델 객체 리스트를 Pydantic 스키마 객체 리스트로 변환
         response_items = []
         for item in inventory_models:
-            if not item.product: continue # 데이터 무결성 체크
+            if not item.product: continue
 
             response_items.append(schemas.UserInventoryItemResponse(
-                instance_id=item.id,
                 product_id=item.product_id,
                 name=item.product.name,
                 description=item.product.description,
                 display_properties=item.product.shop_item_detail.display_properties if item.product.shop_item_detail else {},
-                quantity=item.quantity, # UserInventory 모델에 quantity가 있어야 함
-                purchased_at=item.created_at,
-                is_used=item.is_used,
-                used_at=item.used_at
+                quantity=item.quantity,
+                purchased_at=item.created_at # 최초 생성일을 기준으로 함
             ))
         return response_items
 

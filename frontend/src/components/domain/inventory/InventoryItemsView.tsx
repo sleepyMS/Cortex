@@ -4,11 +4,8 @@ import React, { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Search, Inbox } from "lucide-react";
 
-// 데이터 및 액션 훅 import
-import {
-  useUserInventoryDetails,
-  UserInventoryItem,
-} from "@/hooks/useInventory";
+// [개선] 단일 책임 훅을 import 합니다.
+import { useUserInventoryQuery, UserInventoryItem } from "@/hooks/useInventory";
 import { useUseItemMutation } from "@/hooks/useInventoryMutations";
 
 // UI 컴포넌트 import
@@ -19,24 +16,29 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { InventoryItemCard } from "./InventoryItemCard";
 
-// 인벤토리 아이템 타입 필터
-const ITEM_TYPES = ["ALL", "OPTIMIZATION_COUPON", "BACKTEST_CREDIT"];
+// [개선] 아이템 타입을 명확한 타입으로 관리하여 안정성 향상
+type ItemFilterType = "ALL" | UserInventoryItem["type"];
+const ITEM_TYPES: ItemFilterType[] = [
+  "ALL",
+  "OPTIMIZATION_COUPON",
+  "BACKTEST_CREDIT",
+];
 
 export function InventoryItemsView() {
   const t = useTranslations("Inventory");
 
   // 상태 관리: 활성 탭, 검색어
-  const [activeTab, setActiveTab] = useState("ALL");
+  const [activeTab, setActiveTab] = useState<ItemFilterType>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 데이터 로직: 훅을 사용하여 인벤토리 상세 정보 조회 및 아이템 사용 뮤테이션
+  // 데이터 로직: 개선된 단일 훅을 사용하여 인벤토리 상세 정보 조회
   const {
     data: inventory,
     isLoading,
     isError,
     error,
     refetch,
-  } = useUserInventoryDetails();
+  } = useUserInventoryQuery();
   const useItemMutation = useUseItemMutation();
 
   // 필터링 로직: useMemo를 사용하여 성능 최적화
@@ -68,7 +70,10 @@ export function InventoryItemsView() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as ItemFilterType)}
+      >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid">
             {ITEM_TYPES.map((type) => (
@@ -103,7 +108,19 @@ export function InventoryItemsView() {
                 />
               ))}
             </div>
+          ) : searchTerm ? (
+            // [개선] 검색 결과가 없을 때의 UI
+            <div className="text-center py-20 bg-muted/50 rounded-lg flex flex-col items-center">
+              <Search className="h-16 w-16 text-muted-foreground" />
+              <h3 className="text-xl font-semibold mt-4">
+                {t("noResultsTitle")}
+              </h3>
+              <p className="text-muted-foreground mt-2">
+                {t("noResultsDescription", { searchTerm })}
+              </p>
+            </div>
           ) : (
+            // [기존] 인벤토리가 아예 비어있을 때의 UI
             <div className="text-center py-20 bg-muted/50 rounded-lg flex flex-col items-center">
               <Inbox className="h-16 w-16 text-muted-foreground" />
               <h3 className="text-xl font-semibold mt-4">{t("emptyTitle")}</h3>

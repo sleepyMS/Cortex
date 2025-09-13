@@ -223,7 +223,7 @@ class MarketplaceService:
         for item in order.items:
             product = item.product
             if product.inventory_type == models.InventoryType.UNLOCK:
-                # [수정] 소유권이 없을 때만 자산을 지급하도록 로직을 간소화
+                # 소유권이 없을 때만 자산을 지급하도록 로직을 간소화
                 ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(
                     user_id=order.buyer_id, strategy_id=product.linked_resource_id
                 )
@@ -242,17 +242,31 @@ class MarketplaceService:
                     )
 
             elif product.inventory_type == models.InventoryType.CONSUMABLE:
-                for _ in range(item.quantity):
+                # 1. 사용자의 인벤토리에 해당 상품이 이미 있는지 확인
+                existing_inventory_item = await db.scalar(
+                    select(models.UserInventory).filter_by(
+                        user_id=order.buyer_id, product_id=product.id
+                    )
+                )
+
+                if existing_inventory_item:
+                    # 2. 이미 있다면, quantity를 구매한 수량만큼 더함
+                    existing_inventory_item.quantity += item.quantity
+                    logger.info(
+                        f"Updated quantity for existing CONSUMABLE asset (product: {product.id}) for user {order.buyer_id}. New quantity: {existing_inventory_item.quantity}"
+                    )
+                else:
+                    # 3. 없다면, 새로운 인벤토리 아이템을 생성
                     db.add(
                         models.UserInventory(
                             user_id=order.buyer_id,
                             product_id=product.id,
-                            order_item_id=item.id,
+                            quantity=item.quantity # 구매한 수량으로 초기화
                         )
                     )
-                logger.info(
-                    f"Granted {item.quantity} CONSUMABLE asset(s) (product: {product.id}) to user {order.buyer_id}"
-                )
+                    logger.info(
+                        f"Granted {item.quantity} new CONSUMABLE asset(s) (product: {product.id}) to user {order.buyer_id}"
+                    )
 
         order.status = models.OrderStatus.COMPLETED
         order.gateway_transaction_id = gateway_transaction_id

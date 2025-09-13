@@ -1092,6 +1092,13 @@
       "OPTIMIZATION_COUPON": "최적화 쿠폰",
       "BACKTEST_CREDIT": "백테스트 크레딧"
     },
+    "searchPlaceholder": "아이템 이름으로 검색...",
+    "noResultsTitle": "검색 결과가 없습니다",
+    "noResultsDescription": "'{searchTerm}'에 대한 검색 결과가 없습니다. 다른 키워드로 검색해보세요.",
+    "purchasedStrategies": {
+      "emptyTitle": "구매한 전략이 없습니다",
+      "emptyDescription": "마켓플레이스에서 강력한 트레이딩 전략을 찾아보세요."
+    },
     "emptyTitle": "인벤토리가 비어있습니다.",
     "emptyDescription": "마켓플레이스에서 다양한 아이템을 구매하고 전략을 강화해보세요."
   },
