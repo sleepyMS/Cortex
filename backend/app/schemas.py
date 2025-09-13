@@ -30,10 +30,35 @@ class UserCreate(CamelCaseModel):
     password: str
     username: str | None = None
 
+class UserProfileSocialLinks(CamelCaseModel):
+    twitter: Optional[str] = None
+    github: Optional[str] = None
+    website: Optional[str] = None
+
+class UserProfileResponse(CamelCaseModel):
+    """프로필 관리 탭에서 사용할 데이터 스키마"""
+    username: Optional[str]
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    social_links: Optional[UserProfileSocialLinks] = None
+    featured_strategy_id: Optional[uuid.UUID] = None
+
+class UserProfileSocialLinksUpdate(CamelCaseModel):
+    twitter: Optional[str] = ""
+    github: Optional[str] = ""
+    website: Optional[str] = ""
+
+class UserProfileUpdate(CamelCaseModel):
+    """프로필 수정을 위한 입력 스키마"""
+    username: str = Field(..., min_length=3)
+    bio: Optional[str] = Field(None, max_length=200)
+    social_links: Optional[UserProfileSocialLinksUpdate] = None
+    featured_strategy_id: Optional[uuid.UUID] = None
+
 class UserUpdateProfile(CamelCaseModel):
     username: Optional[str] = Field(None, min_length=2, max_length=100)
 
-    # 👇 [개선] 사용자 입력값 자동 살균
+    # 사용자 입력값 자동 살균
     @field_validator('username')
     @classmethod
     def sanitize_username(cls, value: Optional[str]) -> Optional[str]:
@@ -76,7 +101,7 @@ class SocialUserProfile(CamelCaseModel):
 class RefreshTokenRequest(CamelCaseModel):
     refresh_token: str
 
-# --- [개선] DashboardSummary 내부용 스키마 정의 ---
+# --- DashboardSummary 내부용 스키마 정의 ---
 class LatestSignupItem(CamelCaseModel):
     id: uuid.UUID
     email: EmailStr
@@ -93,7 +118,7 @@ class DashboardSummary(CamelCaseModel):
     total_live_bots: int = 0
     active_live_bots: int = 0
     overall_pnl: float = 0.0
-    latest_signups: List[LatestSignupItem] = Field(default_factory=list) # 👈 [개선] List[Any] 대신 명시적 타입 사용
+    latest_signups: List[LatestSignupItem] = Field(default_factory=list) 
 
 class SocialCallbackRequest(CamelCaseModel):
     code: str
@@ -348,7 +373,7 @@ class StrategyInList(StrategyBase):
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
     marketplace_listing: Optional[MarketplaceListing] = None
 
-# --- [역할 2] API 응답을 위한 베이스 스키마 (신규 제안) ---
+# --- [역할 2] API 응답을 위한 베이스 스키마 ---
 class StrategyResponseBase(CamelCaseModel):
     """API 응답용 스키마들이 공통으로 가지는 필드를 정의"""
     id: uuid.UUID
@@ -405,8 +430,6 @@ class BacktestInList(CamelCaseModel):
     status: str
     created_at: datetime
     completed_at: Optional[datetime] = None
-    
-    # 목록에서는 간단한 결과 요약과 전략 이름 정도만 필요합니다.
     result: Optional[BacktestResultSummaryForCard] = None
     strategy: Optional[StrategySummary] = None
     

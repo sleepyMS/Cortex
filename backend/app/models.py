@@ -36,13 +36,30 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
+    bio = Column(String(200), nullable=True)
+    avatar_url = Column(String(255), nullable=True)
+    social_links = Column(JSONB, nullable=True) # 예: {"twitter": "...", "github": "..."}
+    
+    # ForeignKey 제약조건을 추가하여 데이터 무결성 보장
+    featured_strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=True)
+
     social_accounts = relationship("SocialAccount", back_populates="user", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    strategies = relationship("Strategy", back_populates="author", cascade="all, delete-orphan")
+    strategies = relationship(
+        "Strategy",
+        foreign_keys="[Strategy.author_id]", # Strategy 모델의 author_id를 사용하도록 명시
+        back_populates="author",
+        cascade="all, delete-orphan"
+    )
     backtests = relationship("Backtest", back_populates="user", cascade="all, delete-orphan")
     api_keys = relationship("ApiKey", back_populates="user", cascade="all, delete-orphan")
     live_bots = relationship("LiveBot", back_populates="user", cascade="all, delete-orphan")
-    community_posts = relationship("CommunityPost", back_populates="author", cascade="all, delete-orphan")
+    community_posts = relationship(
+        "CommunityPost",
+        foreign_keys="[CommunityPost.author_id]", # CommunityPost의 author_id를 사용하도록 명시
+        back_populates="author",
+        cascade="all, delete-orphan"
+    )
     comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
@@ -147,7 +164,7 @@ class Strategy(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
-    author = relationship("User", back_populates="strategies")
+    author = relationship("User", foreign_keys=[author_id], back_populates="strategies")
     backtests = relationship("Backtest", back_populates="strategy", cascade="all, delete-orphan")
     live_bots = relationship("LiveBot", back_populates="strategy", cascade="all, delete-orphan")
     purchases = relationship("UserPurchasedStrategy", back_populates="strategy")
@@ -294,7 +311,7 @@ class CommunityPost(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
-    author = relationship("User", back_populates="community_posts")
+    author = relationship("User", foreign_keys=[author_id], back_populates="community_posts")
     backtest = relationship("Backtest", back_populates="community_post")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="post", cascade="all, delete-orphan")

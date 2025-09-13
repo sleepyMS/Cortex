@@ -377,7 +377,30 @@
       "usernameLabel": "Username",
       "bioLabel": "Bio",
       "bioPlaceholder": "Tell others about your trading philosophy or area of expertise.",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "socialLinks": {
+        "title": "Social Links",
+        "description": "Increase your credibility by connecting external channels.",
+        "twitterLabel": "Twitter",
+        "githubLabel": "GitHub",
+        "websiteLabel": "Personal Website",
+        "websitePlaceholder": "https://your-blog.com"
+      },
+      "basicInfo": {
+        "title": "Basic information",
+        "Description": "Information that is fundamental to the profile."
+      },
+      "featuredContent": {
+        "title": "Featured Content",
+        "description": "Select the content to show first to your profile visitors.",
+        "strategyLabel": "Featured Strategy",
+        "selectPlaceholder": "Select a strategy...",
+        "loading": "Loading strategies...",
+        "none": "None",
+        "strategyDescription": "Pin your most confident strategy for sale to your profile."
+      },
+      "saveSuccess": "Profile updated successfully.",
+      "saveError": "Failed to update profile: {error}"
     },
     "settings": {
       "password": {

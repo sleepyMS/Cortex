@@ -107,6 +107,19 @@ class UserService:
         
         return created_or_found_user
 
+    async def get_user_profile(self, db: AsyncSession, user: models.User) -> schemas.UserProfileResponse:
+        """사용자 모델에서 프로필 관리용 스키마에 맞는 데이터를 반환합니다."""
+        # User 모델에 bio, avatar_url, social_links 등의 필드가 추가되어야 합니다.
+        # 지금은 없다고 가정하고, 기본값을 반환하도록 구현합니다.
+        return schemas.UserProfileResponse(
+            username=user.username,
+            bio=getattr(user, 'bio', None), # getattr로 안전하게 접근
+            avatar_url=getattr(user, 'avatar_url', None),
+            social_links=getattr(user, 'social_links', None),
+            featured_strategy_id=getattr(user, 'featured_strategy_id', None),
+            featured_post_id=getattr(user, 'featured_post_id', None)
+        )
+    
     async def list_users(
         self, db: AsyncSession, skip: int, limit: int, is_active: Optional[bool],
         is_email_verified: Optional[bool], role: Optional[str], search_query: Optional[str]
@@ -124,13 +137,25 @@ class UserService:
         result = await db.execute(query)
         return result.scalars().all()
 
-    async def update_user_profile(self, db: AsyncSession, user: models.User, user_update: schemas.UserUpdateProfile) -> models.User:
+    async def update_user_profile(
+        self, db: AsyncSession, user: models.User, user_update: schemas.UserProfileUpdate
+    ) -> models.User:
         """사용자 프로필 정보를 비동기 업데이트합니다."""
+        # username 중복 검사 (선택적)
+        if user_update.username != user.username:
+            existing_user = await db.scalar(select(models.User).filter(models.User.username == user_update.username))
+            if existing_user:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사용자 이름입니다.")
+
+        # Pydantic 모델을 딕셔너리로 변환하여 업데이트
         update_data = user_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(user, key, value)
+            
         db.add(user)
-        await db.flush(); await db.refresh(user)
+        # commit은 라우터에서 처리하므로 여기서는 flush만 호출
+        await db.flush()
+        await db.refresh(user)
         return user
 
     async def update_user_password(self, db: AsyncSession, user: models.User, password_update: schemas.UserUpdatePassword) -> models.User:

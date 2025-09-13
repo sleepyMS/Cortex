@@ -377,7 +377,30 @@
       "usernameLabel": "사용자 이름",
       "bioLabel": "한 줄 자기소개",
       "bioPlaceholder": "당신의 투자 철학이나 전문 분야에 대해 알려주세요.",
-      "saveChanges": "변경사항 저장"
+      "saveChanges": "변경사항 저장",
+      "socialLinks": {
+        "title": "소셜 링크",
+        "description": "외부 채널을 연결하여 신뢰도를 높여보세요.",
+        "twitterLabel": "트위터",
+        "githubLabel": "GitHub",
+        "websiteLabel": "개인 웹사이트",
+        "websitePlaceholder": "https://your-blog.com"
+      },
+      "basicInfo": {
+        "title": "기본 정보",
+        "description": "프로필의 기본이 되는 정보입니다."
+      },
+      "featuredContent": {
+        "title": "대표 콘텐츠 설정",
+        "description": "프로필 방문자에게 가장 먼저 보여줄 콘텐츠를 선택하세요.",
+        "strategyLabel": "대표 전략",
+        "selectPlaceholder": "전략 선택...",
+        "loading": "전략 로딩 중...",
+        "none": "선택 안함",
+        "strategyDescription": "가장 자신 있는 판매 전략을 프로필에 고정합니다."
+      },
+      "saveSuccess": "프로필이 성공적으로 업데이트되었습니다.",
+      "saveError": "프로필 업데이트에 실패했습니다: {error}"
     },
     "settings": {
       "password": {

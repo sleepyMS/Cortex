@@ -31,7 +31,7 @@ async def read_users_me(
 
 @router.put("/me/profile", response_model=schemas.User, summary="Update current user's profile information")
 async def update_users_me_profile(
-    user_update: schemas.UserUpdateProfile,
+    user_update: schemas.UserProfileUpdate,
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -85,6 +85,15 @@ async def get_user_dashboard_summary(
         logger.error(f"Error fetching dashboard summary for {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="대시보드 요약 정보를 불러오는 중 서버 오류가 발생했습니다.")
 
+@router.get("/me/profile", response_model=schemas.UserProfileResponse, summary="Get current user's editable profile")
+async def get_my_profile(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    현재 로그인된 사용자의 '프로필 관리'에 필요한 데이터를 조회합니다.
+    """
+    return await user_service.get_user_profile(db, current_user)
 
 # --- 관리자 전용 사용자 관리 엔드포인트 ---
 
