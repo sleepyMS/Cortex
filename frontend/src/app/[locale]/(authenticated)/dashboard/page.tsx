@@ -1,66 +1,71 @@
-// frontend/src/app/[locale]/dashboard/page.tsx
-
+// file: frontend/src/app/[locale]/dashboard/page.tsx
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useUserStore } from "@/store/userStore"; // userStore 임포트
-import { useUserSubscription } from "@/hooks/useUserSubscription";
-import { AdminDashboardClient } from "@/components/domain/dashboard/AdminDashboardClient";
-import { UserDashboardClient } from "@/components/domain/dashboard/UserDashboardClient";
-import { Spinner } from "@/components/ui/Spinner";
-import { Button } from "@/components/ui/Button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { DashboardHeader } from "@/components/domain/dashboard/DashboardHeader";
+import { DashboardOverviewTab } from "@/components/domain/dashboard/DashboardOverviewTab";
+import { AssetManagementTab } from "@/components/domain/dashboard/AssetManagementTab";
+import { ProfileManagementTab } from "@/components/domain/dashboard/ProfileManagementTab";
+import { AccountSettingsTab } from "@/components/domain/dashboard/AccountSettingsTab";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const t = useTranslations("Dashboard");
-  const { user } = useUserStore();
-  const { isLoading: isUserSubscriptionLoading } = useUserSubscription();
+  const t = useTranslations("Dashboard.tabs");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // 사용자 정보 로딩 중일 때
-  // useUserSubscription의 로딩 상태를 사용합니다.
-  if (isUserSubscriptionLoading) {
-    return (
-      <div className="flex h-full min-h-[400px] items-center justify-center">
-        <Spinner size="lg" />
-        <p className="ml-4 text-muted-foreground">{t("loadingDashboard")}</p>
-      </div>
-    );
-  }
+  const tabFromUrl = searchParams.get("tab") || "overview";
 
-  // 사용자 정보가 없거나, 로그인하지 않은 경우 (AuthGuard가 막겠지만, 방어적 코드)
-  if (!user) {
-    return (
-      <div className="container mx-auto max-w-5xl px-4 py-8 text-center">
-        <h1 className="text-3xl font-bold text-foreground mb-4">
-          {t("authRequiredTitle")}
-        </h1>
-        <p className="text-muted-foreground mb-6">{t("authRequiredMessage")}</p>
-        <Button onClick={() => (window.location.href = "/login")}>
-          {t("loginButton")}
-        </Button>
-      </div>
-    );
-  }
+  // 현재 활성 탭을 관리하기 위한 state를 선언합니다.
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  // 사용자의 역할에 따라 대시보드 컴포넌트 렌더링
-  if (user.role === "admin") {
-    return <AdminDashboardClient />;
-  } else if (
-    user.role === "user" ||
-    user.role === "Pro" ||
-    user.role === "Trader"
-  ) {
-    return <UserDashboardClient />;
-  } else {
-    return (
-      <div className="container mx-auto max-w-5xl px-4 py-8 text-center">
-        <h1 className="text-3xl font-bold text-destructive mb-4">
-          {t("unknownRoleTitle")}
-        </h1>
-        <p className="text-muted-foreground mb-6">{t("unknownRoleMessage")}</p>
-        <Button onClick={() => (window.location.href = "/")}>
-          {t("goToHomepage")}
-        </Button>
-      </div>
-    );
-  }
+  // URL의 탭 값이 변경될 때(예: 헤더 메뉴 클릭), state를 동기화합니다.
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  // 사용자가 탭을 직접 클릭했을 때 URL도 함께 변경하는 핸들러
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // URL을 변경하지만 페이지를 새로고침하지는 않습니다.
+    router.push(`${pathname}?tab=${value}`);
+  };
+
+  return (
+    <div className="container mx-auto max-w-screen-xl px-4 py-8 space-y-8">
+      <DashboardHeader
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+      />
+
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
+          <TabsTrigger value="assets">{t("assets")}</TabsTrigger>
+          <TabsTrigger value="profile">{t("profile")}</TabsTrigger>
+          <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-6">
+          <DashboardOverviewTab />
+        </TabsContent>
+        <TabsContent value="assets" className="mt-6">
+          <AssetManagementTab />
+        </TabsContent>
+        <TabsContent value="profile" className="mt-6">
+          <ProfileManagementTab />
+        </TabsContent>
+        <TabsContent value="settings" className="mt-6">
+          <AccountSettingsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }

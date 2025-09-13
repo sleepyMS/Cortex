@@ -38,14 +38,13 @@ export const StrategyDetailHeader = ({
     : null;
   const dateRangeString =
     startDate && isValid(startDate) && endDate && isValid(endDate)
-      ? `${format(startDate, "yyyy.MM.dd")} ~ ${format(endDate, "yyyy.MM.dd")}`
+      ? `${format(startDate, "yyyy.MM.dd")} - ${format(endDate, "yyyy.MM.dd")}`
       : null;
 
   return (
     <div className="bg-card border rounded-xl p-6 md:p-8 mb-8">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-          {/* ▼▼▼ [핵심 수정] 제작자 정보와 백테스트 기간을 함께 묶어서 표시 ▼▼▼ */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2">
             <div className="flex items-center gap-2">
               <UserCircle className="h-4 w-4" />
@@ -62,7 +61,6 @@ export const StrategyDetailHeader = ({
               </div>
             )}
           </div>
-          {/* ▲▲▲ [수정 완료] ▲▲▲ */}
 
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             {strategy.name}

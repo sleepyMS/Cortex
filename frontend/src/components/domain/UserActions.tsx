@@ -1,5 +1,3 @@
-// file: frontend/src/components/domain/UserActions.tsx
-
 "use client";
 
 import Link from "next/link";
@@ -8,7 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useUserStore } from "@/store/userStore";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { toast } from "sonner";
-import clsx from "clsx"; // 클래스네임 관리를 위한 clsx 라이브러리 사용
+import clsx from "clsx";
 
 import {
   DropdownMenu,
@@ -96,13 +94,19 @@ export function UserActions() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings/inventory">
+              <Link href="/dashboard?tab=assets">
                 <Box className="mr-2 h-4 w-4" />
-                <span>{t("inventory")}</span>
+                <span>{t("assets")}</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings">
+              <Link href="/dashboard?tab=profile">
+                <User className="mr-2 h-4 w-4" />
+                <span>{t("profile")}</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard?tab=settings">
                 <Settings className="mr-2 h-4 w-4" />
                 <span>{t("settings")}</span>
               </Link>
