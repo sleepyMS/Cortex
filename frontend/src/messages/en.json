@@ -74,6 +74,7 @@
     "card": {
       "recommendation": "Recommended",
       "button": {
+        "processing": "processing...",
         "start": "Get Started",
         "subscribe": "Subscribe"
       }

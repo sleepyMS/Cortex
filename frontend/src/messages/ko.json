@@ -74,6 +74,7 @@
     "card": {
       "recommendation": "추천",
       "button": {
+        "processing": "처리 중...",
         "start": "시작하기",
         "subscribe": "구독하기"
       }
