@@ -180,7 +180,7 @@ class SignalService:
         (로깅 기능이 추가된 버전)
         """
         indent = "  " * depth
-        logger.debug(f"{indent}블록 처리 시작 (ID: {block.id}, Type: {block.type}, Depth: {depth})")
+        logger.warning(f"{indent}블록 처리 시작 (ID: {block.id}, Type: {block.type}, Depth: {depth})")
 
         # 1. 부모 블록 자체의 조건을 먼저 계산합니다.
         # 이 부분은 자식(children)이 없는 단일 블록처럼 먼저 평가합니다.
@@ -258,18 +258,18 @@ class SignalService:
         
         # --- [로그 추가 6] --- 부모 블록 자체의 조건 평가 결과 로깅
         parent_true_count = parent_series.sum() if parent_series is not None else 0
-        logger.debug(f"{indent} -> 부모 블록 자체 조건 만족 횟수: {parent_true_count} / {len(df)}")
+        logger.warning(f"{indent} -> 부모 블록 자체 조건 만족 횟수: {parent_true_count} / {len(df)}")
 
         # 2. 자식 블록이 있는지 확인하고, 그에 따라 최종 결과를 조합합니다.
         if block.children and len(block.children) > 0:
             # ▼▼▼ [새로운 디버깅 로그] 아래 4줄을 여기에 추가해주세요 ▼▼▼
-            logger.debug(f"{indent}--- 객체 검사 시작 ---")
-            logger.debug(f"{indent}블록 ID: {block.id}")
-            logger.debug(f"{indent}블록의 실제 타입: {type(block)}")
-            logger.debug(f"{indent}블록의 모든 속성(dict): {block.__dict__}")
+            logger.warning(f"{indent}--- 객체 검사 시작 ---")
+            logger.warning(f"{indent}블록 ID: {block.id}")
+            logger.warning(f"{indent}블록의 실제 타입: {type(block)}")
+            logger.warning(f"{indent}블록의 모든 속성(dict): {block.__dict__}")
             # ▲▲▲ 여기까지 추가 ▲▲▲
 
-            logger.debug(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logic_operator})")
+            logger.warning(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logic_operator})")
             children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1) for child in block.children]
             
             all_series_in_group = [parent_series] + children_series_list
@@ -281,7 +281,7 @@ class SignalService:
 
         # --- [로그 추가 7] --- 현재 블록의 최종 결과 로깅
         final_true_count = final_series.sum() if final_series is not None else 0
-        logger.debug(f"{indent}블록 처리 완료 (ID: {block.id}): 최종 조건 만족 횟수: {final_true_count} / {len(df)}")
+        logger.warning(f"{indent}블록 처리 완료 (ID: {block.id}): 최종 조건 만족 횟수: {final_true_count} / {len(df)}")
         
         return final_series.fillna(False)
 
@@ -418,7 +418,7 @@ class SignalService:
         # 어차피 _get_required_timeframes_and_indicators가 올바른 타임프레임을 찾아줍니다.
         base_timeframe = '1h'
 
-        logger.debug(f"--- 신호 생성 시작 (Backtest): Ticker={ticker} ---")
+        logger.warning(f"--- 신호 생성 시작 (Backtest): Ticker={ticker} ---")
 
         async with AsyncSessionLocal() as db:
             configs = self._get_required_timeframes_and_indicators(request, base_timeframe=base_timeframe)
@@ -444,7 +444,7 @@ class SignalService:
         process_rules(request.short_entry_rules, "short_entry")
         process_rules(request.short_exit_rules, "short_exit")
 
-        logger.debug(f"--- 신호 생성 완료 ({calculation_tf} 기준): 총 {len(final_signals)}개 신호 생성됨 ---")
+        logger.warning(f"--- 신호 생성 완료 ({calculation_tf} 기준): 총 {len(final_signals)}개 신호 생성됨 ---")
         
         if not final_signals:
             return pd.DataFrame(columns=['signal']), calculation_tf

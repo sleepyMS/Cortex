@@ -24,7 +24,7 @@ async def handle_toss_payments_webhook(request: Request):
     """
     try:
         payload = await request.json()
-        logger.debug(f"Received Toss Payments webhook: {payload}")
+        logger.warning(f"Received Toss Payments webhook: {payload}")
 
         # Toss Payments 웹훅은 실제 데이터가 'data' 객체 내부에 포함될 수 있습니다.
         # 또한 이벤트 타입은 'eventType' 필드로 오는 것이 표준입니다. (예: PAYMENT_STATUS_CHANGED)

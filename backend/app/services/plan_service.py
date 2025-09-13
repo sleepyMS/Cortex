@@ -22,7 +22,7 @@ class PlanService:
         """초기 구독 플랜을 데이터베이스에 생성합니다. (서버 시작 시 한 번만 실행)"""
         plans_to_seed = {
             PlanType.BASIC: {
-                "name": PlanType.BASIC, "price": 0.0,
+                "name": PlanType.BASIC, "price": 0,
                 "features": {
                     "max_strategies": 3, "max_coins_per_backtest": 1, "live_bots_limit": 0,
                     "daily_backtest_count": 5, "max_backtest_duration_years": 1, "supported_timeframes": "1h,4h,1d",
@@ -30,7 +30,7 @@ class PlanService:
                 }
             },
             PlanType.TRADER: {
-                "name": PlanType.TRADER, "price": 49.99,
+                "name": PlanType.TRADER, "price": 29000,
                 "features": {
                     "max_strategies": 20, "max_coins_per_backtest": 5, "live_bots_limit": 3,
                     "daily_backtest_count": 100, "max_backtest_duration_years": 5, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
@@ -38,7 +38,7 @@ class PlanService:
                 }
             },
             PlanType.PRO: {
-                "name": PlanType.PRO, "price": 129.99,
+                "name": PlanType.PRO, "price": 59000,
                 "features": {
                     "max_strategies": 100, "max_coins_per_backtest": 20, "live_bots_limit": 10,
                     "daily_backtest_count": 9999, "max_backtest_duration_years": None, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",

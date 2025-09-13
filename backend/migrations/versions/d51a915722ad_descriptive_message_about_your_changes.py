@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 7e32d4d5443b
+Revision ID: d51a915722ad
 Revises: 
-Create Date: 2025-09-02 22:23:22.354235
+Create Date: 2025-09-14 02:05:08.166135
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '7e32d4d5443b'
+revision: str = 'd51a915722ad'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -51,7 +51,7 @@ def upgrade() -> None:
     op.create_table('plans',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Enum('BASIC', 'TRADER', 'PRO', name='plantype'), nullable=False),
-    sa.Column('price', sa.Float(), nullable=False),
+    sa.Column('price', sa.Integer(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -61,6 +61,24 @@ def upgrade() -> None:
     sa.Column('display_properties', sa.JSON(), nullable=False, comment='icon, tier, stats for UI'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('item_type')
+    )
+    op.create_table('strategies',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('author_id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=False),
+    sa.Column('description', sa.String(), nullable=True),
+    sa.Column('long_entry_rules', sa.JSON(), nullable=True),
+    sa.Column('long_exit_rules', sa.JSON(), nullable=True),
+    sa.Column('short_entry_rules', sa.JSON(), nullable=True),
+    sa.Column('short_exit_rules', sa.JSON(), nullable=True),
+    sa.Column('tpsl_logic', sa.JSON(), nullable=True),
+    sa.Column('target_coins', sa.JSON(), server_default=sa.text("'[]'"), nullable=False),
+    sa.Column('is_public', sa.Boolean(), nullable=False),
+    sa.Column('paid_feature_level', sa.String(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -72,6 +90,11 @@ def upgrade() -> None:
     sa.Column('role', sa.String(length=50), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('bio', sa.String(length=200), nullable=True),
+    sa.Column('avatar_url', sa.String(length=255), nullable=True),
+    sa.Column('social_links', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('featured_strategy_id', sa.UUID(), nullable=True),
+    sa.ForeignKeyConstraint(['featured_strategy_id'], ['strategies.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -82,6 +105,7 @@ def upgrade() -> None:
     sa.Column('exchange', sa.String(length=100), nullable=False),
     sa.Column('api_key_encrypted', sa.String(length=512), nullable=False),
     sa.Column('secret_key_encrypted', sa.String(length=512), nullable=False),
+    sa.Column('api_key_preview', sa.String(length=20), nullable=True, comment='API 키 앞 4자리...뒤 4자리'),
     sa.Column('memo', sa.String(length=255), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -90,6 +114,22 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'exchange', name='_user_exchange_uc')
     )
+    op.create_table('backtests',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('strategy_id', sa.UUID(), nullable=False),
+    sa.Column('celery_task_id', sa.String(), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('parameters', sa.JSON(), nullable=False),
+    sa.Column('strategy_snapshot', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_backtests_celery_task_id'), 'backtests', ['celery_task_id'], unique=False)
     op.create_table('email_verification_tokens',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -172,30 +212,14 @@ def upgrade() -> None:
     sa.UniqueConstraint('provider', 'provider_user_id', name='_provider_user_uc')
     )
     op.create_index(op.f('ix_social_accounts_email'), 'social_accounts', ['email'], unique=True)
-    op.create_table('strategies',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('author_id', sa.UUID(), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=False),
-    sa.Column('description', sa.String(), nullable=True),
-    sa.Column('long_entry_rules', sa.JSON(), nullable=True),
-    sa.Column('long_exit_rules', sa.JSON(), nullable=True),
-    sa.Column('short_entry_rules', sa.JSON(), nullable=True),
-    sa.Column('short_exit_rules', sa.JSON(), nullable=True),
-    sa.Column('tpsl_logic', sa.JSON(), nullable=True),
-    sa.Column('target_coins', sa.JSON(), server_default=sa.text("'[]'"), nullable=False),
-    sa.Column('is_public', sa.Boolean(), nullable=False),
-    sa.Column('paid_feature_level', sa.String(length=50), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('subscriptions',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('plan_id', sa.UUID(), nullable=False),
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('current_period_end', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('payment_gateway_customer_key', sa.String(length=255), nullable=True, comment='PG사 빌링키 (Toss 등)'),
+    sa.Column('payment_method_details', sa.String(length=255), nullable=True, comment='카드 정보 요약 (현대카드 1234)'),
     sa.Column('payment_gateway_sub_id', sa.String(length=255), nullable=True),
     sa.Column('refresh_token', sa.String(length=512), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -206,41 +230,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('payment_gateway_sub_id'),
     sa.UniqueConstraint('user_id')
     )
-    op.create_table('backtests',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.Column('strategy_id', sa.UUID(), nullable=False),
-    sa.Column('celery_task_id', sa.String(), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=False),
-    sa.Column('parameters', sa.JSON(), nullable=False),
-    sa.Column('strategy_snapshot', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_backtests_celery_task_id'), 'backtests', ['celery_task_id'], unique=False)
-    op.create_table('live_bots',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.Column('strategy_id', sa.UUID(), nullable=False),
-    sa.Column('api_key_id', sa.UUID(), nullable=False),
-    sa.Column('celery_task_id', sa.String(), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=False),
-    sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('stopped_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('last_run_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('initial_capital', sa.Float(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['api_key_id'], ['api_keys.id'], ),
-    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_live_bots_celery_task_id'), 'live_bots', ['celery_task_id'], unique=False)
     op.create_table('backtest_results',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('backtest_id', sa.UUID(), nullable=False),
@@ -284,6 +273,25 @@ def upgrade() -> None:
     sa.UniqueConstraint('backtest_id')
     )
     op.create_index(op.f('ix_community_posts_created_at'), 'community_posts', ['created_at'], unique=False)
+    op.create_table('live_bots',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('strategy_id', sa.UUID(), nullable=False),
+    sa.Column('api_key_id', sa.UUID(), nullable=False),
+    sa.Column('celery_task_id', sa.String(), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('stopped_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('last_run_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('initial_capital', sa.Float(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['api_key_id'], ['api_keys.id'], ),
+    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_live_bots_celery_task_id'), 'live_bots', ['celery_task_id'], unique=False)
     op.create_table('marketplace_products',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
@@ -304,24 +312,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_marketplace_products_linked_resource_id'), 'marketplace_products', ['linked_resource_id'], unique=False)
     op.create_index(op.f('ix_marketplace_products_product_type'), 'marketplace_products', ['product_type'], unique=False)
-    op.create_table('trade_logs',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('backtest_id', sa.UUID(), nullable=True),
-    sa.Column('live_bot_id', sa.UUID(), nullable=True),
-    sa.Column('timestamp', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('side', sa.String(length=10), nullable=False),
-    sa.Column('price', sa.Float(), nullable=False),
-    sa.Column('quantity', sa.Float(), nullable=False),
-    sa.Column('commission', sa.Float(), nullable=True),
-    sa.Column('pnl', sa.Float(), nullable=True),
-    sa.Column('current_balance', sa.Float(), nullable=True),
-    sa.Column('reason', sa.String(length=50), nullable=True),
-    sa.CheckConstraint('(backtest_id IS NOT NULL AND live_bot_id IS NULL) OR (backtest_id IS NULL AND live_bot_id IS NOT NULL)', name='_trade_log_exclusive_parent_check'),
-    sa.ForeignKeyConstraint(['backtest_id'], ['backtests.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['live_bot_id'], ['live_bots.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_trade_logs_timestamp'), 'trade_logs', ['timestamp'], unique=False)
     op.create_table('comments',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('post_id', sa.UUID(), nullable=False),
@@ -353,20 +343,36 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['product_id'], ['marketplace_products.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('trade_logs',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('backtest_id', sa.UUID(), nullable=True),
+    sa.Column('live_bot_id', sa.UUID(), nullable=True),
+    sa.Column('timestamp', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('side', sa.String(length=10), nullable=False),
+    sa.Column('price', sa.Float(), nullable=False),
+    sa.Column('quantity', sa.Float(), nullable=False),
+    sa.Column('commission', sa.Float(), nullable=True),
+    sa.Column('pnl', sa.Float(), nullable=True),
+    sa.Column('current_balance', sa.Float(), nullable=True),
+    sa.Column('reason', sa.String(length=50), nullable=True),
+    sa.CheckConstraint('(backtest_id IS NOT NULL AND live_bot_id IS NULL) OR (backtest_id IS NULL AND live_bot_id IS NOT NULL)', name='_trade_log_exclusive_parent_check'),
+    sa.ForeignKeyConstraint(['backtest_id'], ['backtests.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['live_bot_id'], ['live_bots.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_trade_logs_timestamp'), 'trade_logs', ['timestamp'], unique=False)
     op.create_table('user_inventory',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('product_id', sa.UUID(), nullable=False),
-    sa.Column('order_item_id', sa.UUID(), nullable=False),
-    sa.Column('is_used', sa.Boolean(), nullable=True),
-    sa.Column('used_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('quantity', sa.Integer(), server_default='1', nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['order_item_id'], ['marketplace_order_items.id'], ),
     sa.ForeignKeyConstraint(['product_id'], ['marketplace_products.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'product_id', name='_user_product_uc')
     )
-    op.create_index(op.f('ix_user_inventory_is_used'), 'user_inventory', ['is_used'], unique=False)
     op.create_index(op.f('ix_user_inventory_user_id'), 'user_inventory', ['user_id'], unique=False)
     op.create_table('user_purchased_strategies',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -392,25 +398,21 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_user_purchased_strategies_strategy_id'), table_name='user_purchased_strategies')
     op.drop_table('user_purchased_strategies')
     op.drop_index(op.f('ix_user_inventory_user_id'), table_name='user_inventory')
-    op.drop_index(op.f('ix_user_inventory_is_used'), table_name='user_inventory')
     op.drop_table('user_inventory')
+    op.drop_index(op.f('ix_trade_logs_timestamp'), table_name='trade_logs')
+    op.drop_table('trade_logs')
     op.drop_table('marketplace_order_items')
     op.drop_table('likes')
     op.drop_table('comments')
-    op.drop_index(op.f('ix_trade_logs_timestamp'), table_name='trade_logs')
-    op.drop_table('trade_logs')
     op.drop_index(op.f('ix_marketplace_products_product_type'), table_name='marketplace_products')
     op.drop_index(op.f('ix_marketplace_products_linked_resource_id'), table_name='marketplace_products')
     op.drop_table('marketplace_products')
+    op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
+    op.drop_table('live_bots')
     op.drop_index(op.f('ix_community_posts_created_at'), table_name='community_posts')
     op.drop_table('community_posts')
     op.drop_table('backtest_results')
-    op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
-    op.drop_table('live_bots')
-    op.drop_index(op.f('ix_backtests_celery_task_id'), table_name='backtests')
-    op.drop_table('backtests')
     op.drop_table('subscriptions')
-    op.drop_table('strategies')
     op.drop_index(op.f('ix_social_accounts_email'), table_name='social_accounts')
     op.drop_table('social_accounts')
     op.drop_index(op.f('ix_refresh_tokens_jti'), table_name='refresh_tokens')
@@ -423,10 +425,13 @@ def downgrade() -> None:
     op.drop_table('marketplace_orders')
     op.drop_index(op.f('ix_email_verification_tokens_jti'), table_name='email_verification_tokens')
     op.drop_table('email_verification_tokens')
+    op.drop_index(op.f('ix_backtests_celery_task_id'), table_name='backtests')
+    op.drop_table('backtests')
     op.drop_table('api_keys')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+    op.drop_table('strategies')
     op.drop_table('shop_item_details')
     op.drop_table('plans')
     # 3. 모든 하이퍼테이블을 삭제하는 수동 스크립트를 추가합니다.
@@ -435,4 +440,5 @@ def downgrade() -> None:
         table_name = f"ohlcv_{tf}"
         op.drop_table(table_name)
         print(f"Table '{table_name}' dropped.")
+    # ### end Alembic commands ###
     # ### end Alembic commands ###

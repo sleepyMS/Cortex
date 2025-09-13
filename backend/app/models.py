@@ -94,7 +94,7 @@ class Plan(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Enum(PlanType), unique=True, nullable=False)
-    price = Column(Float, nullable=False)
+    price = Column(Integer, nullable=False)
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
 

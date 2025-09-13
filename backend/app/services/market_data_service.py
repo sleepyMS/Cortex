@@ -111,7 +111,7 @@ class MarketDataService:
         df_unique = df_sorted[~df_sorted.index.duplicated(keep='last')]
 
         table_name = f"ohlcv_{timeframe}"
-        logger.debug(f"Successfully fetched and deduplicated {len(df_unique)} rows for {ticker} from {table_name}.")
+        logger.warning(f"Successfully fetched and deduplicated {len(df_unique)} rows for {ticker} from {table_name}.")
         return df_unique
 
     def get_historical_data_sync(

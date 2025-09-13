@@ -48,12 +48,10 @@ async def register_card_for_subscription(
     db: AsyncSession = Depends(get_async_db),
     toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
 ):
-    """
-    카드 등록 및 첫 결제의 모든 과정을 서비스에 위임하고,
-    완성된 Pydantic 스키마 객체를 받아 응답합니다.
-    """
     try:
-        # 이제 이 함수는 DB commit까지 완료하고 안전한 Pydantic 객체를 반환합니다.
+        # ⚠️ 디버깅용 로그, 문제 해결 후 제거 가능
+        logger.warning(f"Received authKey: {request_data.auth_key[:8]}...") 
+
         subscription_schema = (
             await subscription_service.register_card_and_process_first_payment(
                 db=db,
@@ -67,11 +65,12 @@ async def register_card_for_subscription(
         return subscription_schema
 
     except HTTPException as e:
-        # 서비스 내에서 오류가 발생하면 DB는 자동으로 롤백됩니다.
+        # 서비스 내에서 발생한 상세 에러 메시지를 그대로 프론트엔드에 전달합니다.
         raise e
     except Exception as e:
-        logger.error(f"Error in register-card endpoint for user {current_user.email}: {e}", exc_info=True)
+        logger.error(f"An unexpected error occurred during card registration: {e}", exc_info=True)
+        # 일반적인 서버 오류 메시지 반환
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="카드 등록 중 예측하지 못한 서버 오류가 발생했습니다.",
+            detail="결제 시스템에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )

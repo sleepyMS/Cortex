@@ -1,24 +1,33 @@
-// file: frontend/src/app/[locale]/payment/success-billing/page.tsx (신규 파일)
+// file: frontend/src/app/[locale]/payment/success-billing/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSubscriptionCheckoutMutation } from "@/hooks/useSubscription";
 import { toast } from "sonner";
-import { Spinner } from "@/components/ui/Spinner"; // 로딩 스피너 컴포넌트 (가정)
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function PaymentSuccessBillingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const checkoutMutation = useSubscriptionCheckoutMutation();
 
+  // useRef를 사용하여 API 호출 상태를 관리합니다.
+  const hasMutated = useRef(false);
+
   useEffect(() => {
-    // URL로부터 authKey와 planId를 추출합니다.
+    // 이미 API를 호출했거나, 현재 호출 중인 경우 함수를 종료합니다.
+    if (hasMutated.current || checkoutMutation.isPending) {
+      return;
+    }
+
     const authKey = searchParams.get("authKey");
     const planId = searchParams.get("planId");
 
     if (authKey && planId) {
-      // authKey와 planId를 사용하여 서버에 카드 등록 및 첫 결제 요청을 보냅니다.
+      // API 호출 시작 전에 플래그를 true로 설정합니다.
+      hasMutated.current = true;
+
       checkoutMutation.mutate(
         { authKey, planId },
         {
@@ -26,18 +35,18 @@ export default function PaymentSuccessBillingPage() {
             toast.success(
               "결제 수단 등록 및 첫 구독 결제가 요청되었습니다. 잠시 후 구독 상태가 활성화됩니다."
             );
-            // 성공 시 사용자를 대시보드나 설정 페이지로 이동시킵니다.
             router.push("/dashboard");
           },
           onError: (error) => {
-            // 뮤테이션 자체에서 toast.error를 처리하지만, 추가적인 에러 핸들링이 필요하면 여기에 작성합니다.
-            // 실패 시 사용자를 가격 정책 페이지로 다시 보냅니다.
+            const errorMessage =
+              error.response?.data?.detail ||
+              "결제 처리 중 알 수 없는 오류가 발생했습니다.";
+            toast.error(`결제 실패: ${errorMessage}`);
             router.push("/pricing");
           },
         }
       );
     } else {
-      // 비정상적인 접근 처리
       toast.error("잘못된 접근입니다. 결제 정보를 찾을 수 없습니다.");
       router.push("/pricing");
     }

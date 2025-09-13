@@ -2,9 +2,10 @@
 
 import base64
 import httpx
-from typing import Dict
+from typing import Dict, Any
 from fastapi import HTTPException, status
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +19,46 @@ class TossPaymentsClient:
         self.base_url = "https://api.tosspayments.com/v1"
         self.auth_headers = {"Authorization": f"Basic {encoded_key}"}
 
-    async def _request(self, method: str, path: str, **kwargs) -> Dict:
+    async def _request(self, method: str, path: str, **kwargs: Any) -> Dict:
+        """
+        Toss Payments API 요청을 처리하는 내부 함수.
+        요청 페이로드와 응답 데이터를 로깅하여 디버깅을 돕습니다.
+        """
         async with httpx.AsyncClient() as client:
             try:
+                # 1. 요청 페이로드 로깅
+                request_body = kwargs.get('json', None)
+                if request_body:
+                    logger.warning(f"Sending to Toss API: {method} {self.base_url}{path} with payload: {json.dumps(request_body)}")
+                else:
+                    logger.warning(f"Sending to Toss API: {method} {self.base_url}{path}")
+                
+                # 2. 실제 API 요청
                 response = await client.request(
-                    method, f"{self.base_url}{path}", headers=self.auth_headers, timeout=10.0, **kwargs
+                    method, 
+                    f"{self.base_url}{path}", 
+                    headers=self.auth_headers, 
+                    timeout=10.0, 
+                    **kwargs
                 )
+
+                # 3. 응답 데이터 로깅
+                response_data = response.json()
+                logger.warning(f"Received from Toss API: {response.status_code} {response.url} - {response_data}")
+                
                 response.raise_for_status()
-                return response.json()
+                return response_data
+            
             except httpx.HTTPStatusError as e:
+                # 에러 응답 전문 로깅
                 error_data = e.response.json()
-                logger.error(f"Toss API Error on {path}: {error_data}")
+                logger.error(f"Toss API Error on {path}: {error_data}", exc_info=True)
                 raise HTTPException(
                     status_code=e.response.status_code,
                     detail=error_data.get("message", "알 수 없는 결제 오류가 발생했습니다."),
                 )
             except httpx.RequestError as e:
-                logger.error(f"Network error calling Toss API: {e}")
+                logger.error(f"Network error calling Toss API: {e}", exc_info=True)
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="결제 서버와 통신할 수 없습니다.",
@@ -47,11 +71,10 @@ class TossPaymentsClient:
         return await self._request("POST", "/billing/authorizations/issue", json={"authKey": auth_key, "customerKey": customer_key})
 
     async def charge_billing_key(
-        self, billing_key: str, customer_key: str, payload: Dict
+        self, billing_key: str, payload: Dict
     ) -> Dict:
         """
-        빌링키로 결제를 실행합니다. customerKey를 payload에 추가합니다.
+        빌링키로 결제를 실행합니다. customerKey는 payload에 이미 포함되어야 합니다.
         """
-        # payload에 필수 파라미터인 customerKey를 추가합니다.
-        full_payload = {"customerKey": customer_key, **payload}
-        return await self._request("POST", f"/billing/{billing_key}", json=full_payload)
+        # Toss API 명세에 따라 billing_key를 URL 경로에 사용
+        return await self._request("POST", f"/billing/{billing_key}", json=payload)
