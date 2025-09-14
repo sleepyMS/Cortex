@@ -74,30 +74,46 @@ class PlanService:
         return plan.name if plan else PlanType.BASIC
 
     async def get_user_plan_features(self, user: models.User, db: AsyncSession) -> models.PlanFeature:
-        """사용자의 플랜에 해당하는 모든 기능 제한 정보를 비동기로 반환합니다."""
-        # User 객체에 subscription 관계가 로드되었는지 확인
-        if not hasattr(user, 'subscription') or not user.subscription:
-             # 로드되지 않았다면 DB에서 직접 조회
-            sub_result = await db.execute(
-                select(models.Subscription).options(joinedload(models.Subscription.plan).joinedload(models.Plan.features))
-                .filter(models.Subscription.user_id == user.id)
-            )
-            subscription = sub_result.scalar_one_or_none()
-        else:
-            subscription = user.subscription
-        
-        # 구독 정보가 있다면 해당 플랜의 기능 반환, 없다면 Basic 플랜 기능 반환
-        if subscription and hasattr(subscription, 'plan') and subscription.plan and hasattr(subscription.plan, 'features') and subscription.plan.features:
+        """
+        사용자의 플랜에 해당하는 모든 기능 제한 정보를 비동기로 반환합니다.
+        [개선] 구독 상태가 'active'인 경우에만 해당 플랜의 기능을 반환하며,
+        그 외의 경우(구독 없거나 pending, canceled 등)에는 기본 'Basic' 플랜의 기능을 반환합니다.
+        """
+        # 1. 사용자의 구독 정보를 plan, features와 함께 Eager Loading으로 조회합니다.
+        #    이렇게 하면 한 번의 쿼리로 필요한 모든 데이터를 가져와 효율적입니다.
+        sub_query = (
+            select(models.Subscription)
+            .options(joinedload(models.Subscription.plan).joinedload(models.Plan.features))
+            .filter(models.Subscription.user_id == user.id)
+        )
+        subscription_result = await db.execute(sub_query)
+        subscription = subscription_result.scalar_one_or_none()
+
+        # 2. [핵심] 구독이 존재하고, 상태가 'active'이며, 모든 연관 데이터가 정상일 때만 해당 플랜 기능을 반환합니다.
+        if (
+            subscription and
+            subscription.status == "active" and  # <-- ⭐️ 가장 중요한 변경점: 상태를 명시적으로 확인
+            subscription.plan and
+            subscription.plan.features
+        ):
             return subscription.plan.features
         else:
-            # Basic 플랜 기능 조회
-            feature_result = await db.execute(
-                select(models.PlanFeature).join(models.Plan).filter(models.Plan.name == PlanType.BASIC)
+            # 3. 그 외 모든 경우(구독이 없거나, 'active' 상태가 아닌 경우)에는 'Basic' 플랜의 기능을 조회하여 반환합니다.
+            basic_feature_query = (
+                select(models.PlanFeature)
+                .join(models.Plan)
+                .filter(models.Plan.name == PlanType.BASIC)
             )
-            basic_features = feature_result.scalar_one_or_none()
+            basic_feature_result = await db.execute(basic_feature_query)
+            basic_features = basic_feature_result.scalar_one_or_none()
+            
+            # 4. 만약 Basic 플랜 정보조차 없다면, 이는 시스템 설정 오류이므로 500 에러를 발생시킵니다.
             if not basic_features:
                 logger.error("Default 'Basic' plan features not found in the database.")
-                raise HTTPException(status_code=500, detail="서버 오류: 기본 플랜 기능 설정이 누락되었습니다.")
+                raise HTTPException(
+                    status_code=500, 
+                    detail="서버 오류: 기본 플랜 기능 설정이 누락되었습니다."
+                )
             return basic_features
 
     def get_timeframe_level(self, timeframe: str) -> PlanType:

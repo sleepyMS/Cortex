@@ -49,9 +49,6 @@ async def register_card_for_subscription(
     toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
 ):
     try:
-        # ⚠️ 디버깅용 로그, 문제 해결 후 제거 가능
-        logger.warning(f"Received authKey: {request_data.auth_key[:8]}...") 
-
         subscription_schema = (
             await subscription_service.register_card_and_process_first_payment(
                 db=db,

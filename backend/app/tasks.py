@@ -38,7 +38,8 @@ from .event_bus import publish_event
 from .services.market_data_service import market_data_service
 from .services.signal_service import signal_service
 from .services.marketplace_service import marketplace_service
-from .services.notification_service import notification_service # 알림 서비스 (가상)
+from .services.notification_service import notification_service 
+from .services.subscription_service import subscription_service
 
 
 
@@ -296,21 +297,6 @@ def run_backtest(self, backtest_id: str):
 
 # --- 이벤트 구독자 (Subscribers) ---
 
-@celery_app.task(name="fulfill_order_task", queue="io_bound_queue")
-def fulfill_order_task(order_id: str, gateway_transaction_id: str):
-    """'payment.succeeded' 이벤트를 구독하여 자산을 지급합니다."""
-    logger.info(f"Event received: Fulfilling order ID: {order_id}")
-    async def _fulfill():
-        async with AsyncSessionLocal() as session:
-            try:
-                await marketplace_service.fulfill_order(session, uuid.UUID(order_id), gateway_transaction_id)
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                logger.error(f"Critical error fulfilling order {order_id}", exc_info=True)
-                raise
-    return asyncio.run(_fulfill())
-
 @celery_app.task(name="send_purchase_notification_task", queue="io_bound_queue")
 def send_purchase_notification_task(order_id: str, buyer_id: str):
     """'order.fulfilled' 이벤트를 구독하여 구매 완료 알림을 보냅니다."""
@@ -335,6 +321,34 @@ def send_backtest_notification_task(event_name: str, payload: dict):
                 pass
     return asyncio.run(_send())
 
+@celery_app.task(name="handle_recurring_payment_success_task", queue="io_bound_queue")
+def handle_recurring_payment_success_task(payload: dict):
+    """'subscription.recurring_payment.succeeded' 이벤트를 처리하여 구독을 갱신합니다."""
+    customer_key = payload.get("customer_key")
+    payment_data = payload.get("payment_data")
+    logger.info(f"Event received: Renewing subscription for user {customer_key}")
+    
+    async def _renew():
+        async with AsyncSessionLocal() as session:
+            await subscription_service.activate_or_update_subscription(
+                db=session, customer_key=customer_key, payment_data=payment_data
+            )
+    return asyncio.run(_renew())
+
+@celery_app.task(name="handle_recurring_payment_failure_task", queue="io_bound_queue")
+def handle_recurring_payment_failure_task(payload: dict):
+    """'subscription.recurring_payment.failed' 이벤트를 처리하여 구독을 취소합니다."""
+    customer_key = payload.get("customer_key")
+    failure_data = payload.get("failure_data")
+    logger.info(f"Event received: Canceling subscription for user {customer_key}")
+
+    async def _cancel():
+        async with AsyncSessionLocal() as session:
+            await subscription_service.handle_subscription_payment_failure(
+                db=session, customer_key=customer_key, failure_data=failure_data
+            )
+    return asyncio.run(_cancel())
+
 
 # --- 중앙 이벤트 분배기 (Dispatcher) ---
 
@@ -343,26 +357,17 @@ EVENT_SUBSCRIBERS = {
     "order.fulfilled": ["send_purchase_notification_task"],
     "backtest.completed": ["send_backtest_notification_task"],
     "backtest.failed": ["send_backtest_notification_task"],
+    "subscription.recurring_payment.succeeded": ["handle_recurring_payment_success_task"],
+    "subscription.recurring_payment.failed": ["handle_recurring_payment_failure_task"],
 }
 
 @celery_app.task(name="dispatch_event", queue="io_bound_queue")
 def dispatch_event(event_name: str, payload: dict):
     """발행된 이벤트를 받아 적절한 구독자 태스크들에게 전달하는 중앙 분배기."""
-    logger.info(f"Dispatching event '{event_name}'...")
-    if event_name not in EVENT_SUBSCRIBERS:
-        return f"No subscribers for event '{event_name}'."
-
-    for task_name in EVENT_SUBSCRIBERS[event_name]:
-        try:
-            # 이벤트 페이로드에서 필요한 인자를 추출하여 각 태스크에 전달
-            if task_name == "fulfill_order_task":
-                celery_app.send_task(task_name, args=[payload["order_id"], payload["gateway_transaction_id"]])
-            elif task_name == "send_purchase_notification_task":
-                celery_app.send_task(task_name, args=[payload["order_id"], payload["buyer_id"]])
-            elif task_name == "send_backtest_notification_task":
-                 # 이벤트 이름과 페이로드 전체를 넘겨주어 구독자가 분기 처리하도록 함
-                celery_app.send_task(task_name, args=[event_name, payload])
-            
-            logger.info(f"Dispatched task '{task_name}' for event '{event_name}'.")
-        except Exception as e:
-            logger.error(f"Failed to dispatch task '{task_name}' for event '{event_name}': {e}", exc_info=True)
+    if task_names := EVENT_SUBSCRIBERS.get(event_name):
+        logger.info(f"Dispatching event '{event_name}' to tasks: {task_names}")
+        for task_name in task_names:
+            # 모든 payload를 그대로 전달하는 방식으로 통일하여 유연성 확보
+            celery_app.send_task(task_name, args=[payload])
+    else:
+        logger.debug(f"No subscribers for event '{event_name}'.")

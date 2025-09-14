@@ -1,4 +1,4 @@
-# file: backend/app/event_bus.py (신규 파일)
+# file: backend/app/event_bus.py
 import logging
 from typing import Dict, Any
 from .celery_app import celery_app
