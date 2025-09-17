@@ -5,12 +5,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from .. import models, schemas
+from .credit_service import credit_service
 
 class CostCalculationService:
     """
     백테스팅, 최적화 등 기능 사용에 필요한 크레딧 비용을 계산하는 중앙 서비스.
     모든 비용 정책은 이 서비스 내에서만 관리됩니다.
     """
+
+    async def calculate_cost_from_api_request(
+        self,
+        db: AsyncSession,
+        user: models.User,
+        request: schemas.BacktestCreate | schemas.BacktestCostEstimationRequest
+    ) -> schemas.CostEstimationResponse:
+        """
+        라우터나 다른 서비스에서 받은 요청 스키마로부터 직접 비용 계산을 수행합니다.
+        비용 계산 파라미터를 생성하는 로직을 이 함수가 전담합니다.
+        """
+        duration_days = (request.end_date - request.start_date).days
+        duration_years = duration_days / 365.25 if duration_days > 0 else 0
+
+        # 비용 계산에 필요한 저수준 파라미터 객체를 내부적으로 생성합니다.
+        cost_params = schemas.CostEstimationRequest(
+            backtest_duration_years=duration_years,
+            min_timeframe_minutes=60,  # TODO: 실제 전략에서 사용하는 최소 타임프레임을 동적으로 추출해야 합니다.
+            trials=1
+        )
+        
+        # 기존의 저수준 계산 함수를 호출하여 결과를 반환합니다.
+        return await self.calculate_credit_cost(db, user, cost_params)
+
+    
     async def calculate_credit_cost(
         self,
         db: AsyncSession,
@@ -63,15 +89,15 @@ class CostCalculationService:
         discount_pct = 1 - (surcharge_multiplier / 2.0)
 
         # 5. 사용자 잔액 정보 조회 (CreditService를 통해 조회해야 하나, 우선 0으로 설정)
-        # TODO: 2.3 단계에서 CreditService.get_balance_summary 연동 필요
-        user_balance = 0 # 임시값
+        credit_summary = await credit_service.get_balance_summary(db, user.id)
+        user_balance = credit_summary.total_balance
         is_sufficient = user_balance >= final_cost
 
         return schemas.CostEstimationResponse(
             original_cost=full_price,
-            discount_pct=round(discount_pct, 4), # 소수점 4자리까지
+            discount_pct=round(discount_pct, 4),
             final_cost=final_cost,
-            user_balance=user_balance,
+            user_balance=user_balance, # 실제 잔액으로 채워줍니다.
             is_sufficient=is_sufficient
         )
 

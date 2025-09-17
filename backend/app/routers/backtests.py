@@ -22,82 +22,81 @@ router = APIRouter(prefix="/backtests", tags=["Backtesting"])
 get_verified_backtest = create_owner_verifier(models.Backtest)
 
 
-@router.post("/", response_model=schemas.Backtest, status_code=status.HTTP_202_ACCEPTED, summary="Request a new backtest job")
-@limiter.limit("5/minute")
+@router.post(
+    "/estimate-cost", 
+    response_model=schemas.CostEstimationResponse, 
+    summary="Estimate backtest credit cost"
+)
+async def estimate_backtest_cost(
+    estimation_request: schemas.BacktestCostEstimationRequest,
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """백테스트 실행에 필요한 크레딧 비용을 미리 계산하여 반환합니다."""
+    try:
+        # 이제 라우터는 비용 계산 방식에 대해 전혀 알 필요가 없습니다.
+        # 단순히 요청 데이터를 서비스에 전달하고 결과를 반환합니다.
+        return await cost_calculator_service.calculate_cost_from_api_request(
+            db, current_user, estimation_request
+        )
+    except Exception as e:
+        logger.error(f"Error estimating backtest cost for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="비용 예측 중 서버 오류가 발생했습니다.")
+
+@router.post(
+    "/",
+    response_model=schemas.BacktestInCreateResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Request a new backtest job"
+)
 async def create_backtest(
     backtest_create: schemas.BacktestCreate,
     request: Request,
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db)
 ):
-    """
-    새로운 백테스팅 작업을 요청합니다. 이 과정에서 크레딧이 계산되고 차감됩니다.
-    """
-    # [크레딧 시스템 연동] 1. 비용 계산을 위한 파라미터 준비
-    duration_days = (backtest_create.end_date - backtest_create.start_date).days
-    duration_years = duration_days / 365.25 if duration_days > 0 else 0
-    
-    # 전략 스냅샷에서 최소 타임프레임을 찾아야 하지만, 우선 요청 데이터를 기반으로 계산합니다.
-    # 실제 구현 시에는 strategy_snapshot을 먼저 생성하여 min_timeframe_minutes를 추출해야 합니다.
-    # 여기서는 예시로 60분(1h)으로 가정합니다.
-    cost_params = schemas.CostEstimationRequest(
-        backtest_duration_years=duration_years,
-        min_timeframe_minutes=60, # TODO: 전략에서 실제 최소 타임프레임 추출 로직 필요
-        trials=1
-    )
+    """새로운 백테스팅 작업을 요청합니다. DB 트랜잭션이 커밋된 후 Celery 작업이 등록됩니다."""
+    try:
+        # 1. 백테스트 DB 기록 생성 및 크레딧 차감
+        created_backtest = await backtest_service.request_backtest_transactional(
+            db, user=current_user, backtest_create=backtest_create
+        )
 
-    # [크레딧 시스템 연동] 2. 비용 계산
-    cost_estimation = await cost_calculator_service.calculate_credit_cost(db, current_user, cost_params)
-
-    # 트랜잭션 시작: 크레딧 차감과 백테스트 생성을 원자적(atomic)으로 처리
-    async with db.begin():
+        # 2. Celery 작업을 큐에 추가하고, Task ID를 created_backtest 객체에 할당
         try:
-            # [크레딧 시스템 연동] 3. 크레딧 차감
-            await credit_service.deduct_credits(
-                db=db,
-                user_id=current_user.id,
-                amount_to_deduct=cost_estimation.final_cost,
-                discount_pct=cost_estimation.discount_pct,
-                related_entity_type="BACKTEST"
-            )
-
-            # 4. 백테스트 DB 객체 생성
-            new_backtest = await backtest_service.create_backtest_job(db, current_user, backtest_create)
-            
-            # 5. Celery 작업 전송 (DB 커밋은 트랜잭션 종료 시 자동으로 처리)
-            try:
-                async_result = run_backtest.delay(backtest_id=str(new_backtest.id))
-                new_backtest.celery_task_id = async_result.id
-                # [크레딧 시스템 연동] 차감된 크레딧 ID를 백테스트와 연결 (선택적 확장)
-                # new_backtest.credit_transaction_id = transaction.id 
-                db.add(new_backtest)
-                
-                logger.info(f"Celery task dispatched for Backtest ID: {new_backtest.id} with Task ID: {async_result.id}.")
-
-            except Exception as e:
-                logger.error(f"Failed to dispatch Celery task for Backtest ID {new_backtest.id}: {e}", exc_info=True)
-                # 이 경우 트랜잭션이 롤백되어 크레딧 차감과 백테스트 생성이 모두 취소됩니다.
-                raise HTTPException(status_code=500, detail="백테스트 작업 시작에 실패했습니다. 크레딧은 차감되지 않았습니다.")
-            
+            task = run_backtest.delay(backtest_id=str(created_backtest.id))
+            created_backtest.celery_task_id = task.id
+            # db.flush()를 통해 변경사항을 DB에 즉시 반영
             await db.flush()
-            await db.refresh(new_backtest)
-            
-            # Lazy loading 회피를 위해 서비스 계층에서 다시 조회
-            created_backtest = await backtest_service.get_backtest_by_id(db, new_backtest.id)
+        except Exception as celery_error:
+            logger.error(f"Celery task dispatch failed after DB operations for user {current_user.email}: {celery_error}", exc_info=True)
+            raise HTTPException(status_code=500, detail="백테스트 작업 생성에 실패했습니다.")
 
-            logger.info(f"Backtest job (ID: {created_backtest.id}) for user {current_user.email} successfully created. Cost: {cost_estimation.final_cost} CC.")
-            return created_backtest
+        # 3. 모든 DB 작업이 성공적으로 완료되었으므로, 트랜잭션을 커밋합니다.
+        #    이 커밋이 완료된 후에야 Celery 워커가 DB 조회를 시도하게 됩니다.
+        await db.commit()
+        
+        logger.info(f"Backtest job (ID: {created_backtest.id}) for user {current_user.email} successfully created and dispatched.")
 
-        except HTTPException as e:
-            # HTTP 예외(e.g., 잔액 부족) 발생 시 명시적으로 롤백 후 예외를 다시 발생시킵니다.
-            # `async with db.begin()` 블록이 예외를 잡고 자동 롤백하지만, 명시성을 위해 추가할 수 있습니다.
-            await db.rollback()
-            raise e
-        except Exception as e:
-            await db.rollback()
-            logger.error(f"Error creating backtest job for user {current_user.email}: {e}", exc_info=True)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 작업 생성 중 서버 오류가 발생했습니다.")
-
+        # 4. 응답에 필요한 데이터만 포함하는 DTO 생성
+        response_data = {
+            "id": created_backtest.id,
+            "userId": created_backtest.user_id,
+            "strategyId": created_backtest.strategy_id,
+            "status": created_backtest.status,
+            "createdAt": created_backtest.created_at,
+            "completedAt": created_backtest.completed_at
+        }
+        
+        return schemas.BacktestInCreateResponse(**response_data)
+        
+    except HTTPException as e:
+        await db.rollback() # 트랜잭션 롤백
+        raise e
+    except Exception as e:
+        await db.rollback() # 트랜잭션 롤백
+        logger.error(f"Error processing backtest request for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 요청 처리 중 서버 오류가 발생했습니다.")
 
 @router.get("/", response_model=List[schemas.BacktestInList], summary="Get list of user's backtest records")
 async def get_backtests(
@@ -128,18 +127,11 @@ async def get_backtest_by_id(
     특정 ID의 백테스팅 작업 상세 정보 및 결과를 조회합니다.
     (소유권 검증 및 모든 연관 데이터 Eager Loading 포함)
     """
-    # 1. [핵심] 우리가 수정한, Eager Loading 로직이 포함된 서비스 함수를 직접 호출합니다.
-    backtest = await backtest_service.get_backtest_by_id(db, backtest_id)
-
-    # 2. 서비스 함수 호출 후, 소유권을 수동으로 검증합니다.
-    if not backtest:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="백테스트를 찾을 수 없습니다.")
-    if backtest.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 백테스트에 접근할 권한이 없습니다.")
-
-    logger.warning(f"User (ID: {backtest.user_id}) accessed backtest: {backtest.id}.")
-    logger.warning("[API] Returning backtest detail: %s", backtest)
-
+    backtest = await backtest_service.get_backtest_by_id_for_user(
+        db, backtest_id=backtest_id, user_id=current_user.id
+    )
+    # 이제 라우터에는 소유권 검증 코드가 없습니다.
+    logger.info(f"User (ID: {backtest.user_id}) accessed backtest: {backtest.id}.")
     return backtest
 
 @router.get("/{backtest_id}/trade_logs", response_model=List[schemas.TradeLogEntry], summary="Get trade logs for a specific backtest")
@@ -184,11 +176,12 @@ async def delete_backtest_record(
     특정 ID의 백테스트 기록을 삭제합니다. (소유권 자동 검증)
     성공 시 204 No Content를 반환합니다.
     """
+    # [개선] 오류 발생 시 안전한 로깅을 위해 ID를 미리 변수에 저장
+    backtest_id_for_logging = backtest_to_delete.id
     try:
         await backtest_service.delete_backtest(db, backtest_to_delete)
-        await db.commit()
-        # 성공 시에는 내용(content)이 없는 응답을 보내는 것이 RESTful API 표준입니다.
+        # 수동 commit/rollback은 이미 제거된 상태여야 합니다.
     except Exception as e:
-        await db.rollback()
-        logger.error(f"Error deleting backtest {backtest_to_delete.id}: {e}", exc_info=True)
+        # [개선] 실패한 객체 대신 미리 저장해둔 ID를 사용하여 안전하게 로깅
+        logger.error(f"Error deleting backtest {backtest_id_for_logging}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 기록 삭제 중 서버 오류가 발생했습니다.")

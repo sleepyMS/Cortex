@@ -9,6 +9,8 @@ import uuid
 from .. import schemas, models, security
 from ..dependencies import get_current_user, get_async_db, get_current_active_user, get_current_admin_user
 from ..services.user_service import user_service
+from ..services.attendance_service import attendance_service
+from ..services.credit_service import credit_service
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +18,26 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 # --- 현재 사용자 정보 엔드포인트 ---
 
-@router.get("/me", response_model=schemas.User, summary="Get current user profile")
+@router.get("/me", response_model=schemas.User, summary="Get current user profile with credits")
 async def read_users_me(
-    # get_current_user가 비동기로 변경되었으므로, Depends에서 user를 받아옴
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
-    현재 로그인된 사용자의 프로필 정보와 구독 정보를 함께 반환합니다.
-    get_current_user 의존성에서 이미 Eager Loading 되었으므로 추가 쿼리가 필요 없습니다.
+    현재 로그인된 사용자의 프로필, 구독 정보, 그리고 최신 크레딧 잔액을 함께 반환합니다.
+    이 엔드포인트 호출 시, 하루에 한 번 출석 체크가 자동으로 처리됩니다.
     """
-    logger.info(f"User {current_user.email} requested their profile.")
-    return current_user
+    try:
+        user_profile = await user_service.get_user_profile_with_checkin(db, current_user)
+        logger.info(f"Successfully synced credits for user {user_profile.email}.")
+        return user_profile
+
+    except Exception as e:
+        logger.error(f"Error during credit sync for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="프로필 정보를 가져오는 중 오류가 발생했습니다."
+        )
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Delete current user's account")
 async def delete_me(

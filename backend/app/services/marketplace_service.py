@@ -174,6 +174,8 @@ class MarketplaceService:
             db.add(product)
 
         await db.flush()
+
+        product.seller = seller
         
         return product
 

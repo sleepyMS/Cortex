@@ -2,10 +2,9 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
-from .models import PlanType
+from .models import PlanType, BacktestStatus
 import uuid
 
-from .models import PlanType
 from .sanitizers import sanitize_html
 
 
@@ -16,6 +15,55 @@ class CamelCaseModel(BaseModel):
         populate_by_name=True,
         from_attributes=True,
     )
+
+# ==============================================================================
+# 0. 크레딧 시스템 관련 스키마 
+# ==============================================================================
+
+class CreditBalanceBreakdownEvent(CamelCaseModel):
+    """만료 기간이 있는 이벤트성 크레딧 정보"""
+    amount: int
+    expires_at: datetime
+
+class CreditBalanceBreakdown(CamelCaseModel):
+    """종류별 크레딧 상세 내역"""
+    purchased: int = 0
+    subscription_daily: int = 0
+    expiring_weekly: int = 0
+    event: List[CreditBalanceBreakdownEvent] = Field(default_factory=list)
+
+class CreditBalanceSummary(CamelCaseModel):
+    """사용자의 크레딧 잔액 요약 정보 응답 스키마"""
+    total_balance: int
+    breakdown: CreditBalanceBreakdown
+
+class CreditTransactionLedgerDetail(CamelCaseModel):
+    """거래 내역에 포함될 원장 출처 정보"""
+    source_type: str
+    amount_deducted: int
+
+class CreditTransactionResponse(CamelCaseModel):
+    """크레딧 거래 내역 응답 스키마"""
+    id: uuid.UUID
+    total_amount_deducted: int
+    discount_pct: float
+    related_entity_type: Optional[str] = None
+    created_at: datetime
+    details: List[CreditTransactionLedgerDetail]
+
+class CostEstimationRequest(CamelCaseModel):
+    """비용 견적 요청 스키마"""
+    backtest_duration_years: float = Field(..., ge=0)
+    min_timeframe_minutes: int = Field(..., ge=1)
+    trials: int = Field(1, ge=1)
+
+class CostEstimationResponse(CamelCaseModel):
+    """비용 견적 응답 스키마"""
+    original_cost: int
+    discount_pct: float
+    final_cost: int
+    user_balance: int
+    is_sufficient: bool
 
 # ==============================================================================
 # 1. 사용자, 인증, 구독 관련 스키마
@@ -173,7 +221,8 @@ class User(CamelCaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     subscription: Optional[SubscriptionSchema] = None
-    
+    credit_balance: Optional[CreditBalanceSummary] = None
+
 # --- UserDashboardSummary 내부용 스키마 정의 ---
 class LatestBacktestItem(CamelCaseModel):
     id: uuid.UUID
@@ -313,6 +362,30 @@ class StrategyCreate(StrategyBase):
     tpsl_logic: Optional[TpslLogic] = None
     target_coins: List[TargetCoin] = Field(default_factory=list)
 
+class StrategyForSnapshot(CamelCaseModel):
+    """
+    백테스팅 실행 시점에 전략의 스냅샷을 저장하기 위한 스키마.
+    """
+    id: uuid.UUID
+    authorId: uuid.UUID = Field(..., alias="author_id")
+    name: str
+    description: Optional[str] = None
+    longEntryRules: Dict[str, Any] = Field(..., alias="long_entry_rules")
+    longExitRules: Optional[Dict[str, Any]] = Field(None, alias="long_exit_rules")
+    shortEntryRules: Optional[Dict[str, Any]] = Field(None, alias="short_entry_rules")
+    shortExitRules: Optional[Dict[str, Any]] = Field(None, alias="short_exit_rules")
+    tpslLogic: Optional[Dict[str, Any]] = Field(None, alias="tpsl_logic")
+    targetCoins: List[Dict[str, Any]] = Field(..., alias="target_coins")
+    isPublic: bool = Field(..., alias="is_public")
+    paidFeatureLevel: Optional[str] = Field(None, alias="paid_feature_level")
+    createdAt: datetime = Field(..., alias="created_at")
+    updatedAt: Optional[datetime] = Field(None, alias="updated_at")
+
+    class Config:
+        from_attributes = True
+        alias_generator = to_camel
+        populate_by_name = True
+
 class StrategyUpdate(CamelCaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
@@ -369,10 +442,6 @@ class BacktestResultSummaryForCard(CamelCaseModel):
     avg_holding_period_days: Optional[float] = None
     k_ratio: Optional[float] = None
 
-class StrategyInList(StrategyBase):
-    latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
-    marketplace_listing: Optional[MarketplaceListing] = None
-
 # --- [역할 2] API 응답을 위한 베이스 스키마 ---
 class StrategyResponseBase(CamelCaseModel):
     """API 응답용 스키마들이 공통으로 가지는 필드를 정의"""
@@ -401,6 +470,23 @@ class Strategy(StrategyResponseBase):
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
     marketplace_listing: Optional[MarketplaceListing] = None
     backtests: List[BacktestHistoryItem] = Field(default_factory=list)
+
+class BacktestInCreateResponse(CamelCaseModel):
+    """
+    POST /backtests/ 요청 성공 시 반환되는 응답 스키마.
+    요청 시점의 기본 정보만 포함합니다.
+    """
+    id: uuid.UUID
+    userId: uuid.UUID = Field(..., alias="user_id")
+    strategyId: uuid.UUID = Field(..., alias="strategy_id")
+    status: BacktestStatus
+    createdAt: datetime = Field(..., alias="created_at")
+    completedAt: Optional[datetime] = Field(None, alias="completed_at")
+
+    class Config:
+        from_attributes = True
+        alias_generator = to_camel
+        populate_by_name = True
     
 class ApiKeyCreate(CamelCaseModel):
     exchange: str = Field(..., min_length=2, max_length=50)
@@ -448,6 +534,12 @@ class BacktestCreate(CamelCaseModel):
     end_date: datetime = Field(..., description="End date for backtest period (UTC)")
     initial_capital: float = Field(10000.0, ge=1.0, description="Initial capital for backtest")
     parameters: BacktestExecutionParameters
+
+class BacktestCostEstimationRequest(CamelCaseModel):
+    """비용 견적 요청을 위한 전용 스키마"""
+    strategy_id: uuid.UUID
+    start_date: datetime
+    end_date: datetime
 
 class TradeLogEntry(CamelCaseModel):
     timestamp: datetime
@@ -782,51 +874,3 @@ class BillingKeyRegistrationRequest(CamelCaseModel):
     auth_key: str = Field(..., description="Toss Payments 프론트엔드 SDK로부터 받은 임시 인증 키")
 
 
-# ==============================================================================
-# 6. 크레딧 시스템 관련 스키마 
-# ==============================================================================
-
-class CreditBalanceBreakdownEvent(CamelCaseModel):
-    """만료 기간이 있는 이벤트성 크레딧 정보"""
-    amount: int
-    expires_at: datetime
-
-class CreditBalanceBreakdown(CamelCaseModel):
-    """종류별 크레딧 상세 내역"""
-    purchased: int = 0
-    subscription_daily: int = 0
-    expiring_weekly: int = 0
-    event: List[CreditBalanceBreakdownEvent] = Field(default_factory=list)
-
-class CreditBalanceSummary(CamelCaseModel):
-    """사용자의 크레딧 잔액 요약 정보 응답 스키마"""
-    total_balance: int
-    breakdown: CreditBalanceBreakdown
-
-class CreditTransactionLedgerDetail(CamelCaseModel):
-    """거래 내역에 포함될 원장 출처 정보"""
-    source_type: str
-    amount_deducted: int
-
-class CreditTransactionResponse(CamelCaseModel):
-    """크레딧 거래 내역 응답 스키마"""
-    id: uuid.UUID
-    total_amount_deducted: int
-    discount_pct: float
-    related_entity_type: Optional[str] = None
-    created_at: datetime
-    details: List[CreditTransactionLedgerDetail]
-
-class CostEstimationRequest(CamelCaseModel):
-    """비용 견적 요청 스키마"""
-    backtest_duration_years: float = Field(..., ge=0)
-    min_timeframe_minutes: int = Field(..., ge=1)
-    trials: int = Field(1, ge=1)
-
-class CostEstimationResponse(CamelCaseModel):
-    """비용 견적 응답 스키마"""
-    original_cost: int
-    discount_pct: float
-    final_cost: int
-    user_balance: int
-    is_sufficient: bool

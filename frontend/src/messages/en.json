@@ -576,6 +576,7 @@
       "saveSuccess": "Strategy was saved successfully.",
       "saveError": "Failed to save strategy: {error}",
       "saveFailedGeneric": "An unknown error occurred.",
+      "updateError": "Strategy Update Error",
       "rulesRequired": "At least one entry rule is required."
     }
   },

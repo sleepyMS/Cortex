@@ -120,23 +120,25 @@ async def list_strategy_on_marketplace(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """사용자의 특정 전략을 마켓플레이스에 상품으로 등록하거나 업데이트합니다."""
-    # 소유권 검증을 위해 전략을 먼저 조회합니다.
     strategy_to_list = await db.get(models.Strategy, payload.strategy_id)
     if not strategy_to_list or strategy_to_list.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="자신의 전략만 마켓에 등록할 수 있습니다.")
     
     try:
+        # [수정] 서비스가 seller 관계까지 포함하여 product 객체를 반환합니다.
         product = await marketplace_service.list_strategy_as_product(
             db=db, strategy=strategy_to_list, listing_data=payload, seller=current_user
         )
-        await db.commit()
-        await db.refresh(product, attribute_names=['seller'])
         logger.info(f"Strategy '{strategy_to_list.name}' listed on marketplace by user {current_user.email}.")
+        
+        # [수정] 수동 commit과 불필요한 refresh를 모두 제거했습니다.
+        # 트랜잭션은 함수가 성공적으로 끝나면 get_async_db에 의해 자동으로 커밋됩니다.
         return product
     except HTTPException as e:
-        await db.rollback(); raise e
+        # [수정] 수동 rollback 제거
+        raise e
     except Exception as e:
-        await db.rollback()
+        # [수정] 수동 rollback 제거
         logger.error(f"Error listing strategy {strategy_to_list.id} for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="전략을 마켓에 등록하는 중 서버 오류가 발생했습니다.")
 

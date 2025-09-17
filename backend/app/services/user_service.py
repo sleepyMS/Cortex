@@ -14,6 +14,9 @@ import asyncio
 from .. import models, schemas
 from ..security import get_password_hash, verify_password
 from ..celery_app import celery_app
+from ..services.attendance_service import attendance_service
+from ..services.credit_service import credit_service
+
 
 logger = logging.getLogger(__name__)
 
@@ -326,6 +329,24 @@ class UserService:
         db.add(user)
         await db.flush()
         return True
+    
+    async def get_user_profile_with_checkin(self, db: AsyncSession, user: models.User) -> models.User:
+        """
+        [신규] 사용자 프로필을 조회하며, 일일 출석 체크와 크레딧 잔액 조회를 함께 처리합니다.
+        트랜잭션 관리는 상위 의존성(get_async_db)에 위임합니다.
+        """
+        # 불필요한 트랜잭션 블록을 제거하고 비즈니스 로직만 호출합니다.
+        # attendance_service.record_login 내의 DB 작업은 get_async_db가 시작한
+        # 전체 트랜잭션에 안전하게 포함됩니다.
+        await attendance_service.record_login(db, user)
+        
+        # 이 함수 내의 모든 DB 작업은 하나의 트랜잭션으로 묶이므로,
+        # 별도의 커밋 없이도 최신 상태를 일관성 있게 조회할 수 있습니다.
+        credit_summary = await credit_service.get_balance_summary(db, user.id)
+        
+        user.credit_balance = credit_summary
+        
+        return user
 
     async def get_user_by_id_with_subscription(self, db: AsyncSession, user_id: uuid.UUID) -> Optional[models.User]:
         """ID로 사용자를 조회하며, 구독 정보를 Eager Loading합니다."""

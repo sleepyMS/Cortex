@@ -12,6 +12,7 @@ import asyncio
 from .. import models, schemas
 from ..models import PlanType
 from ..services.plan_service import plan_service
+from ..services.marketplace_service import marketplace_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -105,6 +106,33 @@ class StrategyService:
         result = await db.execute(select(models.Strategy).filter(models.Strategy.id == strategy_id))
         return result.scalar_one_or_none()
 
+    async def get_strategy_for_user(
+        self, db: AsyncSession, strategy_id: uuid.UUID, user: models.User
+    ) -> models.Strategy:
+        """
+        특정 사용자를 위해 전략 상세 정보를 조회합니다.
+        전략이 없거나 사용자에게 접근 권한이 없으면 HTTPException을 발생시킵니다.
+        """
+        strategy = await self.get_strategy_by_id_with_author(db, strategy_id)
+
+        if not strategy:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="전략을 찾을 수 없습니다.")
+
+        is_author = strategy.author_id == user.id
+        
+        if is_author:
+            return strategy # 작성자이면 바로 반환
+
+        # 작성자가 아니면 구매했는지 확인
+        is_purchased = await marketplace_service.check_strategy_purchase(
+            db, user_id=user.id, strategy_id=strategy.id
+        )
+
+        if not is_purchased:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략에 접근할 권한이 없습니다.")
+
+        return strategy
+    
     async def get_strategy_by_id_with_author(self, db: AsyncSession, strategy_id: uuid.UUID) -> Optional[models.Strategy]:
         """
         ID로 단일 전략의 모든 상세 정보(작성자, 백테스트 이력)를 Eager Loading하여 조회합니다.

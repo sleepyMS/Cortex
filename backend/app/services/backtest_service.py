@@ -11,10 +11,16 @@ import logging
 from functools import reduce
 import operator
 
+from ..models import BacktestStatus
 from .. import models, schemas
 from ..services.plan_service import plan_service
 from ..services.strategy_service import strategy_service
 from ..celery_app import celery_app
+from ..tasks import run_backtest
+from ..services.cost_calculator import cost_calculator_service
+from ..services.credit_service import credit_service
+from ..services.marketplace_service import marketplace_service # check_strategy_purchase를 위해 추가
+
 
 
 logger = logging.getLogger(__name__)
@@ -70,47 +76,135 @@ class BacktestService:
         self.plan_service = plan_service
         self.strategy_service = strategy_service
 
-    async def create_backtest_job(
-        self,
-        db: AsyncSession,
-        user: models.User,
-        backtest_create: schemas.BacktestCreate
-    ) -> models.Backtest:
-        """
-        [최종 수정 버전] 새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다.
-        명확한 스키마를 사용하여 데이터를 안정적으로 저장합니다.
-        """
-        strategy = await self.strategy_service.get_strategy_by_id_with_author(db, backtest_create.strategy_id)
-        if not strategy or strategy.author_id != user.id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
+    # async def create_backtest_job(
+    #     self,
+    #     db: AsyncSession,
+    #     user: models.User,
+    #     backtest_create: schemas.BacktestCreate
+    # ) -> models.Backtest:
+    #     """
+    #     [최종 수정 버전] 새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다.
+    #     명확한 스키마를 사용하여 데이터를 안정적으로 저장합니다.
+    #     """
+    #     strategy = await self.strategy_service.get_strategy_by_id_with_author(db, backtest_create.strategy_id)
+    #     if not strategy or strategy.author_id != user.id:
+    #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
         
-        # 2. '전략 스냅샷' 생성 
-        strategy_dict = schemas.Strategy.from_orm(strategy).model_dump(mode='json', by_alias=True)
+    #     # 2. '전략 스냅샷' 생성 
+    #     strategy_dict = schemas.Strategy.from_orm(strategy).model_dump(mode='json', by_alias=True)
+    #     overrides = backtest_create.parameters.overrides or []
+    #     strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
+
+    #     params_to_store = schemas.BacktestParametersPayload(
+    #         start_date=backtest_create.start_date,
+    #         end_date=backtest_create.end_date,
+    #         initial_capital=backtest_create.initial_capital,
+    #         parameters=backtest_create.parameters
+    #     )
+        
+    #     db_backtest = models.Backtest(
+    #         user_id=user.id,
+    #         strategy_id=backtest_create.strategy_id,
+    #         status=BacktestStatus.PENDING,
+    #         parameters=params_to_store.model_dump(mode='json'),
+    #         strategy_snapshot=strategy_snapshot_dict
+    #     )
+        
+    #     db.add(db_backtest)
+    #     await db.flush()
+
+    #     return db_backtest
+    
+    async def _create_backtest_db_entry(
+        self, db: AsyncSession, user: models.User, backtest_create: schemas.BacktestCreate
+    ) -> models.Backtest:
+        """DB에 Backtest 객체를 생성하는 역할만 수행하는 내부 헬퍼 함수."""
+        strategy = await strategy_service.get_strategy_by_id(db, backtest_create.strategy_id)
+        
+        is_author = strategy and strategy.author_id == user.id
+        is_purchased = not is_author and await marketplace_service.check_strategy_purchase(db, user.id, strategy.id)
+
+        if not (is_author or is_purchased):
+             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
+        
+
+        logger.warning(strategy)
+
+
+        strategy_dict = schemas.StrategyForSnapshot.model_validate(strategy, from_attributes=True).model_dump(mode='json')
+
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
 
-        params_to_store = schemas.BacktestParametersPayload(
-            start_date=backtest_create.start_date,
-            end_date=backtest_create.end_date,
-            initial_capital=backtest_create.initial_capital,
-            parameters=backtest_create.parameters
-        )
+        params_to_store = schemas.BacktestParametersPayload.model_validate(backtest_create)
         
         db_backtest = models.Backtest(
             user_id=user.id,
             strategy_id=backtest_create.strategy_id,
-            status='pending',
+            status=BacktestStatus.PENDING,
             parameters=params_to_store.model_dump(mode='json'),
             strategy_snapshot=strategy_snapshot_dict
         )
+
+        # --- [핵심 수정] ---
+        # 생성된 backtest 객체의 strategy 관계 속성에,
+        # 미리 조회해 둔 strategy 객체를 직접 할당합니다.
+        db_backtest.strategy = strategy
+        # ------------------
         
         db.add(db_backtest)
         await db.flush()
-        
-        # [핵심 수정] Celery 태스크 전송 및 Task ID 저장 로직을 여기서 제거합니다.
-        # 이 로직은 이제 라우터가 담당합니다.
-
         return db_backtest
+
+    async def request_backtest_transactional(
+        self, db: AsyncSession, user: models.User, backtest_create: schemas.BacktestCreate
+    ) -> models.Backtest:
+        """
+        백테스트 요청의 모든 과정을 처리합니다.
+        트랜잭션 관리와 비용 계산은 각각의 책임있는 서비스에 위임합니다.
+        """
+        # --- 1. 비용 계산 (매우 간소화됨) ---
+        cost_estimation = await cost_calculator_service.calculate_cost_from_api_request(
+            db, user, backtest_create
+        )
+
+        # --- 2. 크레딧 차감 및 백테스트 생성 ---
+        credit_transaction = await credit_service.deduct_credits(
+            db=db, user_id=user.id, amount_to_deduct=cost_estimation.final_cost,
+            discount_pct=cost_estimation.discount_pct, related_entity_type="BACKTEST"
+        )
+
+        new_backtest = await self._create_backtest_db_entry(db, user, backtest_create)
+
+        credit_transaction.related_entity_id = new_backtest.id
+        db.add(credit_transaction)
+
+        # flush를 통해 new_backtest.id를 확정합니다.
+        await db.flush() 
+
+        # celery_task_id는 라우터에서 업데이트 후 채워질 것이므로 여기서는 다루지 않습니다.
+        # final_backtest_obj 조회 및 반환 로직도 라우터에서 필요 시 수행하도록 단순화할 수 있습니다.
+        # 우선은 생성된 new_backtest 객체를 바로 반환합니다.
+        return new_backtest
+            
+    async def get_backtest_by_id_for_user(
+        self, db: AsyncSession, backtest_id: uuid.UUID, user_id: uuid.UUID
+    ) -> Optional[models.Backtest]:
+        """ID와 사용자 ID로 단일 백테스팅 기록을 조회하며 소유권을 검증합니다."""
+        query = select(models.Backtest).options(
+            joinedload(models.Backtest.result),
+            joinedload(models.Backtest.user),
+            joinedload(models.Backtest.strategy).selectinload(models.Strategy.backtests)
+        ).filter(models.Backtest.id == backtest_id)
+        
+        backtest = await db.scalar(query)
+
+        if not backtest:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="백테스트를 찾을 수 없습니다.")
+        if backtest.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 백테스트에 접근할 권한이 없습니다.")
+            
+        return backtest
     
     async def get_backtests(
         self, db: AsyncSession, user_id: uuid.UUID, skip: int, limit: int,
@@ -161,21 +255,21 @@ class BacktestService:
 
     async def cancel_backtest_job(self, db: AsyncSession, backtest_to_cancel: models.Backtest):
         """진행 중인 백테스팅 작업을 취소합니다."""
-        if backtest_to_cancel.status not in ['pending', 'running']:
+        if backtest_to_cancel.status not in [BacktestStatus.PENDING, BacktestStatus.RUNNING]:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"백테스트가 이미 '{backtest_to_cancel.status}' 상태이므로 취소할 수 없습니다.")
 
         # [수정] DB에 저장된 Celery Task ID로 작업을 취소
         if backtest_to_cancel.celery_task_id:
             try:
                 celery_app.control.revoke(backtest_to_cancel.celery_task_id, terminate=True)
-                backtest_to_cancel.status = 'canceled'
+                backtest_to_cancel.status = BacktestStatus.CANCELED
                 logger.info(f"Backtest ID {backtest_to_cancel.id} (Task ID: {backtest_to_cancel.celery_task_id}) cancellation requested.")
             except Exception as e:
                 logger.error(f"Failed to send cancellation command for task {backtest_to_cancel.celery_task_id}: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="백테스트 취소 명령에 실패했습니다.")
         else:
             # Task ID가 없는 경우 (예: dispatch 실패)
-            backtest_to_cancel.status = 'canceled'
+            backtest_to_cancel.status = BacktestStatus.CANCELED
             logger.warning(f"Backtest ID {backtest_to_cancel.id} has no Celery Task ID but was marked as canceled.")
 
     async def delete_backtest(self, db: AsyncSession, backtest_to_delete: models.Backtest):

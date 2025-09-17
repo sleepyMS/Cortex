@@ -25,7 +25,6 @@ get_verified_strategy = create_owner_verifier(models.Strategy, owner_field="auth
 # --- 전략 CRUD 엔드포인트 ---
 
 @router.post("/", response_model=schemas.Strategy, status_code=status.HTTP_201_CREATED, summary="Create a new trading strategy")
-@limiter.limit("20/minute")
 async def create_strategy(
     strategy_create: schemas.StrategyCreate,
     request: Request,
@@ -35,11 +34,17 @@ async def create_strategy(
     """새로운 사용자 정의 투자 전략을 생성합니다."""
     try:
         new_strategy = await strategy_service.create_strategy(db, current_user, strategy_create)
+        
+        # ▼▼▼ [핵심 수정] 응답 스키마(schemas.Strategy)에 필요한 'backtests'도 함께 로드하도록 추가합니다. ▼▼▼
+        await db.refresh(new_strategy, attribute_names=['author', 'backtests'])
+        
+        # 모든 DB 작업(INSERT, SELECT)이 끝난 후 마지막에 commit 합니다.
         await db.commit()
-        # Eager Loading을 위해 ID로 다시 조회
-        created_strategy = await strategy_service.get_strategy_by_id_with_author(db, new_strategy.id)
-        logger.info(f"Strategy '{created_strategy.name}' created by user {current_user.email}.")
-        return created_strategy
+        
+        logger.info(f"Strategy '{new_strategy.name}' created by user {current_user.email}.")
+        
+        return new_strategy
+
     except HTTPException as e:
         await db.rollback()
         raise e
@@ -76,33 +81,12 @@ async def get_strategy_by_id(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    특정 ID의 전략 상세 정보를 조회합니다.
-    전략의 '작성자'이거나 해당 전략을 '구매'한 사용자만 접근할 수 있습니다.
+    특정 ID의 전략 상세 정보를 조회합니다. (권한 검증 포함)
     """
-    # 1. backtests 목록을 포함하여 전략의 모든 상세 정보를 로드합니다.
-    strategy = await strategy_service.get_strategy_by_id_with_author(db, strategy_id)
-
-    # 2. 전략이 존재하지 않으면 404 에러를 반환합니다.
-    if not strategy:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="전략을 찾을 수 없습니다.")
-
-    # 3. 접근 권한을 확인합니다.
-    is_author = strategy.author_id == current_user.id
-    
-    # 작성자가 아니라면, 구매한 사용자인지 추가로 확인합니다.
-    if not is_author:
-        is_purchased = await marketplace_service.check_strategy_purchase(
-            db, user_id=current_user.id, strategy_id=strategy.id
-        )
-    else:
-        is_purchased = False # 작성자는 구매자일 필요가 없습니다.
-
-    # 4. 작성자도 아니고 구매자도 아니라면, 403 접근 거부 에러를 반환합니다.
-    if not is_author and not is_purchased:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 전략에 접근할 권한이 없습니다.")
-
-    # 5. 모든 검증을 통과하면 전략 정보를 반환합니다.
-    logger.info(f"User (ID: {current_user.id}) accessed strategy: {strategy.name} (ID: {strategy.id}). Access granted (Author: {is_author}, Purchased: {is_purchased}).")
+    strategy = await strategy_service.get_strategy_for_user(
+        db, strategy_id=strategy_id, user=current_user
+    )
+    logger.info(f"User (ID: {current_user.id}) accessed strategy: {strategy.name} (ID: {strategy.id}).")
     return strategy
 
 @router.put("/{strategy_id}", response_model=schemas.Strategy, summary="Update a specific strategy")
@@ -114,19 +98,20 @@ async def update_strategy(
     """특정 ID의 전략을 비동기로 업데이트합니다."""
     try:
         updated_strategy_instance = await strategy_service.update_strategy(db, strategy_to_update, strategy_update)
-        await db.commit()
-
-        # 응답으로 반환하기 전에, Eager Loading이 적용된 함수로 객체를 '다시 조회'합니다.
-        strategy_for_response = await strategy_service.get_strategy_by_id_with_author(
-            db, updated_strategy_instance.id
-        )
         
-        logger.info(f"Strategy '{strategy_for_response.name}' updated by user (ID: {strategy_for_response.author_id}).")
-        return strategy_for_response
+        await db.refresh(updated_strategy_instance, attribute_names=['author', 'backtests'])
+
+        await db.commit()
+        
+        logger.info(f"Strategy '{updated_strategy_instance.name}' updated by user (ID: {updated_strategy_instance.author_id}).")
+        
+        return updated_strategy_instance
+        
     except HTTPException as e:
-        await db.rollback(); raise e
+        await db.rollback()
+        raise e
     except Exception as e:
-        await db.rollback();
+        await db.rollback()
         logger.error(f"Error updating strategy {strategy_to_update.id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="전략 업데이트 중 서버 오류가 발생했습니다.")
 

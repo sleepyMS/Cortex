@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Float, JSON,
-    ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text
+    ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text, Date
 )
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -40,9 +40,11 @@ class User(Base):
     avatar_url = Column(String(255), nullable=True)
     social_links = Column(JSONB, nullable=True) # 예: {"twitter": "...", "github": "..."}
     
-    # ForeignKey 제약조건을 추가하여 데이터 무결성 보장
-    featured_strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=True)
-
+    featured_strategy_id = Column(
+        UUID(as_uuid=True), 
+        ForeignKey("strategies.id", ondelete="SET NULL", name="fk_users_featured_strategy_id", use_alter=True),
+        nullable=True
+    )
     social_accounts = relationship("SocialAccount", back_populates="user", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     strategies = relationship(
@@ -171,6 +173,13 @@ class Strategy(Base):
     live_bots = relationship("LiveBot", back_populates="strategy", cascade="all, delete-orphan")
     purchases = relationship("UserPurchasedStrategy", back_populates="strategy")
 
+class BacktestStatus(str, enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELED = "canceled"
+
 class Backtest(Base):
     """백테스팅 실행 기록 모델"""
     __tablename__ = "backtests"
@@ -181,7 +190,7 @@ class Backtest(Base):
 
     celery_task_id = Column(String, index=True, nullable=True)
     
-    status = Column(String(50), nullable=False, default='pending')
+    status = Column(Enum(BacktestStatus), nullable=False, default=BacktestStatus.PENDING)
     parameters = Column(JSON, nullable=False)
     strategy_snapshot = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     
@@ -190,8 +199,14 @@ class Backtest(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="backtests")
-    strategy = relationship("Strategy", back_populates="backtests", lazy="joined")
-    result = relationship("BacktestResult", back_populates="backtest", uselist=False, cascade="all, delete-orphan", lazy="joined")
+    strategy = relationship("Strategy", back_populates="backtests", lazy="selectin")
+    result = relationship(
+        "BacktestResult", 
+        back_populates="backtest", 
+        uselist=False, 
+        cascade="all, delete-orphan", 
+        lazy="selectin"
+    )
     trade_logs = relationship("TradeLog", back_populates="backtest", cascade="all, delete-orphan")
     community_post = relationship("CommunityPost", back_populates="backtest", uselist=False, cascade="all, delete-orphan")
 
@@ -456,11 +471,19 @@ class MarketplaceProduct(Base):
     price = Column(Float, nullable=False)
     product_type = Column(Enum(ProductType), nullable=False, index=True)
     inventory_type = Column(Enum(InventoryType), nullable=False)
+
+    # MSA Note: 이 컬럼은 다른 도메인(Strategy, ShopItem)의 ID를 직접 참조합니다.
+    # 향후 서비스가 분리되면, 이 ID를 이용해 각 서비스에 API를 호출하여 상세 정보를 가져와야 합니다.
     linked_resource_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="strategies.id or shop_item_details.id")
+
     seller_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     product_metadata = Column("metadata", JSON, default={}) # 카테고리, 포지션 타입 등 저장
+    
+    # MSA Note: 이 또한 마켓플레이스 도메인이 백테스트 도메인을 직접 참조하는 경우입니다.
+    # 서비스 분리 시 API 기반 통신으로 변경이 필요합니다.
     representative_backtest_id = Column(UUID(as_uuid=True), ForeignKey("backtests.id"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -588,7 +611,7 @@ class CreditsAttendanceLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    attendance_date = Column(DateTime(timezone=True), nullable=False)
+    attendance_date = Column(Date, nullable=False)
     consecutive_days = Column(Integer, default=1, nullable=False)
     
     user = relationship("User")

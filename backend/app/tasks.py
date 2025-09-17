@@ -30,6 +30,7 @@ from sqlalchemy.orm import joinedload
 # --- 1. 필요한 모듈 및 서비스 임포트 ---
 from .celery_app import celery_app
 from .database import AsyncSessionLocal, SyncSessionLocal
+from .models import BacktestStatus
 
 from . import models, schemas
 from .engine.backtesting_engine import BacktestingEngine
@@ -191,11 +192,11 @@ def run_backtest(self, backtest_id: str):
         if not backtest:
             raise ValueError(f"Backtest ID {backtest_id} not found in the database.")
 
-        if backtest.status != 'pending':
+        if backtest.status != BacktestStatus.PENDING:
             logger.warning(f"Backtest {backtest_id} is not in 'pending' state (current: {backtest.status}). Aborting task.")
             return f"Task aborted: Backtest status was '{backtest.status}'."
             
-        backtest.status = 'running'
+        backtest.status = BacktestStatus.RUNNING
         session.commit()
         
         # DB에 저장된 파라미터와 전략 스냅샷을 Pydantic 스키마로 변환
@@ -251,7 +252,7 @@ def run_backtest(self, backtest_id: str):
             session.add_all(log_objects)
 
         # 최종 상태 업데이트
-        backtest.status = 'completed'
+        backtest.status = BacktestStatus.COMPLETED
         backtest.completed_at = datetime.now(timezone.utc)
         session.commit()
 
@@ -278,8 +279,8 @@ def run_backtest(self, backtest_id: str):
         # celery_app.py의 on_failure 핸들러가 DB 상태를 최종적으로 'failed'로 업데이트하지만,
         # 즉각적인 상태 변경을 위해 여기서도 시도
         try:
-            if backtest and backtest.status == 'running':
-                backtest.status = 'failed'
+            if backtest and backtest.status == BacktestStatus.RUNNING:
+                backtest.status = BacktestStatus.FAILED
                 session.commit()
         except Exception as db_exc:
             logger.error(f"Failed to update backtest status to 'failed' for {backtest_id}: {db_exc}")
