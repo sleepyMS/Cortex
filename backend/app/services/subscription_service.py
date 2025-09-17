@@ -154,80 +154,76 @@ class SubscriptionService:
 
     ## 라우터의 비즈니스 로직을 모두 담당하는 고수준 메서드
     async def register_card_and_process_first_payment(
-        self,
-        db: AsyncSession,
-        user: models.User,
-        plan_id: uuid.UUID,
-        auth_key: str,
-        toss_client: TossPaymentsClient,
-    ) -> schemas.SubscriptionSchema:
-        """
-        [개선] 카드 등록, 동기적 첫 결제, DB 'active' 상태 저장을 한 트랜잭션으로 처리하고,
-        완성된 Pydantic 스키마를 반환합니다.
-        """
-        # --- 1. 주문 정보 생성 ---
-        checkout_info = await self.create_checkout_info(db, user, plan_id)
+            self,
+            db: AsyncSession,
+            user: models.User,
+            plan_id: uuid.UUID,
+            auth_key: str,
+            toss_client: TossPaymentsClient,
+        ) -> schemas.SubscriptionSchema:
+            """
+            [수정] 카드 등록, 동기적 첫 결제, DB 'active' 상태 저장을 하나의 트랜잭션으로 처리하고
+            Pydantic 스키마를 반환합니다.
+            """
+            # --- 1. 주문 정보 생성 ---
+            checkout_info = await self.create_checkout_info(db, user, plan_id)
 
-        # --- 2. 토스 API 호출: 빌링키 발급 및 첫 결제 (동기 작업) ---
-        try:
-            billing_data = await payment_service.issue_and_charge_first_subscription(
-                toss_client=toss_client, auth_key=auth_key, user=user, checkout_info=checkout_info,
-            )
-        except HTTPException as e:
-            logger.error(f"Toss payment failed for user {user.email}: {e.detail}")
-            # 결제 실패 시 특정 에러를 그대로 전달
-            raise e
-        
-        billing_key = billing_data.get("billingKey")
-        if not billing_key:
-            raise HTTPException(status_code=500, detail="빌링키 정보를 가져올 수 없습니다.")
+            # --- 2. 토스 API 호출: 빌링키 발급 및 첫 결제 (동기 작업) ---
+            try:
+                billing_data = await payment_service.issue_and_charge_first_subscription(
+                    toss_client=toss_client, auth_key=auth_key, user=user, checkout_info=checkout_info,
+                )
+            except HTTPException as e:
+                logger.error(f"Toss payment failed for user {user.email}: {e.detail}")
+                raise e
+            
+            billing_key = billing_data.get("billingKey")
+            if not billing_key:
+                raise HTTPException(status_code=500, detail="빌링키 정보를 가져올 수 없습니다.")
 
-        # --- 3. [핵심] 구독 정보 'active' 상태로 생성 또는 업데이트 ---
-        # 결제가 동기적으로 성공했으므로, 더 이상 'pending' 상태를 사용할 필요가 없습니다.
-        target_plan = await plan_service.get_plan_by_id(db, plan_id)
-        if not target_plan:
-            raise HTTPException(status_code=404, detail="요청한 플랜을 찾을 수 없습니다.")
+            # --- 3. [핵심] 구독 정보 'active' 상태로 생성 또는 업데이트 및 관계 설정 ---
+            # 이 모든 작업은 commit() 전에 이루어져야 합니다.
+            target_plan = await plan_service.get_plan_by_id(db, plan_id)
+            if not target_plan:
+                raise HTTPException(status_code=404, detail="요청한 플랜을 찾을 수 없습니다.")
 
-        # 다음 결제일 계산 (예: 1개월 후)
-        from dateutil.relativedelta import relativedelta
-        period_end_dt = datetime.now(timezone.utc) + relativedelta(months=1)
-        
-        card_info = billing_data.get("card")
-        card_details = f"{card_info.get('company', '')} {card_info.get('number', '')}" if card_info else None
+            from dateutil.relativedelta import relativedelta
+            period_end_dt = datetime.now(timezone.utc) + relativedelta(months=1)
+            
+            card_info = billing_data.get("card")
+            card_details = f"{card_info.get('company', '')} {card_info.get('number', '')}" if card_info else None
 
-        # 기존 구독 정보 조회
-        subscription = await db.scalar(select(models.Subscription).filter_by(user_id=user.id))
+            subscription = await db.scalar(select(models.Subscription).filter_by(user_id=user.id))
 
-        if subscription:
-            subscription.plan_id = plan_id
-            subscription.status = "active"  # <-- 바로 active로 변경
-            subscription.current_period_end = period_end_dt
-            subscription.payment_gateway_customer_key = billing_key
-            subscription.payment_method_details = card_details
-        else:
-            subscription = models.Subscription(
-                user_id=user.id,
-                plan_id=plan_id,
-                status="active", # <-- 바로 active로 생성
-                current_period_end=period_end_dt,
-                payment_gateway_customer_key=billing_key,
-                payment_method_details=card_details,
-            )
-            db.add(subscription)
-        
-        # --- 4. DB에 모든 변경사항 커밋 ---
-        await db.commit()
-        
-        # --- 5. 프론트엔드에 반환할 완전한 객체 다시 조회 ---
-        await db.refresh(
-            subscription, 
-            attribute_names=["plan"], # plan 관계만 리프레시
-        )
-        # plan.features는 plan 관계를 통해 접근 가능해야 합니다. (lazy-load)
-        # 만약 문제가 계속되면, 이전처럼 get()으로 다시 조회하는 방식을 사용해도 됩니다.
-        
-        # --- 6. 최종 Pydantic 스키마로 변환하여 반환 ---
-        return schemas.SubscriptionSchema.model_validate(subscription)
+            if subscription:
+                subscription.plan_id = plan_id
+                subscription.status = "active"
+                subscription.current_period_end = period_end_dt
+                subscription.payment_gateway_customer_key = billing_key
+                subscription.payment_method_details = card_details
+                subscription.plan = target_plan # <-- 수정: plan 객체 할당
+            else:
+                subscription = models.Subscription(
+                    user_id=user.id,
+                    plan_id=plan_id,
+                    status="active",
+                    current_period_end=period_end_dt,
+                    payment_gateway_customer_key=billing_key,
+                    payment_method_details=card_details,
+                    plan=target_plan # <-- 수정: plan 객체 할당
+                )
+                db.add(subscription)
+            
+            await db.flush()
+            
+            # --- 4. DB에 모든 변경사항 커밋 ---
+            await db.commit()
+
+            # --- 5. 최종 Pydantic 스키마로 변환하여 반환 ---
+            # 이제 객체에 plan이 할당되어 있으므로, refresh 없이 바로 반환 가능
+            return schemas.SubscriptionSchema.model_validate(subscription)
+
+
 
     async def activate_or_update_subscription(
         self,
