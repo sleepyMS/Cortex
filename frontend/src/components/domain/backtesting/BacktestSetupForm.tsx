@@ -1,7 +1,6 @@
 "use client";
 
-import * as React from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,7 +10,8 @@ import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { addDays, startOfDay } from "date-fns";
 import Link from "next/link";
-import { PlusCircle, Loader2, CheckCircle, Lock } from "lucide-react";
+import { PlusCircle, Loader2, CheckCircle, Lock, Coins } from "lucide-react";
+import debounce from "lodash.debounce";
 
 import apiClient from "@/lib/apiClient";
 import { Strategy, LogicBlock, IndicatorMetadata } from "@/types/strategy";
@@ -98,6 +98,11 @@ const formSchema = z
   );
 type FormValues = z.infer<typeof formSchema>;
 
+// 비용 예측 API 응답 타입 (API 명세에 따라 정의)
+interface CostEstimationResponse {
+  finalCost: number;
+}
+
 // --- 메인 컴포넌트 ---
 export function BacktestSetupForm() {
   const t = useTranslations("BacktestSetupForm");
@@ -130,10 +135,61 @@ export function BacktestSetupForm() {
       trailingStopEnabled: false,
     },
   });
+
   const { control, watch } = methods;
   const { fields, replace } = useFieldArray({ control, name: "overrides" });
+
   const watchedStrategyId = watch("strategyId");
+  const watchedDateRange = watch("dateRange");
   const watchedTrailingStop = watch("trailingStopEnabled");
+
+  // --- 신규 기능: 비용 예측 로직 ---
+  const [estimation, setEstimation] = useState<CostEstimationResponse | null>(
+    null
+  );
+
+  const { mutate: estimateCost, isPending: isEstimatingCost } = useMutation({
+    mutationFn: async (variables: {
+      strategyId: string;
+      startDate: Date;
+      endDate: Date;
+    }) => {
+      // API 명세에 맞는 payload로 전송
+      const payload = {
+        ...variables,
+        startDate: variables.startDate.toISOString(),
+        endDate: variables.endDate.toISOString(),
+      };
+      const { data } = await apiClient.post(
+        "/backtests/estimate-cost",
+        payload
+      );
+      return data as CostEstimationResponse;
+    },
+    onSuccess: (data) => setEstimation(data),
+    onError: () => setEstimation(null),
+  });
+
+  // `estimateCost`는 useMutation에서 반환되어 참조가 안정적이므로 의존성 배열에 포함
+  const debouncedEstimateCost = useCallback(
+    debounce((strategyId: string, dateRange: { from: Date; to: Date }) => {
+      if (!strategyId || !dateRange?.from || !dateRange?.to) {
+        setEstimation(null); // 조건이 충족되지 않으면 예측값 초기화
+        return;
+      }
+      estimateCost({
+        strategyId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
+    }, 500),
+    [estimateCost]
+  );
+
+  useEffect(() => {
+    debouncedEstimateCost(watchedStrategyId, watchedDateRange);
+  }, [watchedStrategyId, watchedDateRange, debouncedEstimateCost]);
+  // --- 비용 예측 로직 끝 ---
 
   const { data: strategies, isLoading: isLoadingStrategies } = useQuery<
     Strategy[]
@@ -150,10 +206,21 @@ export function BacktestSetupForm() {
       enabled: !!watchedStrategyId,
     });
 
-  // [핵심] 전략 변경 시 모든 파라미터를 재귀적으로 추출하여 폼 상태를 업데이트
+  // --- [핵심 해결책] useRef를 사용한 의존성 분리 ---
+  const replaceRef = useRef(replace);
   useEffect(() => {
+    // 매 렌더링마다 ref에 최신 replace 함수를 덮어쓰기만 합니다.
+    // 이 과정은 리렌더링을 유발하지 않으므로 안전합니다.
+    replaceRef.current = replace;
+  });
+
+  useEffect(() => {
+    // 이 useEffect는 오직 selectedStrategy 데이터의 변경에만 반응합니다.
+    // 내부에서는 ref를 통해 항상 최신의 replace 함수를 사용합니다.
+    const currentReplace = replaceRef.current;
+
     if (!selectedStrategy) {
-      replace([]);
+      currentReplace([]);
       return;
     }
 
@@ -164,14 +231,9 @@ export function BacktestSetupForm() {
       let params: { path: string; value: any }[] = [];
       blocks.forEach((block, index) => {
         const currentPath = `${pathPrefix}.${index}`;
-
-        // 블록의 모든 키를 순회
         for (const key in block) {
           if (key === "children" || key === "id" || key === "type") continue;
-
           const value = (block as any)[key];
-
-          // 1. 기존 로직: 지표(indicator) 내부의 파라미터 추출
           if (
             value &&
             typeof value === "object" &&
@@ -186,14 +248,10 @@ export function BacktestSetupForm() {
                 });
               }
             }
-          }
-          // 2. 신규 로직: 블록에 직접 속한 숫자형 파라미터 추출 (예: lowerBound, operandB)
-          else if (typeof value === "number") {
+          } else if (typeof value === "number") {
             params.push({ path: `${currentPath}.${key}`, value: value });
           }
         }
-
-        // 3. 자식 블록 재귀 호출 (기존과 동일)
         if (block.children && block.children.length > 0) {
           params = [
             ...params,
@@ -214,7 +272,6 @@ export function BacktestSetupForm() {
       "shortEntryRules",
       "shortExitRules",
     ];
-
     ruleKeys.forEach((key) => {
       const rules = selectedStrategy[key];
       if (rules && rules.blocks) {
@@ -224,7 +281,6 @@ export function BacktestSetupForm() {
         ];
       }
     });
-
     if (selectedStrategy.tpslLogic) {
       for (const [key, value] of Object.entries(selectedStrategy.tpslLogic)) {
         if (typeof value === "number") {
@@ -233,11 +289,10 @@ export function BacktestSetupForm() {
       }
     }
 
-    replace(allParams);
-  }, [selectedStrategy, replace]);
+    currentReplace(allParams);
+  }, [selectedStrategy]); // 의존성 배열에서 `replace`를 완전히 제거하여 무한 루프의 원인을 차단
 
   const getTpslLogicText = (tpslLogic: any) => {
-    // tpslLogic 객체가 없거나 내용이 비어있으면 "미설정"
     if (
       !tpslLogic ||
       Object.keys(tpslLogic).every(
@@ -246,18 +301,11 @@ export function BacktestSetupForm() {
           tpslLogic[k] === undefined ||
           tpslLogic[k] === false
       )
-    ) {
+    )
       return t("summary.notSet");
-    }
-    // ATR 관련 설정이 있으면 "ATR 기반"
-    if (tpslLogic.atrPeriod) {
-      return t("summary.tpslTypes.atr");
-    }
-    // 고정 비율 설정이 있으면 "고정 비율"
-    if (tpslLogic.takeProfitPct || tpslLogic.stopLossPct) {
+    if (tpslLogic.atrPeriod) return t("summary.tpslTypes.atr");
+    if (tpslLogic.takeProfitPct || tpslLogic.stopLossPct)
       return t("summary.tpslTypes.percentage");
-    }
-    // 그 외의 경우 (매우 드묾)
     return t("summary.tpslSet");
   };
 
@@ -274,7 +322,6 @@ export function BacktestSetupForm() {
           slippage: data.slippagePct,
           overrides: data.overrides,
           tpslLogic: {
-            // Trailing Stop 로직을 parameters.tpslLogic으로 전달
             trailingStopEnabled: data.trailingStopEnabled,
             trailingStopActivationPct: data.trailingStopActivationPct,
             trailingStopCallbackPct: data.trailingStopCallbackPct,
@@ -648,6 +695,27 @@ export function BacktestSetupForm() {
                     <span>{t("summary.preflightCheck.period")}</span>
                   </li>
                 </ul>
+
+                {/* 비용 예측 결과 표시 */}
+                <div className="w-full pt-2">
+                  <Separator className="mb-4" />
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-medium text-muted-foreground">
+                      {t("summary.estimatedCost")}
+                    </span>
+                    <span className="flex items-center gap-1.5 font-mono font-semibold">
+                      {isEstimatingCost ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Coins className="h-4 w-4 text-amber-500" />
+                      )}
+                      {estimation
+                        ? `${estimation.finalCost.toLocaleString()} CC`
+                        : "- CC"}
+                    </span>
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
                   size="lg"

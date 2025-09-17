@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: d51a915722ad
+Revision ID: 2889c28d7f85
 Revises: 
-Create Date: 2025-09-14 02:05:08.166135
+Create Date: 2025-09-17 22:13:45.098547
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'd51a915722ad'
+revision: str = '2889c28d7f85'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -52,6 +52,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Enum('BASIC', 'TRADER', 'PRO', name='plantype'), nullable=False),
     sa.Column('price', sa.Integer(), nullable=False),
+    sa.Column('credit_surcharge_multiplier', sa.Float(), server_default='2.0', nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -130,6 +131,41 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_backtests_celery_task_id'), 'backtests', ['celery_task_id'], unique=False)
+    op.create_table('credits_attendance_logs',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('attendance_date', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('consecutive_days', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'attendance_date', name='_user_attendance_date_uc')
+    )
+    op.create_index(op.f('ix_credits_attendance_logs_user_id'), 'credits_attendance_logs', ['user_id'], unique=False)
+    op.create_table('credits_ledgers',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('source_type', sa.String(length=50), nullable=False, comment='획득 경로 (e.g., PURCHASE, ATTENDANCE_DAILY)'),
+    sa.Column('source_id', sa.UUID(), nullable=True, comment='관련 ID (주문 ID, 출석 로그 ID 등)'),
+    sa.Column('initial_amount', sa.Integer(), nullable=False),
+    sa.Column('remaining_amount', sa.Integer(), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True, comment='소멸 일시 (NULL일 경우 무기한)'),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_credits_ledgers_user_id'), 'credits_ledgers', ['user_id'], unique=False)
+    op.create_table('credits_transactions',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('total_amount_deducted', sa.Integer(), nullable=False),
+    sa.Column('discount_pct', sa.Float(), nullable=False),
+    sa.Column('related_entity_type', sa.String(length=50), nullable=True, comment='관련 서비스 (e.g., BACKTEST)'),
+    sa.Column('related_entity_id', sa.UUID(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_credits_transactions_user_id'), 'credits_transactions', ['user_id'], unique=False)
     op.create_table('email_verification_tokens',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -273,6 +309,15 @@ def upgrade() -> None:
     sa.UniqueConstraint('backtest_id')
     )
     op.create_index(op.f('ix_community_posts_created_at'), 'community_posts', ['created_at'], unique=False)
+    op.create_table('credits_transaction_details',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('transaction_id', sa.UUID(), nullable=False),
+    sa.Column('ledger_id', sa.UUID(), nullable=False),
+    sa.Column('amount_deducted', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['ledger_id'], ['credits_ledgers.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['transaction_id'], ['credits_transactions.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('live_bots',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -409,6 +454,7 @@ def downgrade() -> None:
     op.drop_table('marketplace_products')
     op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
     op.drop_table('live_bots')
+    op.drop_table('credits_transaction_details')
     op.drop_index(op.f('ix_community_posts_created_at'), table_name='community_posts')
     op.drop_table('community_posts')
     op.drop_table('backtest_results')
@@ -425,6 +471,12 @@ def downgrade() -> None:
     op.drop_table('marketplace_orders')
     op.drop_index(op.f('ix_email_verification_tokens_jti'), table_name='email_verification_tokens')
     op.drop_table('email_verification_tokens')
+    op.drop_index(op.f('ix_credits_transactions_user_id'), table_name='credits_transactions')
+    op.drop_table('credits_transactions')
+    op.drop_index(op.f('ix_credits_ledgers_user_id'), table_name='credits_ledgers')
+    op.drop_table('credits_ledgers')
+    op.drop_index(op.f('ix_credits_attendance_logs_user_id'), table_name='credits_attendance_logs')
+    op.drop_table('credits_attendance_logs')
     op.drop_index(op.f('ix_backtests_celery_task_id'), table_name='backtests')
     op.drop_table('backtests')
     op.drop_table('api_keys')
@@ -440,5 +492,4 @@ def downgrade() -> None:
         table_name = f"ohlcv_{tf}"
         op.drop_table(table_name)
         print(f"Table '{table_name}' dropped.")
-    # ### end Alembic commands ###
     # ### end Alembic commands ###

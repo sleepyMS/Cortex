@@ -7,15 +7,34 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 // --- 타입 정의: 백엔드 `schemas.py`와 일치 ---
 
+// [크레딧 시스템] CreditBalanceBreakdownEvent 스키마 타입
+interface CreditBalanceBreakdownEvent {
+  amount: number;
+  expiresAt: string; // ISO 8601 날짜 문자열
+}
+
+// [크레딧 시스템] CreditBalanceBreakdown 스키마 타입
+interface CreditBalanceBreakdown {
+  purchased: number;
+  subscriptionDaily: number;
+  expiringWeekly: number;
+  event: CreditBalanceBreakdownEvent[];
+}
+
+// [크레딧 시스템] CreditBalanceSummary 스키마 타입
+export interface CreditBalanceSummary {
+  totalBalance: number;
+  breakdown: CreditBalanceBreakdown;
+}
+
 /**
  * 백엔드 `PlanFeatureSchema`에 해당하는 타입.
- * 각 플랜이 제공하는 상세 기능 제한을 정의합니다.
  */
 interface PlanFeature {
   maxStrategies: number;
   maxCoinsPerBacktest: number;
   liveBotsLimit: number;
-  dailyBacktestCount: number;
+  dailyBacktestCount: number; // 이 속성은 크레딧 시스템 도입으로 사용되지 않을 수 있음
   maxBacktestDurationYears: number | null;
   supportedTimeframes: string;
   communityAccess: boolean;
@@ -28,7 +47,7 @@ interface PlanFeature {
  * 백엔드 `PlanSchema`에 해당하는 타입.
  */
 interface Plan {
-  id: number;
+  id: string; // UUID는 string 타입으로 처리
   name: string;
   price: number;
   features: PlanFeature;
@@ -38,8 +57,8 @@ interface Plan {
  * 백엔드 `SubscriptionSchema`에 해당하는 타입.
  */
 interface Subscription {
-  id: number;
-  planId: number;
+  id: string; // UUID
+  planId: string; // UUID
   status: string;
   currentPeriodEnd: string | null;
   plan: Plan;
@@ -47,10 +66,10 @@ interface Subscription {
 
 /**
  * 백엔드 `User` 모델에 해당하는 타입.
- * 사용자의 모든 정보를 포함하며, 상세 구독 정보를 포함할 수 있습니다.
+ * [수정] creditBalance 속성을 포함하도록 확장되었습니다.
  */
 interface User {
-  id: number;
+  id: string; // UUID
   email: string;
   username: string | null;
   role: string;
@@ -59,6 +78,7 @@ interface User {
   createdAt: string;
   updatedAt: string | null;
   subscription: Subscription | null;
+  creditBalance: CreditBalanceSummary | null; // 크레딧 정보 추가
 }
 
 // --- Zustand 스토어 상태 및 액션 타입 ---
@@ -67,6 +87,7 @@ interface State {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthInitialized: boolean;
+  creditBalance: CreditBalanceSummary | null; // 크레딧 상태 추가
 }
 
 interface Actions {
@@ -76,8 +97,8 @@ interface Actions {
   }) => Promise<void>;
   rehydrateAndSetUser: () => Promise<void>;
   logout: () => void;
-  // 토큰 갱신을 전담하는 새로운 중앙 액션
   refreshSession: () => Promise<string | null>;
+  setCreditBalance: (balance: CreditBalanceSummary) => void; // 크레딧 갱신 액션 추가
 }
 
 const initialState: State = {
@@ -85,6 +106,7 @@ const initialState: State = {
   accessToken: null,
   refreshToken: null,
   isAuthInitialized: false,
+  creditBalance: null, // 초기 상태에 크레딧 추가
 };
 
 // --- Zustand 스토어 생성 ---
@@ -102,8 +124,13 @@ export const useUserStore = create<State & Actions>()(
         ] = `Bearer ${accessToken}`;
 
         try {
-          const response = await apiClient.get("/users/me");
-          set({ user: response.data, isAuthInitialized: true });
+          // 백엔드 /users/me 응답에 user와 creditBalance가 모두 포함되어 있다고 가정
+          const response = await apiClient.get<User>("/users/me");
+          set({
+            user: response.data,
+            creditBalance: response.data.creditBalance, // 응답에서 크레딧 정보 추출
+            isAuthInitialized: true,
+          });
         } catch (error) {
           console.error("로그인 후 사용자 정보 가져오기 실패:", error);
           get().logout();
@@ -122,10 +149,16 @@ export const useUserStore = create<State & Actions>()(
         ] = `Bearer ${accessToken}`;
 
         try {
-          const response = await apiClient.get("/users/me");
-          set({ user: response.data, isAuthInitialized: true });
+          const response = await apiClient.get<User>("/users/me");
+          set({
+            user: response.data,
+            creditBalance: response.data.creditBalance, // 응답에서 크레딧 정보 추출
+            isAuthInitialized: true,
+          });
         } catch (error) {
           console.error("재인증 실패:", error);
+          // 401 에러의 경우 apiClient 인터셉터에서 refreshSession을 호출하므로,
+          // 여기서는 일반적인 로그아웃 처리만 수행합니다.
           get().logout();
         }
       },
@@ -136,9 +169,13 @@ export const useUserStore = create<State & Actions>()(
         set({ ...initialState, isAuthInitialized: true });
       },
 
+      // 크레딧 잔액만 단독으로 갱신하는 새 액션
+      setCreditBalance: (balance) => {
+        set({ creditBalance: balance });
+      },
+
       /**
        * 토큰 갱신(Refresh) 로직 전체를 책임지는 중앙 액션입니다.
-       * apiClient의 401 인터셉터에서 호출됩니다.
        */
       refreshSession: async () => {
         const { refreshToken } = get();
@@ -148,7 +185,6 @@ export const useUserStore = create<State & Actions>()(
         }
 
         try {
-          // 토큰 갱신은 순환 참조를 피하기 위해 apiClient 대신 axios를 직접 사용합니다.
           const response = await axios.post(
             `${
               process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api"
@@ -164,12 +200,10 @@ export const useUserStore = create<State & Actions>()(
             refreshToken: newRefreshToken,
           });
 
-          // apiClient의 기본 헤더도 새로운 토큰으로 업데이트합니다.
           apiClient.defaults.headers.common[
             "Authorization"
           ] = `Bearer ${newAccessToken}`;
 
-          // 성공 시, 재요청에 사용할 새로운 액세스 토큰을 반환합니다.
           return newAccessToken;
         } catch (error) {
           console.error("Refresh token failed, logging out:", error);
@@ -179,8 +213,10 @@ export const useUserStore = create<State & Actions>()(
       },
     }),
     {
-      name: "cortex-auth-storage",
+      name: "cortex-auth-storage", // 로컬 스토리지에 저장될 키 이름
       storage: createJSONStorage(() => localStorage),
+      // accessToken과 refreshToken만 로컬 스토리지에 저장하고,
+      // user 객체나 creditBalance는 저장하지 않아 항상 최신 정보를 서버에서 가져오도록 합니다.
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

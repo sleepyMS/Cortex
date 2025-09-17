@@ -95,6 +95,8 @@ class Plan(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Enum(PlanType), unique=True, nullable=False)
     price = Column(Integer, nullable=False)
+    credit_surcharge_multiplier = Column(Float, nullable=False, server_default="2.0")
+
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
 
@@ -420,10 +422,8 @@ class OHLCV1h(Base):
     close = Column(Float, nullable=False)
     volume = Column(Float, nullable=False)
 
-# file: backend/app/models.py (파일 하단에 추가)
-
 # ==============================================================================
-# 6. 마켓플레이스 및 인벤토리 관련 모델 (신규 추가)
+# 6. 마켓플레이스 및 인벤토리 관련 모델 
 # ==============================================================================
 
 class ProductType(str, enum.Enum):
@@ -525,3 +525,70 @@ class UserInventory(Base):
 
     user = relationship("User")
     product = relationship("MarketplaceProduct")
+
+# ==============================================================================
+# 7. 크레딧 시스템 관련 모델 
+# ==============================================================================
+
+class CreditLedger(Base):
+    """크레딧 획득 단위를 기록하는 원장 모델"""
+    __tablename__ = "credits_ledgers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    source_type = Column(String(50), nullable=False, comment="획득 경로 (e.g., PURCHASE, ATTENDANCE_DAILY)")
+    source_id = Column(UUID(as_uuid=True), nullable=True, comment="관련 ID (주문 ID, 출석 로그 ID 등)")
+    
+    initial_amount = Column(Integer, nullable=False)
+    remaining_amount = Column(Integer, nullable=False)
+    
+    expires_at = Column(DateTime(timezone=True), nullable=True, comment="소멸 일시 (NULL일 경우 무기한)")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+
+
+class CreditTransaction(Base):
+    """크레딧 '소비' 행위를 기록하는 거래 모델"""
+    __tablename__ = "credits_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    total_amount_deducted = Column(Integer, nullable=False)
+    discount_pct = Column(Float, nullable=False, default=0.0)
+    
+    related_entity_type = Column(String(50), nullable=True, comment="관련 서비스 (e.g., BACKTEST)")
+    related_entity_id = Column(UUID(as_uuid=True), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+    details = relationship("CreditTransactionDetail", back_populates="transaction", cascade="all, delete-orphan")
+
+
+class CreditTransactionDetail(Base):
+    """하나의 거래가 어떤 원장의 크레딧을 사용했는지 기록하는 상세 내역 모델"""
+    __tablename__ = "credits_transaction_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    transaction_id = Column(UUID(as_uuid=True), ForeignKey("credits_transactions.id", ondelete="CASCADE"), nullable=False)
+    ledger_id = Column(UUID(as_uuid=True), ForeignKey("credits_ledgers.id", ondelete="CASCADE"), nullable=False)
+    amount_deducted = Column(Integer, nullable=False)
+
+    transaction = relationship("CreditTransaction", back_populates="details")
+    ledger = relationship("CreditLedger")
+
+
+class CreditsAttendanceLog(Base):
+    """사용자의 일일 출석 및 연속 출석일수 기록 모델"""
+    __tablename__ = "credits_attendance_logs"
+    __table_args__ = (UniqueConstraint('user_id', 'attendance_date', name='_user_attendance_date_uc'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    attendance_date = Column(DateTime(timezone=True), nullable=False)
+    consecutive_days = Column(Integer, default=1, nullable=False)
+    
+    user = relationship("User")

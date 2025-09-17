@@ -1,3 +1,5 @@
+// file: frontend/src/app/[locale]/(authenticated)/layout.tsx
+
 "use client";
 
 import { useQuery } from "@tanstack/react-query";

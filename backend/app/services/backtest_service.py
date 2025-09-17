@@ -80,22 +80,6 @@ class BacktestService:
         [최종 수정 버전] 새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다.
         명확한 스키마를 사용하여 데이터를 안정적으로 저장합니다.
         """
-        # 1. 플랜 기반 제한 검사 (기존과 동일)
-        user_features = await self.plan_service.get_user_plan_features(user, db)
-        max_backtests = user_features.daily_backtest_count
-        
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        
-        query = select(func.count(models.Backtest.id)).filter(
-            models.Backtest.user_id == user.id,
-            models.Backtest.created_at >= today_start
-        )
-        result = await db.execute(query)
-        executed_today = result.scalar_one()
-
-        if executed_today >= max_backtests:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"일일 백테스트 제한({max_backtests}회)을 초과했습니다.")
-
         strategy = await self.strategy_service.get_strategy_by_id_with_author(db, backtest_create.strategy_id)
         if not strategy or strategy.author_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")

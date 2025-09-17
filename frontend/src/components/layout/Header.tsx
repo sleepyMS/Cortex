@@ -12,7 +12,7 @@ import { useHasHydrated } from "@/hooks/useHasHydrated";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
 import { IconButton } from "@/components/ui/IconButton";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Coins } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
 import { UserActions } from "@/components/domain/UserActions";
 
@@ -20,7 +20,7 @@ export function Header() {
   const t = useTranslations("Header");
   const tNav = useTranslations("Navigation");
   const { theme, setTheme } = useTheme();
-  const { user, isAuthInitialized } = useUserStore();
+  const { user, isAuthInitialized, creditBalance } = useUserStore();
   const hasHydrated = useHasHydrated();
 
   const toggleTheme = () => {
@@ -56,8 +56,18 @@ export function Header() {
         </div>
 
         {/* 우측 아이콘 및 사용자 메뉴 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <LanguageSwitcher />
+
+          {isAuthInitialized && user && creditBalance && (
+            <div className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium">
+              <Coins className="h-4 w-4 text-yellow-500" />
+              <span>
+                {/* 숫자에 콤마를 추가하여 가독성 향상 */}
+                {creditBalance.totalBalance.toLocaleString()} CC
+              </span>
+            </div>
+          )}
 
           <UserActions />
           {hasHydrated && (

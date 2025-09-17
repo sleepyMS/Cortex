@@ -163,7 +163,7 @@ class SubscriptionSchema(CamelCaseModel):
     current_period_end: Optional[datetime]
     plan: PlanSchema
 
-class User(CamelCaseModel): # UserBase를 상속하지 않고 모든 필드를 명시
+class User(CamelCaseModel):
     id: uuid.UUID
     email: EmailStr
     username: Optional[str] = None
@@ -780,3 +780,53 @@ class OrderCreateResponse(CamelCaseModel):
 class BillingKeyRegistrationRequest(CamelCaseModel):
     plan_id: uuid.UUID = Field(..., description="구독하려는 플랜의 ID")
     auth_key: str = Field(..., description="Toss Payments 프론트엔드 SDK로부터 받은 임시 인증 키")
+
+
+# ==============================================================================
+# 6. 크레딧 시스템 관련 스키마 
+# ==============================================================================
+
+class CreditBalanceBreakdownEvent(CamelCaseModel):
+    """만료 기간이 있는 이벤트성 크레딧 정보"""
+    amount: int
+    expires_at: datetime
+
+class CreditBalanceBreakdown(CamelCaseModel):
+    """종류별 크레딧 상세 내역"""
+    purchased: int = 0
+    subscription_daily: int = 0
+    expiring_weekly: int = 0
+    event: List[CreditBalanceBreakdownEvent] = Field(default_factory=list)
+
+class CreditBalanceSummary(CamelCaseModel):
+    """사용자의 크레딧 잔액 요약 정보 응답 스키마"""
+    total_balance: int
+    breakdown: CreditBalanceBreakdown
+
+class CreditTransactionLedgerDetail(CamelCaseModel):
+    """거래 내역에 포함될 원장 출처 정보"""
+    source_type: str
+    amount_deducted: int
+
+class CreditTransactionResponse(CamelCaseModel):
+    """크레딧 거래 내역 응답 스키마"""
+    id: uuid.UUID
+    total_amount_deducted: int
+    discount_pct: float
+    related_entity_type: Optional[str] = None
+    created_at: datetime
+    details: List[CreditTransactionLedgerDetail]
+
+class CostEstimationRequest(CamelCaseModel):
+    """비용 견적 요청 스키마"""
+    backtest_duration_years: float = Field(..., ge=0)
+    min_timeframe_minutes: int = Field(..., ge=1)
+    trials: int = Field(1, ge=1)
+
+class CostEstimationResponse(CamelCaseModel):
+    """비용 견적 응답 스키마"""
+    original_cost: int
+    discount_pct: float
+    final_cost: int
+    user_balance: int
+    is_sufficient: bool
