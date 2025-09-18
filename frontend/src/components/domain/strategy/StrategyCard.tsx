@@ -1,6 +1,7 @@
-// file: frontend/src/components/domain/strategy/StrategyCard.tsx
+// frontend/src/components/domain/strategy/StrategyCard.tsx
 "use client";
 
+// ✨ 1. useState를 import 합니다.
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -72,84 +73,92 @@ export function StrategyCard({
   const t = useTranslations("StrategyCard");
   const router = useRouter();
 
-  // --- [핵심 수정] 중앙 관리 훅 사용 ---
   const deleteStrategyMutation = useDeleteStrategyMutation();
   const togglePublicMutation = useTogglePublicStrategyMutation();
   const unlistStrategyMutation = useUnlistStrategyMutation();
 
+  // ✨ 2. 드롭다운의 열림/닫힘 상태를 관리할 state를 추가합니다.
+  const [isDropdownOpen, setDropdownOpen] = React.useState(false);
+
   // --- 이벤트 핸들러 ---
-  const handleDelete = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
+  const handleDelete = () => {
     if (confirm(t("confirmDelete", { strategyName: strategy.name }))) {
       deleteStrategyMutation.mutate(strategy.id);
     }
+    // 핸들러가 끝나면 드롭다운을 닫습니다.
+    setDropdownOpen(false);
   };
 
-  const handleTogglePublic = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    // [수정] 훅의 요구사항에 맞게 payload를 객체 형태로 전달
+  const handleTogglePublic = () => {
     togglePublicMutation.mutate({
       strategyId: strategy.id,
       isPublic: strategy.isPublic,
     });
+    setDropdownOpen(false);
   };
 
-  const handleListOnMarketplace = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
+  // ✨ 3. [핵심] 모달을 여는 핸들러에 드롭다운을 닫는 로직을 명시적으로 추가합니다.
+  const handleListOnMarketplace = () => {
+    // 1. 부모 컴포넌트에 모달을 열어달라고 요청합니다.
     onOpenListingModal(strategy);
+    // 2. 즉시 드롭다운 메뉴를 닫습니다.
+    setDropdownOpen(false);
   };
 
-  const handleUnlistFromMarketplace = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-
+  const handleUnlistFromMarketplace = () => {
     const productId = strategy.marketplaceListing?.productId;
     if (!productId) {
       toast.error("상품 ID를 찾을 수 없어 판매 중단할 수 없습니다.");
+      setDropdownOpen(false);
       return;
     }
 
     if (confirm(t("confirmUnlist", { strategyName: strategy.name }))) {
       unlistStrategyMutation.mutate(productId);
     }
+    setDropdownOpen(false);
+  };
+
+  // 라우팅하는 핸들러들
+  const handleNavigate = (path: string) => {
+    router.push(path);
+    setDropdownOpen(false);
   };
 
   // --- 드롭다운 메뉴 UI ---
   const dropdownMenuContent = (
-    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+    <DropdownMenuContent align="end">
       <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem
-        onClick={() => router.push(`/strategies/${strategy.id}`)}
+        onSelect={() => handleNavigate(`/strategies/${strategy.id}`)}
       >
         <Edit className="mr-2 h-4 w-4" />
         {t("editStrategy")}
       </DropdownMenuItem>
       <DropdownMenuItem
-        onClick={() => router.push(`/backtester?strategyId=${strategy.id}`)}
+        onSelect={() => handleNavigate(`/backtester?strategyId=${strategy.id}`)}
       >
         <BarChart2 className="mr-2 h-4 w-4" />
         {t("runBacktest")}
       </DropdownMenuItem>
       <DropdownMenuItem
-        onClick={() => router.push(`/live-bots/new?strategyId=${strategy.id}`)}
+        onSelect={() =>
+          handleNavigate(`/live-bots/new?strategyId=${strategy.id}`)
+        }
       >
         <Bot className="mr-2 h-4 w-4" />
         {t("deployLiveBot")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       {strategy.marketplaceListing ? (
-        // 1. 이미 마켓에 등록된 경우
         <>
-          <DropdownMenuItem onClick={handleListOnMarketplace}>
+          <DropdownMenuItem onSelect={handleListOnMarketplace}>
             <ShoppingCart className="mr-2 h-4 w-4" />
             {t("editListing")}
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={handleUnlistFromMarketplace}
+            onSelect={handleUnlistFromMarketplace}
             className="text-amber-600 focus:text-amber-700"
             disabled={unlistStrategyMutation.isPending}
           >
@@ -162,14 +171,13 @@ export function StrategyCard({
           </DropdownMenuItem>
         </>
       ) : (
-        // 2. 마켓에 등록되지 않은 경우
-        <DropdownMenuItem onClick={handleListOnMarketplace}>
+        <DropdownMenuItem onSelect={handleListOnMarketplace}>
           <ShoppingCart className="mr-2 h-4 w-4" />
           {t("listOnMarket")}
         </DropdownMenuItem>
       )}
       <DropdownMenuItem
-        onClick={handleTogglePublic}
+        onSelect={handleTogglePublic}
         disabled={togglePublicMutation.isPending}
       >
         {togglePublicMutation.isPending ? (
@@ -183,7 +191,7 @@ export function StrategyCard({
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem
-        onClick={handleDelete}
+        onSelect={handleDelete}
         className="text-destructive focus:text-destructive"
         disabled={deleteStrategyMutation.isPending}
       >
@@ -254,14 +262,10 @@ export function StrategyCard({
               ? format(new Date(displayDateString), "yyyy-MM-dd")
               : t("noDate")}
           </p>
-          <DropdownMenu>
+          {/* ✨ 4. DropdownMenu 컴포넌트에 state와 updater 함수를 연결합니다. */}
+          <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -336,14 +340,10 @@ export function StrategyCard({
               ? format(new Date(displayDateString), "yyyy-MM-dd")
               : t("noDate")}
           </p>
-          <DropdownMenu>
+          {/* ✨ 4. DropdownMenu 컴포넌트에 state와 updater 함수를 연결합니다. (Grid View) */}
+          <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
