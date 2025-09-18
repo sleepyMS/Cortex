@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   LogicBlock,
@@ -47,12 +47,10 @@ import {
 } from "@/components/ui/Select";
 import { OperandSlot } from "./OperandSlot";
 
-// ▼▼▼ [핵심 수정 1] Zustand 스토어와 중앙화된 타입을 import 합니다. ▼▼▼
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { IndicatorMetadata } from "@/types/indicator";
 import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
-// ▲▲▲ [수정 완료] ▲▲▲
 
 // 각 로직 타입에 대한 메타데이터 (아이콘, 레이블 키) - 기존과 동일
 const LOGIC_TYPE_METADATA: {
@@ -89,9 +87,10 @@ export function RuleBlock({
   const t = useTranslations("RuleBlock");
   const tLogic = useTranslations("StrategyBuilder.logic");
 
-  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
+  // 전역 스토어에서 최신 지표 메타데이터를 가져옵니다.
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
-  // ▲▲▲ [수정 완료] ▲▲▲
+
+  const [isMenuOpen, setMenuOpen] = useState(false);
 
   const CurrentLogicIcon =
     LOGIC_TYPE_METADATA[item.type]?.icon || GitCompareArrows;
@@ -101,17 +100,15 @@ export function RuleBlock({
     if (item.type === "pattern") return ["pattern"];
     if (!currentIndicator) return Object.keys(LOGIC_TYPE_METADATA);
 
-    // ▼▼▼ [핵심 수정 3] 정적 데이터 대신 전역 스토어의 메타데이터를 사용합니다. ▼▼▼
+    // 전역 스토어의 메타데이터를 사용합니다.
     const metadata = indicatorMetadata.find(
       (ind) => ind.key === currentIndicator.indicatorKey
     );
-    // ▲▲▲ [수정 완료] ▲▲▲
 
     return metadata ? metadata.supportedLogics : [];
-  }, [item, indicatorMetadata]); // 의존성 배열에 indicatorMetadata 추가
+  }, [item, indicatorMetadata]);
 
   const handleUpdateField = (field: AllLogicBlockKeys, value: any) => {
-    // onUpdate 함수의 타입 안정성을 위해 타입 단언(as)을 사용할 수 있습니다.
     onUpdate(item.id, { ...item, [field as any]: value });
   };
 
@@ -486,6 +483,16 @@ export function RuleBlock({
     }
   };
 
+  const handleAddRuleAndClose = (as: "OR" | "AND") => {
+    onTriggerAddRule(item.id, as);
+    setMenuOpen(false);
+  };
+
+  const handleDeleteAndClose = () => {
+    onDelete(item.id);
+    setMenuOpen(false);
+  };
+
   return (
     <Card className="p-3 transition-shadow shadow-md hover:shadow-lg border-l-4 border-primary/70">
       <div className="flex items-center justify-between mb-3">
@@ -501,7 +508,6 @@ export function RuleBlock({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {/* ▼▼▼ [핵심 수정 4] supportedLogics가 동적 데이터를 사용하도록 합니다. ▼▼▼ */}
             {Object.entries(LOGIC_TYPE_METADATA)
               .filter(([type]) =>
                 supportedLogics.includes(type as LogicBlock["type"])
@@ -517,11 +523,10 @@ export function RuleBlock({
                   <span>{tLogic(labelKey as any)}</span>
                 </DropdownMenuItem>
               ))}
-            {/* ▲▲▲ [수정 완료] ▲▲▲ */}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DropdownMenu>
+        <DropdownMenu open={isMenuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -532,11 +537,11 @@ export function RuleBlock({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "OR")}>
+            <DropdownMenuItem onSelect={() => handleAddRuleAndClose("OR")}>
               <ArrowRight className="mr-2 h-4 w-4" />
               <span>{t("addOrCondition")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onTriggerAddRule(item.id, "AND")}>
+            <DropdownMenuItem onSelect={() => handleAddRuleAndClose("AND")}>
               <CornerDownRight className="mr-2 h-4 w-4" />
               <span>{t("addAndCondition")}</span>
             </DropdownMenuItem>
@@ -553,7 +558,6 @@ export function RuleBlock({
       </div>
 
       {/* --- 2. 스크롤이 필요한 콘텐츠 영역 --- */}
-      {/* ScrollArea가 이제 로직 상세 UI 부분만 감싸도록 범위를 축소합니다. */}
       <ScrollArea className="w-full">
         <div className="min-w-[380px] pt-1 pb-3">{renderLogic(item)}</div>
         <ScrollBar orientation="horizontal" />

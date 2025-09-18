@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { IndicatorValue } from "@/types/strategy";
 import { ParameterPopover } from "./ParameterPopover";
@@ -33,6 +33,23 @@ export function OperandSlot({
   const t = useTranslations("RuleBlock");
 
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
+
+  const [isMenuOpen, setMenuOpen] = useState(false);
+
+  const handleSelectIndicatorAndClose = () => {
+    onSelectIndicator();
+    setMenuOpen(false);
+  };
+
+  const handleConvertToValueAndClose = () => {
+    onConvertToValue();
+    setMenuOpen(false);
+  };
+
+  const handleConvertToIndicatorAndClose = () => {
+    onConvertToIndicator();
+    setMenuOpen(false);
+  };
 
   const parameterDetails = useMemo(() => {
     if (
@@ -101,7 +118,7 @@ export function OperandSlot({
             </div>
           </Button>
         </ParameterPopover>
-        <DropdownMenu>
+        <DropdownMenu open={isMenuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
@@ -112,10 +129,10 @@ export function OperandSlot({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onSelectIndicator}>
+            <DropdownMenuItem onSelect={handleSelectIndicatorAndClose}>
               {t("changeIndicator")}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onConvertToValue}>
+            <DropdownMenuItem onSelect={handleConvertToValueAndClose}>
               {t("changeToValue")}
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -133,7 +150,7 @@ export function OperandSlot({
         onChange={(e) => onValueChange(Number(e.target.value))}
         className="h-10 flex-grow rounded-r-none focus-visible:ring-offset-0"
       />
-      <DropdownMenu>
+      <DropdownMenu open={isMenuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
@@ -144,7 +161,7 @@ export function OperandSlot({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onConvertToIndicator}>
+          <DropdownMenuItem onSelect={handleConvertToIndicatorAndClose}>
             {t("changeToIndicator")}
           </DropdownMenuItem>
         </DropdownMenuContent>
