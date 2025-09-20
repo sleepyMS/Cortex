@@ -32,30 +32,20 @@ def _camel_to_snake(name: str) -> str:
 
 def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[Any]) -> Dict[str, Any]:
     """
-    [로깅 강화 버전] camelCase 경로를 snake_case로 변환하며 모든 과정을 로그로 기록합니다.
+    전략 딕셔너리에 'overrides' 배열을 적용합니다.
+    중간 경로에 값이 없거나(None) 딕셔너리가 아닌 경우에도 에러 없이 안전하게 처리합니다.
     """
-    logger.warning("="*20 + " START PARAMETER OVERRIDE " + "="*20)
-    
     if not overrides:
-        logger.warning("Overrides list is empty. Returning original strategy.")
-        logger.warning("="*20 + "  END PARAMETER OVERRIDE  " + "="*20)
         return strategy_dict
-
-    # 원본 전략과 오버라이드 목록을 보기 쉽게 출력
-    logger.warning(f"[OVERRIDE_INIT] Original Strategy Keys: {list(strategy_dict.keys())}")
-    logger.warning(f"[OVERRIDE_INIT] Overrides to Apply:\n{json.dumps(overrides, indent=2)}")
 
     import copy
     modified_strategy = copy.deepcopy(strategy_dict)
 
-    for i, override in enumerate(overrides):
+    for override in overrides:
         path = override.get('path') if isinstance(override, dict) else override.path
         value = override.get('value') if isinstance(override, dict) else override.value
         
-        logger.warning(f"--- Processing Override #{i+1}: Path='{path}', Value='{value}' ---")
-
         if not path:
-            logger.warning("Path is empty. Skipping.")
             continue
 
         try:
@@ -63,37 +53,36 @@ def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[An
             current_level = modified_strategy
             
             # 마지막 부분을 제외하고 경로를 따라 탐색
-            for depth, part in enumerate(parts[:-1]):
+            for part in parts[:-1]:
+                # [✅ 2단계: 키 형식 변환]
+                # 딕셔너리 키로 사용하기 전에 snake_case로 변환합니다.
                 snake_part = _camel_to_snake(part)
                 key_or_index = int(snake_part) if snake_part.isdigit() else snake_part
                 
-                logger.warning(f"[TRAVERSAL D-{depth}] Part: '{part}' -> Snake Key: '{key_or_index}' | Current Level Type: {type(current_level)}")
-
-                if isinstance(current_level, dict):
-                    logger.warning(f"[TRAVERSAL D-{depth}] Keys in current level: {list(current_level.keys())}")
-                elif isinstance(current_level, list):
-                    logger.warning(f"[TRAVERSAL D-{depth}] Length of current list: {len(current_level)}")
+                if not isinstance(current_level, (dict, list)) or \
+                   (isinstance(current_level, list) and not (isinstance(key_or_index, int) and 0 <= key_or_index < len(current_level))):
+                    raise KeyError(f"Path traversal failed at '{part}'")
 
                 current_level = current_level[key_or_index]
 
             # 마지막 부분에 값 할당
             last_part = parts[-1]
+            # [✅ 2단계: 키 형식 변환]
             snake_last_part = _camel_to_snake(last_part)
             key_or_index = int(snake_last_part) if snake_last_part.isdigit() else snake_last_part
             
-            logger.warning(f"[ASSIGNMENT] Final Part: '{last_part}' -> Snake Key: '{key_or_index}' | Target Level Type: {type(current_level)}")
-            logger.warning(f"[ASSIGNMENT] Attempting to set '{key_or_index}' to '{value}'")
-            
-            current_level[key_or_index] = value
-            logger.warning(f"[SUCCESS] Successfully applied override for path '{path}'")
+            if isinstance(current_level, dict):
+                current_level[key_or_index] = value
+            elif isinstance(current_level, list) and isinstance(key_or_index, int) and 0 <= key_or_index < len(current_level):
+                current_level[key_or_index] = value
+            else:
+                raise TypeError(f"Cannot set value on non-dict/list or index out of bounds at '{last_part}'")
 
-        except Exception as e:
-            # 오류 발생 시 상세 정보와 함께 트레이스백을 기록
-            logger.error(f"[FAILURE] Failed to apply override for path '{path}'. Reason: {e}", exc_info=True)
+
+        except (KeyError, IndexError, TypeError) as e:
+            logger.warning(f"Failed to apply override for path '{path}': {e}")
             continue
             
-    logger.warning(f"[OVERRIDE_FINAL] Final Modified Strategy Keys: {list(modified_strategy.keys())}")
-    logger.warning("="*20 + "  END PARAMETER OVERRIDE  " + "="*20)
     return modified_strategy
 
 class BacktestService:
@@ -253,7 +242,7 @@ class BacktestService:
             try:
                 celery_app.control.revoke(backtest_to_cancel.celery_task_id, terminate=True)
                 backtest_to_cancel.status = BacktestStatus.CANCELED
-                logger.warning(f"Backtest ID {backtest_to_cancel.id} (Task ID: {backtest_to_cancel.celery_task_id}) cancellation requested.")
+                logger.info(f"Backtest ID {backtest_to_cancel.id} (Task ID: {backtest_to_cancel.celery_task_id}) cancellation requested.")
             except Exception as e:
                 logger.error(f"Failed to send cancellation command for task {backtest_to_cancel.celery_task_id}: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="백테스트 취소 명령에 실패했습니다.")
@@ -271,6 +260,6 @@ class BacktestService:
         # 연쇄적으로 자동 삭제됩니다.
         await db.delete(backtest_to_delete)
         await db.flush()
-        logger.warning(f"Backtest record ID {backtest_to_delete.id} and all associated data deleted.")
+        logger.info(f"Backtest record ID {backtest_to_delete.id} and all associated data deleted.")
 
 backtest_service = BacktestService()
