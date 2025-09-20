@@ -18,10 +18,11 @@ class BacktestingEngine:
     def __init__(self,
                  ohlcv_df: pd.DataFrame,
                  signals_df: pd.DataFrame,
-                 execution_params: schemas.BacktestParametersPayload,
+                 initial_capital: float,
+                 execution_params: schemas.BacktestExecutionParameters, 
                  strategy_params: schemas.StrategyCreate):
         """
-        [최종 완성 버전] 모든 파라미터를 올바른 위치에서 가져오고, 모든 변수를 정확하게 초기화합니다.
+        모든 파라미터를 올바른 위치에서 가져오고, 모든 변수를 정확하게 초기화합니다.
         """
         # --- 1. 데이터 준비 ---
         self.data = ohlcv_df.join(signals_df)
@@ -29,13 +30,11 @@ class BacktestingEngine:
              self.data = self.data.sort_index()
 
         # --- 2. 파라미터 설정 ---
-        self.exec_params = execution_params
-        
-        self.initial_capital = self.exec_params.initial_capital
-        inner_params = self.exec_params.parameters
-        self.leverage = inner_params.leverage
-        self.fee_pct = inner_params.fee
-        self.slippage_pct = inner_params.slippage
+        # 더 이상 불필요한 중첩 구조를 참조하지 않습니다.
+        self.initial_capital = initial_capital 
+        self.leverage = execution_params.leverage
+        self.fee_pct = execution_params.fee
+        self.slippage_pct = execution_params.slippage
         
         self.tpsl_logic = strategy_params.tpsl_logic if strategy_params.tpsl_logic else schemas.TpslLogic()
         

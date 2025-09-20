@@ -582,11 +582,11 @@ class BacktestParametersPayload(CamelCaseModel):
     start_date: datetime
     end_date: datetime
     initial_capital: float
-    # leverage, fee, overrides, tpsl_logic 등을 포함하는 객체를 중첩시킵니다.
+    # BacktestCreate에서 받았던 중첩된 parameters 객체를 그대로 포함합니다.
     parameters: BacktestExecutionParameters
 
 class Backtest(BacktestInList):
-    parameters: BacktestParametersPayload 
+    parameters: BacktestParametersPayload  
     strategy_snapshot: Optional[Dict[str, Any]] = None
     strategy: Optional[Strategy] = None 
     result: Optional[BacktestResultSummary] = None 

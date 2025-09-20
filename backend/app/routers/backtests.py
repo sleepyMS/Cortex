@@ -44,9 +44,9 @@ async def estimate_backtest_cost(
         raise HTTPException(status_code=500, detail="비용 예측 중 서버 오류가 발생했습니다.")
 
 @router.post(
-    "/",
+    "",  # <-- 원인 A 해결: 불필요한 리디렉션 방지
     response_model=schemas.BacktestInCreateResponse,
-    status_code=status.HTTP_202_ACCEPTED,
+    status_code=status.HTTP_202_ACCEPTED, # <-- 오타 수정
     summary="Request a new backtest job"
 )
 async def create_backtest(
@@ -55,50 +55,47 @@ async def create_backtest(
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db)
 ):
-    """새로운 백테스팅 작업을 요청합니다. DB 트랜잭션이 커밋된 후 Celery 작업이 등록됩니다."""
+    """
+    [최종 안정화 버전] 단일 트랜잭션 내에서 모든 DB 작업을 처리하고 마지막에 커밋합니다.
+    Celery 작업은 DB 커밋 직전에 발행됩니다.
+    """
     try:
-        # 1. 백테스트 DB 기록 생성 및 크레딧 차감
+        # 1. 백테스트 DB 기록 생성 및 크레딧 차감 (커밋 대기)
         created_backtest = await backtest_service.request_backtest_transactional(
             db, user=current_user, backtest_create=backtest_create
         )
 
         # 2. Celery 작업을 큐에 추가하고, Task ID를 created_backtest 객체에 할당
+        #    이 시점에도 아직 DB에 커밋되지 않았습니다.
         try:
             task = run_backtest.delay(backtest_id=str(created_backtest.id))
             created_backtest.celery_task_id = task.id
-            # db.flush()를 통해 변경사항을 DB에 즉시 반영
+            # db.flush()를 통해 변경사항을 DB에 즉시 반영 (하지만 트랜잭션은 유지)
             await db.flush()
         except Exception as celery_error:
-            logger.error(f"Celery task dispatch failed after DB operations for user {current_user.email}: {celery_error}", exc_info=True)
+            logger.error(f"Celery task dispatch failed before DB commit for user {current_user.email}: {celery_error}", exc_info=True)
+            # Celery 연결 실패 시에도 트랜잭션을 롤백하고 오류를 발생시킵니다.
+            await db.rollback()
             raise HTTPException(status_code=500, detail="백테스트 작업 생성에 실패했습니다.")
 
-        # 3. 모든 DB 작업이 성공적으로 완료되었으므로, 트랜잭션을 커밋합니다.
-        #    이 커밋이 완료된 후에야 Celery 워커가 DB 조회를 시도하게 됩니다.
+        # 3. [✅ 핵심] 모든 DB 작업이 성공적으로 메모리에 준비되었으므로, 트랜잭션을 '단 한 번' 커밋합니다.
         await db.commit()
         
         logger.info(f"Backtest job (ID: {created_backtest.id}) for user {current_user.email} successfully created and dispatched.")
 
-        # 4. 응답에 필요한 데이터만 포함하는 DTO 생성
-        response_data = {
-            "id": created_backtest.id,
-            "userId": created_backtest.user_id,
-            "strategyId": created_backtest.strategy_id,
-            "status": created_backtest.status,
-            "createdAt": created_backtest.created_at,
-            "completedAt": created_backtest.completed_at
-        }
-        
-        return schemas.BacktestInCreateResponse(**response_data)
+        return schemas.BacktestInCreateResponse.model_validate(created_backtest)
         
     except HTTPException as e:
-        await db.rollback() # 트랜잭션 롤백
+        await db.rollback() # 명시적 롤백
         raise e
     except Exception as e:
-        await db.rollback() # 트랜잭션 롤백
+        await db.rollback() # 예기치 않은 오류 발생 시 롤백
         logger.error(f"Error processing backtest request for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="백테스트 요청 처리 중 서버 오류가 발생했습니다.")
 
-@router.get("/", response_model=List[schemas.BacktestInList], summary="Get list of user's backtest records")
+
+
+@router.get("", response_model=List[schemas.BacktestInList], summary="Get list of user's backtest records")
 async def get_backtests(
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db),

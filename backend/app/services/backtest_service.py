@@ -10,6 +10,7 @@ import uuid
 import logging
 from functools import reduce
 import operator
+import re
 
 from ..models import BacktestStatus
 from .. import models, schemas
@@ -22,24 +23,39 @@ from ..services.credit_service import credit_service
 from ..services.marketplace_service import marketplace_service # check_strategy_purchase를 위해 추가
 
 
-
 logger = logging.getLogger(__name__)
+
+def _camel_to_snake(name: str) -> str:
+    """camelCase 문자열을 snake_case로 변환합니다."""
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[Any]) -> Dict[str, Any]:
     """
-    전략 딕셔너리에 'overrides' 배열을 적용합니다.
-    중간 경로에 값이 없거나(None) 딕셔너리가 아닌 경우에도 에러 없이 안전하게 처리합니다.
+    [로깅 강화 버전] camelCase 경로를 snake_case로 변환하며 모든 과정을 로그로 기록합니다.
     """
+    logger.warning("="*20 + " START PARAMETER OVERRIDE " + "="*20)
+    
     if not overrides:
+        logger.warning("Overrides list is empty. Returning original strategy.")
+        logger.warning("="*20 + "  END PARAMETER OVERRIDE  " + "="*20)
         return strategy_dict
+
+    # 원본 전략과 오버라이드 목록을 보기 쉽게 출력
+    logger.warning(f"[OVERRIDE_INIT] Original Strategy Keys: {list(strategy_dict.keys())}")
+    logger.warning(f"[OVERRIDE_INIT] Overrides to Apply:\n{json.dumps(overrides, indent=2)}")
 
     import copy
     modified_strategy = copy.deepcopy(strategy_dict)
 
-    for override in overrides:
-        path = override.path
-        value = override.value
+    for i, override in enumerate(overrides):
+        path = override.get('path') if isinstance(override, dict) else override.path
+        value = override.get('value') if isinstance(override, dict) else override.value
+        
+        logger.warning(f"--- Processing Override #{i+1}: Path='{path}', Value='{value}' ---")
+
         if not path:
+            logger.warning("Path is empty. Skipping.")
             continue
 
         try:
@@ -47,25 +63,37 @@ def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[An
             current_level = modified_strategy
             
             # 마지막 부분을 제외하고 경로를 따라 탐색
-            for i, part in enumerate(parts[:-1]):
-                key_or_index = int(part) if part.isdigit() else part
+            for depth, part in enumerate(parts[:-1]):
+                snake_part = _camel_to_snake(part)
+                key_or_index = int(snake_part) if snake_part.isdigit() else snake_part
                 
-                # 다음 레벨이 존재하지 않거나, 딕셔너리/리스트가 아니면 중단
-                if not isinstance(current_level, (dict, list)) or \
-                   (isinstance(current_level, list) and not (0 <= key_or_index < len(current_level))):
-                    raise KeyError(f"Path traversal failed at '{part}'")
+                logger.warning(f"[TRAVERSAL D-{depth}] Part: '{part}' -> Snake Key: '{key_or_index}' | Current Level Type: {type(current_level)}")
+
+                if isinstance(current_level, dict):
+                    logger.warning(f"[TRAVERSAL D-{depth}] Keys in current level: {list(current_level.keys())}")
+                elif isinstance(current_level, list):
+                    logger.warning(f"[TRAVERSAL D-{depth}] Length of current list: {len(current_level)}")
 
                 current_level = current_level[key_or_index]
 
             # 마지막 부분에 값 할당
             last_part = parts[-1]
-            key_or_index = int(last_part) if last_part.isdigit() else last_part
+            snake_last_part = _camel_to_snake(last_part)
+            key_or_index = int(snake_last_part) if snake_last_part.isdigit() else snake_last_part
+            
+            logger.warning(f"[ASSIGNMENT] Final Part: '{last_part}' -> Snake Key: '{key_or_index}' | Target Level Type: {type(current_level)}")
+            logger.warning(f"[ASSIGNMENT] Attempting to set '{key_or_index}' to '{value}'")
+            
             current_level[key_or_index] = value
+            logger.warning(f"[SUCCESS] Successfully applied override for path '{path}'")
 
-        except (KeyError, IndexError, TypeError) as e:
-            logger.warning(f"Failed to apply override for path '{path}': {e}")
+        except Exception as e:
+            # 오류 발생 시 상세 정보와 함께 트레이스백을 기록
+            logger.error(f"[FAILURE] Failed to apply override for path '{path}'. Reason: {e}", exc_info=True)
             continue
             
+    logger.warning(f"[OVERRIDE_FINAL] Final Modified Strategy Keys: {list(modified_strategy.keys())}")
+    logger.warning("="*20 + "  END PARAMETER OVERRIDE  " + "="*20)
     return modified_strategy
 
 class BacktestService:
@@ -76,81 +104,43 @@ class BacktestService:
         self.plan_service = plan_service
         self.strategy_service = strategy_service
 
-    # async def create_backtest_job(
-    #     self,
-    #     db: AsyncSession,
-    #     user: models.User,
-    #     backtest_create: schemas.BacktestCreate
-    # ) -> models.Backtest:
-    #     """
-    #     [최종 수정 버전] 새로운 백테스팅 작업을 생성하고 Celery 큐에 추가합니다.
-    #     명확한 스키마를 사용하여 데이터를 안정적으로 저장합니다.
-    #     """
-    #     strategy = await self.strategy_service.get_strategy_by_id_with_author(db, backtest_create.strategy_id)
-    #     if not strategy or strategy.author_id != user.id:
-    #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
-        
-    #     # 2. '전략 스냅샷' 생성 
-    #     strategy_dict = schemas.Strategy.from_orm(strategy).model_dump(mode='json', by_alias=True)
-    #     overrides = backtest_create.parameters.overrides or []
-    #     strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
-
-    #     params_to_store = schemas.BacktestParametersPayload(
-    #         start_date=backtest_create.start_date,
-    #         end_date=backtest_create.end_date,
-    #         initial_capital=backtest_create.initial_capital,
-    #         parameters=backtest_create.parameters
-    #     )
-        
-    #     db_backtest = models.Backtest(
-    #         user_id=user.id,
-    #         strategy_id=backtest_create.strategy_id,
-    #         status=BacktestStatus.PENDING,
-    #         parameters=params_to_store.model_dump(mode='json'),
-    #         strategy_snapshot=strategy_snapshot_dict
-    #     )
-        
-    #     db.add(db_backtest)
-    #     await db.flush()
-
-    #     return db_backtest
-    
     async def _create_backtest_db_entry(
         self, db: AsyncSession, user: models.User, backtest_create: schemas.BacktestCreate
     ) -> models.Backtest:
-        """DB에 Backtest 객체를 생성하는 역할만 수행하는 내부 헬퍼 함수."""
+        """
+        [최종 수정 버전] DB에 Backtest 객체를 생성하고, 실행에 필요한 모든 파라미터를
+        'BacktestParametersPayload' 스키마에 맞춰 일관된 구조로 저장합니다.
+        """
+        # 1. 전략 조회 및 실행 권한 확인 
         strategy = await strategy_service.get_strategy_by_id(db, backtest_create.strategy_id)
         
         is_author = strategy and strategy.author_id == user.id
         is_purchased = not is_author and await marketplace_service.check_strategy_purchase(db, user.id, strategy.id)
 
         if not (is_author or is_purchased):
-             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
-        
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
 
-        logger.warning(strategy)
-
-
+        # 2. 파라미터 오버라이드가 적용된 '전략 스냅샷' 생성 
         strategy_dict = schemas.StrategyForSnapshot.model_validate(strategy, from_attributes=True).model_dump(mode='json')
-
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
-
-        params_to_store = schemas.BacktestParametersPayload.model_validate(backtest_create)
+        
+        params_to_store = schemas.BacktestParametersPayload(
+            start_date=backtest_create.start_date,
+            end_date=backtest_create.end_date,
+            initial_capital=backtest_create.initial_capital,
+            parameters=backtest_create.parameters  # 중첩된 parameters 객체(leverage, overrides 등)를 그대로 전달
+        )
         
         db_backtest = models.Backtest(
             user_id=user.id,
             strategy_id=backtest_create.strategy_id,
             status=BacktestStatus.PENDING,
-            parameters=params_to_store.model_dump(mode='json'),
+            parameters=params_to_store.model_dump(mode='json'), # 일관된 구조로 저장
             strategy_snapshot=strategy_snapshot_dict
         )
 
-        # --- [핵심 수정] ---
-        # 생성된 backtest 객체의 strategy 관계 속성에,
-        # 미리 조회해 둔 strategy 객체를 직접 할당합니다.
         db_backtest.strategy = strategy
-        # ------------------
         
         db.add(db_backtest)
         await db.flush()
@@ -263,7 +253,7 @@ class BacktestService:
             try:
                 celery_app.control.revoke(backtest_to_cancel.celery_task_id, terminate=True)
                 backtest_to_cancel.status = BacktestStatus.CANCELED
-                logger.info(f"Backtest ID {backtest_to_cancel.id} (Task ID: {backtest_to_cancel.celery_task_id}) cancellation requested.")
+                logger.warning(f"Backtest ID {backtest_to_cancel.id} (Task ID: {backtest_to_cancel.celery_task_id}) cancellation requested.")
             except Exception as e:
                 logger.error(f"Failed to send cancellation command for task {backtest_to_cancel.celery_task_id}: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="백테스트 취소 명령에 실패했습니다.")
@@ -281,6 +271,6 @@ class BacktestService:
         # 연쇄적으로 자동 삭제됩니다.
         await db.delete(backtest_to_delete)
         await db.flush()
-        logger.info(f"Backtest record ID {backtest_to_delete.id} and all associated data deleted.")
+        logger.warning(f"Backtest record ID {backtest_to_delete.id} and all associated data deleted.")
 
 backtest_service = BacktestService()

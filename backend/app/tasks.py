@@ -200,7 +200,7 @@ def run_backtest(self, backtest_id: str):
         session.commit()
         
         # DB에 저장된 파라미터와 전략 스냅샷을 Pydantic 스키마로 변환
-        execution_params = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
+        params_from_db = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
         snapshot_as_strategy = schemas.StrategyCreate.model_validate(backtest.strategy_snapshot)
 
         # --- 단계 2: 매매 신호 생성 ---
@@ -217,8 +217,8 @@ def run_backtest(self, backtest_id: str):
         ohlcv_df = market_data_service.get_historical_data_sync(
             ticker=ticker,
             timeframe=calculation_base_tf,
-            start_date=execution_params.start_date,
-            end_date=execution_params.end_date
+            start_date=params_from_db.start_date, 
+            end_date=params_from_db.end_date   
         )
         if ohlcv_df.empty:
             raise ValueError("시세 데이터를 로드할 수 없습니다. 기간이나 티커를 확인해주세요.")
@@ -229,7 +229,8 @@ def run_backtest(self, backtest_id: str):
         engine = BacktestingEngine(
             ohlcv_df=ohlcv_df, 
             signals_df=signals_df, 
-            execution_params=execution_params,
+            initial_capital=params_from_db.initial_capital, 
+            execution_params=params_from_db.parameters,    
             strategy_params=snapshot_as_strategy 
         )
 
