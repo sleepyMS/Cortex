@@ -98,7 +98,7 @@ class Plan(Base):
     name = Column(Enum(PlanType), unique=True, nullable=False)
     price = Column(Integer, nullable=False)
     credit_surcharge_multiplier = Column(Float, nullable=False, server_default="2.0")
-
+    
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
 
@@ -111,8 +111,6 @@ class PlanFeature(Base):
     max_strategies = Column(Integer, nullable=False)
     max_coins_per_backtest = Column(Integer, nullable=False)
     live_bots_limit = Column(Integer, nullable=False)
-    daily_backtest_count = Column(Integer, nullable=False)
-    max_backtest_duration_years = Column(Integer, nullable=True)
     supported_timeframes = Column(String, nullable=False)
     
     community_access = Column(Boolean, default=False, nullable=False)

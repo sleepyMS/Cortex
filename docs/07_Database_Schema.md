@@ -47,8 +47,7 @@ DateTime updated_at
         Integer max_strategies
         Integer max_coins_per_backtest
         Integer live_bots_limit
-        Integer daily_backtest_count
-        Integer max_backtest_duration_years
+        Float credit_surcharge_multiplier
         String supported_timeframes
     }
 

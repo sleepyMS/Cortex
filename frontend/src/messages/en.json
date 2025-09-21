@@ -874,7 +874,16 @@
         "title": "Pre-flight Check",
         "strategy": "Strategy selected",
         "period": "Period configured"
-      }
+      },
+      "costDetails": {
+        "title": "cost details",
+        "originalCost": "Original Cost",
+        "planDiscount": "({discountRate}%) off the {planName} plan",
+        "FinalCost": "Final Need Credit",
+        "yourBalance": "My Credit Balance",
+        "noEstimation": "Choosing a strategy and duration will calculate the cost."
+      },
+      "insufficientCredits": "Credits out of balance"
     }
   },
   "ParameterTreeView": {

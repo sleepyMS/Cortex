@@ -235,7 +235,6 @@ class UserService:
             is_email_verified=user.is_email_verified, current_plan_name=sub.plan.name.value,
             current_plan_price=sub.plan.price, subscription_end_date=sub.current_period_end,
             subscription_is_active=sub.status == "active",
-            max_backtests_per_day=features.daily_backtest_count,
             concurrent_bots_limit=features.live_bots_limit,
             allowed_timeframes=features.supported_timeframes.split(','),
             total_backtests_run_by_user=total_backtests,

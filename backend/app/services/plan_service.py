@@ -22,27 +22,30 @@ class PlanService:
         """초기 구독 플랜을 데이터베이스에 생성합니다. (서버 시작 시 한 번만 실행)"""
         plans_to_seed = {
             PlanType.BASIC: {
-                "name": PlanType.BASIC, "price": 0,
+                "name": PlanType.BASIC, "price": 0, "credit_surcharge_multiplier": 2.0,
                 "features": {
                     "max_strategies": 3, "max_coins_per_backtest": 1, "live_bots_limit": 0,
-                    "daily_backtest_count": 5, "max_backtest_duration_years": 1, "supported_timeframes": "1h,4h,1d",
-                    "community_access": True, "telegram_alerts": False, "advanced_features_access": False, "portfolio_backtest_access": False
+                    "supported_timeframes": "1h,4h,1d",
+                    "community_access": True, "telegram_alerts": False, 
+                    "advanced_features_access": False, "portfolio_backtest_access": False
                 }
             },
             PlanType.TRADER: {
-                "name": PlanType.TRADER, "price": 29000,
+                "name": PlanType.TRADER, "price": 29000, "credit_surcharge_multiplier": 1.5,
                 "features": {
                     "max_strategies": 20, "max_coins_per_backtest": 5, "live_bots_limit": 3,
-                    "daily_backtest_count": 100, "max_backtest_duration_years": 5, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
-                    "community_access": True, "telegram_alerts": True, "advanced_features_access": True, "portfolio_backtest_access": True
+                    "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
+                    "community_access": True, "telegram_alerts": True, 
+                    "advanced_features_access": True, "portfolio_backtest_access": True
                 }
             },
             PlanType.PRO: {
-                "name": PlanType.PRO, "price": 59000,
+                "name": PlanType.PRO, "price": 59000, "credit_surcharge_multiplier": 1.0,
                 "features": {
                     "max_strategies": 100, "max_coins_per_backtest": 20, "live_bots_limit": 10,
-                    "daily_backtest_count": 9999, "max_backtest_duration_years": None, "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
-                    "community_access": True, "telegram_alerts": True, "advanced_features_access": True, "portfolio_backtest_access": True
+                    "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
+                    "community_access": True, "telegram_alerts": True, 
+                    "advanced_features_access": True, "portfolio_backtest_access": True
                 }
             }
         }
@@ -50,13 +53,19 @@ class PlanService:
         for plan_type, data in plans_to_seed.items():
             result = await db.execute(select(models.Plan).filter(models.Plan.name == plan_type))
             if result.scalar_one_or_none() is None:
-                db_plan = models.Plan(name=data['name'], price=data['price'])
+                # Plan 모델 생성 시 credit_surcharge_multiplier를 함께 전달합니다.
+                db_plan = models.Plan(
+                    name=data['name'], 
+                    price=data['price'],
+                    credit_surcharge_multiplier=data['credit_surcharge_multiplier']
+                )
                 db.add(db_plan)
                 await db.flush()
                 
+                # features 데이터에서 불필요한 키는 자동으로 무시됩니다.
                 db_features = models.PlanFeature(plan_id=db_plan.id, **data['features'])
                 db.add(db_features)
-                logger.info(f"Seeded '{db_plan.name}' plan.")
+                logger.info(f"Seeded '{db_plan.name}' plan with multiplier {db_plan.credit_surcharge_multiplier}.")
         
     async def get_all_plans(self, db: AsyncSession) -> List[models.Plan]:
         """서비스에서 제공하는 모든 구독 플랜 목록을 비동기로 조회합니다."""

@@ -10,7 +10,18 @@ import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { addDays, startOfDay } from "date-fns";
 import Link from "next/link";
-import { PlusCircle, Loader2, CheckCircle, Lock, Coins } from "lucide-react";
+import {
+  PlusCircle,
+  Loader2,
+  CheckCircle,
+  Lock,
+  Coins,
+  TrendingDown,
+  ShieldCheck,
+  Tag,
+  Percent,
+  Receipt,
+} from "lucide-react";
 import debounce from "lodash.debounce";
 
 import apiClient from "@/lib/apiClient";
@@ -100,7 +111,11 @@ type FormValues = z.infer<typeof formSchema>;
 
 // 비용 예측 API 응답 타입 (API 명세에 따라 정의)
 interface CostEstimationResponse {
+  originalCost: number; // 정가
+  discountPct: number; // 할인율
   finalCost: number;
+  userBalance: number; // 사용자 잔액
+  isSufficient: boolean; // 잔액 충분 여부
 }
 
 // --- 메인 컴포넌트 ---
@@ -699,21 +714,78 @@ export function BacktestSetupForm() {
                 {/* 비용 예측 결과 표시 */}
                 <div className="w-full pt-2">
                   <Separator className="mb-4" />
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-muted-foreground">
-                      {t("summary.estimatedCost")}
-                    </span>
-                    <span className="flex items-center gap-1.5 font-mono font-semibold">
-                      {isEstimatingCost ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      ) : (
-                        <Coins className="h-4 w-4 text-amber-500" />
-                      )}
-                      {estimation
-                        ? `${estimation.finalCost.toLocaleString()} CC`
-                        : "- CC"}
-                    </span>
-                  </div>
+                  <h4 className="font-semibold text-sm mb-3">
+                    {t("summary.costDetails.title")}
+                  </h4>
+                  {isEstimatingCost ? (
+                    <div className="flex justify-center items-center h-24">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : estimation ? (
+                    <div className="space-y-2.5 text-sm">
+                      {/* 1. 정가 (Basic 플랜 기준) */}
+                      <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Tag className="h-4 w-4" /> {/* 아이콘 변경 */}
+                          {t("summary.costDetails.originalCost")}
+                        </span>
+                        <span className="font-mono">
+                          {estimation.originalCost.toLocaleString()} CC
+                        </span>
+                      </div>
+
+                      {/* 2. 플랜 할인 (항상 표시되도록 조건 제거) */}
+                      <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
+                        <span className="flex items-center gap-1.5">
+                          <Percent className="h-4 w-4" /> {/* 아이콘 변경 */}
+                          {t("summary.costDetails.planDiscount", {
+                            planName: "Pro", // TODO: 실제 사용자 플랜 이름으로 교체
+                            discountRate: (
+                              estimation.discountPct * 100
+                            ).toFixed(0),
+                          })}
+                        </span>
+                        <span className="font-mono">
+                          -
+                          {(
+                            estimation.originalCost - estimation.finalCost
+                          ).toLocaleString()}{" "}
+                          CC
+                        </span>
+                      </div>
+
+                      <Separator className="my-2" />
+
+                      {/* 3. 최종 비용 */}
+                      <div className="flex justify-between items-center font-bold text-base">
+                        <span className="flex items-center gap-1.5">
+                          <Receipt className="h-4 w-4 text-primary" />{" "}
+                          {t("summary.costDetails.finalCost")}
+                        </span>
+                        <span className="font-mono text-primary">
+                          {estimation.finalCost.toLocaleString()} CC
+                        </span>
+                      </div>
+
+                      {/* 4. 내 크레딧 잔액 */}
+                      <div className="flex justify-between items-center text-xs pt-1">
+                        <span className="text-muted-foreground">
+                          {t("summary.costDetails.yourBalance")}
+                        </span>
+                        <span
+                          className={`font-mono ${
+                            !estimation.isSufficient ? "text-destructive" : ""
+                          }`}
+                        >
+                          {estimation.userBalance.toLocaleString()} CC
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground text-xs py-8">
+                      {t("summary.costDetails.noEstimation")}
+                    </div>
+                  )}
                 </div>
 
                 <Button
@@ -722,7 +794,8 @@ export function BacktestSetupForm() {
                   className="w-full mt-2"
                   disabled={
                     createBacktestMutation.isPending ||
-                    !methods.formState.isValid
+                    !methods.formState.isValid ||
+                    (estimation && !estimation.isSufficient) // 잔액 부족 시 비활성화
                   }
                 >
                   {createBacktestMutation.isPending ? (
@@ -734,6 +807,12 @@ export function BacktestSetupForm() {
                     t("submitButton")
                   )}
                 </Button>
+
+                {estimation && !estimation.isSufficient && (
+                  <p className="text-center text-xs text-destructive w-full">
+                    {t("summary.insufficientCredits")}
+                  </p>
+                )}
               </CardFooter>
             </Card>
           </div>

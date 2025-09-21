@@ -189,8 +189,6 @@ class PlanFeatureSchema(CamelCaseModel):
     max_coins_per_backtest: int
     max_strategies: int
     live_bots_limit: int
-    daily_backtest_count: int
-    max_backtest_duration_years: Optional[int]
     supported_timeframes: str
     community_access: bool
     telegram_alerts: bool
@@ -244,7 +242,6 @@ class UserDashboardSummary(CamelCaseModel):
     current_plan_price: float
     subscription_end_date: Optional[datetime]
     subscription_is_active: bool
-    max_backtests_per_day: int
     concurrent_bots_limit: int
     allowed_timeframes: List[str]
     total_backtests_run_by_user: int

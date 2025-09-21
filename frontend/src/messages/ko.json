@@ -919,7 +919,16 @@
         "title": "사전 점검",
         "strategy": "전략 선택 완료",
         "period": "기간 설정 완료"
-      }
+      },
+      "costDetails": {
+        "title": "비용 상세정보",
+        "originalCost": "정가 (Basic 기준)",
+        "planDiscount": "{planName} 플랜 할인 ({discountRate}%)",
+        "finalCost": "최종 필요 크레딧",
+        "yourBalance": "내 크레딧 잔액",
+        "noEstimation": "전략과 기간을 선택하면 비용이 계산됩니다."
+      },
+      "insufficientCredits": "크레딧 잔액이 부족합니다."
     }
   },
   "ParameterTreeView": {

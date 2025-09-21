@@ -12,6 +12,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .gateways.toss_payments_client import TossPaymentsClient
+from .services.plan_service import plan_service
 
 # --- 1. 중앙 설정 및 모듈 임포트 ---
 from . import models
@@ -71,6 +72,16 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
+    
+    if not user.subscription or not user.subscription.plan:
+        basic_plan = await plan_service.get_plan_by_name(db, models.PlanType.BASIC)
+        if not basic_plan:
+            # Basic 플랜이 DB에 없는 것은 심각한 서버 설정 오류입니다.
+            raise HTTPException(status_code=500, detail="서버 기본 설정 오류입니다.")
+        
+        # 임시 Subscription 객체를 만들어 user 객체에 할당
+        user.subscription = models.Subscription(plan=basic_plan, status="active")
+    
     return user
 
 
