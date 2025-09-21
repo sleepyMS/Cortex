@@ -10,7 +10,6 @@ import uuid
 import logging
 from functools import reduce
 import operator
-import re
 
 from ..models import BacktestStatus
 from .. import models, schemas
@@ -25,15 +24,10 @@ from ..services.marketplace_service import marketplace_service # check_strategy_
 
 logger = logging.getLogger(__name__)
 
-def _camel_to_snake(name: str) -> str:
-    """camelCase 문자열을 snake_case로 변환합니다."""
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
 def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[Any]) -> Dict[str, Any]:
     """
-    전략 딕셔너리에 'overrides' 배열을 적용합니다.
-    중간 경로에 값이 없거나(None) 딕셔너리가 아닌 경우에도 에러 없이 안전하게 처리합니다.
+    [최종 수정 버전] 중첩된 딕셔너리/리스트 구조를 안전하게 탐색하며 오버라이드를 적용합니다.
+    None 값을 만나면 경로 탐색을 중단하여 TypeError를 방지합니다.
     """
     if not overrides:
         return strategy_dict
@@ -42,45 +36,35 @@ def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[An
     modified_strategy = copy.deepcopy(strategy_dict)
 
     for override in overrides:
-        path = override.get('path') if isinstance(override, dict) else override.path
+        path_str = override.get('path') if isinstance(override, dict) else override.path
         value = override.get('value') if isinstance(override, dict) else override.value
         
-        if not path:
+        if not path_str:
             continue
 
         try:
-            parts = path.split('.')
+            parts = path_str.split('.')
             current_level = modified_strategy
             
             # 마지막 부분을 제외하고 경로를 따라 탐색
             for part in parts[:-1]:
-                # [✅ 2단계: 키 형식 변환]
-                # 딕셔너리 키로 사용하기 전에 snake_case로 변환합니다.
-                snake_part = _camel_to_snake(part)
-                key_or_index = int(snake_part) if snake_part.isdigit() else snake_part
+                key_or_index = int(part) if part.isdigit() else part
                 
-                if not isinstance(current_level, (dict, list)) or \
-                   (isinstance(current_level, list) and not (isinstance(key_or_index, int) and 0 <= key_or_index < len(current_level))):
-                    raise KeyError(f"Path traversal failed at '{part}'")
+                # [안정성 강화] None이거나 더 이상 탐색할 수 없는 구조이면 중단
+                if current_level is None or not isinstance(current_level, (dict, list)):
+                    raise TypeError(f"Cannot traverse path at '{part}', current level is not a collection.")
 
                 current_level = current_level[key_or_index]
 
             # 마지막 부분에 값 할당
             last_part = parts[-1]
-            # [✅ 2단계: 키 형식 변환]
-            snake_last_part = _camel_to_snake(last_part)
-            key_or_index = int(snake_last_part) if snake_last_part.isdigit() else snake_last_part
+            key_or_index = int(last_part) if last_part.isdigit() else last_part
             
-            if isinstance(current_level, dict):
+            if current_level is not None:
                 current_level[key_or_index] = value
-            elif isinstance(current_level, list) and isinstance(key_or_index, int) and 0 <= key_or_index < len(current_level):
-                current_level[key_or_index] = value
-            else:
-                raise TypeError(f"Cannot set value on non-dict/list or index out of bounds at '{last_part}'")
-
 
         except (KeyError, IndexError, TypeError) as e:
-            logger.warning(f"Failed to apply override for path '{path}': {e}")
+            logger.warning(f"Failed to apply override for path '{path_str}': {e}")
             continue
             
     return modified_strategy
@@ -110,9 +94,14 @@ class BacktestService:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
 
         # 2. 파라미터 오버라이드가 적용된 '전략 스냅샷' 생성 
-        strategy_dict = schemas.StrategyForSnapshot.model_validate(strategy, from_attributes=True).model_dump(mode='json')
+        strategy_dict = schemas.StrategyForSnapshot.model_validate(strategy, from_attributes=True).model_dump(
+            mode='json', 
+            by_alias=True 
+        )
+
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
+        
         
         params_to_store = schemas.BacktestParametersPayload(
             start_date=backtest_create.start_date,

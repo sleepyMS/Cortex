@@ -176,22 +176,33 @@ def fulfill_order_task(order_id: str, gateway_transaction_id: str):
 @celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue", acks_late=True)
 def run_backtest(self, backtest_id: str):
     """
-    [최종 오케스트레이터] '전략 스냅샷' 기반 백테스팅의 전체 과정을 조율합니다.
-    진행률은 WebSocket으로, 최종 결과는 이벤트 버스로 전달합니다.
+    [최종 안정화 버전] '전략 스냅샷' 기반 백테스팅의 전체 과정을 조율합니다.
+    경쟁 상태를 해결하기 위한 내부 대기 루프를 포함합니다.
     """
     logger.info(f"Starting backtest orchestration for ID: {backtest_id}")
     backtest_uuid = uuid.UUID(backtest_id)
     session = SyncSessionLocal()
-    backtest = None # 예외 처리에서 사용하기 위해 미리 선언
+    backtest = None 
 
     try:
-        # --- 단계 1: 초기 설정 및 상태 업데이트 ---
+        # --- 단계 1: 경쟁 상태 해결을 위한 DB 조회 및 대기 루프 ---
+        MAX_RETRIES = 5
+        RETRY_DELAY_SECONDS = 2
+        for attempt in range(MAX_RETRIES):
+            backtest = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one_or_none()
+            if backtest:
+                logger.info(f"Backtest {backtest_id} found in DB on attempt {attempt + 1}.")
+                break
+            
+            logger.warning(f"Backtest {backtest_id} not found on attempt {attempt + 1}. Retrying in {RETRY_DELAY_SECONDS}s...")
+            time.sleep(RETRY_DELAY_SECONDS)
+        
+        if not backtest:
+            raise ValueError(f"Backtest ID {backtest_id} not found in the database after {MAX_RETRIES} attempts.")
+        
+        # --- 단계 2: 초기 설정 및 상태 업데이트 ---
         WebSocketManager.send_status_update(backtest_id, "running", "백테스트 초기화 중...", 5)
         
-        backtest = session.query(models.Backtest).filter(models.Backtest.id == backtest_uuid).one_or_none()
-        if not backtest:
-            raise ValueError(f"Backtest ID {backtest_id} not found in the database.")
-
         if backtest.status != BacktestStatus.PENDING:
             logger.warning(f"Backtest {backtest_id} is not in 'pending' state (current: {backtest.status}). Aborting task.")
             return f"Task aborted: Backtest status was '{backtest.status}'."
@@ -201,14 +212,14 @@ def run_backtest(self, backtest_id: str):
         
         # DB에 저장된 파라미터와 전략 스냅샷을 Pydantic 스키마로 변환
         params_from_db = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
-        snapshot_as_strategy = schemas.StrategyCreate.model_validate(backtest.strategy_snapshot)
+        snapshot_as_strategy = schemas.StrategyForSnapshot.model_validate(backtest.strategy_snapshot)
 
-        # --- 단계 2: 매매 신호 생성 ---
+        # --- 단계 3: 매매 신호 생성 ---
         WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 중...", 25)
         signals_df, calculation_base_tf = asyncio.run(signal_service.generate_signals(request=snapshot_as_strategy))
         logger.info(f"Backtest {backtest_id}: Signals generated on '{calculation_base_tf}' timeframe.")
 
-        # --- 단계 3: 시세 데이터 로드 ---
+        # --- 단계 4: 시세 데이터 로드 ---
         WebSocketManager.send_status_update(backtest_id, "running", f"{calculation_base_tf} 시세 데이터 로딩 중...", 50)
         
         # target_coins가 비어있을 경우를 대비한 기본값 설정
@@ -223,20 +234,20 @@ def run_backtest(self, backtest_id: str):
         if ohlcv_df.empty:
             raise ValueError("시세 데이터를 로드할 수 없습니다. 기간이나 티커를 확인해주세요.")
 
-        # --- 단계 4: 백테스팅 엔진 실행 ---
+        # --- 단계 5: 백테스팅 엔진 실행 ---
         WebSocketManager.send_status_update(backtest_id, "running", "거래를 시뮬레이션하고 있습니다...", 75)
         
         engine = BacktestingEngine(
             ohlcv_df=ohlcv_df, 
             signals_df=signals_df, 
-            initial_capital=params_from_db.initial_capital, 
-            execution_params=params_from_db.parameters,    
-            strategy_params=snapshot_as_strategy 
+            initial_capital=params_from_db.initial_capital,
+            execution_params=params_from_db.parameters,
+            strategy_params=schemas.StrategyCreate.model_validate(snapshot_as_strategy.model_dump())
         )
 
         summary, trade_logs = engine.run()
 
-        # --- 단계 5: 결과 저장 ---
+        # --- 단계 6: 결과 저장 ---
         WebSocketManager.send_status_update(backtest_id, "running", "결과 저장 중...", 90)
         
         # 기존 결과가 있다면 삭제 (재실행 대비)
@@ -257,7 +268,7 @@ def run_backtest(self, backtest_id: str):
         backtest.completed_at = datetime.now(timezone.utc)
         session.commit()
 
-        # --- 단계 6: 완료 이벤트 발행 ---
+        # --- 단계 7: 완료 이벤트 발행 ---
         publish_event(
             "backtest.completed", 
             {"backtest_id": backtest_id, "user_id": str(backtest.user_id)}

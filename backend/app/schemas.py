@@ -363,28 +363,23 @@ class StrategyCreate(StrategyBase):
     target_coins: List[TargetCoin] = Field(default_factory=list)
 
 class StrategyForSnapshot(CamelCaseModel):
-    """
-    백테스팅 실행 시점에 전략의 스냅샷을 저장하기 위한 스키마.
-    """
     id: uuid.UUID
-    authorId: uuid.UUID = Field(..., alias="author_id")
+    author_id: uuid.UUID
     name: str
     description: Optional[str] = None
-    longEntryRules: Dict[str, Any] = Field(..., alias="long_entry_rules")
-    longExitRules: Optional[Dict[str, Any]] = Field(None, alias="long_exit_rules")
-    shortEntryRules: Optional[Dict[str, Any]] = Field(None, alias="short_entry_rules")
-    shortExitRules: Optional[Dict[str, Any]] = Field(None, alias="short_exit_rules")
-    tpslLogic: Optional[Dict[str, Any]] = Field(None, alias="tpsl_logic")
-    targetCoins: List[Dict[str, Any]] = Field(..., alias="target_coins")
-    isPublic: bool = Field(..., alias="is_public")
-    paidFeatureLevel: Optional[str] = Field(None, alias="paid_feature_level")
-    createdAt: datetime = Field(..., alias="created_at")
-    updatedAt: Optional[datetime] = Field(None, alias="updated_at")
-
-    class Config:
-        from_attributes = True
-        alias_generator = to_camel
-        populate_by_name = True
+    
+    # Dict[str, Any] 대신 정확한 Pydantic 모델 타입으로 지정합니다.
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    
+    target_coins: List[TargetCoin] # TargetCoin도 명확한 스키마로 지정
+    is_public: bool
+    paid_feature_level: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
 class StrategyUpdate(CamelCaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=100)
