@@ -825,7 +825,7 @@ class UserPurchasedStrategyResponse(CamelCaseModel):
     strategy_id: uuid.UUID
     name: str
     author_username: str
-    price_paid: float
+    price_paid_in_credit: float
     purchased_at: datetime
 
 class UserInventoryItemResponse(CamelCaseModel):

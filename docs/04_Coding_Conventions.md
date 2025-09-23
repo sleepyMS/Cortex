@@ -61,12 +61,14 @@
 
 ### 폴더 구조
 
-- 기능/도메인 단위로 폴더를 분리합니다. (e.g., `/auth`, `/backtests`, `/strategies`)
-- 각 도메인 폴더는 일반적으로 다음 파일들을 포함합니다:
-  - `router.py`: API 엔드포인트 정의
-  - `service.py`: 핵심 비즈니스 로직
-  - `schemas.py`: Pydantic 스키마 (데이터 유효성 검사 및 형태 정의)
-  - `models.py`: SQLAlchemy 모델 (DB 테이블 정의)
+- **`main.py`**: FastAPI 앱의 시작점.
+- **`/app`**: 애플리케이션의 핵심 소스 코드.
+  - **`/routers`**: 도메인별 API 엔드포인트 정의. (e.g., `store.py`, `marketplace.py`, `credits.py`, `settlements.py`)
+  - **`/services`**: 도메인별 핵심 비즈니스 로직. (e.g., `store_service.py`, `credit_service.py`, `settlement_service.py`)
+  - **`/models.py`**: 모든 SQLAlchemy 모델 (DB 테이블 정의)을 중앙에서 관리.
+  - **`/schemas.py`**: 모든 Pydantic 스키마를 중앙에서 관리.
+  - **`/tasks.py`**: 모든 Celery 백그라운드 작업을 중앙에서 관리.
+  - **기타**: `dependencies.py`, `gateways/` 등 공통 모듈.
 
 ### 코드 스타일
 

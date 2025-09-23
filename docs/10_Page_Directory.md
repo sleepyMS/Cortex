@@ -51,7 +51,7 @@
   - `PortfolioOverview`: 자산 현황 요약
   - `ActiveBotCard`: 실행 중인 봇 목록
   - `SubscriptionStatusCard`: 현재 구독 플랜 및 남은 기간 표시
-  - `UsageStatsWidget`: 일일 백테스트 사용량, 활성 봇 개수 등 표시
+  - `UsageStatsWidget`: 활성 봇 개수 등 표시
   - 최근 백테스팅 결과 바로가기 목록
   - 최근 실행된 자동매매 봇 목록
 

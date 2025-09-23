@@ -21,16 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { AlertTriangle } from "lucide-react";
-
-// 타입 정의
-interface PurchasedStrategy {
-  purchaseId: string;
-  strategyId: string;
-  name: string;
-  authorUsername: string;
-  pricePaid: number;
-  purchasedAt: string;
-}
+import { PurchasedStrategy } from "@/hooks/useInventory";
 
 // API 호출 함수
 const fetchPurchasedStrategies = async (): Promise<PurchasedStrategy[]> => {
@@ -69,7 +60,7 @@ const PurchasedStrategyCard = ({
           <span>
             {t("pricePaidLabel")}:{" "}
             <span className="font-semibold text-foreground">
-              ${strategy.pricePaid.toFixed(2)}
+              ${strategy.pricePaidInCredit.toFixed(2)}
             </span>
           </span>
         </div>

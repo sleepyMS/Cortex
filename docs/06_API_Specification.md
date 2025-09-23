@@ -267,27 +267,31 @@
 - **Authorization:** `Required (User)`
 - **Success Response (204 No Content):** (No content)
 
-### `GET /users/me/inventory`
-
-- **Description:** 현재 사용자가 보유한 모든 아이템(쿠폰 등) 목록을 조회합니다.
+- **Description:** 현재 사용자가 **크레딧으로 구매하여 보유한** 모든 아이템(영구 소유 및 소모성) 목록을 조회합니다.
 - **Authorization:** `Required (User)`
 - **Success Response (200 OK):**
   ```json
   [
     {
-      "productId": "i1b2c3d4-e5f6-7890-1234-567890abcdef",
-      "name": "Optimization Coupon",
-      "description": "Reduces optimization time by 50%.",
-      "displayProperties": { "icon": "coupon_icon", "tier": "gold" },
+      "productId": "item_uuid_theme_abc...",
+      "name": "Dark Mode Pro Theme",
+      "inventoryType": "UNLOCK",
+      "quantity": 1,
+      "purchasedAt": "2025-09-20T10:00:00Z"
+    },
+    {
+      "productId": "item_uuid_ticket_xyz...",
+      "name": "백테스팅 우선 처리권",
+      "inventoryType": "CONSUMABLE",
       "quantity": 5,
-      "purchasedAt": "2025-09-15T10:00:00Z"
+      "purchasedAt": "2025-09-21T11:30:00Z"
     }
   ]
   ```
 
 ### `GET /users/me/purchased-strategies`
 
-- **Description:** 현재 사용자가 구매한 모든 전략 목록을 조회합니다.
+- **Description:** 현재 사용자가 **유료 크레딧으로 구매한** 모든 전략 목록을 조회합니다.
 - **Authorization:** `Required (User)`
 - **Success Response (200 OK):**
   ```json
@@ -297,7 +301,7 @@
       "strategyId": "s3b2c3d4-e5f6-7890-1234-567890abcdef",
       "name": "Super Scalper Strategy",
       "authorUsername": "proTrader",
-      "pricePaid": 50,
+      "pricePaidInCredit": 50000,
       "purchasedAt": "2025-09-16T11:00:00Z"
     }
   ]
@@ -339,7 +343,7 @@
 
 ### `POST /backtests`
 
-- **Description:** 새로운 백테스팅 작업을 비동기적으로 요청합니다.
+- **Description:** 새로운 백테스팅 작업을 비동기적으로 요청합니다. **요청 시 사용자의 플랜과 백테스트 조건에 따라 계산된 크레딧(무료+유료)이 자동으로 차감됩니다.**
 - **Authorization:** `Required (User)`
 - **Request Body:**
   ```json
@@ -372,6 +376,7 @@
     "completedAt": null
   }
   ```
+- **Error Response**: **`402 Payment Required`**: 크레딧 잔액이 부족할 경우 반환됩니다.
 
 ### `GET /backtests`
 
@@ -396,6 +401,29 @@
       }
     }
   ]
+  ```
+
+### `POST /backtests/estimate-cost`
+
+- **Description:** 백테스팅을 실제로 실행하기 전, 소모될 크레딧 비용을 미리 계산합니다.
+- **Authorization:** `Required (User)`
+- **Request Body:**
+  ```json
+  {
+    "strategyId": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2025-01-01T00:00:00Z"
+  }
+  ```
+- **Success Response (200 OK):**
+  ```json
+  {
+    "originalCost": 2000,
+    "discountPct": 0.25,
+    "finalCost": 1500,
+    "userBalance": 12000,
+    "isSufficient": true
+  }
   ```
 
 ### `GET /backtests/{backtest_id}`
@@ -716,6 +744,28 @@
 - **Request Body:** (Toss Payments에서 정의한 형식)
 - **Success Response (200 OK):** `json { "status": "ok" }`
 
+### `POST /store/charge-orders`
+
+- **Description:** 크레딧 팩 충전을 위한 주문을 생성하고 Toss Payments 현금 결제에 필요한 정보를 반환합니다. 이 API는 플랫폼과 사용자 간의 B2C 현금 거래를 담당합니다.
+- **Authorization:** `Required (User)`
+- **Request Body:**
+  ```json
+  {
+    "packageId": "pkg_10000_credits_uuid",
+    "amount": 10000
+  }
+  ```
+- **Success Response (201 Created):**
+  ```json
+  {
+    "orderId": "credit_ord_abc...",
+    "orderName": "Cortex 10,000 Credit Pack",
+    "amount": 10000,
+    "customerName": "testuser",
+    "customerEmail": "user@example.com"
+  }
+  ```
+
 ---
 
 ## 9. 커뮤니티 (Community)
@@ -859,7 +909,7 @@
       {
         "id": "prod_123...",
         "name": "Super Scalper Strategy",
-        "price": 50,
+        "price": 50000,
         "productType": "STRATEGY",
         "author": { "username": "proTrader" },
         "latestBacktestSummary": { "totalReturnPct": 250.7 }
@@ -884,7 +934,7 @@
 
 ### `POST /marketplace/orders`
 
-- **Description:** 상품 구매를 위한 주문을 생성하고 결제에 필요한 정보를 반환합니다.
+- **Description:** 보유한 크레딧을 사용하여 마켓플레이스의 상품(전략, 아이템)을 구매합니다. 사용자 간(P2P) 거래이므로, **'유료 크레딧'만 사용 가능**합니다.
 - **Authorization:** `Required (User)`
 - **Request Body:**
   ```json
@@ -900,13 +950,24 @@
 - **Success Response (201 Created):**
   ```json
   {
-    "orderId": "ord_abc...",
-    "orderName": "Super Scalper Strategy",
-    "amount": 50,
-    "customerName": "testuser",
-    "customerEmail": "user@example.com"
+    "id": "ord_xyz...",
+    "buyerId": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+    "totalAmount": 50000,
+    "status": "COMPLETED",
+    "createdAt": "2025-09-24T04:01:53Z",
+    "items": [
+      {
+        "quantity": 1,
+        "priceAtPurchase": 50000,
+        "product": {
+          "id": "prod_123...",
+          "name": "Super Scalper Strategy"
+        }
+      }
+    ]
   }
   ```
+- **Error Response:** 402 Payment Required: 유료 크레딧 잔액이 부족할 경우 반환됩니다.
 
 ### `GET /marketplace/orders/{order_id}`
 
@@ -939,7 +1000,7 @@
   ```json
   {
     "strategyId": "s1b2c3d4...",
-    "price": 50,
+    "price": 50000,
     "category": "Scalping",
     "positionType": "LongOnly",
     "description": "This is a great strategy for short timeframes.",
@@ -964,3 +1025,80 @@
 - **Description:** 백테스트 진행 상황을 실시간으로 클라이언트에게 전달합니다.
 - **Connection Parameters:** `backtest_id`: `string (UUID)`
 - **Messages from Server:** `json { "status": "string", "progress": "integer", "message": "string" }`
+
+---
+
+## 14. 크레딧 (Credits)
+
+### `GET /credits/me/balance`
+
+- **Description:** 현재 사용자의 크레딧 잔액을 유료/무료로 구분하여 상세 조회합니다.
+- **Authorization:** `Required (User)`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "totalBalance": 15000,
+    "breakdown": {
+      "purchased": 10000,
+      "subscriptionDaily": 0,
+      "expiringWeekly": 5000,
+      "event": []
+    }
+  }
+  ```
+
+### `GET /credits/me/transactions`
+
+- **Description:** 크레딧 사용 내역 목록을 페이지네이션하여 조회합니다.
+- **Authorization:** `Required (User)`
+- **Query Parameters:** `skip (integer)`, `limit (integer)`
+- **Success Response (200 OK):**
+  ```json
+  [
+    {
+      "id": "txn_abc...",
+      "totalAmountDeducted": 1500,
+      "discountPct": 0.25,
+      "relatedEntityType": "BACKTEST",
+      "createdAt": "2025-09-17T20:30:00Z",
+      "details": [
+        { "sourceType": "ATTENDANCE_BONUS", "amountDedducted": 500 },
+        { "sourceType": "PURCHASE", "amountDeducted": 1000 }
+      ]
+    }
+  ]
+  ```
+
+---
+
+## 15. 정산 (Settlements)
+
+### `GET /settlements/me/summary`
+
+- **Description:** (판매자용) 자신의 누적 판매액 및 정산 예정 금액(KRW) 요약을 조회합니다.
+- **Authorization:** `Required (User)`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "totalRevenueKrw": 500000,
+    "totalFeesKrw": 50000,
+    "totalPayoutsKrw": 350000,
+    "pendingPayoutKrw": 100000
+  }
+  ```
+
+### `GET /settlements/me/history`
+
+- **Description:** (판매자용) 월별 정산 내역 목록을 조회합니다.
+- **Authorization:** `Required (User)`
+- **Success Response (200 OK):**
+  ```json
+  [
+    {
+      "payoutId": "set_abc...",
+      "payoutDate": "2025-09-20",
+      "payoutAmountKrw": 100000,
+      "status": "COMPLETED"
+    }
+  ]
+  ```

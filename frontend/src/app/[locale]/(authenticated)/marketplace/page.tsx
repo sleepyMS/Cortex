@@ -20,10 +20,11 @@ import {
 
 // --- 2. 연주자 (Presentational Components) ---
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { TooltipProvider } from "@/components/ui/Tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { MarketplaceFilter } from "@/components/domain/marketplace/MarketplaceFilter";
 import { ProductGrid } from "@/components/domain/marketplace/ProductGrid";
+
+import { TooltipProvider } from "@/components/ui/Tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { PaginationComponent } from "@/components/ui/Pagination";
 import { Button } from "@/components/ui/Button";
 import {

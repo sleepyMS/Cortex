@@ -436,8 +436,9 @@ class UserService:
                 strategy_id=purchase.strategy_id,
                 name=purchase.strategy.name,
                 author_username=purchase.strategy.author.username,
-                price_paid=purchase.order_item.price_at_purchase,
+                price_paid_in_credit=purchase.order_item.price_at_purchase,
                 purchased_at=purchase.created_at
             ))
         return response_items
+    
 user_service = UserService()
