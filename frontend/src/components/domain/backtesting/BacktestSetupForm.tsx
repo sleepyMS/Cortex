@@ -326,6 +326,14 @@ export function BacktestSetupForm() {
 
   const createBacktestMutation = useMutation({
     mutationFn: (data: FormValues) => {
+      // [신규 로직] overrides 배열에서 TP/SL 값을 찾습니다.
+      const takeProfitOverride = data.overrides?.find(
+        (o) => o.path === "tpslLogic.takeProfitPct"
+      );
+      const stopLossOverride = data.overrides?.find(
+        (o) => o.path === "tpslLogic.stopLossPct"
+      );
+
       const payload = {
         strategyId: data.strategyId,
         startDate: data.dateRange.from.toISOString(),
@@ -335,11 +343,17 @@ export function BacktestSetupForm() {
           leverage: data.leverage,
           fee: data.feePct,
           slippage: data.slippagePct,
+          // overrides 배열은 그대로 전달합니다.
           overrides: data.overrides,
+          // [수정] tpslLogic 객체를 완전한 형태로 구성합니다.
           tpslLogic: {
+            // 트레일링 스탑 관련 값
             trailingStopEnabled: data.trailingStopEnabled,
             trailingStopActivationPct: data.trailingStopActivationPct,
             trailingStopCallbackPct: data.trailingStopCallbackPct,
+            // overrides 배열에서 찾은 TP/SL 값을 명시적으로 추가
+            takeProfitPct: takeProfitOverride ? takeProfitOverride.value : null,
+            stopLossPct: stopLossOverride ? stopLossOverride.value : null,
           },
         },
       };

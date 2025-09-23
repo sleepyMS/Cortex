@@ -99,15 +99,28 @@ class BacktestService:
             by_alias=True 
         )
 
+        # --- [핵심 수정 로직 시작] ---
+        # 2-1. 규칙(rules) 관련 오버라이드를 먼저 적용합니다.
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
         
+        # 2-2. TP/SL 관련 오버라이드를 명시적으로 적용합니다.
+        # 사용자가 tpsl_logic을 요청에 포함시킨 경우에만 스냅샷을 덮어씁니다.
+        if backtest_create.parameters.tpsl_logic:
+            # Pydantic 모델을 dict로 변환하여 기존 스냅샷에 업데이트
+            tpsl_override_dict = backtest_create.parameters.tpsl_logic.model_dump(mode='json', by_alias=True)
+            
+            # 기존 tpsl_logic이 None일 경우를 대비하여 안전하게 업데이트
+            if strategy_snapshot_dict.get('tpslLogic') is None:
+                strategy_snapshot_dict['tpslLogic'] = {}
+            strategy_snapshot_dict['tpslLogic'].update(tpsl_override_dict)
+        # --- [핵심 수정 로직 종료] ---
         
         params_to_store = schemas.BacktestParametersPayload(
             start_date=backtest_create.start_date,
             end_date=backtest_create.end_date,
             initial_capital=backtest_create.initial_capital,
-            parameters=backtest_create.parameters  # 중첩된 parameters 객체(leverage, overrides 등)를 그대로 전달
+            parameters=backtest_create.parameters # 중첩된 parameters 객체(leverage, overrides 등)를 그대로 전달
         )
         
         db_backtest = models.Backtest(
@@ -115,7 +128,7 @@ class BacktestService:
             strategy_id=backtest_create.strategy_id,
             status=BacktestStatus.PENDING,
             parameters=params_to_store.model_dump(mode='json'), # 일관된 구조로 저장
-            strategy_snapshot=strategy_snapshot_dict
+            strategy_snapshot=strategy_snapshot_dict # 모든 오버라이드가 적용된 최종본 저장
         )
 
         db_backtest.strategy = strategy
