@@ -28,13 +28,13 @@ class CreditBalanceBreakdownEvent(CamelCaseModel):
 class CreditBalanceBreakdown(CamelCaseModel):
     """종류별 크레딧 상세 내역"""
     purchased: int = 0
-    subscription_daily: int = 0
     expiring_weekly: int = 0
     event: List[CreditBalanceBreakdownEvent] = Field(default_factory=list)
 
 class CreditBalanceSummary(CamelCaseModel):
     """사용자의 크레딧 잔액 요약 정보 응답 스키마"""
     total_balance: int
+    cash_credit_balance: int
     breakdown: CreditBalanceBreakdown
 
 class CreditTransactionLedgerDetail(CamelCaseModel):
@@ -825,7 +825,7 @@ class UserPurchasedStrategyResponse(CamelCaseModel):
     strategy_id: uuid.UUID
     name: str
     author_username: str
-    price_paid_in_credit: float
+    price_paid: float
     purchased_at: datetime
 
 class UserInventoryItemResponse(CamelCaseModel):

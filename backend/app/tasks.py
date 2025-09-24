@@ -150,14 +150,17 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
         raise self.retry(exc=e)
     
 @celery_app.task(name="fulfill_order_task", queue="io_bound_queue")
-def fulfill_order_task(order_id: str, gateway_transaction_id: str):
+def fulfill_order_task(payload: dict):
     """ 결제가 완료된 주문에 대해 자산을 지급하는 I/O-Bound Task"""
+    order_id = payload.get("order_id")
+    gateway_transaction_id = payload.get("gateway_transaction_id")
+    
     logger.info(f"Starting fulfillment for order ID: {order_id}")
     
     async def _fulfill():
         async with AsyncSessionLocal() as session:
             try:
-                # 실제 비즈니스 로직은 marketplace_service에 위임
+                # marketplace_service에 인자들을 전달
                 await marketplace_service.fulfill_order(session, uuid.UUID(order_id), gateway_transaction_id)
                 await session.commit()
             except Exception as e:
@@ -380,7 +383,8 @@ def dispatch_event(event_name: str, payload: dict):
     if task_names := EVENT_SUBSCRIBERS.get(event_name):
         logger.info(f"Dispatching event '{event_name}' to tasks: {task_names}")
         for task_name in task_names:
-            # 모든 payload를 그대로 전달하는 방식으로 통일하여 유연성 확보
-            celery_app.send_task(task_name, args=[payload])
-    else:
-        logger.debug(f"No subscribers for event '{event_name}'.")
+            # 이벤트 이름 대신 페이로드 전체를 전달
+            if event_name in ["backtest.completed", "backtest.failed"]:
+                 celery_app.send_task(task_name, args=[event_name, payload])
+            else:
+                 celery_app.send_task(task_name, args=[payload])

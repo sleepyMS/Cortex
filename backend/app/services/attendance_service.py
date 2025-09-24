@@ -83,7 +83,7 @@ class AttendanceService:
             user_id=user.id,
             amount=rewards["daily"],
             source_type="ATTENDANCE_DAILY",
-            source_id=new_log.id,
+            source_id=str(new_log.id),
             expires_at=expiry_date
         )
 
@@ -100,7 +100,7 @@ class AttendanceService:
                 user_id=user.id,
                 amount=bonus_amount,
                 source_type="ATTENDANCE_BONUS",
-                source_id=new_log.id,
+                source_id=str(new_log.id),
                 expires_at=expiry_date
             )
 

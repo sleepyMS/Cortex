@@ -6,15 +6,12 @@ import {
   keepPreviousData,
   useMutation,
   useQueryClient,
+  UseMutationOptions,
 } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
-import {
-  ShopItem,
-  MarketplaceStrategy,
-  PaginatedProductsResponse,
-} from "@/types/marketplace";
+import { PaginatedProductsResponse } from "@/types/marketplace";
 import { usePaymentMutation } from "./usePayment";
 
 // =================================================================
@@ -24,7 +21,7 @@ import { usePaymentMutation } from "./usePayment";
 export interface ProductFilters {
   page: number;
   limit: number;
-  productType: "STRATEGY" | "SHOP_ITEM";
+  productType: "STRATEGY" | "SHOP_ITEM" | "CREDIT_PACK";
   sortBy?: string;
   searchTerm?: string;
   categories?: string[];
@@ -42,6 +39,9 @@ export interface PurchasePayload {
 // 2. API 호출 함수 (API Functions)
 // =================================================================
 
+/**
+ * 마켓플레이스 상품 목록을 API로부터 가져오는 함수
+ */
 const fetchProducts = async (
   filters: ProductFilters
 ): Promise<PaginatedProductsResponse> => {
@@ -62,8 +62,15 @@ const fetchProducts = async (
   return data;
 };
 
-const purchaseApiFn = async (payload: PurchasePayload): Promise<any> => {
+/** 크레딧으로 즉시 구매하는 API 함수 */
+const creditPurchaseApiFn = async (payload: PurchasePayload): Promise<any> => {
   const { data } = await apiClient.post("/marketplace/orders", payload);
+  return data;
+};
+
+/** 현금 결제를 준비하는 API 함수 */
+const cashCheckoutApiFn = async (payload: PurchasePayload): Promise<any> => {
+  const { data } = await apiClient.post("/marketplace/checkout/cash", payload);
   return data;
 };
 
@@ -87,26 +94,73 @@ export const useProducts = (filters: ProductFilters) => {
 // --- Mutation Hooks ---
 
 /**
- * 마켓플레이스 상품을 구매하는 뮤테이션 훅
+ * 크레딧을 사용하여 상품을 즉시 구매하는 뮤테이션 훅
  */
-export const usePurchaseMutation = () => {
+export const useCreditPurchaseMutation = (
+  options?: Omit<
+    UseMutationOptions<any, any, PurchasePayload, any>,
+    "mutationFn"
+  >
+) => {
   const t = useTranslations("Marketplace");
   const queryClient = useQueryClient();
-  const paymentMutation = usePaymentMutation();
 
   return useMutation({
-    mutationFn: purchaseApiFn,
-    onSuccess: (checkoutData) => {
-      paymentMutation.mutate(checkoutData);
+    mutationFn: creditPurchaseApiFn,
+    onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ["userInventory"] });
       queryClient.invalidateQueries({ queryKey: ["purchasedStrategies"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, context);
+      }
     },
-    onError: (err: any) => {
+    onError: (err: any, variables, context) => {
       toast.error(
         t("purchaseError", {
           error: err.response?.data?.detail || err.message,
         })
       );
+      if (options?.onError) {
+        options.onError(err, variables, context);
+      }
     },
+    ...options,
+  });
+};
+
+/**
+ * 현금으로 크레딧 팩 구매를 시작하는 뮤테이션 훅
+ */
+export const useCashCheckoutMutation = (
+  options?: Omit<
+    UseMutationOptions<any, any, PurchasePayload, any>,
+    "mutationFn"
+  >
+) => {
+  const t = useTranslations("Marketplace");
+  const paymentMutation = usePaymentMutation();
+
+  return useMutation({
+    mutationFn: cashCheckoutApiFn,
+    onSuccess: (checkoutData, variables, context) => {
+      paymentMutation.mutate(checkoutData);
+
+      if (options?.onSuccess) {
+        options.onSuccess(checkoutData, variables, context);
+      }
+    },
+    onError: (err: any, variables, context) => {
+      toast.error(
+        t("paymentError", {
+          error: err.response?.data?.detail || err.message,
+        })
+      );
+      if (options?.onError) {
+        options.onError(err, variables, context);
+      }
+    },
+    ...options,
   });
 };

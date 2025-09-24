@@ -60,7 +60,7 @@ const PurchasedStrategyCard = ({
           <span>
             {t("pricePaidLabel")}:{" "}
             <span className="font-semibold text-foreground">
-              ${strategy.pricePaidInCredit.toFixed(2)}
+              ${strategy.pricePaid.toFixed(2)}
             </span>
           </span>
         </div>

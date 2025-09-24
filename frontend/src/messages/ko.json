@@ -22,6 +22,16 @@
     "settings": "계정 설정",
     "upgradePlan": "플랜 업그레이드"
   },
+  "CreditTooltip": {
+    "title": "크레딧 상세 내역",
+    "paid": "유료 크레딧",
+    "free": "무료 크레딧",
+    "expiringSoon": "소멸 예정",
+    "weeklyAttendance": "주간 출석 보상",
+    "event": "이벤트 보상",
+    "daysLeft": "일 남음",
+    "weeklyReset": "(매주 월요일 초기화)"
+  },
   "Footer": {
     "description": "데이터 기반 투자 플랫폼, Cortex와 함께 새로운 투자 여정을 시작하세요.",
     "rights": "All Rights Reserved.",

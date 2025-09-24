@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 80de21fe2222
+Revision ID: 1c9948afa874
 Revises: 
-Create Date: 2025-09-22 04:48:24.867453
+Create Date: 2025-09-25 00:54:48.940227
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '80de21fe2222'
+revision: str = '1c9948afa874'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -53,6 +53,7 @@ def upgrade() -> None:
     sa.Column('name', sa.Enum('BASIC', 'TRADER', 'PRO', name='plantype'), nullable=False),
     sa.Column('price', sa.Integer(), nullable=False),
     sa.Column('credit_surcharge_multiplier', sa.Float(), server_default='2.0', nullable=False),
+    sa.Column('monthly_credit_reward', sa.Integer(), server_default='0', nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -111,7 +112,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('source_type', sa.String(length=50), nullable=False, comment='획득 경로 (e.g., PURCHASE, ATTENDANCE_DAILY)'),
-    sa.Column('source_id', sa.UUID(), nullable=True, comment='관련 ID (주문 ID, 출석 로그 ID 등)'),
+    sa.Column('source_id', sa.String(), nullable=True, comment='관련 ID (주문 ID, 출석 로그 ID 등)'),
     sa.Column('initial_amount', sa.Integer(), nullable=False),
     sa.Column('remaining_amount', sa.Integer(), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True, comment='소멸 일시 (NULL일 경우 무기한)'),
@@ -149,7 +150,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('buyer_id', sa.UUID(), nullable=False),
     sa.Column('total_amount', sa.Float(), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'COMPLETED', 'FAILED', 'CANCELED', name='orderstatus'), nullable=True),
+    sa.Column('status', sa.Enum('PENDING', 'PAID', 'COMPLETED', 'FAILED', 'CANCELED', name='orderstatus'), nullable=True),
     sa.Column('payment_gateway', sa.String(), nullable=True),
     sa.Column('gateway_transaction_id', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -340,7 +341,7 @@ def upgrade() -> None:
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('price', sa.Float(), nullable=False),
-    sa.Column('product_type', sa.Enum('STRATEGY', 'SHOP_ITEM', name='producttype'), nullable=False),
+    sa.Column('product_type', sa.Enum('STRATEGY', 'SHOP_ITEM', 'CREDIT_PACK', name='producttype'), nullable=False),
     sa.Column('inventory_type', sa.Enum('UNLOCK', 'CONSUMABLE', name='inventorytype'), nullable=False),
     sa.Column('linked_resource_id', sa.UUID(), nullable=False, comment='strategies.id or shop_item_details.id'),
     sa.Column('seller_id', sa.UUID(), nullable=False),

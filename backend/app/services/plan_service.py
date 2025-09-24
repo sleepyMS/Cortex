@@ -22,7 +22,7 @@ class PlanService:
         """초기 구독 플랜을 데이터베이스에 생성합니다. (서버 시작 시 한 번만 실행)"""
         plans_to_seed = {
             PlanType.BASIC: {
-                "name": PlanType.BASIC, "price": 0, "credit_surcharge_multiplier": 2.0,
+                "name": PlanType.BASIC, "price": 0, "credit_surcharge_multiplier": 2.0, "monthly_credit_reward": 0,
                 "features": {
                     "max_strategies": 3, "max_coins_per_backtest": 1, "live_bots_limit": 0,
                     "supported_timeframes": "1h,4h,1d",
@@ -31,7 +31,7 @@ class PlanService:
                 }
             },
             PlanType.TRADER: {
-                "name": PlanType.TRADER, "price": 29000, "credit_surcharge_multiplier": 1.5,
+                "name": PlanType.TRADER, "price": 29000, "credit_surcharge_multiplier": 1.5, "monthly_credit_reward": 3000,
                 "features": {
                     "max_strategies": 20, "max_coins_per_backtest": 5, "live_bots_limit": 3,
                     "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
@@ -40,7 +40,7 @@ class PlanService:
                 }
             },
             PlanType.PRO: {
-                "name": PlanType.PRO, "price": 59000, "credit_surcharge_multiplier": 1.0,
+                "name": PlanType.PRO, "price": 59000, "credit_surcharge_multiplier": 1.0, "monthly_credit_reward": 10000,
                 "features": {
                     "max_strategies": 100, "max_coins_per_backtest": 20, "live_bots_limit": 10,
                     "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
@@ -57,7 +57,8 @@ class PlanService:
                 db_plan = models.Plan(
                     name=data['name'], 
                     price=data['price'],
-                    credit_surcharge_multiplier=data['credit_surcharge_multiplier']
+                    credit_surcharge_multiplier=data['credit_surcharge_multiplier'],
+                    monthly_credit_reward = data['monthly_credit_reward']
                 )
                 db.add(db_plan)
                 await db.flush()

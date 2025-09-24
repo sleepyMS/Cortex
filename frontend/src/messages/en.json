@@ -22,6 +22,16 @@
     "settings": "Account Settings",
     "upgradePlan": "Upgrade Plan"
   },
+  "CreditTooltip": {
+    "title": "Credit Details",
+    "paid": "Paid Credits",
+    "free": "Free Credits",
+    "expiringSoon": "Expiring Soon",
+    "weeklyAttendance": "Weekly Attendance",
+    "event": "Event Reward",
+    "daysLeft": " days left",
+    "weeklyReset": "(Resets every Monday)"
+  },
   "Footer": {
     "description": "Start a new investment journey with Cortex, the data-driven investment platform.",
     "rights": "All Rights Reserved.",

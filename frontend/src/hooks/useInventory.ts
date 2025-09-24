@@ -33,7 +33,7 @@ export interface PurchasedStrategy {
   strategyId: string;
   name: string;
   authorUsername: string;
-  pricePaidInCredit: number;
+  pricePaid: number;
   purchasedAt: string;
 }
 

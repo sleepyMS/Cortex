@@ -1,4 +1,4 @@
-// file: frontend/src/components/domain/strategy/StrategyPerformanceBadges.tsx (신규 파일)
+// file: frontend/src/components/domain/strategy/StrategyPerformanceBadges.tsx
 "use client";
 
 import { useTranslations } from "next-intl";

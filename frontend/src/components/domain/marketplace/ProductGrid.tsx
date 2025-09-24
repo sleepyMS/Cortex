@@ -1,4 +1,4 @@
-// file: frontend/src/components/domain/marketplace/ProductGrid.tsx (신규 파일)
+// file: frontend/src/components/domain/marketplace/ProductGrid.tsx
 "use client";
 
 import { MarketplaceStrategy, ShopItem } from "@/types/marketplace";
@@ -18,8 +18,10 @@ interface ProductGridProps {
   purchasedStrategyIds: string[];
   ownedItemIds: string[];
   onPurchaseClick: (product: any) => void;
-  purchaseMutation: any; // 실제로는 useMutation의 반환 타입을 사용
+  purchaseMutation: any;
   onRefetch: () => void;
+  // [신규] 크레딧 충전 핸들러를 props로 받도록 추가
+  onChargeCredits: () => void;
 }
 
 export const ProductGrid = ({
@@ -32,6 +34,7 @@ export const ProductGrid = ({
   onPurchaseClick,
   purchaseMutation,
   onRefetch,
+  onChargeCredits, // [신규] props 받기
 }: ProductGridProps) => {
   const t = useTranslations("Marketplace");
 
@@ -39,13 +42,14 @@ export const ProductGrid = ({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {Array.from({ length: 9 }).map((_, i) => (
-          <Skeleton key={i} className="h-80 w-full rounded-xl" />
+          <Skeleton key={i} className="h-[350px] w-full rounded-xl" />
         ))}
       </div>
     );
   }
 
   if (isError) {
+    // ... (기존 에러 처리 UI와 동일)
     return (
       <Alert variant="destructive" className="mt-8 max-w-lg mx-auto">
         <AlertTriangle className="h-4 w-4" />
@@ -59,6 +63,7 @@ export const ProductGrid = ({
   }
 
   if (products.length === 0) {
+    // ... (기존 상품 없음 UI와 동일)
     return (
       <div className="text-center py-20 bg-muted/50 rounded-lg flex flex-col items-center">
         <Inbox className="h-16 w-16 text-muted-foreground" />
@@ -75,12 +80,16 @@ export const ProductGrid = ({
           <StrategyMarketCard
             key={product.id}
             strategy={product as MarketplaceStrategy}
-            isOwned={purchasedStrategyIds.includes(product.id)}
+            isOwned={purchasedStrategyIds.includes(
+              (product as MarketplaceStrategy).linkedResourceId
+            )}
             onPurchase={() => onPurchaseClick(product)}
             isPurchasing={
               purchaseMutation.isPending &&
               purchaseMutation.variables?.items[0]?.productId === product.id
             }
+            // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
+            onChargeCredits={onChargeCredits}
           />
         ) : (
           <ShopItemCard
@@ -92,6 +101,8 @@ export const ProductGrid = ({
               purchaseMutation.isPending &&
               purchaseMutation.variables?.items[0]?.productId === product.id
             }
+            // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
+            onChargeCredits={onChargeCredits}
           />
         )
       )}

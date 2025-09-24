@@ -3,11 +3,12 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { ButtonProps, buttonVariants } from "@/components/ui/Button";
 
-// --- 1. 기본 UI 부품 정의 ---
+// --- 1. 기본 UI 부품 ---
 
 const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
   <nav
@@ -17,8 +18,6 @@ const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
     {...props}
   />
 );
-Pagination.displayName = "Pagination";
-
 const PaginationContent = React.forwardRef<
   HTMLUListElement,
   React.ComponentProps<"ul">
@@ -29,15 +28,12 @@ const PaginationContent = React.forwardRef<
     {...props}
   />
 ));
-PaginationContent.displayName = "PaginationContent";
-
 const PaginationItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => (
   <li ref={ref} className={cn("", className)} {...props} />
 ));
-PaginationItem.displayName = "PaginationItem";
 
 type PaginationLinkProps = { isActive?: boolean } & Pick<ButtonProps, "size"> &
   React.ComponentProps<"a">;
@@ -51,45 +47,49 @@ const PaginationLink = ({
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(
-      buttonVariants({ variant: isActive ? "default" : "ghost", size }),
-      className
+      // [수정] 'default'를 'primary'로 변경하여 버튼 variant 타입과 일치시킵니다.
+      buttonVariants({ variant: isActive ? "primary" : "ghost", size }),
+      "cursor-pointer"
     )}
     {...props}
   />
 );
-PaginationLink.displayName = "PaginationLink";
 
 const PaginationPrevious = ({
   className,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) => (
-  <PaginationLink
-    aria-label="Go to previous page"
-    size="default"
-    className={cn("gap-1 pl-2.5", className)}
-    {...props}
-  >
-    <ChevronLeft className="h-4 w-4" />
-    <span>Previous</span>
-  </PaginationLink>
-);
-PaginationPrevious.displayName = "PaginationPrevious";
+}: React.ComponentProps<typeof PaginationLink>) => {
+  const t = useTranslations("Pagination");
+  return (
+    <PaginationLink
+      aria-label={t("previousPage")}
+      size="default"
+      className={cn("gap-1 pl-2.5", className)}
+      {...props}
+    >
+      <ChevronLeft className="h-4 w-4" />
+      <span>{t("previous")}</span>
+    </PaginationLink>
+  );
+};
 
 const PaginationNext = ({
   className,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) => (
-  <PaginationLink
-    aria-label="Go to next page"
-    size="default"
-    className={cn("gap-1 pr-2.5", className)}
-    {...props}
-  >
-    <span>Next</span>
-    <ChevronRight className="h-4 w-4" />
-  </PaginationLink>
-);
-PaginationNext.displayName = "PaginationNext";
+}: React.ComponentProps<typeof PaginationLink>) => {
+  const t = useTranslations("Pagination");
+  return (
+    <PaginationLink
+      aria-label={t("nextPage")}
+      size="default"
+      className={cn("gap-1 pr-2.5", className)}
+      {...props}
+    >
+      <span>{t("next")}</span>
+      <ChevronRight className="h-4 w-4" />
+    </PaginationLink>
+  );
+};
 
 const PaginationEllipsis = ({
   className,
@@ -104,126 +104,131 @@ const PaginationEllipsis = ({
     <span className="sr-only">More pages</span>
   </span>
 );
-PaginationEllipsis.displayName = "PaginationEllipsis";
 
-// --- 2. 로직을 처리하는 메인 컴포넌트 ---
+// --- 2. 로직을 처리하는 훅과 메인 컴포넌트 ---
 
-interface PaginationComponentProps {
-  count: number;
-  page: number;
-  onPageChange: (page: number) => void;
+const DOTS = "...";
+
+const range = (start: number, end: number) => {
+  let length = end - start + 1;
+  return Array.from({ length }, (_, idx) => idx + start);
+};
+
+interface UsePaginationProps {
+  totalPages: number;
+  currentPage: number;
   siblingCount?: number;
 }
 
-const usePaginationRange = ({
-  count,
-  page,
+const usePagination = ({
+  totalPages,
+  currentPage,
   siblingCount = 1,
-}: PaginationComponentProps) => {
-  return React.useMemo(() => {
+}: UsePaginationProps) => {
+  const paginationRange = React.useMemo(() => {
     const totalPageNumbers = siblingCount + 5;
-    if (totalPageNumbers >= count) {
-      return Array.from({ length: count }, (_, i) => i + 1);
+    if (totalPageNumbers >= totalPages) {
+      return range(1, totalPages);
     }
-    const leftSiblingIndex = Math.max(page - siblingCount, 1);
-    const rightSiblingIndex = Math.min(page + siblingCount, count);
+    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
+    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
     const shouldShowLeftDots = leftSiblingIndex > 2;
-    const shouldShowRightDots = rightSiblingIndex < count - 2;
+    const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
     const firstPageIndex = 1;
-    const lastPageIndex = count;
+    const lastPageIndex = totalPages;
 
     if (!shouldShowLeftDots && shouldShowRightDots) {
       let leftItemCount = 3 + 2 * siblingCount;
-      let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-      return [...leftRange, "...", count];
+      let leftRange = range(1, leftItemCount);
+      return [...leftRange, DOTS, totalPages];
     }
     if (shouldShowLeftDots && !shouldShowRightDots) {
       let rightItemCount = 3 + 2 * siblingCount;
-      let rightRange = Array.from(
-        { length: rightItemCount },
-        (_, i) => count - rightItemCount + 1 + i
-      );
-      return [firstPageIndex, "...", ...rightRange];
+      let rightRange = range(totalPages - rightItemCount + 1, totalPages);
+      return [firstPageIndex, DOTS, ...rightRange];
     }
     if (shouldShowLeftDots && shouldShowRightDots) {
-      let middleRange = Array.from(
-        { length: rightSiblingIndex - leftSiblingIndex + 1 },
-        (_, i) => leftSiblingIndex + i
-      );
-      return [firstPageIndex, "...", ...middleRange, "...", lastPageIndex];
+      let middleRange = range(leftSiblingIndex, rightSiblingIndex);
+      return [firstPageIndex, DOTS, ...middleRange, DOTS, lastPageIndex];
     }
-    return [];
-  }, [count, page, siblingCount]);
+    return range(1, totalPages);
+  }, [totalPages, currentPage, siblingCount]);
+
+  return paginationRange;
 };
 
+interface PaginationComponentProps {
+  totalPages: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  siblingCount?: number;
+  className?: string;
+}
+
 export function PaginationComponent({
-  count,
-  page,
+  totalPages,
+  currentPage,
   onPageChange,
   siblingCount = 1,
+  className,
 }: PaginationComponentProps) {
-  const paginationRange = usePaginationRange({
-    count,
-    page,
-    onPageChange,
+  const paginationRange = usePagination({
+    totalPages,
+    currentPage,
     siblingCount,
   });
 
-  if (count <= 1) {
+  if (totalPages <= 1) {
     return null;
   }
 
-  const handlePreviousPage = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    if (page > 1) onPageChange(page - 1);
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1);
+    }
   };
 
-  const handleNextPage = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    if (page < count) onPageChange(page + 1);
-  };
-
-  const handlePageClick = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    pageNumber: number
-  ) => {
-    e.preventDefault();
-    onPageChange(pageNumber);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      onPageChange(currentPage + 1);
+    }
   };
 
   return (
-    <Pagination>
+    <Pagination className={className}>
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
-            href="#"
-            onClick={handlePreviousPage}
+            onClick={handlePrevious}
             className={
-              page === 1 ? "pointer-events-none opacity-50" : undefined
+              currentPage === 1 ? "pointer-events-none opacity-50" : ""
             }
           />
         </PaginationItem>
-        {paginationRange.map((pageNumber, index) => (
-          <PaginationItem key={`${pageNumber}-${index}`}>
-            {typeof pageNumber === "string" ? (
-              <PaginationEllipsis />
-            ) : (
+        {paginationRange.map((pageNumber, index) => {
+          if (pageNumber === DOTS) {
+            return (
+              <PaginationItem key={`dots-${index}`}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            );
+          }
+          return (
+            <PaginationItem key={pageNumber}>
               <PaginationLink
-                href="#"
-                onClick={(e) => handlePageClick(e, pageNumber)}
-                isActive={page === pageNumber}
+                isActive={currentPage === pageNumber}
+                onClick={() => onPageChange(pageNumber as number)}
               >
                 {pageNumber}
               </PaginationLink>
-            )}
-          </PaginationItem>
-        ))}
+            </PaginationItem>
+          );
+        })}
         <PaginationItem>
           <PaginationNext
-            href="#"
-            onClick={handleNextPage}
+            onClick={handleNext}
             className={
-              page === count ? "pointer-events-none opacity-50" : undefined
+              currentPage === totalPages ? "pointer-events-none opacity-50" : ""
             }
           />
         </PaginationItem>

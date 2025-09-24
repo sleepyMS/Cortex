@@ -6,17 +6,14 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, models
-from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none, create_owner_verifier
+from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none
 from ..services.marketplace_service import marketplace_service
 from ..services.payment_service import payment_service 
-from .. import security
 
 logger = logging.getLogger(__name__)
 
-# 파일명에 맞춰 router.py가 아닌 marketplace.py로 명명
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
 
-get_verified_strategy = create_owner_verifier(models.Strategy, owner_field="author_id")
 
 @router.get(
     "/products",
@@ -42,7 +39,7 @@ async def get_products(
 
 @router.get(
     "/products/{product_id}",
-    response_model=Union[schemas.StrategyProductDetailOwned, schemas.StrategyProductDetailPublic],
+    response_model=Union[schemas.StrategyProductDetailOwned, schemas.StrategyProductDetailPublic, schemas.ShopItemProductDetail],
     summary="Get details of a single marketplace product"
 )
 async def get_product_detail(
@@ -52,12 +49,11 @@ async def get_product_detail(
 ):
     """
     상품의 상세 정보를 조회합니다.
-    사용자의 로그인 여부에 따라 반환되는 정보의 상세 수준이 달라집니다.
+    사용자의 로그인 및 소유권 여부에 따라 반환되는 정보의 상세 수준이 달라집니다.
     """
     product = await marketplace_service.get_product_details(db, product_id)
     
     if product.product_type == models.ProductType.STRATEGY:
-        # 이제 current_user는 User 객체이거나 None일 수 있습니다.
         return await marketplace_service.get_strategy_product_detail(
             db, product, current_user
         )
@@ -65,36 +61,60 @@ async def get_product_detail(
     elif product.product_type == models.ProductType.SHOP_ITEM:
         return await marketplace_service.get_shop_item_product_detail(db, product)
     
-    # 이론적으로 도달하지 않아야 하지만, 안정성을 위해 기본 응답 제공
-    return product
+    # 향후 다른 상품 타입이 추가될 경우를 대비
+    raise HTTPException(status_code=400, detail="알 수 없는 상품 타입입니다.")
 
 
 @router.post(
     "/orders",
+    response_model=schemas.OrderResponse,
+    status_code=status.HTTP_200_OK,
+    summary="[Credit Purchase] Purchase products using credits"
+)
+async def purchase_with_credit(
+    payload: schemas.OrderCreate,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    try:
+        # 1. 서비스 호출 (내부적으로 주문 생성 및 자산 지급 완료)
+        # 이 함수는 관계가 로드되지 않은 'order' 객체를 반환합니다.
+        processed_order = await marketplace_service.process_credit_purchase(db, payload, current_user)
+        
+        # 응답 생성에 필요한 모든 데이터(items -> product)가 미리 로드됩니다.
+        final_order = await marketplace_service.get_order_by_id(db, processed_order.id)
+        
+        # 2. 완전한 객체를 반환합니다.
+        # FastAPI의 의존성이 트랜잭션을 자동으로 commit 해줍니다.
+        return final_order
+        
+    except HTTPException as e:
+        await db.rollback()
+        raise e
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error during credit purchase for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="크레딧 결제 중 오류가 발생했습니다.")
+
+
+@router.post(
+    "/checkout/cash",
     response_model=schemas.OrderCreateResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create an order and get payment info",
+    summary="[Cash Purchase] Create a pending order for cash payment"
 )
-async def create_order(
+async def create_order_for_cash_payment(
     payload: schemas.OrderCreate,
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
     """
-    (개선) 상품 구매를 위한 주문 생성 및 결제 정보 반환의 모든 과정을
-    MarketplaceService에 위임하여 처리합니다.
+    [현금 결제 전용] '크레딧 팩'과 같이 현금 결제가 필요한 상품의 주문을 생성하고,
+    Toss Payments와 연동할 결제 정보를 반환합니다.
     """
     try:
-        # 1. [기존과 동일] MarketplaceService를 통해 DB에 주문을 생성합니다.
-        pending_order = await marketplace_service.create_order(
-            db, payload, current_user
-        )
-
-        # 2. [수정] 서비스에 추가된 새 메서드를 호출하여 결제 정보를 가져옵니다.
-        payment_info = marketplace_service.create_order_and_prepare_payment(
-            order=pending_order, user=current_user
-        )
-
+        pending_order = await marketplace_service.create_pending_order_for_cash(db, payload, current_user)
+        payment_info = payment_service.prepare_payment_info_for_sdk(order=pending_order, user=current_user)
         await db.commit()
         return payment_info
     except HTTPException as e:
@@ -102,11 +122,9 @@ async def create_order(
         raise e
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error creating order for user {current_user.email}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="주문 생성 중 오류가 발생했습니다.",
-        )
+        logger.error(f"Error creating cash order for user {current_user.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="주문 생성 중 오류가 발생했습니다.")
+    
     
 @router.post(
     "/listings",
@@ -124,23 +142,13 @@ async def list_strategy_on_marketplace(
     if not strategy_to_list or strategy_to_list.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="자신의 전략만 마켓에 등록할 수 있습니다.")
     
-    try:
-        # [수정] 서비스가 seller 관계까지 포함하여 product 객체를 반환합니다.
-        product = await marketplace_service.list_strategy_as_product(
-            db=db, strategy=strategy_to_list, listing_data=payload, seller=current_user
-        )
-        logger.info(f"Strategy '{strategy_to_list.name}' listed on marketplace by user {current_user.email}.")
-        
-        # [수정] 수동 commit과 불필요한 refresh를 모두 제거했습니다.
-        # 트랜잭션은 함수가 성공적으로 끝나면 get_async_db에 의해 자동으로 커밋됩니다.
-        return product
-    except HTTPException as e:
-        # [수정] 수동 rollback 제거
-        raise e
-    except Exception as e:
-        # [수정] 수동 rollback 제거
-        logger.error(f"Error listing strategy {strategy_to_list.id} for user {current_user.email}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="전략을 마켓에 등록하는 중 서버 오류가 발생했습니다.")
+    product = await marketplace_service.list_strategy_as_product(
+        db=db, strategy=strategy_to_list, listing_data=payload, seller=current_user
+    )
+    await db.commit()
+    logger.info(f"Strategy '{strategy_to_list.name}' listed/updated by user {current_user.email}.")
+    return product
+
 
 @router.delete(
     "/listings/{product_id}",
@@ -153,25 +161,18 @@ async def unlist_strategy_from_marketplace(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """특정 상품(리스팅)을 마켓플레이스에서 판매 중단 처리합니다."""
-    try:
-        # 이제 이 호출은 서비스 함수의 정의와 정확히 일치합니다.
-        await marketplace_service.unlist_strategy_product(
-            db=db, 
-            product_id=product_id, 
-            current_user_id=current_user.id
-        )
-        await db.commit()
-        logger.info(f"Marketplace product ID {product_id} unlisted by user {current_user.email}.")
-    except HTTPException as e:
-        await db.rollback(); raise e
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Error unlisting product {product_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="판매 중단 처리 중 오류가 발생했습니다.")
+    await marketplace_service.unlist_strategy_product(
+        db=db, 
+        product_id=product_id, 
+        current_user_id=current_user.id
+    )
+    await db.commit()
+    logger.info(f"Marketplace product ID {product_id} unlisted by user {current_user.email}.")
+
     
 @router.get(
     "/orders/{order_id}",
-    response_model=schemas.OrderResponse, # 기존에 정의한 OrderResponse 스키마 재활용
+    response_model=schemas.OrderResponse, 
     summary="Get order details by order ID"
 )
 async def get_order_by_id(
@@ -186,16 +187,9 @@ async def get_order_by_id(
     order = await marketplace_service.get_order_by_id(db, order_id)
 
     if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="주문을 찾을 수 없습니다."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="주문을 찾을 수 없습니다.")
     
-    # 주문을 요청한 사용자와 현재 로그인한 사용자가 같은지 반드시 확인
     if order.buyer_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="주문에 접근할 권한이 없습니다."
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="주문에 접근할 권한이 없습니다.")
 
     return order

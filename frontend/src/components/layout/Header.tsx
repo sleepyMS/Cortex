@@ -16,6 +16,14 @@ import { Sun, Moon, Coins } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
 import { UserActions } from "@/components/domain/UserActions";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/Tooltip";
+import { CreditTooltipContent } from "@/components/domain/CreditTooltipContent";
+
 export function Header() {
   const t = useTranslations("Header");
   const tNav = useTranslations("Navigation");
@@ -60,13 +68,23 @@ export function Header() {
           <LanguageSwitcher />
 
           {isAuthInitialized && user && creditBalance && (
-            <div className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium">
-              <Coins className="h-4 w-4 text-yellow-500" />
-              <span>
-                {/* 숫자에 콤마를 추가하여 가독성 향상 */}
-                {creditBalance.totalBalance.toLocaleString()} CC
-              </span>
-            </div>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* TooltipTrigger의 자식은 클릭 가능한 요소가 아니어도 괜찮습니다. */}
+                  <div className="flex cursor-help items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium">
+                    <Coins className="h-4 w-4 text-yellow-500" />
+                    <span>
+                      {creditBalance.totalBalance.toLocaleString()} CC
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="p-0">
+                  {/* 이전에 만든 컨텐츠 컴포넌트를 그대로 재사용합니다. */}
+                  <CreditTooltipContent balance={creditBalance} />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           <UserActions />

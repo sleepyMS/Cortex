@@ -13,6 +13,7 @@ import logging
 from .. import models, schemas
 from ..services.plan_service import plan_service
 from ..services.payment_service import payment_service
+from ..services.credit_service import credit_service
 from ..gateways.toss_payments_client import TossPaymentsClient
 
 from ..event_bus import publish_event
@@ -162,7 +163,7 @@ class SubscriptionService:
             toss_client: TossPaymentsClient,
         ) -> schemas.SubscriptionSchema:
             """
-            [수정] 카드 등록, 동기적 첫 결제, DB 'active' 상태 저장을 하나의 트랜잭션으로 처리하고
+            카드 등록, 동기적 첫 결제, DB 'active' 상태 저장을 하나의 트랜잭션으로 처리하고
             Pydantic 스키마를 반환합니다.
             """
             # --- 1. 주문 정보 생성 ---
@@ -215,6 +216,15 @@ class SubscriptionService:
                 db.add(subscription)
             
             await db.flush()
+
+            if target_plan.monthly_credit_reward > 0:
+                await credit_service.grant_subscription_bonus_credits(
+                    db=db,
+                    user_id=user.id,
+                    amount=target_plan.monthly_credit_reward,
+                    source_id=checkout_info.order_id
+                )
+                logger.info(f"Granted {target_plan.monthly_credit_reward} bonus credits to new subscriber {user.email}.")
             
             # --- 4. DB에 모든 변경사항 커밋 ---
             await db.commit()
@@ -232,7 +242,7 @@ class SubscriptionService:
         payment_data: dict, # 웹훅으로 받은 결제 데이터
     ) -> models.Subscription:
         """
-        [개선] 정기결제 성공 웹훅을 받아 구독을 활성화하거나 기간을 갱신합니다.
+        정기결제 성공 웹훅을 받아 구독을 활성화하거나 기간을 갱신합니다.
         """
         user_uuid = uuid.UUID(customer_key)
         
@@ -253,10 +263,17 @@ class SubscriptionService:
         subscription.status = "active"
         subscription.current_period_end = new_period_end
         
-        # 필요하다면 마지막 결제 성공 기록 등을 추가할 수 있습니다.
-        # subscription.last_payment_date = datetime.now(timezone.utc)
-
-        await db.commit()
+        # --- [추가] 정기결제 성공 후, 월간 보상 크레딧 지급 ---
+        # 함께 로드한 plan 객체에서 보상량을 가져옵니다.
+        if subscription.plan and subscription.plan.monthly_credit_reward > 0:
+            await credit_service.grant_subscription_bonus_credits(
+                db=db,
+                user_id=user_uuid,
+                amount=subscription.plan.monthly_credit_reward,
+                source_id=uuid.UUID(payment_data.get("orderId")) # 결제 주문 ID를 source_id로 사용
+            )
+            logger.info(f"Granted {subscription.plan.monthly_credit_reward} bonus credits to recurring subscriber {customer_key}.")
+        
         logger.info(
             f"Subscription for user {customer_key} successfully renewed. "
             f"Plan: {subscription.plan.name.value}, New expiration: {new_period_end.isoformat()}"
@@ -270,7 +287,7 @@ class SubscriptionService:
         failure_data: dict,
     ):
         """
-        [신규] 정기결제 실패 웹훅을 받아 구독을 비활성화(취소) 처리합니다.
+        정기결제 실패 웹훅을 받아 구독을 비활성화(취소) 처리합니다.
         """
         user_uuid = uuid.UUID(customer_key)
         subscription = await db.scalar(select(models.Subscription).filter_by(user_id=user_uuid))

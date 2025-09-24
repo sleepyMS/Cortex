@@ -98,6 +98,7 @@ class Plan(Base):
     name = Column(Enum(PlanType), unique=True, nullable=False)
     price = Column(Integer, nullable=False)
     credit_surcharge_multiplier = Column(Float, nullable=False, server_default="2.0")
+    monthly_credit_reward = Column(Integer, nullable=False, server_default="0")
     
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="plan")
@@ -438,10 +439,11 @@ class OHLCV1h(Base):
 # ==============================================================================
 # 6. 마켓플레이스 및 인벤토리 관련 모델 
 # ==============================================================================
-
+    
 class ProductType(str, enum.Enum):
     STRATEGY = "STRATEGY"
     SHOP_ITEM = "SHOP_ITEM"
+    CREDIT_PACK = "CREDIT_PACK"
 
 class InventoryType(str, enum.Enum):
     UNLOCK = "UNLOCK"      # 한 번만 구매 가능
@@ -449,6 +451,7 @@ class InventoryType(str, enum.Enum):
 
 class OrderStatus(str, enum.Enum):
     PENDING = "PENDING"
+    PAID = "PAID"  # 결제는 완료되었으나, 자산 지급은 아직 안 된 상태
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELED = "CANCELED"
@@ -559,7 +562,7 @@ class CreditLedger(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     source_type = Column(String(50), nullable=False, comment="획득 경로 (e.g., PURCHASE, ATTENDANCE_DAILY)")
-    source_id = Column(UUID(as_uuid=True), nullable=True, comment="관련 ID (주문 ID, 출석 로그 ID 등)")
+    source_id = Column(String, nullable=True, comment="관련 ID (주문 ID, 출석 로그 ID 등)")
     
     initial_amount = Column(Integer, nullable=False)
     remaining_amount = Column(Integer, nullable=False)

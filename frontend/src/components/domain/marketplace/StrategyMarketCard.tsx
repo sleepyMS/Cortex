@@ -8,11 +8,14 @@ import {
   ArrowDownRight,
   Target,
   ShoppingCart,
+  Coins,
+  CircleAlert,
+  CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarketplaceStrategy } from "@/types/marketplace";
+import { useUserStore } from "@/store/userStore";
 
-// UI 컴포넌트 import
 import {
   Card,
   CardContent,
@@ -25,18 +28,12 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
 
-/**
- * StrategyMarketCard 컴포넌트에 전달될 props 타입 정의
- */
 interface StrategyMarketCardProps {
-  /** 표시할 전략의 데이터 */
   strategy: MarketplaceStrategy;
-  /** 사용자가 이 전략을 이미 구매했는지 여부 */
   isOwned: boolean;
-  /** 구매 버튼 클릭 시 호출될 함수 */
   onPurchase: () => void;
-  /** 현재 이 전략의 구매가 진행 중인지 여부 */
   isPurchasing: boolean;
+  onChargeCredits: () => void; // [신규] props 타입 정의 추가
 }
 
 /**
@@ -72,37 +69,57 @@ export const StrategyMarketCard = ({
   isOwned,
   onPurchase,
   isPurchasing,
+  onChargeCredits,
 }: StrategyMarketCardProps) => {
   const t = useTranslations("Marketplace.strategyMarketCard");
-  // ▼▼▼ [핵심 수정] ▼▼▼
-  // strategy 객체에서 summaryMetrics 대신 올바른 이름인 latestBacktestSummary를 사용합니다.
-  // 이 값을 metrics 라는 변수 이름으로 사용합니다.
-  const { latestBacktestSummary: metrics } = strategy;
+  const tCommon = useTranslations("Marketplace");
+  const { creditBalance } = useUserStore();
 
-  // ▼▼▼ [핵심 수정] ▼▼▼
-  // metrics 변수가 null일 경우, 모든 값이 0인 기본 객체를 사용합니다.
-  // Null 병합 연산자(??)는 왼쪽 값이 null 또는 undefined일 때 오른쪽 값을 반환합니다.
+  // [신규] 전략은 '유료 크레딧'으로만 구매 가능
+  const hasEnoughCredits = creditBalance
+    ? creditBalance.cashCreditBalance >= strategy.price
+    : false;
+
+  const { latestBacktestSummary: metrics } = strategy;
   const displayMetrics = metrics ?? {
     totalReturnPct: 0,
     mddPct: 0,
     winRatePct: 0,
   };
-  // ▲▲▲ [핵심 수정] ▲▲▲
 
-  /**
-   * isOwned와 isPurchasing 상태에 따라 올바른 구매 버튼을 렌더링하는 함수
-   */
   const renderPurchaseButton = () => {
-    // 1. 이미 보유 중인 전략이라면 '보유 중' 버튼 표시
     if (isOwned) {
       return (
         <Button disabled className="w-full">
+          <CheckCircle className="mr-2 h-4 w-4" />
           {t("ownedButton")}
         </Button>
       );
     }
 
-    // 2. 보유하지 않은 전략이라면 구매 버튼 표시
+    if (!creditBalance) {
+      return <Button disabled className="w-full h-10 animate-pulse" />;
+    }
+
+    if (!hasEnoughCredits) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="secondary"
+            onClick={onChargeCredits}
+            className="w-full"
+          >
+            <Coins className="mr-2 h-4 w-4" />
+            {tCommon("chargeCreditButton")}
+          </Button>
+          <p className="text-xs text-destructive text-center flex items-center justify-center gap-1">
+            <CircleAlert className="h-3 w-3" />
+            {tCommon("insufficientPaidCredit")}
+          </p>
+        </div>
+      );
+    }
+
     return (
       <Button onClick={onPurchase} disabled={isPurchasing} className="w-full">
         {isPurchasing ? (
@@ -110,18 +127,20 @@ export const StrategyMarketCard = ({
         ) : (
           <ShoppingCart className="mr-2 h-4 w-4" />
         )}
-        {isPurchasing ? t("purchasing") : t("purchaseButton")}
+        {isPurchasing
+          ? tCommon("purchasing")
+          : tCommon("purchaseForPaidCredit", {
+              price: strategy.price.toLocaleString(),
+            })}
       </Button>
     );
   };
 
   return (
     <Card className="flex flex-col h-full transition-all duration-300 border-2 border-transparent hover:border-primary hover:shadow-lg">
-      {/* 카드 상단부는 상세 페이지로 이동하는 링크 역할 */}
       <Link
         href={`/marketplace/strategies/${strategy.id}`}
         className="block group flex-grow"
-        aria-label={`${strategy.name} 상세 정보 보기`}
       >
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -168,14 +187,13 @@ export const StrategyMarketCard = ({
           />
         </CardContent>
       </Link>
-
-      {/* 카드 하단부는 링크와 분리하여 구매 액션만 담당 */}
       <CardFooter className="flex-col items-stretch pt-4 border-t bg-muted/50">
         <div className="flex justify-between items-baseline mb-4">
           <span className="text-sm text-muted-foreground">{t("price")}</span>
-          <span className="text-2xl font-bold text-foreground">
-            ${strategy.price.toFixed(2)}
-          </span>
+          <div className="flex items-center text-2xl font-bold text-foreground">
+            <Coins className="h-5 w-5 text-yellow-500 mr-1.5" />
+            <span>{strategy.price.toLocaleString()}</span>
+          </div>
         </div>
         {renderPurchaseButton()}
       </CardFooter>

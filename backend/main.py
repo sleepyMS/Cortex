@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from app.database import async_engine, Base, AsyncSessionLocal
 from app.limiter import limiter
 from app.services.plan_service import plan_service
+from app.services.marketplace_service import marketplace_service
 from app.routers import (
     auth, users, backtests, strategies, api_keys,
     plans, subscriptions, live_bots, community, admin, market_data, marketplace, websockets, indicators, webhook
@@ -28,27 +29,25 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     """
     애플리케이션 시작 시 DB 테이블을 생성하고 초기 데이터를 시딩합니다.
-    종료 시에는 자원을 정리합니다.
     """
     print("INFO:     Application startup...")
     async with async_engine.begin() as conn:
-        # 개발 편의를 위해 앱 시작 시 모든 테이블을 생성합니다.
-        # (주의: 실제 운영 환경에서는 Alembic으로 관리해야 합니다.)
         await conn.run_sync(Base.metadata.create_all)
 
     # Session을 사용하여 초기 데이터 시딩
     async with AsyncSessionLocal() as session:
         try:
+            # 각 서비스가 자신의 초기 데이터를 책임지도록 호출
             await plan_service.seed_initial_plans(session)
+            await marketplace_service.seed_credit_packs(session) 
+            
             await session.commit()
-            print("INFO:     Initial plans seeded successfully.")
+            print("INFO:     Initial data seeded successfully.")
         except Exception as e:
             await session.rollback()
-            print(f"ERROR:    Failed to seed initial plans: {e}")
+            print(f"ERROR:    Failed to seed initial data: {e}")
 
-    yield  # 이 시점에서 애플리케이션이 실행됩니다.
-
-    # 애플리케이션 종료 시 실행될 코드 (필요 시 추가)
+    yield
     print("INFO:     Application shutdown...")
 
 

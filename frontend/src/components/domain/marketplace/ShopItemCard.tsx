@@ -2,7 +2,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Coins, CircleAlert, CheckCircle } from "lucide-react";
+import { useRouter } from "next/navigation"; // useRouter 추가
+import { useUserStore } from "@/store/userStore"; // Zustand 스토어 import
 import { cn } from "@/lib/utils";
 import { ShopItem } from "@/types/marketplace";
 import { ICON_MAP } from "@/lib/iconMap"; // 아이콘 맵 import
@@ -24,14 +26,11 @@ import { Spinner } from "@/components/ui/Spinner";
  * ShopItemCard 컴포넌트에 전달될 props 타입 정의
  */
 interface ShopItemCardProps {
-  /** 표시할 아이템의 데이터 */
   item: ShopItem;
-  /** 사용자가 이 아이템을 하나 이상 보유하고 있는지 여부 */
   isOwned: boolean;
-  /** 구매 버튼 클릭 시 호출될 함수 */
   onPurchase: () => void;
-  /** 현재 이 아이템의 구매가 진행 중인지 여부 */
   isPurchasing: boolean;
+  onChargeCredits: () => void;
 }
 
 export const ShopItemCard = ({
@@ -39,8 +38,17 @@ export const ShopItemCard = ({
   isOwned,
   onPurchase,
   isPurchasing,
+  onChargeCredits,
 }: ShopItemCardProps) => {
   const t = useTranslations("Marketplace");
+  const tCommon = useTranslations("Common");
+  const { creditBalance } = useUserStore(); // 스토어에서 크레딧 잔액 가져오기
+  const router = useRouter();
+
+  // 아이템(소모성)은 전체 크레딧으로 구매 가능
+  const hasEnoughCredits = creditBalance
+    ? creditBalance.totalBalance >= item.price
+    : false;
 
   // 백엔드에서 받은 아이콘 이름으로 실제 아이콘 컴포넌트를 동적으로 선택
   const IconComponent =
@@ -64,16 +72,41 @@ export const ShopItemCard = ({
    * 아이템의 inventoryType과 isOwned 상태에 따라 올바른 구매 버튼을 렌더링하는 함수
    */
   const renderPurchaseButton = () => {
-    // 1. 'UNLOCK' 타입 아이템이고, 이미 보유 중이라면 '보유 중' 버튼 표시
     if (item.inventoryType === "UNLOCK" && isOwned) {
       return (
         <Button disabled className="w-full">
+          <CheckCircle className="mr-2 h-4 w-4" />
           {t("ownedButton")}
         </Button>
       );
     }
 
-    // 2. 그 외 모든 경우 ('CONSUMABLE' 타입 또는 아직 구매 안 한 'UNLOCK' 타입)
+    // 1. 크레딧 잔액 정보가 아직 로드되지 않았다면 스켈레톤 UI 표시
+    if (!creditBalance) {
+      return <Button disabled className="w-full h-10 animate-pulse" />;
+    }
+
+    // 2. 크레딧이 부족할 경우
+    if (!hasEnoughCredits) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="secondary"
+            onClick={onChargeCredits}
+            className="w-full"
+          >
+            <Coins className="mr-2 h-4 w-4" />
+            {t("chargeCreditButton")}
+          </Button>
+          <p className="text-xs text-destructive text-center flex items-center justify-center gap-1">
+            <CircleAlert className="h-3 w-3" />
+            {t("insufficientCredit")}
+          </p>
+        </div>
+      );
+    }
+
+    // 3. 크레딧이 충분할 경우
     return (
       <Button onClick={onPurchase} disabled={isPurchasing} className="w-full">
         {isPurchasing ? (
@@ -81,7 +114,10 @@ export const ShopItemCard = ({
         ) : (
           <ShoppingCart className="mr-2 h-4 w-4" />
         )}
-        {isPurchasing ? t("purchasing") : t("purchaseButton")}
+        {isPurchasing
+          ? t("purchasing")
+          : // 버튼 텍스트에 크레딧 가격 표시
+            t("purchaseForCredit", { price: item.price.toLocaleString() })}
       </Button>
     );
   };
@@ -121,8 +157,12 @@ export const ShopItemCard = ({
         ))}
       </CardContent>
       <CardFooter className="flex-col items-stretch pt-4 border-t bg-muted/50">
-        <div className="text-3xl font-bold text-right mb-4">
-          ${item.price.toFixed(2)}
+        <div className="flex items-center justify-end text-3xl font-bold text-right mb-4">
+          <Coins className="h-6 w-6 text-yellow-500 mr-2" />
+          {item.price.toLocaleString()}
+          <span className="text-xl font-medium text-muted-foreground ml-1">
+            CC
+          </span>
         </div>
         {renderPurchaseButton()}
       </CardFooter>

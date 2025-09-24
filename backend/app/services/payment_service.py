@@ -7,6 +7,8 @@ from fastapi import HTTPException, status, Request
 from typing import Dict
 import uuid
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from ..gateways.toss_payments_client import TossPaymentsClient
 
 logger = logging.getLogger(__name__)
 
@@ -65,5 +67,52 @@ class PaymentService:
         )
 
         return billing_data
+    
+    async def verify_and_approve_payment(
+        self, 
+        db: AsyncSession, 
+        toss_client: TossPaymentsClient,
+        payment_key: str, 
+        order_id: str, 
+        amount: int
+    ) -> Dict:
+        """
+        Toss Payments 일반 결제 성공 웹훅 수신 후,
+        서버 측에서 금액을 검증하고 최종 승인을 요청하는 서비스 함수.
+        """
+        try:
+            order_uuid = uuid.UUID(order_id)
+            # 1. DB에서 원본 주문 정보 조회
+            order = await db.get(models.MarketplaceOrder, order_uuid)
+            if not order:
+                logger.error(f"Webhook Error: Order '{order_id}' not found in DB.")
+                raise HTTPException(status_code=404, detail="주문 정보를 찾을 수 없습니다.")
+
+            # 2. [핵심] 금액 검증 (보안 강화)
+            # DB에 저장된 주문 금액과 웹훅으로 전달된 결제 금액이 일치하는지 확인합니다.
+            # 이 단계를 통해 결제 금액 위변조를 방지할 수 있습니다.
+            if int(order.total_amount) != amount:
+                logger.critical(f"CRITICAL: Payment amount mismatch for order {order_id}. "
+                                f"DB: {order.total_amount}, Webhook: {amount}. Potential tampering.")
+                # TODO: 여기에 결제 위변조 시도에 대한 추가적인 알림/로깅 로직
+                raise HTTPException(status_code=400, detail="주문 금액이 일치하지 않습니다.")
+
+            # 3. 모든 검증 통과 시, Toss Payments에 최종 승인 요청
+            logger.info(f"Payment for order {order_id} verified. Approving via Toss API.")
+            approval_data = await toss_client.approve_payment(
+                payment_key=payment_key,
+                order_id=order_id,
+                amount=amount
+            )
+            return approval_data
+
+        except HTTPException:
+            # 금액 불일치 등 예상된 오류는 그대로 전달
+            raise
+        except Exception as e:
+            # DB 조회 실패 등 예기치 않은 오류
+            logger.error(f"Error during payment verification for order {order_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="결제 승인 중 서버 내부 오류가 발생했습니다.")
+
 
 payment_service = PaymentService()

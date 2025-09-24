@@ -301,7 +301,7 @@
       "strategyId": "s3b2c3d4-e5f6-7890-1234-567890abcdef",
       "name": "Super Scalper Strategy",
       "authorUsername": "proTrader",
-      "pricePaidInCredit": 50000,
+      "pricePaid": 50000,
       "purchasedAt": "2025-09-16T11:00:00Z"
     }
   ]
@@ -1040,7 +1040,6 @@
     "totalBalance": 15000,
     "breakdown": {
       "purchased": 10000,
-      "subscriptionDaily": 0,
       "expiringWeekly": 5000,
       "event": []
     }

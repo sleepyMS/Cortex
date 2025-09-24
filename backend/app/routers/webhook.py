@@ -2,17 +2,24 @@
 
 from fastapi import APIRouter, Request, HTTPException, status
 import logging
+from fastapi import Depends
 
 from ..event_bus import publish_event
-# 일반 결제 승인 로직을 위해 payment_service를 import 합니다.
 from ..services.payment_service import payment_service
+from ..dependencies import get_async_db, get_billing_toss_client
+from sqlalchemy.ext.asyncio import AsyncSession
+from ..gateways.toss_payments_client import TossPaymentsClient
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 
 @router.post("/toss-payments", status_code=status.HTTP_200_OK)
-async def handle_toss_payments_webhook(request: Request):
+async def handle_toss_payments_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db), # DB 세션 의존성 추가
+    toss_client: TossPaymentsClient = Depends(get_billing_toss_client) # Toss Client 의존성 추가
+):
     """
     Toss Payments로부터 수신되는 모든 결제 관련 웹훅을 처리하는 통합 엔드포인트입니다.
 
@@ -56,11 +63,17 @@ async def handle_toss_payments_webhook(request: Request):
                 # [일반결제 성공 처리]
                 # 보안을 위해 서버에서 최종 승인 절차를 반드시 거칩니다.
                 await payment_service.verify_and_approve_payment(
-                    payment_key=payment_key, order_id=order_id, amount=amount
+                    db=db,
+                    toss_client=toss_client,
+                    payment_key=payment_key, 
+                    order_id=order_id, 
+                    amount=amount
                 )
                 event_payload = {
                     "order_id": order_id,
-                    "gateway_transaction_id": payment_key
+                    "gateway_transaction_id": payment_key,
+                    "amount": amount,
+                    "customer_key": customer_key
                 }
                 await publish_event("payment.succeeded", event_payload)
                 logger.info(f"General payment for order {order_id} verified, approved, and event published.")

@@ -16,7 +16,6 @@ interface CreditBalanceBreakdownEvent {
 // [크레딧 시스템] CreditBalanceBreakdown 스키마 타입
 interface CreditBalanceBreakdown {
   purchased: number;
-  subscriptionDaily: number;
   expiringWeekly: number;
   event: CreditBalanceBreakdownEvent[];
 }
@@ -24,6 +23,7 @@ interface CreditBalanceBreakdown {
 // [크레딧 시스템] CreditBalanceSummary 스키마 타입
 export interface CreditBalanceSummary {
   totalBalance: number;
+  cashCreditBalance: number;
   breakdown: CreditBalanceBreakdown;
 }
 
@@ -158,7 +158,7 @@ export const useUserStore = create<State & Actions>()(
         } catch (error) {
           console.error("재인증 실패:", error);
           // 401 에러의 경우 apiClient 인터셉터에서 refreshSession을 호출하므로,
-          // 여기서는 일반적인 로그아웃 처리만 수행합니다.
+          // 여기서는 일반적인 로그아웃 처리만 수행
           get().logout();
         }
       },

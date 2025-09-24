@@ -4,14 +4,13 @@ from typing import Dict, Any, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import func, or_, desc, asc, cast, String
+from sqlalchemy import func, or_, desc, asc
 from fastapi import HTTPException, status
 import logging
 
 from .. import models, schemas
-from ..services.payment_service import payment_service 
-
 from ..event_bus import publish_event 
+from .credit_service import credit_service
 
 logger = logging.getLogger(__name__)
 
@@ -24,263 +23,232 @@ class MarketplaceService:
         self, db: AsyncSession, filters: schemas.ProductFilters
     ) -> Dict[str, Any]:
         """필터와 페이지네이션을 적용하여 상품 목록을 조회합니다."""
-
         if filters.product_type == models.ProductType.STRATEGY:
-            # --- 1. 전략 상품 조회 로직 ---
-            latest_backtest_subquery = (
-                select(
-                    models.Backtest.strategy_id,
-                    models.BacktestResult.total_return_pct,
-                    models.BacktestResult.mdd_pct,
-                    models.BacktestResult.win_rate_pct,
-                    models.BacktestResult.profit_factor,
-                    models.BacktestResult.sharpe_ratio,
-                    models.BacktestResult.sortino_ratio,
-                    func.row_number().over(
-                        partition_by=models.Backtest.strategy_id,
-                        order_by=models.Backtest.created_at.desc()
-                    ).label("row_num")
-                )
-                .join(models.BacktestResult, models.Backtest.id == models.BacktestResult.backtest_id)
-                .filter(models.Backtest.status == 'completed')
-                .subquery('latest_backtest')
-            )
-            
-            # [핵심 개선] SELECT 구문에 모든 성과 지표 컬럼을 포함시킵니다.
             query = select(
-                models.MarketplaceProduct,
-                models.User.username,
-                models.BacktestResult.total_return_pct,
-                models.BacktestResult.mdd_pct,
-                models.BacktestResult.win_rate_pct,
-                models.BacktestResult.profit_factor,
-                models.BacktestResult.sharpe_ratio,
+                models.MarketplaceProduct, models.User.username, models.BacktestResult.total_return_pct,
+                models.BacktestResult.mdd_pct, models.BacktestResult.win_rate_pct,
+                models.BacktestResult.profit_factor, models.BacktestResult.sharpe_ratio,
                 models.BacktestResult.sortino_ratio,
             ).join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
-             .outerjoin(
-                models.Backtest, 
-                models.MarketplaceProduct.representative_backtest_id == models.Backtest.id
-             ).outerjoin(
-                models.BacktestResult,
-                models.Backtest.id == models.BacktestResult.backtest_id
-             ).filter(
-                models.MarketplaceProduct.is_active == True,
-                models.MarketplaceProduct.product_type == models.ProductType.STRATEGY
-             )
-
-        else: # models.ProductType.SHOP_ITEM
-            # --- 2. 상점 아이템 조회 로직 ---
+             .outerjoin(models.Backtest, models.MarketplaceProduct.representative_backtest_id == models.Backtest.id)\
+             .outerjoin(models.BacktestResult, models.Backtest.id == models.BacktestResult.backtest_id)\
+             .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.STRATEGY)
+        else:
             query = select(
-                models.MarketplaceProduct, 
-                models.User.username, 
-                models.ShopItemDetail.display_properties
+                models.MarketplaceProduct, models.User.username, models.ShopItemDetail.display_properties
             ).join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
              .join(models.ShopItemDetail, models.MarketplaceProduct.linked_resource_id == models.ShopItemDetail.id)\
-             .filter(
-                models.MarketplaceProduct.is_active == True,
-                models.MarketplaceProduct.product_type == models.ProductType.SHOP_ITEM
-             )
+             .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type.in_([models.ProductType.SHOP_ITEM, models.ProductType.CREDIT_PACK]))
 
-        # --- 3. 공통 필터 및 페이지네이션 로직 ---
         if filters.search_term:
             query = query.filter(models.MarketplaceProduct.name.ilike(f"%{filters.search_term}%"))
         if filters.categories:
             query = query.filter(models.MarketplaceProduct.product_metadata['category'].astext.in_(filters.categories))
-
+        
         count_query = select(func.count()).select_from(query.alias())
         total_items = await db.scalar(count_query) or 0
         
-        if filters.sort_by == "price_asc":
-            query = query.order_by(asc(models.MarketplaceProduct.price))
-        elif filters.sort_by == "price_desc":
-            query = query.order_by(desc(models.MarketplaceProduct.price))
-        elif filters.sort_by == "totalReturnPct_desc" and filters.product_type == models.ProductType.STRATEGY:
-            query = query.order_by(desc(latest_backtest_subquery.c.total_return_pct).nullslast())
-        else:
-            query = query.order_by(desc(models.MarketplaceProduct.created_at))
-
-        query = query.offset((filters.page - 1) * filters.limit).limit(filters.limit)
+        # 정렬 로직 등 
+        query = query.order_by(desc(models.MarketplaceProduct.created_at))\
+                     .offset((filters.page - 1) * filters.limit).limit(filters.limit)
         
         db_results = await db.execute(query)
-        
-        # --- 4. 최종 응답 데이터 조립 ---
         products_response = []
         if filters.product_type == models.ProductType.STRATEGY:
-            
-            result_list = list(db_results)
-            logger.warning(f"Found {len(result_list)} strategy products in DB.")
-
-            for db_result_tuple in result_list:
-                (product, username, total_return, mdd, win_rate, 
-                 profit_factor, sharpe_ratio, sortino_ratio) = db_result_tuple
-
-                summary_data = None
-                if total_return is not None:
-                    summary_data = schemas.BacktestResultSummaryForCard(
-                        total_return_pct=total_return,
-                        mdd_pct=mdd,
-                        win_rate_pct=win_rate,
-                        profit_factor=profit_factor,
-                        sharpe_ratio=sharpe_ratio,
-                        sortino_ratio=sortino_ratio
-                    )
-
-                data_to_validate = product.__dict__
-                data_to_validate['author'] = schemas.ProductAuthor(username=username)
-                data_to_validate['latest_backtest_summary'] = summary_data
-                
-                validated_product = schemas.StrategyProduct.model_validate(data_to_validate, from_attributes=True)
+            for product, username, total_return, mdd, win_rate, profit_factor, sharpe_ratio, sortino_ratio in db_results:
+                summary = schemas.BacktestResultSummaryForCard(total_return_pct=total_return, mdd_pct=mdd, win_rate_pct=win_rate, profit_factor=profit_factor, sharpe_ratio=sharpe_ratio, sortino_ratio=sortino_ratio) if total_return is not None else None
+                validated_product = schemas.StrategyProduct.model_validate({**product.__dict__, 'author': {'username': username}, 'latest_backtest_summary': summary}, from_attributes=True)
                 products_response.append(validated_product)
-        else: # SHOP_ITEM
-            for product, username, display_properties in db_results:
-                product.author = schemas.ProductAuthor(username=username)
-                product.display_properties = display_properties
-                products_response.append(schemas.ShopItemProduct.model_validate(product))
+        else:
+             for product, username, display_properties in db_results:
+                validated_product = schemas.ShopItemProduct.model_validate({**product.__dict__, 'author': {'username': username}, 'display_properties': display_properties}, from_attributes=True)
+                products_response.append(validated_product)
+        
+        return {"products": products_response, "meta": {"totalItems": total_items, "itemCount": len(products_response), "itemsPerPage": filters.limit, "totalPages": (total_items + filters.limit - 1) // filters.limit, "currentPage": filters.page}}
 
-        return {
-            "products": products_response,
-            "meta": {
-                "totalItems": total_items,
-                "itemCount": len(products_response),
-                "itemsPerPage": filters.limit,
-                "totalPages": (total_items + filters.limit - 1) // filters.limit,
-                "currentPage": filters.page,
-            },
+    # --- 크레딧 결제 전용 서비스 함수 ---
+    async def process_credit_purchase(self, db: AsyncSession, payload: schemas.OrderCreate, buyer: models.User) -> models.MarketplaceOrder:
+        """크레딧을 사용하여 주문을 즉시 생성, 결제, 이행하는 통합 함수"""
+        if not payload.items:
+            raise HTTPException(status_code=400, detail="주문할 상품이 없습니다.")
+
+        # 1. 주문 상품 검증 및 총 가격(크레딧) 계산
+        total_cost = 0.0
+        product_ids = [item.product_id for item in payload.items]
+        products_q = await db.execute(select(models.MarketplaceProduct).filter(models.MarketplaceProduct.id.in_(product_ids)))
+        products_map = {p.id: p for p in products_q.scalars().all()}
+
+        if len(products_map) != len(product_ids):
+            raise HTTPException(status_code=404, detail="일부 상품을 찾을 수 없습니다.")
+
+        is_c2c_order = any(p.product_type == models.ProductType.STRATEGY for p in products_map.values())
+        
+        order_items_to_create = []
+        for item_data in payload.items:
+            product = products_map[item_data.product_id]
+            if product.product_type == models.ProductType.CREDIT_PACK:
+                 raise HTTPException(status_code=400, detail=f"'{product.name}' 상품은 현금으로만 구매할 수 있습니다.")
+            total_cost += product.price * item_data.quantity
+            order_items_to_create.append(
+                models.MarketplaceOrderItem(product_id=product.id, quantity=item_data.quantity, price_at_purchase=product.price)
+            )
+
+        # 2. 거래 유형에 맞는 크레딧 차감 로직 호출
+        from .credit_service import credit_service
+        if is_c2c_order:
+            await credit_service.deduct_cash_credits_only(db, user_id=buyer.id, amount_to_deduct=int(total_cost), related_entity_type="MARKETPLACE_C2C_ORDER")
+        else:
+            await credit_service.deduct_credits(db, user_id=buyer.id, amount_to_deduct=int(total_cost), discount_pct=0.0, related_entity_type="MARKETPLACE_B2C_ORDER")
+
+        # 3. 주문을 'COMPLETED' 상태로 즉시 생성
+        paid_order = models.MarketplaceOrder(
+            buyer_id=buyer.id, 
+            total_amount=total_cost, 
+            status=models.OrderStatus.PAID,
+            items=order_items_to_create
+        )
+        db.add(paid_order)
+        await db.flush()
+
+        # 4. 주문 즉시 이행 (자산 지급)
+        await self.fulfill_order(db, order_id=paid_order.id)
+        
+        return paid_order
+    
+    async def list_strategy_as_product(
+        self, 
+        db: AsyncSession, 
+        strategy: models.Strategy, 
+        listing_data: schemas.StrategyListPayload, 
+        seller: models.User
+    ) -> models.MarketplaceProduct:
+        """
+        사용자의 전략을 마켓플레이스 상품으로 등록하거나, 이미 등록된 경우 업데이트합니다.
+        """
+        # 1. 이 전략이 이미 마켓플레이스 상품으로 등록되었는지 확인합니다.
+        existing_product = await db.scalar(
+            select(models.MarketplaceProduct)
+            .filter(models.MarketplaceProduct.linked_resource_id == strategy.id)
+        )
+        
+        # 2. 프론트엔드로부터 받은 메타데이터를 조합합니다.
+        metadata = {
+            "category": listing_data.category, 
+            "positionType": listing_data.position_type
         }
 
-    async def list_strategy_as_product(self, db: AsyncSession, strategy: models.Strategy, 
-                                     listing_data: schemas.StrategyListPayload, seller: models.User) -> models.MarketplaceProduct:
-        
-        # 소유권 검증은 라우터에서 이미 처리됨
-        existing_product = await db.scalar(select(models.MarketplaceProduct).filter(models.MarketplaceProduct.linked_resource_id == strategy.id))
-        
-        metadata = {"category": listing_data.category, "positionType": listing_data.position_type}
-
+        # 3. 기존 상품이 있으면 정보 업데이트, 없으면 새로 생성합니다.
         if existing_product:
+            # 기존 상품 정보 업데이트
             existing_product.price = listing_data.price
             existing_product.description = listing_data.description
             existing_product.product_metadata = metadata
             existing_product.representative_backtest_id = listing_data.representative_backtest_id
-            existing_product.is_active = True
+            existing_product.is_active = True # 비활성화 상태였다면 다시 활성화
             product = existing_product
+            logger.info(f"Updating existing marketplace product for strategy {strategy.id}.")
         else:
+            # 새 마켓플레이스 상품 생성
             product = models.MarketplaceProduct(
-                name=strategy.name, description=listing_data.description or strategy.description,
-                price=listing_data.price, product_type=models.ProductType.STRATEGY,
-                inventory_type=models.InventoryType.UNLOCK, linked_resource_id=strategy.id,
-                seller_id=seller.id, product_metadata=metadata,
+                name=strategy.name,
+                description=listing_data.description or strategy.description,
+                price=listing_data.price,
+                product_type=models.ProductType.STRATEGY,
+                inventory_type=models.InventoryType.UNLOCK,
+                linked_resource_id=strategy.id,
+                seller_id=seller.id,
+                product_metadata=metadata,
                 representative_backtest_id=listing_data.representative_backtest_id
             )
             db.add(product)
-
+            logger.info(f"Creating new marketplace product for strategy {strategy.id}.")
+        
         await db.flush()
-
+        # 관계 필드를 채워서 반환해야 스키마 변환 시 오류가 발생하지 않습니다.
         product.seller = seller
         
         return product
 
-    async def create_order(self, db: AsyncSession, payload: schemas.OrderCreate, buyer: models.User) -> models.MarketplaceOrder:
-        total_amount = 0.0; order_items = []
+    # --- 현금 결제 전용 서비스 함수 ---
+    async def create_pending_order_for_cash(self, db: AsyncSession, payload: schemas.OrderCreate, buyer: models.User) -> models.MarketplaceOrder:
+        """현금 결제를 위해 'PENDING' 상태의 주문을 생성합니다."""
+        if not payload.items:
+            raise HTTPException(status_code=400, detail="주문할 상품이 없습니다.")
+
+        total_amount = 0.0
         product_ids = [item.product_id for item in payload.items]
-        products_result = await db.execute(select(models.MarketplaceProduct).filter(models.MarketplaceProduct.id.in_(product_ids)))
-        products_map = {p.id: p for p in products_result.scalars().all()}
-        if len(products_map) != len(product_ids): raise HTTPException(status_code=404, detail="일부 상품을 찾을 수 없습니다.")
+        products_q = await db.execute(select(models.MarketplaceProduct).filter(models.MarketplaceProduct.id.in_(product_ids)))
+        products_map = {p.id: p for p in products_q.scalars().all()}
+
+        if len(products_map) != len(product_ids):
+            raise HTTPException(status_code=404, detail="일부 상품을 찾을 수 없습니다.")
+
+        order_items_to_create = []
         for item_data in payload.items:
             product = products_map[item_data.product_id]
+            if product.product_type != models.ProductType.CREDIT_PACK:
+                raise HTTPException(status_code=400, detail=f"'{product.name}' 상품은 크레딧으로 구매해야 합니다.")
             total_amount += product.price * item_data.quantity
-            order_items.append(models.MarketplaceOrderItem(product_id=product.id, quantity=item_data.quantity, price_at_purchase=product.price))
-        new_order = models.MarketplaceOrder(buyer_id=buyer.id, total_amount=total_amount, status=models.OrderStatus.PENDING, items=order_items)
-        db.add(new_order)
-        await db.flush()
-        return new_order
-    
-    def create_order_and_prepare_payment(
-        self, order: models.MarketplaceOrder, user: models.User
-    ) -> schemas.OrderCreateResponse:
-        """
-        생성된 주문을 바탕으로 PaymentService를 호출하여 SDK 결제 정보를 생성합니다.
-        """
-        return payment_service.prepare_payment_info_for_sdk(order=order, user=user)
+            order_items_to_create.append(
+                models.MarketplaceOrderItem(product_id=product.id, quantity=item_data.quantity, price_at_purchase=product.price)
+            )
 
-        
+        pending_order = models.MarketplaceOrder(
+            buyer_id=buyer.id, total_amount=total_amount, status=models.OrderStatus.PENDING, items=order_items_to_create
+        )
+        db.add(pending_order)
+        await db.flush()
+        return pending_order
+
+    # --- gateway_transaction_id를 Optional로 변경 ---
     async def fulfill_order(
-        self, db: AsyncSession, order_id: uuid.UUID, gateway_transaction_id: str
+        self, db: AsyncSession, order_id: uuid.UUID, gateway_transaction_id: Optional[str] = None
     ):
-        """Celery Task에서 호출되는 주문 이행 비즈니스 로직."""
+        """Celery Task 또는 서비스에서 직접 호출되는 주문 이행 비즈니스 로직."""
         logger.info(f"Fulfilling order: {order_id}")
         order = await db.get(
-            models.MarketplaceOrder,
-            order_id,
-            options=[
-                selectinload(models.MarketplaceOrder.items).joinedload(
-                    models.MarketplaceOrderItem.product
-                )
-            ],
+            models.MarketplaceOrder, order_id,
+            options=[selectinload(models.MarketplaceOrder.items).joinedload(models.MarketplaceOrderItem.product)]
         )
 
-        if not order or order.status != models.OrderStatus.PENDING:
-            logger.warning(f"Order {order_id} not found or not in PENDING state.")
+        if not order or order.status not in [models.OrderStatus.PAID, models.OrderStatus.PENDING]:
+            logger.warning(f"Order {order_id} cannot be fulfilled. Status: {order.status if order else 'Not Found'}.")
             return
 
         for item in order.items:
             product = item.product
-            if product.inventory_type == models.InventoryType.UNLOCK:
-                # 소유권이 없을 때만 자산을 지급하도록 로직을 간소화
-                ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(
-                    user_id=order.buyer_id, strategy_id=product.linked_resource_id
-                )
+            # 구매한 상품이 CREDIT_PACK일 경우, 크레딧을 지급하는 로직
+            if product.product_type == models.ProductType.CREDIT_PACK:
+                # 상품 메타데이터에서 지급할 크레딧 양을 가져옵니다. (다음 섹션 참고)
+                credit_amount = product.product_metadata.get("credit_amount", 0)
+                if credit_amount > 0:
+                    await credit_service.grant_credits(
+                        db=db,
+                        user_id=order.buyer_id,
+                        amount=credit_amount * item.quantity,
+                        source_type="PURCHASE", # '유료 크레딧'으로 지급
+                        source_id=order.id # 관련 주문 ID 기록
+                    )
+
+            elif product.inventory_type == models.InventoryType.UNLOCK:
+                ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(user_id=order.buyer_id, strategy_id=product.linked_resource_id)
                 ownership_exists = await db.scalar(select(ownership_exists_query.exists()))
-
                 if not ownership_exists:
-                    db.add(
-                        models.UserPurchasedStrategy(
-                            user_id=order.buyer_id,
-                            strategy_id=product.linked_resource_id,
-                            order_item_id=item.id,
-                        )
-                    )
-                    logger.info(
-                        f"Granted UNLOCK asset (strategy: {product.linked_resource_id}) to user {order.buyer_id}"
-                    )
-
+                    db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
             elif product.inventory_type == models.InventoryType.CONSUMABLE:
-                # 1. 사용자의 인벤토리에 해당 상품이 이미 있는지 확인
-                existing_inventory_item = await db.scalar(
-                    select(models.UserInventory).filter_by(
-                        user_id=order.buyer_id, product_id=product.id
-                    )
-                )
-
+                existing_inventory_item = await db.scalar(select(models.UserInventory).filter_by(user_id=order.buyer_id, product_id=product.id))
                 if existing_inventory_item:
-                    # 2. 이미 있다면, quantity를 구매한 수량만큼 더함
                     existing_inventory_item.quantity += item.quantity
-                    logger.info(
-                        f"Updated quantity for existing CONSUMABLE asset (product: {product.id}) for user {order.buyer_id}. New quantity: {existing_inventory_item.quantity}"
-                    )
                 else:
-                    # 3. 없다면, 새로운 인벤토리 아이템을 생성
-                    db.add(
-                        models.UserInventory(
-                            user_id=order.buyer_id,
-                            product_id=product.id,
-                            quantity=item.quantity # 구매한 수량으로 초기화
-                        )
-                    )
-                    logger.info(
-                        f"Granted {item.quantity} new CONSUMABLE asset(s) (product: {product.id}) to user {order.buyer_id}"
-                    )
+                    db.add(models.UserInventory(user_id=order.buyer_id, product_id=product.id, quantity=item.quantity))
 
-        order.status = models.OrderStatus.COMPLETED
-        order.gateway_transaction_id = gateway_transaction_id
+        order.status = models.OrderStatus.COMPLETED 
+        if gateway_transaction_id:
+            order.gateway_transaction_id = gateway_transaction_id
         await db.flush()
 
-        await publish_event(
-            "order.fulfilled",
-            {"order_id": str(order_id), "buyer_id": str(order.buyer_id)},
-        )
-        logger.info(
-            f"Successfully fulfilled order {order_id}. Published 'order.fulfilled' event."
-        )
+        publish_event("order.fulfilled", {"order_id": str(order_id), "buyer_id": str(order.buyer_id)})
+        logger.info(f"Successfully fulfilled order {order_id}. Published 'order.fulfilled' event.")
 
     async def get_order_by_id(self, db: AsyncSession, order_id: uuid.UUID) -> Optional[models.MarketplaceOrder]:
         """
@@ -461,6 +429,88 @@ class MarketplaceService:
         )
         result = await db.execute(select(query.exists()))
         return result.scalar_one()
+
+    async def _get_or_create_admin_user(self, db: AsyncSession) -> models.User:
+        """시스템 상품의 판매자가 될 관리자 계정을 조회하거나 생성합니다."""
+        admin_email = "admin@cortex.com"
+        admin_user = await db.scalar(select(models.User).filter_by(email=admin_email))
+        
+        if not admin_user:
+            from ..security import get_password_hash
+            logger.info(f"Admin user not found. Creating a new one: {admin_email}")
+            admin_user = models.User(
+                email=admin_email,
+                username="cortex_admin",
+                hashed_password=get_password_hash("test1234"),
+                role="admin",
+                is_active=True,
+                is_email_verified=True
+            )
+            db.add(admin_user)
+            await db.flush()
+        return admin_user
+
+    # 크레딧 팩 상품 시딩 함수 (클래스 메서드로 포함)
+    async def seed_credit_packs(self, db: AsyncSession):
+        """초기 '크레딧 팩' 상품을 데이터베이스에 생성합니다."""
+        admin_user = await self._get_or_create_admin_user(db)
+
+        credit_packs_to_seed = [
+            {
+                "item_type": "CREDIT_PACK_1000",
+                "display_properties": {"icon": "coins", "tier": "bronze"},
+                "product_info": {
+                    "name": "1,000 크레딧 팩", "price": 10000.0,
+                    "product_metadata": {"credit_amount": 1000}
+                }
+            },
+            {
+                "item_type": "CREDIT_PACK_5500",
+                "display_properties": {"icon": "gem", "tier": "silver"},
+                "product_info": {
+                    "name": "5,500 크레딧 팩 (10% 보너스)", "price": 50000.0,
+                    "product_metadata": {"credit_amount": 5500}
+                }
+            },
+            {
+                "item_type": "CREDIT_PACK_12000",
+                "display_properties": {"icon": "diamond", "tier": "gold"},
+                "product_info": {
+                    "name": "12,000 크레딧 팩 (20% 보너스)", "price": 100000.0,
+                    "product_metadata": {"credit_amount": 12000}
+                }
+            },
+        ]
+
+        for pack_data in credit_packs_to_seed:
+            shop_item = await db.scalar(
+                select(models.ShopItemDetail).filter_by(item_type=pack_data["item_type"])
+            )
+            if not shop_item:
+                shop_item = models.ShopItemDetail(
+                    item_type=pack_data["item_type"],
+                    display_properties=pack_data["display_properties"]
+                )
+                db.add(shop_item)
+                await db.flush()
+                logger.info(f"Seeded shop item detail for '{pack_data['item_type']}'.")
+
+            existing_product = await db.scalar(
+                select(models.MarketplaceProduct).filter_by(name=pack_data["product_info"]["name"])
+            )
+
+            if not existing_product:
+                new_product = models.MarketplaceProduct(
+                    linked_resource_id=shop_item.id,
+                    seller_id=admin_user.id,
+                    product_type=models.ProductType.CREDIT_PACK,
+                    inventory_type=models.InventoryType.CONSUMABLE,
+                    is_active=True,
+                    **pack_data["product_info"]
+                )
+                db.add(new_product)
+                logger.info(f"Seeded '{new_product.name}' product linked to ShopItemDetail {shop_item.id}.")
+
 
 # 서비스 인스턴스 생성
 marketplace_service = MarketplaceService()
