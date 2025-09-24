@@ -247,15 +247,6 @@ erDiagram
         Date payout_date "실제 지급일"
     }
 
-    credit_packages {
-        UUID id PK
-        String name "상품명 (e.g., 10,000 크레딧 팩)"
-        Integer price_krw "현금 판매 가격 (원)"
-        Integer credit_amount "지급되는 기본 크레딧"
-        Integer bonus_credit_amount "추가 지급 보너스 크레딧"
-        Boolean is_active "현재 판매 여부"
-    }
-
     %% --- 6. 커뮤니티 ---
     community_posts {
         UUID id PK
@@ -330,8 +321,6 @@ erDiagram
     community_posts ||--|{ comments : has
     community_posts ||--|{ likes : receives
 
-    credit_packages ||--o{ users : "can be purchased by"
-
 ```
 
 ---
@@ -357,7 +346,6 @@ erDiagram
 - **`credits_attendance_logs`**: 무료 크레딧 보상의 기준이 되는 일일 출석 기록.
 - **`settlements`**: 전략 판매 대금을 판매자에게 **'현금(KRW)'**으로 정산하기 위한 기록부. 크레딧 시스템과 완전히 분리된 플랫폼의 채무(liability)를 관리합니다.
 - **`refresh_tokens`**: JWT 리프레시 토큰 관리.
-- **`credit_packages`**: 사용자가 **'현금(KRW)'**으로 구매할 수 있는 크레딧 팩 상품의 목록과 가격을 정의합니다. 플랫폼과 사용자 간의 B2C 거래에만 사용되며, 사용자 간 거래(P2P)를 위한 marketplace_products 테이블과는 완전히 분리됩니다.
 
 ---
 

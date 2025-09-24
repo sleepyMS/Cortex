@@ -57,7 +57,7 @@ graph TD
 
 #### **2.2.1. 크레딧 충전 (B2C 현금 거래)**
 
-1.  **충전 요청:** 사용자가 프론트엔드에서 '크레딧 팩' 구매를 요청하면, 백엔드 **Store Service**는 `credit_packages` 테이블을 참조하여 **Toss Payments 결제**에 필요한 정보를 프론트엔드에 전달합니다.
+1.  **충전 요청:** 사용자가 프론트엔드에서 '크레딧 팩' 구매를 요청하면, 백엔드 **Store Service**는 **Toss Payments 결제**에 필요한 정보를 프론트엔드에 전달합니다.
 2.  **Webhook 수신:** 결제가 성공하면, **Toss Payments가 백엔드의 Webhook 엔드포인트로 비동기 알림**을 보냅니다.
 3.  **이벤트 발행 (Publish):** Webhook 엔드포인트는 `payment.credit_charge.succeeded`와 같은 명확한 '이벤트'를 Redis(메시지 버스)에 발행하고 즉시 `200 OK`로 응답하여 Toss Payments와의 통신을 종료합니다.
 4.  **이벤트 처리 (Consume):** 별도의 Celery 워커가 이벤트를 구독하고 있다가, `CreditService`를 호출하여 사용자에게 `source_type='PURCHASE'`인 **'유료 크레딧'을 지급**하고 `credits_ledgers`에 내역을 기록하는 후속 작업을 비동기적으로 처리합니다.
