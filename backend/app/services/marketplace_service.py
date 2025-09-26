@@ -177,8 +177,8 @@ class MarketplaceService:
 
         total_amount = 0.0
         product_ids = [item.product_id for item in payload.items]
-        products_q = await db.execute(select(models.MarketplaceProduct).filter(models.MarketplaceProduct.id.in_(product_ids)))
-        products_map = {p.id: p for p in products_q.scalars().all()}
+        products_result = await db.execute(select(models.MarketplaceProduct).filter(models.MarketplaceProduct.id.in_(product_ids)))
+        products_map = {p.id: p for p in products_result.scalars().all()}
 
         if len(products_map) != len(product_ids):
             raise HTTPException(status_code=404, detail="일부 상품을 찾을 수 없습니다.")
@@ -198,7 +198,15 @@ class MarketplaceService:
         )
         db.add(pending_order)
         await db.flush()
-        return pending_order
+        
+        # [핵심 수정] 반환하기 전에 필요한 관계를 Eager Loading하여 다시 조회합니다.
+        # get_order_by_id 함수는 이미 Eager Loading 로직을 가지고 있으므로 재사용합니다.
+        complete_pending_order = await self.get_order_by_id(db, pending_order.id)
+        if not complete_pending_order:
+            # 이 에러는 이론적으로 발생해서는 안 됩니다.
+            raise HTTPException(status_code=500, detail="주문 생성 후 정보를 조회하는 데 실패했습니다.")
+
+        return complete_pending_order # 완전한 정보를 가진 객체를 반환
 
     # --- gateway_transaction_id를 Optional로 변경 ---
     async def fulfill_order(
@@ -460,15 +468,15 @@ class MarketplaceService:
                 "item_type": "CREDIT_PACK_1000",
                 "display_properties": {"icon": "coins", "tier": "bronze"},
                 "product_info": {
-                    "name": "1,000 크레딧 팩", "price": 10000.0,
-                    "product_metadata": {"credit_amount": 1000}
+                    "name": "1,000 크레딧 팩", "price": 1000.0,
+                    "product_metadata": {"credit_amount": 990}
                 }
             },
             {
                 "item_type": "CREDIT_PACK_5500",
                 "display_properties": {"icon": "gem", "tier": "silver"},
                 "product_info": {
-                    "name": "5,500 크레딧 팩 (10% 보너스)", "price": 50000.0,
+                    "name": "5,500 크레딧 팩 (10% 보너스)", "price": 4950.0,
                     "product_metadata": {"credit_amount": 5500}
                 }
             },
@@ -476,8 +484,16 @@ class MarketplaceService:
                 "item_type": "CREDIT_PACK_12000",
                 "display_properties": {"icon": "diamond", "tier": "gold"},
                 "product_info": {
-                    "name": "12,000 크레딧 팩 (20% 보너스)", "price": 100000.0,
+                    "name": "12,000 크레딧 팩 (20% 보너스)", "price": 9900.0,
                     "product_metadata": {"credit_amount": 12000}
+                }
+            },
+            {
+                "item_type": "CREDIT_PACK_12000",
+                "display_properties": {"icon": "diamond", "tier": "gold"},
+                "product_info": {
+                    "name": "75,000 크레딧 팩 (25% 보너스)", "price": 59900.0,
+                    "product_metadata": {"credit_amount": 75000}
                 }
             },
         ]

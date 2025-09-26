@@ -12,7 +12,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 import { PaginatedProductsResponse } from "@/types/marketplace";
-import { usePaymentMutation } from "./usePayment";
+import { CheckoutData } from "./usePayment"; // usePayment.ts에서 CheckoutData 타입을 가져옵니다.
 
 // =================================================================
 // 1. 타입 정의 (Types)
@@ -40,7 +40,7 @@ export interface PurchasePayload {
 // =================================================================
 
 /**
- * 마켓플레이스 상품 목록을 API로부터 가져오는 함수
+ * 마켓플레이스 상품 목록을 서버에서 조회합니다.
  */
 const fetchProducts = async (
   filters: ProductFilters
@@ -62,14 +62,20 @@ const fetchProducts = async (
   return data;
 };
 
-/** 크레딧으로 즉시 구매하는 API 함수 */
+/**
+ * 크레딧을 사용한 상품 구매를 요청합니다.
+ */
 const creditPurchaseApiFn = async (payload: PurchasePayload): Promise<any> => {
   const { data } = await apiClient.post("/marketplace/orders", payload);
   return data;
 };
 
-/** 현금 결제를 준비하는 API 함수 */
-const cashCheckoutApiFn = async (payload: PurchasePayload): Promise<any> => {
+/**
+ * 현금 결제(결제 위젯)를 위한 사전 주문 정보를 생성하고 요청합니다.
+ */
+const cashCheckoutApiFn = async (
+  payload: PurchasePayload
+): Promise<CheckoutData> => {
   const { data } = await apiClient.post("/marketplace/checkout/cash", payload);
   return data;
 };
@@ -78,10 +84,8 @@ const cashCheckoutApiFn = async (payload: PurchasePayload): Promise<any> => {
 // 3. 커스텀 훅 (Custom Hooks)
 // =================================================================
 
-// --- Query Hooks ---
-
 /**
- * 마켓플레이스의 상품 목록을 필터링 및 페이지네이션하여 조회하는 훅
+ * 마켓플레이스 상품 목록을 조회하는 React Query 훅입니다.
  */
 export const useProducts = (filters: ProductFilters) => {
   return useQuery({
@@ -91,14 +95,12 @@ export const useProducts = (filters: ProductFilters) => {
   });
 };
 
-// --- Mutation Hooks ---
-
 /**
- * 크레딧을 사용하여 상품을 즉시 구매하는 뮤테이션 훅
+ * 크레딧을 사용하여 상품을 구매하는 React Query 뮤테이션 훅입니다.
  */
 export const useCreditPurchaseMutation = (
   options?: Omit<
-    UseMutationOptions<any, any, PurchasePayload, any>,
+    UseMutationOptions<any, Error, PurchasePayload, any>,
     "mutationFn"
   >
 ) => {
@@ -108,10 +110,11 @@ export const useCreditPurchaseMutation = (
   return useMutation({
     mutationFn: creditPurchaseApiFn,
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: ["userInventory"] });
-      queryClient.invalidateQueries({ queryKey: ["purchasedStrategies"] });
+      // 구매 성공 시, 사용자의 인벤토리 및 프로필 관련 캐시를 무효화합니다.
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
 
+      // page.tsx 등에서 전달한 onSuccess 콜백이 있다면 실행합니다.
       if (options?.onSuccess) {
         options.onSuccess(data, variables, context);
       }
@@ -131,29 +134,33 @@ export const useCreditPurchaseMutation = (
 };
 
 /**
- * 현금으로 크레딧 팩 구매를 시작하는 뮤테이션 훅
+ * 현금 결제(결제 위젯)를 시작하기 위해 백엔드에 주문 생성을 요청하는
+ * React Query 뮤테이션 훅입니다.
  */
 export const useCashCheckoutMutation = (
   options?: Omit<
-    UseMutationOptions<any, any, PurchasePayload, any>,
+    UseMutationOptions<CheckoutData, Error, PurchasePayload, any>,
     "mutationFn"
   >
 ) => {
   const t = useTranslations("Marketplace");
-  const paymentMutation = usePaymentMutation();
 
   return useMutation({
     mutationFn: cashCheckoutApiFn,
     onSuccess: (checkoutData, variables, context) => {
-      paymentMutation.mutate(checkoutData);
-
+      // [역할 변경]
+      // 이 훅은 더 이상 직접 결제를 시도하지 않습니다.
+      // 성공적으로 백엔드로부터 checkoutData를 받아오면,
+      // page.tsx에 정의된 onSuccess 콜백으로 데이터를 전달하는 역할만 수행합니다.
       if (options?.onSuccess) {
         options.onSuccess(checkoutData, variables, context);
       }
     },
     onError: (err: any, variables, context) => {
+      // API 호출 실패 시 에러 토스트를 표시합니다.
       toast.error(
-        t("paymentError", {
+        t("orderCreationError", {
+          // 에러 메시지 키를 더 명확하게 변경
           error: err.response?.data?.detail || err.message,
         })
       );

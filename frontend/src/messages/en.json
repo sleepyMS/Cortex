@@ -1036,61 +1036,57 @@
     }
   },
   "Marketplace": {
+    "Common": {
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "close": "Close"
+    },
     "title": "Marketplace",
-    "description": "Explore strategies verified by other traders, or share your own to generate new revenue.",
-    "strategyMarketTab": "Strategy Market",
-    "itemShopTab": "Item Shop",
-    "comingSoon": "Coming Soon",
-    "searchPlaceholder": "Search by strategy name...",
-    "sortBy": "Sort by",
-    "sort": {
-      "newest": "Newest",
-      "highestReturn": "Highest Return",
-      "lowestMdd": "Lowest MDD"
+    "subtitle": "Explore strategies created by other users, or purchase useful items to enhance your trading.",
+    "tabs": {
+      "strategies": "Strategy Market",
+      "shop": "Shop"
     },
-    "loadingStrategies": "Loading strategies...",
-    "emptyTitle": "No strategies for sale yet",
-    "emptyDescription": "Be the first strategy seller on Cortex!",
-    "purchaseButton": "Purchase",
-    "purchasing": "Processing...",
-    "purchaseSuccess": "Item purchased successfully!",
-    "purchaseError": "Purchase failed: {error}",
-    "loadError": "Failed to load products: {error}",
-    "strategyDetail": {
-      "priceLabel": "Price",
-      "purchaseButton": "Purchase Strategy",
-      "purchasingButton": "Purchasing...",
-      "ownedButton": "Owned",
-      "authorPrefix": "by",
-      "backtestPeriod": "Backtest Period"
-    },
+    "loadErrorTitle": "Failed to Load Products",
+    "loadErrorDescription": "An error occurred while loading products. Please try again later.",
+    "retryButton": "Retry",
+    "emptyTitle": "No Products Found",
+    "emptyDescription": "There are currently no products for sale in this category.",
+    "purchaseConfirmTitle": "Confirm Purchase",
+    "purchaseConfirmDescriptionCredit": "Are you sure you want to purchase '{productName}' for {price} Credits?",
+    "purchaseConfirmDescriptionPaidCredit": "Are you sure you want to purchase '{productName}' for {price} Paid Credits?",
+    "chargeModalTitle": "Insufficient Credits",
+    "chargeModalDescription": "You need more credits to purchase this item. Would you like to go to the shop to charge credits?",
+    "goToChargePageButton": "Go to Credit Shop",
+    "purchaseSuccessTitle": "Purchase Complete",
+    "purchaseSuccessDescription": "'{productName}' was successfully purchased.",
+    "paymentRedirecting": "Redirecting to payment page...",
+    "purchaseError": "Purchase Error: {error}",
+    "paymentError": "Payment Error: {error}",
+    "chargeCreditButton": "Charge Credits",
+    "insufficientCredit": "Insufficient credits.",
+    "insufficientPaidCredit": "Insufficient paid credits.",
+    "purchasing": "Purchasing...",
+    "purchaseForCredit": "Purchase for {price} Credits",
+    "purchaseForPaidCredit": "Purchase for {price} Paid Credits",
+    "purchaseForCash": "Purchase for {price} KRW",
+    "ownedButton": "Owned",
     "strategyMarketCard": {
-      "authorPrefix": "by",
+      "authorPrefix": "By",
       "totalReturn": "Total Return",
-      "mdd": "Max Drawdown",
+      "mdd": "MDD",
       "winRate": "Win Rate",
-      "price": "Price",
+      "price": "Price"
+    },
+    "strategyDetail": {
+      "authorPrefix": "By:",
+      "backtestPeriod": "Backtest Period",
+      "priceLabel": "Price",
+      "purchasingButton": "Purchasing...",
       "purchaseButton": "Purchase",
-      "purchasing": "Processing..."
-    },
-    "StrategyInfoCard": {
-      "title": "Strategy Overview",
-      "description": "A summary of this strategy's key information.",
-      "noDescription": "No detailed description is available for this strategy.",
-      "vitals": {
-        "title": "Key Characteristics",
-        "period": "Backtest Period",
-        "profitFactor": "Profit Factor",
-        "sharpeRatio": "Sharpe Ratio",
-        "winRate": "Win Rate",
-        "avgHoldingPeriod": "Avg. Holding Period",
-        "avgHoldingPeriodValue": "{days} days",
-        "totalTrades": "Total Trades"
-      }
-    },
-    "AuthorCard": {
-      "title": "Seller Information",
-      "viewProfile": "View Profile"
+      "errorTitle": "Could not load strategy",
+      "errorDescription": "The requested strategy could not be found or an error occurred while loading its information.",
+      "noBacktest": "This strategy does not have a representative backtest result yet."
     }
   },
   "StrategyPerformanceBadges": {

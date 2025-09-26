@@ -2,7 +2,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ShoppingCart, Coins, CircleAlert, CheckCircle } from "lucide-react";
+import {
+  ShoppingCart,
+  Coins,
+  CircleAlert,
+  CheckCircle,
+  CreditCard,
+} from "lucide-react";
 import { useRouter } from "next/navigation"; // useRouter 추가
 import { useUserStore } from "@/store/userStore"; // Zustand 스토어 import
 import { cn } from "@/lib/utils";
@@ -41,7 +47,7 @@ export const ShopItemCard = ({
   onChargeCredits,
 }: ShopItemCardProps) => {
   const t = useTranslations("Marketplace");
-  const tCommon = useTranslations("Common");
+  // const tCommon = useTranslations("Common");
   const { creditBalance } = useUserStore(); // 스토어에서 크레딧 잔액 가져오기
   const router = useRouter();
 
@@ -72,6 +78,24 @@ export const ShopItemCard = ({
    * 아이템의 inventoryType과 isOwned 상태에 따라 올바른 구매 버튼을 렌더링하는 함수
    */
   const renderPurchaseButton = () => {
+    if (item.productType === "CREDIT_PACK") {
+      return (
+        <Button onClick={onPurchase} disabled={isPurchasing} className="w-full">
+          {isPurchasing ? (
+            <Spinner className="mr-2 h-4 w-4" />
+          ) : (
+            <CreditCard className="mr-2 h-4 w-4" />
+          )}
+          {isPurchasing
+            ? t("purchasing")
+            : // 현금 구매용 번역 키 사용
+              t("purchaseForCash", {
+                price: item.price.toLocaleString(),
+              })}
+        </Button>
+      );
+    }
+
     if (item.inventoryType === "UNLOCK" && isOwned) {
       return (
         <Button disabled className="w-full">
@@ -158,11 +182,22 @@ export const ShopItemCard = ({
       </CardContent>
       <CardFooter className="flex-col items-stretch pt-4 border-t bg-muted/50">
         <div className="flex items-center justify-end text-3xl font-bold text-right mb-4">
-          <Coins className="h-6 w-6 text-yellow-500 mr-2" />
-          {item.price.toLocaleString()}
-          <span className="text-xl font-medium text-muted-foreground ml-1">
-            CC
-          </span>
+          {item.productType === "CREDIT_PACK" ? (
+            <>
+              {item.price.toLocaleString()}
+              <span className="text-xl font-medium text-muted-foreground ml-1">
+                원
+              </span>
+            </>
+          ) : (
+            <>
+              <Coins className="h-6 w-6 text-yellow-500 mr-2" />
+              {item.price.toLocaleString()}
+              <span className="text-xl font-medium text-muted-foreground ml-1">
+                CC
+              </span>
+            </>
+          )}
         </div>
         {renderPurchaseButton()}
       </CardFooter>

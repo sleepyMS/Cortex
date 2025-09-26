@@ -175,7 +175,7 @@ export const StrategyDetailHeader = ({
           <div className="flex items-center justify-start md:justify-end text-4xl font-bold text-primary mb-4">
             <Coins className="h-8 w-8 text-yellow-500 mr-2" />
             {strategy.price.toLocaleString()}
-            <span className="text-2xl font-medium text-muted-foreground ml-1">
+            <span className="text-2xl font-large text-muted-foreground ml-1">
               CC
             </span>
           </div>

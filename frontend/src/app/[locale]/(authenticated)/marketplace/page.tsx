@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Store, Coins } from "lucide-react";
+import { Store, Coins, CreditCard, Inbox, AlertTriangle } from "lucide-react";
 
 // --- 1. 데이터 공급자 (Hooks) ---
 import {
@@ -13,10 +13,12 @@ import {
   useCashCheckoutMutation,
   ProductFilters,
 } from "@/hooks/useMarketplace";
+import { useInventoryStatus } from "@/hooks/useInventory";
 import {
-  useUserInventoryQuery,
-  usePurchasedStrategiesQuery,
-} from "@/hooks/useInventory";
+  usePaymentWidget,
+  CheckoutData,
+  WidgetsInstance,
+} from "@/hooks/usePayment";
 
 // --- 2. 타입 정의 ---
 import { MarketplaceStrategy, ShopItem } from "@/types/marketplace";
@@ -25,7 +27,7 @@ import { MarketplaceStrategy, ShopItem } from "@/types/marketplace";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
-import { PaginationComponent } from "@/components/ui/Pagination"; // PaginationComponent로 이름이 통일되었을 수 있습니다.
+import { PaginationComponent } from "@/components/ui/Pagination";
 import {
   Dialog,
   DialogContent,
@@ -35,14 +37,117 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
 
 // --- 4. 도메인 컴포넌트 ---
 import { ProductGrid } from "@/components/domain/marketplace/ProductGrid";
 import { PurchaseConfirmationModal } from "@/components/domain/marketplace/PurchaseConfirmationModal";
-// MarketplaceFilter는 현재 구현에서 제외되었으므로 필요 시 다시 추가할 수 있습니다.
 
 type PurchasableProduct = MarketplaceStrategy | ShopItem;
 
+// =================================================================
+// [신규] 결제 위젯을 렌더링하기 위한 전용 모달 컴포넌트
+// =================================================================
+interface PaymentWidgetModalProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  checkoutData: CheckoutData | null;
+}
+
+const PaymentWidgetModal = ({
+  isOpen,
+  onOpenChange,
+  checkoutData,
+}: PaymentWidgetModalProps) => {
+  const t = useTranslations("Marketplace");
+  const { renderPaymentWidgets, requestPaymentMutation } = usePaymentWidget();
+
+  // [수정 1] 위젯 인스턴스를 상태(state)가 아닌 참조(ref)로 관리합니다.
+  // 위젯 객체 자체가 UI 렌더링에 직접적인 영향을 주지 않으므로,
+  // 불필요한 재렌더링을 방지하는 useRef가 더 적합합니다.
+  const widgetsRef = React.useRef<WidgetsInstance | null>(null);
+
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // [수정 2] async/await 로직을 처리할 별도의 함수를 useEffect 내부에 선언합니다.
+    const initializeWidgets = async () => {
+      if (isOpen && checkoutData) {
+        try {
+          // 위젯 렌더링 함수를 호출하고, 반환된 인스턴스를 ref에 저장합니다.
+          const widgets = await renderPaymentWidgets(
+            "#payment-widget",
+            checkoutData.amount
+          );
+          widgetsRef.current = widgets;
+          setIsReady(true);
+        } catch (error: any) {
+          toast.error("결제 위젯을 불러오는 데 실패했습니다: " + error.message);
+          onOpenChange(false);
+        }
+      }
+    };
+
+    initializeWidgets();
+
+    // [수정 3] useEffect의 핵심인 cleanup 함수를 반환합니다.
+    // 이 함수는 모달이 닫히거나, React Strict Mode에 의해 재실행되기 전에 호출됩니다.
+    return () => {
+      const widgets = widgetsRef.current;
+      if (widgets) {
+        // Toss Payments SDK의 공식 cleanup 메서드를 호출하여
+        // 이전에 렌더링된 위젯 인스턴스를 완전히 제거합니다.
+        widgets.destroy();
+        widgetsRef.current = null; // 참조 초기화
+        setIsReady(false); // 준비 상태 초기화
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, checkoutData]); // renderPaymentWidgets와 onOpenChange는 useCallback으로 감싸는 것이 좋습니다 (아래 추가 개선 사항 참고)
+
+  const handlePaymentRequest = () => {
+    const widgets = widgetsRef.current; // ref에서 위젯 인스턴스를 가져옵니다.
+    if (widgets && checkoutData) {
+      requestPaymentMutation.mutate({ widgets, checkoutData });
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("paymentModalTitle")}</DialogTitle>
+          <DialogDescription>{checkoutData?.orderName}</DialogDescription>
+        </DialogHeader>
+
+        {/* 위젯 컨테이너는 비어있는 상태로 시작하며, useEffect가 채워줍니다. */}
+        <div id="payment-widget-methods" />
+        <div id="payment-widget-agreement" />
+
+        <DialogFooter>
+          <Button
+            onClick={handlePaymentRequest}
+            disabled={!isReady || requestPaymentMutation.isPending}
+            className="w-full h-12 text-lg"
+          >
+            {requestPaymentMutation.isPending ? (
+              <Spinner className="mr-2 h-5 w-5" />
+            ) : (
+              <CreditCard className="mr-2 h-5 w-5" />
+            )}
+            {isReady
+              ? `${checkoutData?.amount.toLocaleString()}원 결제하기`
+              : "결제 정보 로딩 중..."}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// =================================================================
+// 메인 마켓플레이스 페이지 컴포넌트
+// =================================================================
 export default function MarketplacePage() {
   const t = useTranslations("Marketplace");
   const router = useRouter();
@@ -59,12 +164,16 @@ export default function MarketplacePage() {
   const [productToPurchase, setProductToPurchase] =
     useState<PurchasableProduct | null>(null);
 
+  // [신규] 결제 위젯 모달을 위한 상태
+  const [isPaymentWidgetModalOpen, setIsPaymentWidgetModalOpen] =
+    useState(false);
+  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
+
   // --- 데이터 로직 ---
   const productQueryFilters = useMemo(
     () => ({ page, limit: 12, productType: activeTab, ...filters }),
     [page, activeTab, filters]
   );
-
   const {
     data: productsData,
     isLoading,
@@ -74,18 +183,13 @@ export default function MarketplacePage() {
   const products = productsData?.products || [];
   const totalPages = productsData?.meta.totalPages || 1;
 
-  const { data: purchasedStrategies } = usePurchasedStrategiesQuery();
-  const { data: ownedItems } = useUserInventoryQuery();
-  const purchasedStrategyIds = useMemo(
-    () => purchasedStrategies?.map((s) => s.strategyId) || [],
-    [purchasedStrategies]
-  );
-  const ownedItemIds = useMemo(
-    () => ownedItems?.map((i) => i.productId) || [],
-    [ownedItems]
-  );
+  const {
+    purchasedStrategyIds,
+    ownedItemIds,
+    isLoading: isInventoryLoading,
+  } = useInventoryStatus();
 
-  // --- 뮤테이션 로직 (크레딧/현금 분리) ---
+  // --- 뮤테이션 로직 ---
   const creditPurchaseMutation = useCreditPurchaseMutation({
     onSuccess: () => {
       setIsConfirmModalOpen(false);
@@ -97,9 +201,21 @@ export default function MarketplacePage() {
       setProductToPurchase(null);
     },
   });
+
+  // [수정] 현금 결제(위젯)를 위한 뮤테이션 설정
   const cashCheckoutMutation = useCashCheckoutMutation({
-    onSuccess: () => {
-      toast.info(t("paymentRedirecting"));
+    onSuccess: (data: CheckoutData) => {
+      // 백엔드로부터 주문 정보(checkoutData)를 성공적으로 받으면,
+      // 해당 정보를 상태에 저장하고 위젯 모달을 엽니다.
+      setCheckoutData(data);
+      setIsPaymentWidgetModalOpen(true);
+    },
+    onError: (err: any) => {
+      toast.error(
+        t("orderCreationError", {
+          error: err.response?.data?.detail || err.message,
+        })
+      );
     },
   });
 
@@ -109,7 +225,7 @@ export default function MarketplacePage() {
       const newTab = value as "STRATEGY" | "SHOP_ITEM";
       setActiveTab(newTab);
       setPage(1);
-      setFilters({}); // 탭 변경 시 필터 초기화
+      setFilters({});
       router.push(`/marketplace?tab=${newTab}`);
     },
     [router]
@@ -117,13 +233,16 @@ export default function MarketplacePage() {
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
+
   const handlePurchaseClick = useCallback(
     (product: PurchasableProduct) => {
       if (product.productType === "CREDIT_PACK") {
+        // '크레딧 팩' 구매 시, 백엔드에 주문 생성을 요청합니다.
         cashCheckoutMutation.mutate({
           items: [{ productId: product.id, quantity: 1 }],
         });
       } else {
+        // 그 외 상품은 크레딧 구매 확인 모달을 엽니다.
         setProductToPurchase(product);
         setIsConfirmModalOpen(true);
       }
@@ -136,6 +255,7 @@ export default function MarketplacePage() {
       items: [{ productId: productToPurchase.id, quantity: 1 }],
     });
   }, [productToPurchase, creditPurchaseMutation]);
+
   const handleChargeCreditsClick = useCallback(() => {
     setIsChargeModalOpen(true);
   }, []);
@@ -145,7 +265,7 @@ export default function MarketplacePage() {
     <AuthGuard>
       <TooltipProvider delayDuration={100}>
         <div className="container mx-auto max-w-screen-xl px-4 py-8 md:py-12">
-          {/* [수정] 선호하시는 기존 헤더 디자인 적용 */}
+          {/* 헤더 */}
           <div className="flex flex-col items-center text-center mb-10">
             <div className="p-3 mb-4 bg-primary/10 rounded-full border-2 border-primary/20">
               <Store className="h-8 w-8 text-primary" />
@@ -158,6 +278,7 @@ export default function MarketplacePage() {
             </p>
           </div>
 
+          {/* 탭 및 상품 그리드 */}
           <Tabs
             value={activeTab}
             onValueChange={handleTabChange}
@@ -170,11 +291,11 @@ export default function MarketplacePage() {
             <div className="mt-8">
               <TabsContent value="STRATEGY" className="m-0">
                 <ProductGrid
-                  isLoading={isLoading}
+                  isLoading={isLoading || isInventoryLoading}
                   isError={isError}
                   products={products}
                   productType="STRATEGY"
-                  purchasedStrategyIds={purchasedStrategyIds}
+                  purchasedStrategyIds={Array.from(purchasedStrategyIds)}
                   ownedItemIds={[]}
                   onPurchaseClick={handlePurchaseClick}
                   purchaseMutation={creditPurchaseMutation}
@@ -184,14 +305,14 @@ export default function MarketplacePage() {
               </TabsContent>
               <TabsContent value="SHOP_ITEM" className="m-0">
                 <ProductGrid
-                  isLoading={isLoading}
+                  isLoading={isLoading || isInventoryLoading}
                   isError={isError}
                   products={products}
                   productType="SHOP_ITEM"
                   purchasedStrategyIds={[]}
-                  ownedItemIds={ownedItemIds}
+                  ownedItemIds={Array.from(ownedItemIds)}
                   onPurchaseClick={handlePurchaseClick}
-                  purchaseMutation={creditPurchaseMutation}
+                  purchaseMutation={cashCheckoutMutation} // 현금 결제 뮤테이션으로 변경
                   onRefetch={refetch}
                   onChargeCredits={handleChargeCreditsClick}
                 />
@@ -199,6 +320,7 @@ export default function MarketplacePage() {
             </div>
           </Tabs>
 
+          {/* 페이지네이션 */}
           {!isLoading && !isError && products.length > 0 && totalPages > 1 && (
             <div className="mt-12 flex justify-center">
               <PaginationComponent
@@ -210,7 +332,8 @@ export default function MarketplacePage() {
           )}
         </div>
 
-        {/* 재사용 가능한 모달들 */}
+        {/* --- 모달 섹션 --- */}
+        {/* 크레딧 구매 확인 모달 */}
         <PurchaseConfirmationModal
           isOpen={isConfirmModalOpen}
           onOpenChange={(isOpen) => {
@@ -221,11 +344,13 @@ export default function MarketplacePage() {
           product={productToPurchase}
           isPending={creditPurchaseMutation.isPending}
         />
+
+        {/* 크레딧 충전 안내 모달 */}
         <Dialog open={isChargeModalOpen} onOpenChange={setIsChargeModalOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5 text-yellow-500" />
+                <Coins className="h-5 w-5 text-yellow-500" />{" "}
                 {t("chargeModalTitle")}
               </DialogTitle>
               <DialogDescription>
@@ -250,6 +375,13 @@ export default function MarketplacePage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* [신규] 결제 위젯 모달 */}
+        <PaymentWidgetModal
+          isOpen={isPaymentWidgetModalOpen}
+          onOpenChange={setIsPaymentWidgetModalOpen}
+          checkoutData={checkoutData}
+        />
       </TooltipProvider>
     </AuthGuard>
   );

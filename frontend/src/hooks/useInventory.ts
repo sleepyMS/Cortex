@@ -1,31 +1,30 @@
 // file: frontend/src/hooks/useInventory.ts
 "use client";
 
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  UseQueryOptions,
+  UseMutationOptions, // [신규] UseMutationOptions import
+} from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
-import { LucideIconName } from "@/lib/iconMap"; // [개선] LucideIconName import
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { ShopItemMetadata } from "@/types/marketplace";
 
-// --- [개선] 타입 정의: 백엔드 스키마와 UI 요구사항을 모두 반영하여 상세화 ---
+// =================================================================
+// 1. 타입 정의: 백엔드 API 응답과 100% 일치
+// =================================================================
 
 export interface UserInventoryItem {
-  instanceId: string;
-  itemId: string; // ShopItem의 원본 ID
+  productId: string;
   name: string;
-  description: string;
-  // [추가] 필터링에 사용되는 아이템의 원본 타입
-  type: "OPTIMIZATION_COUPON" | "BACKTEST_CREDIT" | "COSMETIC_ITEM";
-  displayProperties: {
-    icon: LucideIconName; // [개선] string 대신 구체적인 IconName 타입 사용
-    tier?: "BRONZE" | "SILVER" | "GOLD";
-    stats: {
-      label: string;
-      value: string;
-    }[];
-  };
+  description?: string;
+  displayProperties: ShopItemMetadata;
   quantity: number;
   purchasedAt: string;
-  isUsed: boolean;
-  usedAt?: string | null;
 }
 
 export interface PurchasedStrategy {
@@ -33,11 +32,13 @@ export interface PurchasedStrategy {
   strategyId: string;
   name: string;
   authorUsername: string;
-  pricePaid: number;
+  pricePaidInCredit: number;
   purchasedAt: string;
 }
 
-// --- API 호출 함수 (변경 없음) ---
+// =================================================================
+// 2. API 호출 함수
+// =================================================================
 
 const fetchUserInventory = async (): Promise<UserInventoryItem[]> => {
   const { data } = await apiClient.get("/users/me/inventory");
@@ -49,18 +50,17 @@ const fetchPurchasedStrategies = async (): Promise<PurchasedStrategy[]> => {
   return data;
 };
 
-// --- [핵심 개선] 커스텀 훅 통합 ---
+const useItemApiFn = async (productId: string): Promise<any> => {
+  const { data } = await apiClient.post(`/users/me/inventory/${productId}/use`);
+  return data;
+};
 
-// useQuery의 옵션을 그대로 받을 수 있도록 타입을 정의합니다.
-type UserInventoryQueryOptions = Omit<
-  UseQueryOptions<UserInventoryItem[]>,
-  "queryKey" | "queryFn"
->;
+// =================================================================
+// 3. 쿼리 훅 (상태 조회)
+// =================================================================
 
-/**
- * [통합] 사용자의 전체 인벤토리 상세 목록을 조회하는 단일 훅입니다.
- * select 옵션을 통해 ID 목록만 가져오는 등의 파생 데이터 조회가 가능합니다.
- */
+const INVENTORY_QUERY_KEY = ["inventory"];
+
 export const useUserInventoryQuery = <TData = UserInventoryItem[]>(
   options?: Omit<
     UseQueryOptions<UserInventoryItem[], Error, TData>,
@@ -68,20 +68,12 @@ export const useUserInventoryQuery = <TData = UserInventoryItem[]>(
   >
 ) => {
   return useQuery({
-    queryKey: ["userInventory"],
+    queryKey: [...INVENTORY_QUERY_KEY, "items"],
     queryFn: fetchUserInventory,
     ...options,
   });
 };
 
-type PurchasedStrategiesQueryOptions = Omit<
-  UseQueryOptions<PurchasedStrategy[]>,
-  "queryKey" | "queryFn"
->;
-
-/**
- * [통합] 사용자가 구매한 전체 전략 상세 목록을 조회하는 단일 훅입니다.
- */
 export const usePurchasedStrategiesQuery = <TData = PurchasedStrategy[]>(
   options?: Omit<
     UseQueryOptions<PurchasedStrategy[], Error, TData>,
@@ -89,8 +81,85 @@ export const usePurchasedStrategiesQuery = <TData = PurchasedStrategy[]>(
   >
 ) => {
   return useQuery({
-    queryKey: ["purchasedStrategies"],
+    queryKey: [...INVENTORY_QUERY_KEY, "strategies"],
     queryFn: fetchPurchasedStrategies,
     ...options,
+  });
+};
+
+// =================================================================
+// 4. 파생 상태 훅 (데이터 가공)
+// =================================================================
+
+export const useInventoryStatus = () => {
+  const { data: purchasedStrategies, isLoading: isLoadingStrategies } =
+    usePurchasedStrategiesQuery();
+  const { data: ownedItems, isLoading: isLoadingItems } =
+    useUserInventoryQuery();
+
+  const purchasedStrategyIds = useMemo(
+    () => new Set(purchasedStrategies?.map((s) => s.strategyId)),
+    [purchasedStrategies]
+  );
+  const ownedItemIds = useMemo(
+    () => new Set(ownedItems?.map((i) => i.productId)),
+    [ownedItems]
+  );
+
+  return {
+    purchasedStrategyIds,
+    ownedItemIds,
+    isLoading: isLoadingStrategies || isLoadingItems,
+  };
+};
+
+// =================================================================
+// 5. 뮤테이션 훅 (상태 변경)
+// =================================================================
+
+export const useUseItemMutation = () => {
+  const queryClient = useQueryClient();
+  const t = useTranslations("Inventory");
+
+  return useMutation({
+    mutationFn: useItemApiFn,
+    onMutate: async (productId: string) => {
+      const queryKey = [...INVENTORY_QUERY_KEY, "items"];
+      await queryClient.cancelQueries({ queryKey });
+      const previousInventory =
+        queryClient.getQueryData<UserInventoryItem[]>(queryKey);
+
+      queryClient.setQueryData<UserInventoryItem[]>(
+        queryKey,
+        (oldInventory = []) =>
+          oldInventory
+            .map((item) =>
+              item.productId === productId
+                ? { ...item, quantity: item.quantity - 1 }
+                : item
+            )
+            .filter((item) => item.quantity > 0)
+      );
+      return { previousInventory };
+    },
+    onError: (err: any, variables, context) => {
+      if (context?.previousInventory) {
+        queryClient.setQueryData(
+          [...INVENTORY_QUERY_KEY, "items"],
+          context.previousInventory
+        );
+      }
+      toast.error(
+        t("useItemError", { error: err.response?.data?.detail || err.message })
+      );
+    },
+    onSuccess: () => {
+      toast.success(t("useItemSuccess"));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...INVENTORY_QUERY_KEY, "items"],
+      });
+    },
   });
 };

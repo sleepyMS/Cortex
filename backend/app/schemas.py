@@ -856,7 +856,7 @@ class OrderCreateResponse(CamelCaseModel):
     """주문 생성(결제 요청) 성공 시 프론트엔드에 반환할 정보"""
     order_id: str
     order_name: str
-    amount: float
+    amount: int
     customer_name: str
     customer_email: EmailStr
     # success_url, fail_url 등은 프론트엔드에서 동적으로 생성 가능

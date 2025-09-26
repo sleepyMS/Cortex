@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "@/i18n/navigation";
 
 import apiClient from "@/lib/apiClient";
-import { Order } from "@/types/marketplace"; // Order 타입 정의 필요
+import { Order } from "@/types/marketplace";
 
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";

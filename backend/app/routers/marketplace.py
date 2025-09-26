@@ -112,19 +112,21 @@ async def create_order_for_cash_payment(
     [현금 결제 전용] '크레딧 팩'과 같이 현금 결제가 필요한 상품의 주문을 생성하고,
     Toss Payments와 연동할 결제 정보를 반환합니다.
     """
+    # try-except 블록은 로깅 및 커스텀 예외 처리를 위해 유지하되,
+    # 수동 commit/rollback 호출만 제거합니다.
     try:
         pending_order = await marketplace_service.create_pending_order_for_cash(db, payload, current_user)
         payment_info = payment_service.prepare_payment_info_for_sdk(order=pending_order, user=current_user)
-        await db.commit()
+        # FastAPI의 의존성 주입이 이 함수가 성공적으로 반환되면
+        # 자동으로 트랜잭션을 commit 할 것입니다.
         return payment_info
-    except HTTPException as e:
-        await db.rollback()
-        raise e
+    except HTTPException:
+        # FastAPI가 자동으로 rollback 처리합니다.
+        raise
     except Exception as e:
-        await db.rollback()
+        # FastAPI가 자동으로 rollback 처리합니다.
         logger.error(f"Error creating cash order for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="주문 생성 중 오류가 발생했습니다.")
-    
     
 @router.post(
     "/listings",

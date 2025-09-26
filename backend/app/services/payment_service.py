@@ -20,9 +20,13 @@ class PaymentService:
         first_product_name = order.items[0].product.name if order.items else "상품 구매"
         order_name = f"{first_product_name}"
         if len(order.items) > 1: order_name += f" 외 {len(order.items) - 1}건"
+        
         return schemas.OrderCreateResponse(
-            order_id=order.id, order_name=order_name, amount=order.total_amount,
-            customer_name=user.username or user.email, customer_email=user.email,
+            order_id=str(order.id), 
+            order_name=order_name, 
+            amount=int(order.total_amount),
+            customer_name=user.username or user.email, 
+            customer_email=user.email,
         )
 
     async def issue_and_charge_first_subscription(
