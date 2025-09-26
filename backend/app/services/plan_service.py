@@ -86,7 +86,7 @@ class PlanService:
     async def get_user_plan_features(self, user: models.User, db: AsyncSession) -> models.PlanFeature:
         """
         사용자의 플랜에 해당하는 모든 기능 제한 정보를 비동기로 반환합니다.
-        [개선] 구독 상태가 'active'인 경우에만 해당 플랜의 기능을 반환하며,
+        구독 상태가 'active'인 경우에만 해당 플랜의 기능을 반환하며,
         그 외의 경우(구독 없거나 pending, canceled 등)에는 기본 'Basic' 플랜의 기능을 반환합니다.
         """
         # 1. 사용자의 구독 정보를 plan, features와 함께 Eager Loading으로 조회합니다.
@@ -139,7 +139,7 @@ class PlanService:
         return result.scalar_one_or_none()
     
     async def get_plan_by_name(self, db: AsyncSession, plan_name: models.PlanType) -> Optional[models.Plan]:
-        """[신규] 이름으로 단일 플랜 정보를 Eager Loading하여 조회합니다."""
+        """이름으로 단일 플랜 정보를 Eager Loading하여 조회합니다."""
         query = (
             select(models.Plan)
             .options(joinedload(models.Plan.features))

@@ -202,7 +202,7 @@ class SubscriptionService:
                 subscription.current_period_end = period_end_dt
                 subscription.payment_gateway_customer_key = billing_key
                 subscription.payment_method_details = card_details
-                subscription.plan = target_plan # <-- 수정: plan 객체 할당
+                subscription.plan = target_plan 
             else:
                 subscription = models.Subscription(
                     user_id=user.id,
@@ -211,7 +211,7 @@ class SubscriptionService:
                     current_period_end=period_end_dt,
                     payment_gateway_customer_key=billing_key,
                     payment_method_details=card_details,
-                    plan=target_plan # <-- 수정: plan 객체 할당
+                    plan=target_plan 
                 )
                 db.add(subscription)
             
