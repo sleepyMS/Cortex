@@ -6,9 +6,11 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, models
-from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none
+from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none, get_billing_toss_client
+from ..event_bus import publish_event
 from ..services.marketplace_service import marketplace_service
 from ..services.payment_service import payment_service 
+from ..gateways.toss_payments_client import TossPaymentsClient
 
 logger = logging.getLogger(__name__)
 
@@ -195,3 +197,48 @@ async def get_order_by_id(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="주문에 접근할 권한이 없습니다.")
 
     return order
+
+@router.post(
+    "/payments/confirm",
+    status_code=status.HTTP_200_OK,
+    summary="[결제 승인] Toss Payments 최종 결제 승인 요청"
+)
+async def confirm_payment(
+    payload: schemas.PaymentConfirmPayload,
+    db: AsyncSession = Depends(get_async_db),
+    toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    프론트엔드에서 Toss로부터 전달받은 paymentKey로 최종 결제 승인을 요청합니다.
+    """
+    try:
+        # 1. 서버 측 금액 검증 및 최종 승인 요청
+        approval_data = await payment_service.verify_and_approve_payment(
+            db=db,
+            toss_client=toss_client,
+            payment_key=payload.payment_key,
+            order_id=payload.order_id,
+            amount=payload.amount
+        )
+
+        # 2. 승인 성공 시, 즉시 'payment.succeeded' 이벤트 발행
+        #    (Celery가 이 이벤트를 받아 크레딧 지급 절차를 시작)
+        event_payload = {
+            "order_id": payload.order_id,
+            "gateway_transaction_id": payload.payment_key,
+            "amount": payload.amount,
+            "customer_key": str(current_user.id)
+        }
+        await publish_event("payment.succeeded", event_payload)
+        logger.info(f"Payment for order {payload.order_id} approved. Published 'payment.succeeded' event.")
+        
+        return {"status": "success", "orderId": payload.order_id}
+
+    except HTTPException as e:
+        # 검증 실패 시 에러를 그대로 반환
+        raise e
+    except Exception as e:
+        logger.error(f"Error during payment confirmation for order {payload.order_id}: {e}", exc_info=True)
+        # TODO: 여기에 결제는 됐지만 승인에 실패했을 경우를 대비한 보상 트랜잭션 로직(결제 취소 등) 추가 가능
+        raise HTTPException(status_code=500, detail="결제 승인 중 오류가 발생했습니다.")

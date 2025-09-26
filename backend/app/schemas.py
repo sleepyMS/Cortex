@@ -843,6 +843,12 @@ class OrderItemResponse(CamelCaseModel):
     price_at_purchase: float
     product: BaseProduct
 
+class PaymentConfirmPayload(CamelCaseModel):
+    """결제 승인 요청을 위한 스키마"""
+    payment_key: str
+    order_id: str
+    amount: int
+
 class OrderResponse(CamelCaseModel):
     """주문 상세 정보 응답"""
     id: uuid.UUID
