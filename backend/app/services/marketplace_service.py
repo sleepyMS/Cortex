@@ -227,16 +227,25 @@ class MarketplaceService:
             product = item.product
             # 구매한 상품이 CREDIT_PACK일 경우, 크레딧을 지급하는 로직
             if product.product_type == models.ProductType.CREDIT_PACK:
-                # 상품 메타데이터에서 지급할 크레딧 양을 가져옵니다. (다음 섹션 참고)
-                credit_amount = product.product_metadata.get("credit_amount", 0)
-                if credit_amount > 0:
-                    await credit_service.grant_credits(
-                        db=db,
-                        user_id=order.buyer_id,
-                        amount=credit_amount * item.quantity,
-                        source_type="PURCHASE", # '유료 크레딧'으로 지급
-                        source_id=order.id # 관련 주문 ID 기록
+
+                credit_amount = product.product_metadata.get("credit_amount") 
+
+                if not credit_amount or credit_amount <= 0:
+                    logger.critical(
+                        f"CRITICAL: Order fulfillment failed for order {order.id}. "
+                        f"Product {product.id} ({product.name}) is a CREDIT_PACK but has invalid 'credit_amount' in metadata."
                     )
+                    # 데이터가 잘못된 경우, 명시적인 오류를 발생시켜 Celery 태스크를 실패 처리합니다.
+                    raise ValueError(f"Product {product.id} metadata is missing or has an invalid 'credit_amount'")
+                
+                # 유효한 credit_amount가 있을 때만 크레딧 지급 로직 실행
+                await credit_service.grant_credits(
+                    db=db,
+                    user_id=order.buyer_id,
+                    amount=credit_amount * item.quantity,
+                    source_type="PURCHASE",
+                    source_id=order.id
+                )
 
             elif product.inventory_type == models.InventoryType.UNLOCK:
                 ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(user_id=order.buyer_id, strategy_id=product.linked_resource_id)
@@ -476,7 +485,7 @@ class MarketplaceService:
                 "item_type": "CREDIT_PACK_5500",
                 "display_properties": {"icon": "gem", "tier": "silver"},
                 "product_info": {
-                    "name": "5,500 크레딧 팩 (10% 보너스)", "price": 4950.0,
+                    "name": "5,500 크레딧 팩 (10% 보너스)", "price": 5000.0,
                     "product_metadata": {"credit_amount": 5500}
                 }
             },

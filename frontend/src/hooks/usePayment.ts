@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { useTranslations } from "next-intl";
+import { useCallback } from "react";
 
 // =================================================================
 // [핵심] SDK 함수의 반환값으로부터 정확한 타입을 추론합니다.
@@ -50,6 +51,15 @@ interface PaymentWindowPayload {
 interface PaymentWidgetPayload {
   widgets: WidgetsInstance;
   checkoutData: CheckoutData;
+}
+
+/**
+ * [추가] renderPaymentWidgets 함수의 새로운 반환 타입을 정의합니다.
+ * 결제 요청에 필요한 widgets 객체와 UI 제거에 필요한 cleanup 함수를 포함합니다.
+ */
+export interface RenderedWidgets {
+  widgets: WidgetsInstance;
+  cleanup: () => void;
 }
 
 // =================================================================
@@ -107,52 +117,65 @@ export const usePaymentWindowMutation = () => {
 /**
  * 페이지에 UI를 직접 삽입하는 '결제 위젯'을 위한 커스텀 훅입니다.
  * 위젯 렌더링 함수와 최종 결제 요청 뮤테이션을 반환합니다.
- * @remarks 이 훅을 사용하려면 `.env.local` 파일에 **브랜드페이 연동 키(`test_gck_...`)**를 설정해야 합니다.
+ * @remarks 이 훅을 사용하려면 `.env.local` 파일에 **클라이언트 키(`test_ck_...`)**를 설정해야 합니다.
  */
 export const usePaymentWidget = () => {
   const t = useTranslations("Payment");
   const clientKey = process.env.NEXT_PUBLIC_TOSS_WIDGET_CLIENT_KEY;
 
   /**
-   * 지정된 DOM 요소에 결제 위젯 UI를 렌더링합니다.
+   * 지정된 DOM 요소에 결제 위젯 UI를 렌더링하고,
+   * 생성된 위젯 인스턴스와 cleanup 함수를 함께 반환합니다.
    * @param selector - 위젯을 렌더링할 부모 요소의 CSS 선택자 (e.g., "#payment-widget")
    * @param amount - 결제할 금액 (정수)
    * @param customerKey - 고객 식별 키 (기본값: ANONYMOUS)
-   * @returns 렌더링된 위젯 인스턴스 (`WidgetsInstance`)
+   * @returns {Promise<RenderedWidgets>} 렌더링된 위젯 정보 객체
    */
-  const renderPaymentWidgets = async (
-    selector: string,
-    amount: number,
-    customerKey: string = ANONYMOUS
-  ): Promise<WidgetsInstance> => {
-    if (!clientKey || !clientKey.startsWith("test_gck_")) {
-      throw new Error(
-        "Toss Payments 브랜드페이 연동 키(test_gck_...)가 설정되지 않았습니다."
+  const renderPaymentWidgets = useCallback(
+    async (
+      selector: string,
+      amount: number,
+      customerKey: string = ANONYMOUS
+    ): Promise<RenderedWidgets> => {
+      if (!clientKey || !clientKey.startsWith("test_gck_")) {
+        throw new Error(
+          "Toss Payments 위젯 클라이언트 키(test_gck_...)가 설정되지 않았습니다."
+        );
+      }
+
+      const tossPayments: TossPaymentsInstance = await loadTossPayments(
+        clientKey
       );
-    }
+      const widgets: WidgetsInstance = tossPayments.widgets({ customerKey });
 
-    const tossPayments: TossPaymentsInstance = await loadTossPayments(
-      clientKey
-    );
-    const widgets: WidgetsInstance = tossPayments.widgets({ customerKey });
+      // 위젯에 결제 금액 설정
+      await widgets.setAmount({ currency: "KRW", value: amount });
 
-    // 위젯에 결제 금액 설정
-    await widgets.setAmount({ currency: "KRW", value: amount });
+      // renderPaymentMethods와 renderAgreement가 반환하는
+      // 개별 위젯 인스턴스를 Promise.all로 받아옵니다.
+      const [paymentMethodsWidget, agreementWidget] = await Promise.all([
+        widgets.renderPaymentMethods({
+          selector: `${selector}-methods`, // e.g., "#payment-widget-methods"
+          variantKey: "DEFAULT",
+        }),
+        widgets.renderAgreement({
+          selector: `${selector}-agreement`, // e.g., "#payment-widget-agreement"
+          variantKey: "AGREEMENT",
+        }),
+      ]);
 
-    // 결제 UI와 약관 UI를 동시에 렌더링
-    await Promise.all([
-      widgets.renderPaymentMethods({
-        selector: `${selector}-methods`, // e.g., "#payment-widget-methods"
-        variantKey: "DEFAULT",
-      }),
-      widgets.renderAgreement({
-        selector: `${selector}-agreement`, // e.g., "#payment-widget-agreement"
-        variantKey: "AGREEMENT",
-      }),
-    ]);
+      // 받아온 개별 위젯 인스턴스들의 destroy() 메서드를 호출하는
+      // cleanup 함수를 정의합니다.
+      const cleanup = () => {
+        paymentMethodsWidget.destroy();
+        agreementWidget.destroy();
+      };
 
-    return widgets;
-  };
+      // 결제 요청에 필요한 widgets 객체와 UI 제거에 필요한 cleanup 함수를 함께 반환합니다.
+      return { widgets, cleanup };
+    },
+    [clientKey]
+  );
 
   /**
    * 렌더링된 위젯을 사용하여 최종 결제를 요청하는 React Query 뮤테이션

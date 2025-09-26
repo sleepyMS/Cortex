@@ -18,6 +18,7 @@ import {
   usePaymentWidget,
   CheckoutData,
   WidgetsInstance,
+  RenderedWidgets,
 } from "@/hooks/usePayment";
 
 // --- 2. 타입 정의 ---
@@ -62,24 +63,23 @@ const PaymentWidgetModal = ({
   const t = useTranslations("Marketplace");
   const { renderPaymentWidgets, requestPaymentMutation } = usePaymentWidget();
 
-  // [수정 1] 위젯 인스턴스를 상태(state)가 아닌 참조(ref)로 관리합니다.
-  // 위젯 객체 자체가 UI 렌더링에 직접적인 영향을 주지 않으므로,
-  // 불필요한 재렌더링을 방지하는 useRef가 더 적합합니다.
   const widgetsRef = React.useRef<WidgetsInstance | null>(null);
+  // [추가] cleanup 함수를 저장하기 위한 ref를 추가합니다.
+  const cleanupRef = React.useRef<(() => void) | null>(null);
 
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // [수정 2] async/await 로직을 처리할 별도의 함수를 useEffect 내부에 선언합니다.
     const initializeWidgets = async () => {
       if (isOpen && checkoutData) {
         try {
-          // 위젯 렌더링 함수를 호출하고, 반환된 인스턴스를 ref에 저장합니다.
-          const widgets = await renderPaymentWidgets(
+          // [수정] 이제 renderPaymentWidgets는 { widgets, cleanup } 객체를 반환합니다.
+          const { widgets, cleanup } = await renderPaymentWidgets(
             "#payment-widget",
             checkoutData.amount
           );
           widgetsRef.current = widgets;
+          cleanupRef.current = cleanup; // 받아온 cleanup 함수를 ref에 저장
           setIsReady(true);
         } catch (error: any) {
           toast.error("결제 위젯을 불러오는 데 실패했습니다: " + error.message);
@@ -90,20 +90,17 @@ const PaymentWidgetModal = ({
 
     initializeWidgets();
 
-    // [수정 3] useEffect의 핵심인 cleanup 함수를 반환합니다.
-    // 이 함수는 모달이 닫히거나, React Strict Mode에 의해 재실행되기 전에 호출됩니다.
+    // [수정] useEffect의 cleanup 함수는 이제 ref에 저장된 cleanup 함수를 호출하기만 하면 됩니다.
     return () => {
-      const widgets = widgetsRef.current;
-      if (widgets) {
-        // Toss Payments SDK의 공식 cleanup 메서드를 호출하여
-        // 이전에 렌더링된 위젯 인스턴스를 완전히 제거합니다.
-        widgets.destroy();
-        widgetsRef.current = null; // 참조 초기화
-        setIsReady(false); // 준비 상태 초기화
+      if (cleanupRef.current) {
+        cleanupRef.current(); // 저장해둔 cleanup 함수 실행
+        cleanupRef.current = null;
+        widgetsRef.current = null;
+        setIsReady(false);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, checkoutData]); // renderPaymentWidgets와 onOpenChange는 useCallback으로 감싸는 것이 좋습니다 (아래 추가 개선 사항 참고)
+  }, [isOpen, checkoutData]);
 
   const handlePaymentRequest = () => {
     const widgets = widgetsRef.current; // ref에서 위젯 인스턴스를 가져옵니다.
