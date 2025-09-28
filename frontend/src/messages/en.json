@@ -1122,17 +1122,21 @@
     "emptyDescription": "Purchase various items from the Marketplace to enhance your strategies."
   },
   "PaymentSuccessPage": {
-    "verifying Titles": "Checking payment information...",
-    "verifyingDescription": "Please wait. Do not refresh the page.",
-    "error Title": "Error Occurred",
-    "Success Title": "Payment completed successfully!",
-    "SuccessDescription": "Your purchase has been given to the inventory.",
-    "FailureTitle": "Payment failed",
-    "FailureDescription": "If the problem persists, please contact Customer Center",
-    "OrderIdLabel": "Order Number",
+    "approvingTitles": "Approving payment",
+    "approvingDescription": "We are processing your payment safely. Please wait",
+    "verifyingTitles": "Checking results",
+    "verifyingDescription": "Final confirmation of payment results. Do not close the page.",
+    "errorTitle": "Error Occurred",
+    "successTitle": "Payment successful!",
+    "successDescription": "Your purchase has been completed successfully",
+    "failureTitle": "Payment failed",
+    "failureDescription": "There was a problem processing the payment. Please try again.",
+    "orderIdLabel": "Order ID",
     "totalAmountLabel": "Payment Amount",
-    "goToInventory": "GoToInventory",
-    "Continue Shopping": "Continue shopping"
+    "goToInventory": "Go To Inventory",
+    "continueShopping": "Continue Shopping",
+    "approvalSuccessToast": "Approval Request Successful",
+    "approvalErrorToast": "Approval Request Failed"
   },
   "PaymentFailPage": {
     "title": "Payment Failed",

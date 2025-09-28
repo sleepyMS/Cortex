@@ -180,7 +180,7 @@ erDiagram
         UUID id PK
         UUID buyer_id FK
         Float total_amount "총 거래 크레딧"
-        String status "PENDING | COMPLETED | FAILED"
+        String status "PENDING | PAID | COMPLETED | FAILED"
         String gateway_transaction_id UK
         DateTime created_at
     }

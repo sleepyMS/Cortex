@@ -102,14 +102,25 @@ def get_current_admin_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
     return current_user
 
+# def get_billing_toss_client() -> TossPaymentsClient:
+#     """자동 결제(빌링)용 Toss Payments 클라이언트 의존성"""
+#     return TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_BILLING_SECRET_KEY)
+
+# def get_widget_toss_client() -> TossPaymentsClient:
+#     """일반 결제(위젯)용 Toss Payments 클라이언트 의존성"""
+#     return TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_WIDGET_SECRET_KEY)
+
 def get_billing_toss_client() -> TossPaymentsClient:
     """자동 결제(빌링)용 Toss Payments 클라이언트 의존성"""
+    if not settings.PAYMENT.TOSS_BILLING_SECRET_KEY:
+        raise ValueError("Toss Payments Billing Secret Key is not configured.")
     return TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_BILLING_SECRET_KEY)
 
 def get_widget_toss_client() -> TossPaymentsClient:
     """일반 결제(위젯)용 Toss Payments 클라이언트 의존성"""
+    if not settings.PAYMENT.TOSS_WIDGET_SECRET_KEY:
+        raise ValueError("Toss Payments Widget Secret Key is not configured.")
     return TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_WIDGET_SECRET_KEY)
-
 
 # ==============================================================================
 # 섹션 3: 소유권 검증 의존성 (Owner Verification)

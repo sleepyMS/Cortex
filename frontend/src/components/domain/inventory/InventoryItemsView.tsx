@@ -6,7 +6,7 @@ import { AlertTriangle, Search, Inbox } from "lucide-react";
 
 // [개선] 단일 책임 훅을 import 합니다.
 import { useUserInventoryQuery, UserInventoryItem } from "@/hooks/useInventory";
-import { useUseItemMutation } from "@/hooks/useInventoryMutations";
+import { useUseItemMutation } from "@/hooks/useInventory";
 
 // UI 컴포넌트 import
 import { Input } from "@/components/ui/Input";

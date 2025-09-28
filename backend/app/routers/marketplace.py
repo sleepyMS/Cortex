@@ -6,7 +6,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, models
-from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none, get_billing_toss_client
+from ..dependencies import get_async_db, get_current_active_user, get_current_user_or_none, get_widget_toss_client
 from ..event_bus import publish_event
 from ..services.marketplace_service import marketplace_service
 from ..services.payment_service import payment_service 
@@ -206,7 +206,7 @@ async def get_order_by_id(
 async def confirm_payment(
     payload: schemas.PaymentConfirmPayload,
     db: AsyncSession = Depends(get_async_db),
-    toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
+    toss_client: TossPaymentsClient = Depends(get_widget_toss_client),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
@@ -230,7 +230,7 @@ async def confirm_payment(
             "amount": payload.amount,
             "customer_key": str(current_user.id)
         }
-        await publish_event("payment.succeeded", event_payload)
+        publish_event("payment.succeeded", event_payload)
         logger.info(f"Payment for order {payload.order_id} approved. Published 'payment.succeeded' event.")
         
         return {"status": "success", "orderId": payload.order_id}

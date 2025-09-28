@@ -137,9 +137,9 @@ export const usePaymentWidget = () => {
       amount: number,
       customerKey: string = ANONYMOUS
     ): Promise<RenderedWidgets> => {
-      if (!clientKey || !clientKey.startsWith("test_ck_")) {
+      if (!clientKey || !clientKey.startsWith("test_gck_")) {
         throw new Error(
-          "Toss Payments 위젯 클라이언트 키(test_ck_...)가 설정되지 않았습니다."
+          "Toss Payments 위젯 클라이언트 키(test_gck_...)가 설정되지 않았습니다."
         );
       }
 

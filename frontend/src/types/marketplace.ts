@@ -110,7 +110,12 @@ export interface UserInventoryItem {
 }
 
 // ... (OrderStatus, OrderItem, Order 타입은 기존과 동일하게 유지)
-export type OrderStatus = "PENDING" | "COMPLETED" | "FAILED" | "CANCELED";
+export type OrderStatus =
+  | "PENDING"
+  | "PAID"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELED";
 export interface OrderItem {
   quantity: number;
   priceAtPurchase: number;

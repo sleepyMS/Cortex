@@ -244,7 +244,7 @@ class MarketplaceService:
                     user_id=order.buyer_id,
                     amount=credit_amount * item.quantity,
                     source_type="PURCHASE",
-                    source_id=order.id
+                    source_id=str(order.id)
                 )
 
             elif product.inventory_type == models.InventoryType.UNLOCK:
@@ -477,8 +477,8 @@ class MarketplaceService:
                 "item_type": "CREDIT_PACK_1000",
                 "display_properties": {"icon": "coins", "tier": "bronze"},
                 "product_info": {
-                    "name": "1,000 크레딧 팩", "price": 1000.0,
-                    "product_metadata": {"credit_amount": 990}
+                    "name": "1,000 크레딧 팩", "price": 990.0,
+                    "product_metadata": {"credit_amount": 1000}
                 }
             },
             {
