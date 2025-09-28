@@ -124,7 +124,6 @@ const columns: ColumnDef<TradeLog>[] = [
     accessorKey: "currentBalance",
     header: "누적 자산",
     cell: ({ row }) => {
-      // ▼▼▼ [핵심 수정] ▼▼▼
       // 1. 값이 null일 수 있음을 명시하고 변수에 할당합니다.
       const balance = row.getValue<number | null>("currentBalance");
 
@@ -143,7 +142,6 @@ const columns: ColumnDef<TradeLog>[] = [
           })}
         </span>
       );
-      // ▲▲▲ [수정 완료] ▲▲▲
     },
   },
   {

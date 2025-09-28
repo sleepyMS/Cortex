@@ -17,6 +17,7 @@
     "inventory": "인벤토리",
     "dashboard": "대시보드",
     "assets": "자산 관리",
+    "credits": "크레딧 관리",
     "profile": "프로필 관리",
     "apiKeys": "API 키 관리",
     "settings": "계정 설정",
@@ -335,6 +336,7 @@
       "pageDescription": "계정의 모든 것을 한눈에 확인하고 관리하세요.",
       "overview": "개요",
       "assets": "자산 관리",
+      "credits": "크레딧 관리",
       "profile": "프로필 관리",
       "apiKeys": "API 키 관리",
       "settings": "계정 설정"
@@ -382,6 +384,90 @@
     "assets": {
       "itemsTab": "보유 아이템",
       "strategiesTab": "구매한 전략"
+    },
+    "credits": {
+      "summaryCard": {
+        "title": "크레딧 잔액",
+        "description": "현재 보유 중인 크레딧과 상세 내역입니다.",
+        "totalBalance": "총 보유량",
+        "purchased": "유료 크레딧",
+        "purchasedTooltip": "직접 구매한 크레딧으로, 유효기간이 없습니다.",
+        "bonus": "보너스 크레딧",
+        "bonusTooltip": "이벤트나 출석 보상으로 지급된 크레딧입니다. 소멸 정책을 확인하세요.",
+        "purchaseButton": "크레딧 구매하기",
+        "error": {
+          "title": "오류",
+          "description": "크레딧 정보를 불러오는 데 실패했습니다."
+        }
+      },
+      "estimator": {
+        "title": "비용 견적 계산기",
+        "description": "백테스트 실행에 필요한 크레딧을 미리 계산해 보세요.",
+        "form": {
+          "durationLabel": "백테스팅 기간",
+          "timeframeLabel": "최소 타임프레임",
+          "timeframePlaceholder": "타임프레임 선택",
+          "trialsLabel": "최적화 시도 횟수",
+          "submitButton": "예상 비용 조회"
+        },
+        "result": {
+          "title": "예상 비용",
+          "originalCost": "기본 비용",
+          "discount": "플랜 할인",
+          "finalCost": "최종 차감 크레딧",
+          "balance": "보유 잔액",
+          "sufficient": "잔액 충분",
+          "insufficient": "잔액 부족"
+        },
+        "error": {
+          "title": "계산 오류"
+        },
+        "validation": {
+          "durationRequired": "백테스팅 기간을 설정해야 합니다.",
+          "durationMin": "백테스팅 기간은 최소 0.1년 이상이어야 합니다.",
+          "timeframeRequired": "최소 타임프레임을 선택해야 합니다.",
+          "trialsMin": "시도 횟수는 최소 1 이상이어야 합니다."
+        }
+      },
+      "transactionTable": {
+        "title": "크레딧 사용 내역",
+        "description": "최근 크레딧 획득 및 사용 기록입니다.",
+        "columns": {
+          "date": "거래일시",
+          "description": "내용",
+          "amount": "변동",
+          "details": "상세"
+        },
+        "detailsModal": {
+          "title": "거래 상세 내역",
+          "totalUsed": "총 사용 크레딧"
+        },
+        "noResults": {
+          "title": "거래 내역이 없습니다",
+          "description": "크레딧을 구매하거나 백테스트를 실행하면 내역이 기록됩니다."
+        },
+        "pagination": {
+          "total": "총 {total}건",
+          "rowsPerPage": "페이지 당 행",
+          "pageInfo": "{page} / {totalPages} 페이지"
+        },
+        "transactionTypes": {
+          "PURCHASE": "크레딧 팩 구매",
+          "MARKETPLACE_B2C_ORDER": "마켓플레이스 아이템 구매",
+          "MARKETPLACE_C2C_ORDER": "마켓플레이스 전략 구매",
+          "BACKTEST": "백테스트 실행",
+          "ATTENDANCE_DAILY": "일일 출석 보상",
+          "ATTENDANCE_BONUS": "연속 출석 보너스",
+          "EVENT_COUPON": "이벤트/쿠폰 지급",
+          "ETC": "기타"
+        },
+        "creditTypes": {
+          "PURCHASE": "유료 크레딧",
+          "ATTENDANCE_DAILY": "일일 출석 보상",
+          "ATTENDANCE_BONUS": "연속 출석 보너스",
+          "EVENT_COUPON": "이벤트/쿠폰"
+        }
+      }
     },
     "profile": {
       "title": "프로필 관리",

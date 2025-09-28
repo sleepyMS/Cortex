@@ -17,6 +17,7 @@
     "dashboard": "Dashboard",
     "inventory": "Inventory",
     "assets": "Asset Management",
+    "credits": "Credits",
     "profile": "Profile Management",
     "apiKeys": "API Keys",
     "settings": "Account Settings",
@@ -335,6 +336,7 @@
       "pageDescription": "Get an overview and manage everything for your account.",
       "overview": "Overview",
       "assets": "Asset Management",
+      "credits": "Credits",
       "profile": "Profile Management",
       "apiKeys": "API Keys",
       "settings": "Account Settings"
@@ -382,6 +384,90 @@
     "assets": {
       "itemsTab": "My Items",
       "strategiesTab": "Purchased Strategies"
+    },
+    "credits": {
+      "summaryCard": {
+        "title": "Credit Balance",
+        "description": "Your current credit balance and breakdown.",
+        "totalBalance": "Total Balance",
+        "purchased": "Purchased Credits",
+        "purchasedTooltip": "Credits you've purchased. They do not expire.",
+        "bonus": "Bonus Credits",
+        "bonusTooltip": "Credits from events or attendance. Check the expiration policy.",
+        "purchaseButton": "Purchase Credits",
+        "error": {
+          "title": "Error",
+          "description": "Failed to load credit information."
+        }
+      },
+      "estimator": {
+        "title": "Cost Estimator",
+        "description": "Calculate the required credits for your backtest in advance.",
+        "form": {
+          "durationLabel": "Backtest Duration",
+          "timeframeLabel": "Min. Timeframe",
+          "timeframePlaceholder": "Select timeframe",
+          "trialsLabel": "Optimization Trials",
+          "submitButton": "Estimate Cost"
+        },
+        "result": {
+          "title": "Estimated Cost",
+          "originalCost": "Base Cost",
+          "discount": "Plan Discount",
+          "finalCost": "Final Cost",
+          "balance": "Your Balance",
+          "sufficient": "Sufficient",
+          "insufficient": "Insufficient"
+        },
+        "error": {
+          "title": "Calculation Error"
+        },
+        "validation": {
+          "durationRequired": "Backtest duration is required.",
+          "durationMin": "Duration must be at least 0.1 years.",
+          "timeframeRequired": "Minimum timeframe is required.",
+          "trialsMin": "Trials must be at least 1."
+        }
+      },
+      "transactionTable": {
+        "title": "Transaction History",
+        "description": "Your recent credit acquisitions and usages.",
+        "columns": {
+          "date": "Date",
+          "description": "Description",
+          "amount": "Amount",
+          "details": "Details"
+        },
+        "detailsModal": {
+          "title": "Transaction Details",
+          "totalUsed": "Total Credits Used"
+        },
+        "noResults": {
+          "title": "No Transactions Found",
+          "description": "History will be recorded when you purchase credits or run a backtest."
+        },
+        "pagination": {
+          "total": "Total {total} records",
+          "rowsPerPage": "Rows per page",
+          "pageInfo": "Page {page} of {totalPages}"
+        },
+        "transactionTypes": {
+          "PURCHASE": "Credit Pack Purchase",
+          "MARKETPLACE_B2C_ORDER": "Marketplace Item Purchase",
+          "MARKETPLACE_C2C_ORDER": "Marketplace Strategy Purchase",
+          "BACKTEST": "Backtest Execution",
+          "ATTENDANCE_DAILY": "Daily Attendance Reward",
+          "ATTENDANCE_BONUS": "Consecutive Attendance Bonus",
+          "EVENT_COUPON": "Event/Coupon Grant",
+          "ETC": "Other"
+        },
+        "creditTypes": {
+          "PURCHASE": "Purchased Credits",
+          "ATTENDANCE_DAILY": "Daily Attendance Reward",
+          "ATTENDANCE_BONUS": "Consecutive Attendance Bonus",
+          "EVENT_COUPON": "Event/Coupon"
+        }
+      }
     },
     "profile": {
       "title": "Profile Management",

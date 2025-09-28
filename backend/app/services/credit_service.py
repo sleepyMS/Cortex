@@ -1,12 +1,13 @@
 # file: backend/app/services/credit_service.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, desc 
 from sqlalchemy.orm import selectinload
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime, timezone
 import uuid
 from fastapi import HTTPException, status
+from sqlalchemy import union_all
 
 from .. import models, schemas
 
@@ -209,4 +210,116 @@ class CreditService:
         await db.flush()
         return new_transaction
 
+    async def list_transactions_paginated(
+        self, db: AsyncSession, user_id: uuid.UUID, page: int, limit: int
+    ) -> dict:
+        """사용자의 크레딧 거래 내역을 페이지네이션하여 반환합니다."""
+        offset = (page - 1) * limit
+
+        # 1. 전체 거래 내역 개수 조회 (변경 없음)
+        count_query = select(func.count(models.CreditTransaction.id)).filter(
+            models.CreditTransaction.user_id == user_id
+        )
+        total_items = await db.scalar(count_query) or 0
+
+        # 2. [수정] 쿼리 수정: 상세 내역(details)과 그에 연결된 원장(ledger) 정보까지 Eager Loading합니다.
+        query = (
+            select(models.CreditTransaction)
+            .options(
+                selectinload(models.CreditTransaction.details)
+                .joinedload(models.CreditTransactionDetail.ledger)
+            )
+            .filter(models.CreditTransaction.user_id == user_id)
+            .order_by(desc(models.CreditTransaction.created_at))
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        transactions_models = result.scalars().unique().all()
+
+        # 3. [추가] 수동 매핑: SQLAlchemy 모델을 Pydantic 스키마로 직접 변환합니다.
+        response_items = []
+        for trans_model in transactions_models:
+            detail_schemas = []
+            for detail_model in trans_model.details:
+                if detail_model.ledger: # ledger 정보가 로드되었는지 확인
+                    detail_schemas.append(schemas.CreditTransactionLedgerDetail(
+                        # detail.ledger.source_type에서 값을 가져와 스키마에 채워줍니다.
+                        source_type=detail_model.ledger.source_type,
+                        amount_deducted=detail_model.amount_deducted
+                    ))
+            
+            response_items.append(schemas.CreditTransactionResponse(
+                id=trans_model.id,
+                total_amount_deducted=trans_model.total_amount_deducted,
+                discount_pct=trans_model.discount_pct,
+                related_entity_type=trans_model.related_entity_type,
+                created_at=trans_model.created_at,
+                details=detail_schemas
+            ))
+
+        return {
+            "items": response_items, # 이제 Pydantic 객체 리스트를 반환
+            "meta": {
+                "totalItems": total_items,
+                "itemCount": len(response_items),
+                "itemsPerPage": limit,
+                "totalPages": (total_items + limit - 1) // limit,
+                "currentPage": page,
+            },
+        }
+    
+    async def get_unified_history_paginated(self, db: AsyncSession, user_id: uuid.UUID, page: int, limit: int) -> dict:
+        """
+        [완성본] 사용자의 모든 크레딧 획득/사용 기록을 DB 레벨에서 통합하고
+        페이지네이션하여 효율적으로 반환합니다.
+        """
+        offset = (page - 1) * limit
+
+        # 1. 획득 내역(Ledger)을 조회하는 쿼리 정의
+        gains_query = select(
+            models.CreditLedger.created_at.label("date"),
+            models.CreditLedger.source_type.label("description"),
+            models.CreditLedger.initial_amount.label("amount"),
+            # 나중에 상세보기를 위해 관련 ID들을 함께 조회할 수 있습니다.
+            models.CreditLedger.id.label("related_id")
+        ).filter_by(user_id=user_id)
+
+        # 2. 사용 내역(Transaction)을 조회하는 쿼리 정의
+        usages_query = select(
+            models.CreditTransaction.created_at.label("date"),
+            models.CreditTransaction.related_entity_type.label("description"),
+            (models.CreditTransaction.total_amount_deducted * -1).label("amount"), # 음수로 변환
+            models.CreditTransaction.id.label("related_id")
+        ).filter_by(user_id=user_id)
+
+        # 3. [핵심] UNION ALL을 사용하여 두 쿼리를 DB에서 하나로 합칩니다.
+        unified_query = union_all(gains_query, usages_query).alias("unified")
+
+        # 4. 전체 개수 계산
+        count_query = select(func.count()).select_from(unified_query)
+        total_items = await db.scalar(count_query) or 0
+
+        # 5. 합쳐진 결과에 대해 정렬 및 페이지네이션을 적용합니다.
+        final_query = (
+            select(unified_query)
+            .order_by(desc(unified_query.c.date))
+            .offset(offset)
+            .limit(limit)
+        )
+        
+        result = await db.execute(final_query)
+        history_items = result.mappings().all() # 결과를 딕셔너리 리스트로 받음
+
+        return {
+            "items": history_items,
+            "meta": {
+                "totalItems": total_items,
+                "itemCount": len(history_items),
+                "itemsPerPage": limit,
+                "totalPages": (total_items + limit - 1) // limit if limit > 0 else 0,
+                "currentPage": page,
+            },
+        }
+    
 credit_service = CreditService()

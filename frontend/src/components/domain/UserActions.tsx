@@ -26,6 +26,7 @@ import {
   User,
   Box,
   KeyRound,
+  Coins,
 } from "lucide-react";
 
 // 플랜별 버튼 스타일을 관리하는 함수
@@ -98,6 +99,12 @@ export function UserActions() {
               <Link href="/dashboard?tab=assets">
                 <Box className="mr-2 h-4 w-4" />
                 <span>{t("assets")}</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard?tab=credits">
+                <Coins className="mr-2 h-4 w-4" />
+                <span>{t("credits")}</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

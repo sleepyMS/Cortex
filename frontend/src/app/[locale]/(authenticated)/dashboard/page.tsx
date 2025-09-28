@@ -11,6 +11,8 @@ import { ProfileManagementTab } from "@/components/domain/dashboard/ProfileManag
 import { AccountSettingsTab } from "@/components/domain/dashboard/AccountSettingsTab";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { ApiKeyManagerTab } from "@/components/domain/dashboard/ApiKeyManagerTab";
+import { CreditManagementTab } from "@/components/domain/dashboard/CreditManagementTab";
+import { Coins } from "lucide-react";
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard.tabs");
@@ -47,9 +49,13 @@ export default function DashboardPage() {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
           <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
           <TabsTrigger value="assets">{t("assets")}</TabsTrigger>
+          <TabsTrigger value="credits">
+            <Coins className="w-4 h-4 mr-2" />
+            {t("credits")}
+          </TabsTrigger>
           <TabsTrigger value="profile">{t("profile")}</TabsTrigger>
           <TabsTrigger value="apiKeys">{t("apiKeys")}</TabsTrigger>
           <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
@@ -60,6 +66,9 @@ export default function DashboardPage() {
         </TabsContent>
         <TabsContent value="assets" className="mt-6">
           <AssetManagementTab />
+        </TabsContent>
+        <TabsContent value="credits" className="mt-6">
+          <CreditManagementTab />
         </TabsContent>
         <TabsContent value="profile" className="mt-6">
           <ProfileManagementTab />

@@ -51,6 +51,17 @@ class CreditTransactionResponse(CamelCaseModel):
     created_at: datetime
     details: List[CreditTransactionLedgerDetail]
 
+class PaginatedMeta(CamelCaseModel):
+    total_items: int
+    item_count: int
+    items_per_page: int
+    total_pages: int
+    current_page: int
+
+class PaginatedCreditTransactions(CamelCaseModel):
+    items: List[CreditTransactionResponse] # 기존 스키마 재활용
+    meta: PaginatedMeta
+
 class CostEstimationRequest(CamelCaseModel):
     """비용 견적 요청 스키마"""
     backtest_duration_years: float = Field(..., ge=0)

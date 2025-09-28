@@ -218,3 +218,58 @@ async def get_my_purchased_strategies(
     """현재 로그인된 사용자가 마켓플레이스에서 구매한 모든 전략 목록을 조회합니다."""
     purchased_strategies = await user_service.get_purchased_strategies(db, current_user.id)
     return purchased_strategies
+
+@router.get(
+    "/me/credit-balance",
+    response_model=schemas.CreditBalanceSummary,
+    summary="Get current user's credit balance summary"
+)
+async def get_my_credit_balance(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    현재 로그인된 사용자의 상세 크레딧 잔액 정보를 조회합니다.
+    credit_service의 get_balance_summary 함수를 호출합니다.
+    """
+    balance_summary = await credit_service.get_balance_summary(db, current_user.id)
+    return balance_summary
+
+
+# @router.get(
+#     "/me/credit-transactions",
+#     response_model=schemas.PaginatedCreditTransactions,
+#     summary="Get current user's credit transaction history"
+# )
+# async def get_my_credit_transactions(
+#     current_user: models.User = Depends(get_current_active_user),
+#     db: AsyncSession = Depends(get_async_db),
+#     page: int = Query(1, ge=1),
+#     limit: int = Query(10, ge=1, le=100),
+# ):
+#     """
+#     현재 로그인된 사용자의 크레딧 거래 내역을 페이지네이션하여 조회합니다.
+#     credit_service의 list_transactions_paginated 함수를 호출합니다.
+#     """
+#     paginated_result = await credit_service.list_transactions_paginated(
+#         db, current_user.id, page, limit
+#     )
+#     return paginated_result
+
+@router.get(
+    "/me/credit-history", # 새로운 API 경로
+    # response_model은 새로운 통합 스키마를 정의해야 합니다.
+    summary="Get unified credit history (gains and usages)"
+)
+async def get_my_credit_history(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+):
+    """현재 사용자의 모든 크레딧 획득 및 사용 내역을 시간순으로 조회합니다."""
+    unified_history = await credit_service.get_unified_history_paginated(
+        db, current_user.id, page, limit
+    )
+    return unified_history
+

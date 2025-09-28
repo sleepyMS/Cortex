@@ -71,7 +71,6 @@ export function Header() {
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  {/* TooltipTrigger의 자식은 클릭 가능한 요소가 아니어도 괜찮습니다. */}
                   <div className="flex cursor-help items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium">
                     <Coins className="h-4 w-4 text-yellow-500" />
                     <span>
@@ -80,7 +79,6 @@ export function Header() {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent className="p-0">
-                  {/* 이전에 만든 컨텐츠 컴포넌트를 그대로 재사용합니다. */}
                   <CreditTooltipContent balance={creditBalance} />
                 </TooltipContent>
               </Tooltip>
