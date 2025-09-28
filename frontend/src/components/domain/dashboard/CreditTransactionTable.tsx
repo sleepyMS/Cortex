@@ -151,7 +151,7 @@ const TransactionDetailsDialogContent = ({
           <Loader2 className="mx-auto h-6 w-6 animate-spin" />
         ) : (
           <>
-            <div className="flex justify-between">
+            <div className="flex justify-between p-2">
               <span>{t("detailsModal.totalUsed")}</span>
               <span className="font-mono text-rose-500">
                 {transaction.amount.toLocaleString()} CC
