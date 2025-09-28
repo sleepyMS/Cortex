@@ -36,7 +36,7 @@ class PaymentService:
         user: models.User,
         checkout_info: schemas.OrderCreateResponse,
     ) -> Dict:
-        """[구독용] 빌링키 발급과 첫 결제를 한 번에 처리"""
+        """[구독용] 빌링키 발급과 첫 결제를 한 번에 처리하고, 모든 관련 데이터를 반환합니다."""
         # 1. 빌링키 발급
         billing_data = await toss_client.issue_billing_key(
             auth_key=auth_key, customer_key=str(user.id)
@@ -46,13 +46,8 @@ class PaymentService:
             raise HTTPException(status_code=500, detail="빌링키 정보를 가져올 수 없습니다.")
         
         # 2. 결제 요청 payload 생성
-        # 금액을 반올림하여 정수로 변환합니다.
-        # Python의 round() 함수는 0.5일 때 짝수로 반올림하는 특성이 있으므로, decimal 모듈을 사용하는 것이 더 안전합니다.
         import math
         processed_amount = math.ceil(checkout_info.amount) if checkout_info.amount > 0 else 0
-        
-        logger.debug(f"Original amount: {checkout_info.amount}")
-        logger.debug(f"Processed amount: {processed_amount}")
         
         charge_payload = {
             "amount": processed_amount,
@@ -62,15 +57,17 @@ class PaymentService:
             "customerKey": str(user.id)
         }
         
-        # 3. 빌링키로 결제 요청
-        #    toss_client.charge_billing_key 함수에 customer_key를 따로 넘길 필요 없이,
-        #    완성된 payload 객체만 전달합니다.
-        await toss_client.charge_billing_key(
+        # 3. 빌링키로 결제 요청하고, 그 결과를 'payment_data'에 저장합니다.
+        payment_data = await toss_client.charge_billing_key(
             billing_key=billing_key,
             payload=charge_payload
         )
 
-        return billing_data
+        # 4. [수정] 빌링키 발급 정보와 첫 결제 정보를 모두 담아 반환합니다.
+        return {
+            "billing_info": billing_data,
+            "payment_info": payment_data
+        }
     
     async def verify_and_approve_payment(
         self, 

@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 import logging
+from dateutil.relativedelta import relativedelta
 
 from .. import models, schemas
 from ..services.plan_service import plan_service
@@ -155,100 +156,107 @@ class SubscriptionService:
 
     ## 라우터의 비즈니스 로직을 모두 담당하는 고수준 메서드
     async def register_card_and_process_first_payment(
-            self,
-            db: AsyncSession,
-            user: models.User,
-            plan_id: uuid.UUID,
-            auth_key: str,
-            toss_client: TossPaymentsClient,
-        ) -> schemas.SubscriptionSchema:
-            """
-            카드 등록, 동기적 첫 결제, DB 'active' 상태 저장을 하나의 트랜잭션으로 처리하고
-            Pydantic 스키마를 반환합니다.
-            """
-            # --- 1. 주문 정보 생성 ---
-            checkout_info = await self.create_checkout_info(db, user, plan_id)
+        self,
+        db: AsyncSession,
+        user: models.User,
+        plan_id: uuid.UUID,
+        auth_key: str,
+        toss_client: TossPaymentsClient,
+    ) -> schemas.SubscriptionSchema:
+        """
+        카드 등록, 동기적 첫 결제, DB 'active' 상태 저장을 하나의 트랜잭션으로 처리합니다.
+        """
+        checkout_info = await self.create_checkout_info(db, user, plan_id)
 
-            # --- 2. 토스 API 호출: 빌링키 발급 및 첫 결제 (동기 작업) ---
-            try:
-                billing_data = await payment_service.issue_and_charge_first_subscription(
-                    toss_client=toss_client, auth_key=auth_key, user=user, checkout_info=checkout_info,
-                )
-            except HTTPException as e:
-                logger.error(f"Toss payment failed for user {user.email}: {e.detail}")
-                raise e
-            
-            billing_key = billing_data.get("billingKey")
-            if not billing_key:
-                raise HTTPException(status_code=500, detail="빌링키 정보를 가져올 수 없습니다.")
+        try:
+            # [수정] payment_service로부터 통합된 응답 데이터를 받습니다.
+            response_data = await payment_service.issue_and_charge_first_subscription(
+                toss_client=toss_client, auth_key=auth_key, user=user, checkout_info=checkout_info,
+            )
+        except HTTPException as e:
+            logger.error(f"Toss payment failed for user {user.email}: {e.detail}")
+            raise e
+        
+        # [수정] 각 데이터를 올바른 위치에서 추출합니다.
+        billing_info = response_data.get("billing_info", {})
+        payment_info = response_data.get("payment_info", {})
 
-            # --- 3. [핵심] 구독 정보 'active' 상태로 생성 또는 업데이트 및 관계 설정 ---
-            # 이 모든 작업은 commit() 전에 이루어져야 합니다.
-            target_plan = await plan_service.get_plan_by_id(db, plan_id)
-            if not target_plan:
-                raise HTTPException(status_code=404, detail="요청한 플랜을 찾을 수 없습니다.")
+        billing_key = billing_info.get("billingKey")
+        payment_key = payment_info.get("paymentKey") # 첫 결제의 고유 ID
 
-            from dateutil.relativedelta import relativedelta
-            period_end_dt = datetime.now(timezone.utc) + relativedelta(months=1)
-            
-            card_info = billing_data.get("card")
-            card_details = f"{card_info.get('company', '')} {card_info.get('number', '')}" if card_info else None
+        if not billing_key or not payment_key:
+            raise HTTPException(status_code=500, detail="빌링키 또는 결제 정보를 가져올 수 없습니다.")
 
-            subscription = await db.scalar(select(models.Subscription).filter_by(user_id=user.id))
+        target_plan = await plan_service.get_plan_by_id(db, plan_id)
+        if not target_plan:
+            raise HTTPException(status_code=404, detail="요청한 플랜을 찾을 수 없습니다.")
 
-            if subscription:
-                subscription.plan_id = plan_id
-                subscription.status = "active"
-                subscription.current_period_end = period_end_dt
-                subscription.payment_gateway_customer_key = billing_key
-                subscription.payment_method_details = card_details
-                subscription.plan = target_plan 
-            else:
-                subscription = models.Subscription(
-                    user_id=user.id,
-                    plan_id=plan_id,
-                    status="active",
-                    current_period_end=period_end_dt,
-                    payment_gateway_customer_key=billing_key,
-                    payment_method_details=card_details,
-                    plan=target_plan 
-                )
-                db.add(subscription)
-            
-            await db.flush()
+        from dateutil.relativedelta import relativedelta
+        period_end_dt = datetime.now(timezone.utc) + relativedelta(months=1)
+        
+        card_info = billing_info.get("card") # 카드 정보는 billing_info에 있습니다.
+        card_details = f"{card_info.get('company', '')} {card_info.get('number', '')}" if card_info else None
 
-            if target_plan.monthly_credit_reward > 0:
-                await credit_service.grant_subscription_bonus_credits(
-                    db=db,
-                    user_id=user.id,
-                    amount=target_plan.monthly_credit_reward,
-                    source_id=checkout_info.order_id
-                )
-                logger.info(f"Granted {target_plan.monthly_credit_reward} bonus credits to new subscriber {user.email}.")
-            
-            # --- 4. DB에 모든 변경사항 커밋 ---
-            await db.commit()
+        subscription = await db.scalar(select(models.Subscription).filter_by(user_id=user.id))
 
-            # --- 5. 최종 Pydantic 스키마로 변환하여 반환 ---
-            # 이제 객체에 plan이 할당되어 있으므로, refresh 없이 바로 반환 가능
-            return schemas.SubscriptionSchema.model_validate(subscription)
+        if subscription:
+            subscription.plan_id = plan_id
+            subscription.status = "active"
+            subscription.current_period_end = period_end_dt
+            subscription.payment_gateway_customer_key = billing_key
+            subscription.payment_method_details = card_details
+            subscription.payment_gateway_sub_id = payment_key # 첫 결제 키를 저장
+            subscription.plan = target_plan 
+        else:
+            subscription = models.Subscription(
+                user_id=user.id,
+                plan_id=plan_id,
+                status="active",
+                current_period_end=period_end_dt,
+                payment_gateway_customer_key=billing_key,
+                payment_method_details=card_details,
+                payment_gateway_sub_id=payment_key,
+                plan=target_plan 
+            )
+            db.add(subscription)
+        
+        await db.flush()
+
+        if target_plan.monthly_credit_reward > 0:
+            await credit_service.grant_subscription_bonus_credits(
+                db=db,
+                user_id=user.id,
+                amount=target_plan.monthly_credit_reward,
+                source_id=checkout_info.order_id
+            )
+            logger.info(f"Granted {target_plan.monthly_credit_reward} bonus credits to new subscriber {user.email}.")
+        
+        await db.commit()
+
+        return schemas.SubscriptionSchema.model_validate(subscription)
 
 
 
     async def activate_or_update_subscription(
-        self,
-        db: AsyncSession,
-        customer_key: str,  # 토스 웹훅의 customerKey (우리 시스템의 user_id)
-        payment_data: dict, # 웹훅으로 받은 결제 데이터
+        self, db: AsyncSession, customer_key: str, payment_data: dict
     ) -> models.Subscription:
         """
-        정기결제 성공 웹훅을 받아 구독을 활성화하거나 기간을 갱신합니다.
+        정기결제 성공 웹훅을 받아 구독을 활성화하거나 기간을 갱신합니다. (멱등성 보장)
         """
         user_uuid = uuid.UUID(customer_key)
-        
+        payment_key = payment_data.get("paymentKey")
+
+        # [개선] 멱등성 체크: 이 결제(paymentKey)를 이미 처리했는지 확인합니다.
+        existing_sub = await db.scalar(
+            select(models.Subscription).filter_by(payment_gateway_sub_id=payment_key)
+        )
+        if existing_sub:
+            logger.warning(f"Webhook for paymentKey {payment_key} has already been processed. Skipping.")
+            return existing_sub
+
         subscription = await db.scalar(
             select(models.Subscription)
-            .options(joinedload(models.Subscription.plan)) # plan 정보도 함께 로드
+            .options(joinedload(models.Subscription.plan))
             .filter_by(user_id=user_uuid)
         )
 
@@ -256,21 +264,16 @@ class SubscriptionService:
             logger.error(f"Cannot update subscription. No subscription found for user_id: {customer_key}")
             raise HTTPException(status_code=404, detail="Subscription not found for webhook processing.")
 
-        # 다음 결제일 계산 (예: 1개월 후)
-        from dateutil.relativedelta import relativedelta
         new_period_end = datetime.now(timezone.utc) + relativedelta(months=1)
-
         subscription.status = "active"
         subscription.current_period_end = new_period_end
-        
-        # --- [추가] 정기결제 성공 후, 월간 보상 크레딧 지급 ---
-        # 함께 로드한 plan 객체에서 보상량을 가져옵니다.
+        subscription.payment_gateway_sub_id = payment_key # [개선] 마지막으로 성공한 결제 ID를 기록
+
         if subscription.plan and subscription.plan.monthly_credit_reward > 0:
             await credit_service.grant_subscription_bonus_credits(
-                db=db,
-                user_id=user_uuid,
+                db=db, user_id=user_uuid,
                 amount=subscription.plan.monthly_credit_reward,
-                source_id=uuid.UUID(payment_data.get("orderId")) # 결제 주문 ID를 source_id로 사용
+                source_id=uuid.UUID(payment_data.get("orderId"))
             )
             logger.info(f"Granted {subscription.plan.monthly_credit_reward} bonus credits to recurring subscriber {customer_key}.")
         
@@ -278,6 +281,7 @@ class SubscriptionService:
             f"Subscription for user {customer_key} successfully renewed. "
             f"Plan: {subscription.plan.name.value}, New expiration: {new_period_end.isoformat()}"
         )
+        await db.commit() # [추가] 세션 커밋
         return subscription
     
     async def handle_subscription_payment_failure(

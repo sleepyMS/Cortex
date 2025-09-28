@@ -61,7 +61,7 @@ class CreditService:
         user_id: uuid.UUID,
         amount: int,
         source_type: str,
-        source_id: Optional[uuid.UUID] = None,
+        source_id: Optional[str] = None,
         expires_at: Optional[datetime] = None,
     ):
         """새로운 크레딧 원장을 생성하여 사용자에게 크레딧을 지급합니다."""
