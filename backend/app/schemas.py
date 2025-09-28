@@ -45,6 +45,7 @@ class CreditTransactionLedgerDetail(CamelCaseModel):
 class CreditTransactionResponse(CamelCaseModel):
     """크레딧 거래 내역 응답 스키마"""
     id: uuid.UUID
+    user_id: uuid.UUID 
     total_amount_deducted: int
     discount_pct: float
     related_entity_type: Optional[str] = None

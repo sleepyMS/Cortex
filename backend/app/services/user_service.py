@@ -331,7 +331,7 @@ class UserService:
     
     async def get_user_profile_with_checkin(self, db: AsyncSession, user: models.User) -> models.User:
         """
-        [신규] 사용자 프로필을 조회하며, 일일 출석 체크와 크레딧 잔액 조회를 함께 처리합니다.
+        사용자 프로필을 조회하며, 일일 출석 체크와 크레딧 잔액 조회를 함께 처리합니다.
         트랜잭션 관리는 상위 의존성(get_async_db)에 위임합니다.
         """
         # 불필요한 트랜잭션 블록을 제거하고 비즈니스 로직만 호출합니다.

@@ -82,7 +82,6 @@ export function DateRangePickerCustom({
             )}
           </Button>
         </PopoverTrigger>
-        {/* ▼▼▼ [핵심 수정] flex-col lg:flex-row 적용 ▼▼▼ */}
         <PopoverContent
           className="w-auto p-0 flex flex-col lg:flex-row"
           align="start"
@@ -132,11 +131,9 @@ export function DateRangePickerCustom({
             </Button>
           </div>
 
-          {/* ▼▼▼ [핵심 수정] 반응형 구분선 ▼▼▼ */}
           <Separator orientation="horizontal" className="lg:hidden" />
           <Separator orientation="vertical" className="h-auto hidden lg:flex" />
 
-          {/* ▼▼▼ [핵심 수정] flex-col lg:flex-row 적용 ▼▼▼ */}
           <div className="flex flex-col lg:flex-row items-center">
             <CalendarGrid
               currentMonth={startMonth}
@@ -149,7 +146,6 @@ export function DateRangePickerCustom({
             <div className="px-2 hidden lg:flex">
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </div>
-            {/* ▼▼▼ [핵심 추가] 모바일용 세로 화살표 아이콘 ▼▼▼ */}
             <div className="py-2 flex lg:hidden">
               <ArrowDown className="h-5 w-5 text-muted-foreground" />
             </div>

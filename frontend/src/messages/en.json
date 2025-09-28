@@ -438,9 +438,17 @@
           "amount": "Amount",
           "details": "Details"
         },
+        "expiresAtTooltip": "Expires on {date}",
         "detailsModal": {
-          "title": "Transaction Details",
-          "totalUsed": "Total Credits Used"
+          "gainTitle": "Credit Gain Details",
+          "gainDescription": "Detailed information about the acquired credits.",
+          "gainAmount": "Amount Gained",
+          "transactionDate": "Transaction Date",
+          "expiresAt": "Expiration Date",
+          "usageTitle": "Credit Usage Details",
+          "usageDescription": "A detailed breakdown of which credit types were used for this transaction.",
+          "totalUsed": "Total Credits Used",
+          "breakdownTitle": "Deduction Breakdown"
         },
         "noResults": {
           "title": "No Transactions Found",
@@ -453,6 +461,7 @@
         },
         "transactionTypes": {
           "PURCHASE": "Credit Pack Purchase",
+          "SUBSCRIPTION_BONUS": "Plan Subscription Bonus",
           "MARKETPLACE_B2C_ORDER": "Marketplace Item Purchase",
           "MARKETPLACE_C2C_ORDER": "Marketplace Strategy Purchase",
           "BACKTEST": "Backtest Execution",
@@ -463,6 +472,7 @@
         },
         "creditTypes": {
           "PURCHASE": "Purchased Credits",
+          "SUBSCRIPTION_BONUS": "Plan Subscription Bonus",
           "ATTENDANCE_DAILY": "Daily Attendance Reward",
           "ATTENDANCE_BONUS": "Consecutive Attendance Bonus",
           "EVENT_COUPON": "Event/Coupon"

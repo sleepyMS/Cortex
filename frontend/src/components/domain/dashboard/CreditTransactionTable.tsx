@@ -4,13 +4,12 @@ import * as React from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   ColumnDef,
-  SortingState,
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import apiClient from "@/lib/apiClient";
 import {
@@ -18,8 +17,11 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  FileText,
   ListX,
+  Eye,
+  Clock,
+  Loader2,
+  FileText,
 } from "lucide-react";
 
 // UI 컴포넌트
@@ -46,15 +48,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/Dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/Tooltip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
-// [수정] 통합된 히스토리 아이템 타입 정의
+// 통합된 히스토리 아이템 타입 정의
 interface UnifiedCreditHistoryItem {
   date: string;
   description: string | null;
   amount: number;
   related_id: string;
+  expires_at: string | null;
 }
 
 interface PaginatedCreditHistory {
@@ -67,6 +84,104 @@ interface PaginatedCreditHistory {
     currentPage: number;
   };
 }
+
+const TransactionDetailsDialogContent = ({
+  transaction,
+}: {
+  transaction: UnifiedCreditHistoryItem;
+}) => {
+  const t = useTranslations("Dashboard.credits.transactionTable");
+  const isGain = transaction.amount > 0;
+
+  // '사용' 내역의 상세 정보를 불러오기 위한 쿼리
+  const { data: usageDetails, isLoading } = useQuery({
+    queryKey: ["transactionDetails", transaction.related_id],
+    queryFn: async () =>
+      (await apiClient.get(`/credits/transactions/${transaction.related_id}`))
+        .data,
+    enabled: !isGain, // '사용' 내역일 때만 API 호출
+  });
+
+  if (isGain) {
+    return (
+      <>
+        <DialogTitle>{t("detailsModal.gainTitle")}</DialogTitle>
+        <DialogDescription>
+          {t("detailsModal.gainDescription")}
+        </DialogDescription>
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between">
+            <span>{t("detailsModal.gainAmount")}</span>
+            <span className="font-mono text-emerald-500">
+              +{transaction.amount.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>{t("detailsModal.transactionDate")}</span>
+            <span>
+              {format(new Date(transaction.date), "yyyy-MM-dd HH:mm")}
+            </span>
+          </div>
+          {transaction.expires_at && (
+            <div className="flex justify-between">
+              <span>{t("detailsModal.expiresAt")}</span>
+              <span>
+                {format(new Date(transaction.expires_at), "yyyy-MM-dd HH:mm")} (
+                {formatDistanceToNow(new Date(transaction.expires_at), {
+                  addSuffix: true,
+                  locale: ko,
+                })}
+                )
+              </span>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <DialogTitle>{t("detailsModal.usageTitle")}</DialogTitle>
+      <DialogDescription>
+        {t("detailsModal.usageDescription")}
+      </DialogDescription>
+      <div className="mt-4 space-y-2">
+        {isLoading ? (
+          <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+        ) : (
+          <>
+            <div className="flex justify-between">
+              <span>{t("detailsModal.totalUsed")}</span>
+              <span className="font-mono text-rose-500">
+                {transaction.amount.toLocaleString()} CC
+              </span>
+            </div>
+            <div className="border rounded-lg p-3 mt-2">
+              <h4 className="mb-2 text-sm font-semibold">
+                {t("detailsModal.breakdownTitle")}
+              </h4>
+              <ul className="space-y-2">
+                {usageDetails?.details.map((detail: any, index: number) => (
+                  <li key={index} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {t(`creditTypes.${detail.sourceType}`, {
+                        default: detail.sourceType,
+                      })}
+                    </span>
+                    <span className="font-mono text-rose-500">
+                      - {detail.amountDeducted.toLocaleString()} CC
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+};
 
 // 통합 데이터 구조에 맞는 컬럼 재정의
 const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
@@ -81,9 +196,9 @@ const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
   {
     accessorKey: "description",
     header: t("columns.description"),
+    // [복원] 누락되었던 cell 렌더링 함수를 다시 추가합니다.
     cell: ({ row }) => {
       const type = row.getValue<string | null>("description");
-      // 언어팩을 사용하여 백엔드에서 받은 타입 문자열을 사용자 친화적인 텍스트로 변환
       return type
         ? t(`transactionTypes.${type}`, { default: type })
         : t("transactionTypes.ETC");
@@ -93,28 +208,60 @@ const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
     accessorKey: "amount",
     header: () => <div className="text-right">{t("columns.amount")}</div>,
     cell: ({ row }) => {
-      const amount = row.getValue<number>("amount");
+      const amount = row.original.amount;
+      const expiresAt = row.original.expires_at;
       const isGain = amount > 0;
       return (
         <div
           className={cn(
-            "text-right font-mono",
+            "flex items-center justify-end gap-2 font-mono",
             isGain ? "text-emerald-500" : "text-rose-500"
           )}
         >
-          {isGain ? "+" : ""}
-          {amount.toLocaleString()}
+          {isGain && expiresAt && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {t("expiresAtTooltip", {
+                      date: format(new Date(expiresAt), "yyyy-MM-dd"),
+                    })}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <span>
+            {isGain ? "+" : ""}
+            {amount.toLocaleString()} CC
+          </span>
         </div>
       );
     },
+  },
+  {
+    id: "details",
+    cell: ({ row }) => (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="w-full">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="p-6">
+          <TransactionDetailsDialogContent transaction={row.original} />
+        </DialogContent>
+      </Dialog>
+    ),
   },
 ];
 
 // 메인 컴포넌트
 export const CreditTransactionTable = () => {
   const t = useTranslations("Dashboard.credits.transactionTable");
-  // [수정] sorting 상태 관리 제거
-  // const [sorting, setSorting] = React.useState<SortingState>([]);
   const [{ pageIndex, pageSize }, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,

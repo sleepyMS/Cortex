@@ -438,9 +438,17 @@
           "amount": "변동",
           "details": "상세"
         },
+        "expiresAtTooltip": "{date}에 소멸 예정",
         "detailsModal": {
-          "title": "거래 상세 내역",
-          "totalUsed": "총 사용 크레딧"
+          "gainTitle": "크레딧 획득 상세",
+          "gainDescription": "획득한 크레딧의 상세 정보입니다.",
+          "gainAmount": "획득량",
+          "transactionDate": "거래일시",
+          "expiresAt": "소멸 예정일",
+          "usageTitle": "크레딧 사용 상세",
+          "usageDescription": "어떤 종류의 크레딧이 사용되었는지에 대한 상세 내역입니다.",
+          "totalUsed": "총 사용 크레딧",
+          "breakdownTitle": "차감 상세 내역"
         },
         "noResults": {
           "title": "거래 내역이 없습니다",
@@ -453,6 +461,7 @@
         },
         "transactionTypes": {
           "PURCHASE": "크레딧 팩 구매",
+          "SUBSCRIPTION_BONUS": "플랜 구독 보너스",
           "MARKETPLACE_B2C_ORDER": "마켓플레이스 아이템 구매",
           "MARKETPLACE_C2C_ORDER": "마켓플레이스 전략 구매",
           "BACKTEST": "백테스트 실행",
@@ -463,6 +472,7 @@
         },
         "creditTypes": {
           "PURCHASE": "유료 크레딧",
+          "SUBSCRIPTION_BONUS": "플랜 구독 보너스",
           "ATTENDANCE_DAILY": "일일 출석 보상",
           "ATTENDANCE_BONUS": "연속 출석 보너스",
           "EVENT_COUPON": "이벤트/쿠폰"

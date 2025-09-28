@@ -1,7 +1,7 @@
 # file: backend/app/services/credit_service.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, desc 
+from sqlalchemy import select, func, case, desc, literal, DateTime
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict
 from datetime import datetime, timezone
@@ -30,7 +30,7 @@ class CreditService:
 
         breakdown = schemas.CreditBalanceBreakdown()
         for ledger in ledgers:
-            if ledger.source_type == "PURCHASE":
+            if ledger.source_type in ["PURCHASE", "SUBSCRIPTION_BONUS"]:
                 breakdown.purchased += ledger.remaining_amount
             elif ledger.source_type in ["ATTENDANCE_DAILY", "ATTENDANCE_BONUS"]:
                 breakdown.expiring_weekly += ledger.remaining_amount
@@ -46,13 +46,12 @@ class CreditService:
             sum(e.amount for e in breakdown.event)
         )
         
-        # [개선] API 스키마에 맞춰 '유료 크레딧' 잔액을 별도로 계산하여 추가합니다.
-        # 현재 정책상 'PURCHASE' 타입만 유료 크레딧입니다.
+        # API 스키마에 맞춰 '유료 크레딧' 잔액을 별도로 계산하여 추가합니다.
         cash_credit_balance = breakdown.purchased
 
         return schemas.CreditBalanceSummary(
             total_balance=total_balance,
-            cash_credit_balance=cash_credit_balance, # 프론트엔드 전달용 필드
+            cash_credit_balance=cash_credit_balance, 
             breakdown=breakdown
         )
 
@@ -85,14 +84,14 @@ class CreditService:
         db: AsyncSession,
         user_id: uuid.UUID,
         amount: int,
-        source_id: uuid.UUID
+        source_id: str
     ):
-        """[신규] 구독 결제 시 지급되는 보너스 크레딧을 '유료 크레딧'으로 생성합니다."""
+        """구독 결제 시 지급되는 보너스 크레딧을 '유료 크레딧'으로 생성합니다."""
         await self.grant_credits(
             db=db,
             user_id=user_id,
             amount=amount,
-            source_type="PURCHASE", # '유료' 크레딧으로 처리하는 것이 핵심
+            source_type="SUBSCRIPTION_BONUS", # '유료' 크레딧으로 처리하는 것이 핵심
             source_id=source_id,   # 관련 결제 ID 등
             expires_at=None        # 유료 크레딧은 만료되지 않음
         )
@@ -128,8 +127,11 @@ class CreditService:
             raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="크레딧 잔액이 부족합니다.")
 
         priority_order = {
-            "EVENT_COUPON": 1, "ATTENDANCE_DAILY": 2, "ATTENDANCE_BONUS": 2,
+            "EVENT_COUPON": 1, 
+            "ATTENDANCE_DAILY": 2, 
+            "ATTENDANCE_BONUS": 2,
             "PURCHASE": 3,
+            "SUBSCRIPTION_BONUS": 3,
         }
         
         def sort_key(ledger: models.CreditLedger):
@@ -222,7 +224,7 @@ class CreditService:
         )
         total_items = await db.scalar(count_query) or 0
 
-        # 2. [수정] 쿼리 수정: 상세 내역(details)과 그에 연결된 원장(ledger) 정보까지 Eager Loading합니다.
+        # 2. 상세 내역(details)과 그에 연결된 원장(ledger) 정보까지 Eager Loading합니다.
         query = (
             select(models.CreditTransaction)
             .options(
@@ -281,8 +283,8 @@ class CreditService:
             models.CreditLedger.created_at.label("date"),
             models.CreditLedger.source_type.label("description"),
             models.CreditLedger.initial_amount.label("amount"),
-            # 나중에 상세보기를 위해 관련 ID들을 함께 조회할 수 있습니다.
-            models.CreditLedger.id.label("related_id")
+            models.CreditLedger.id.label("related_id"),
+            models.CreditLedger.expires_at.label("expires_at") 
         ).filter_by(user_id=user_id)
 
         # 2. 사용 내역(Transaction)을 조회하는 쿼리 정의
@@ -290,7 +292,8 @@ class CreditService:
             models.CreditTransaction.created_at.label("date"),
             models.CreditTransaction.related_entity_type.label("description"),
             (models.CreditTransaction.total_amount_deducted * -1).label("amount"), # 음수로 변환
-            models.CreditTransaction.id.label("related_id")
+            models.CreditTransaction.id.label("related_id"),
+            literal(None, type_=DateTime).label("expires_at") 
         ).filter_by(user_id=user_id)
 
         # 3. [핵심] UNION ALL을 사용하여 두 쿼리를 DB에서 하나로 합칩니다.
@@ -321,5 +324,40 @@ class CreditService:
                 "currentPage": page,
             },
         }
+    
+    async def get_transaction_by_id(self, db: AsyncSession, transaction_id: uuid.UUID) -> dict:
+        """ID로 특정 거래를 조회하고, Pydantic 스키마와 호환되는 딕셔너리로 반환합니다."""
+        query = (
+            select(models.CreditTransaction)
+            .options(
+                selectinload(models.CreditTransaction.details)
+                .joinedload(models.CreditTransactionDetail.ledger)
+            )
+            .filter(models.CreditTransaction.id == transaction_id)
+        )
+        trans_model = await db.scalar(query)
+        if not trans_model:
+            return None
+
+        # list_transactions_paginated에서 사용했던 수동 매핑 로직 재사용
+        detail_schemas = []
+        for detail_model in trans_model.details:
+            if detail_model.ledger:
+                detail_schemas.append(schemas.CreditTransactionLedgerDetail(
+                    source_type=detail_model.ledger.source_type,
+                    amount_deducted=detail_model.amount_deducted
+                ))
+        
+        # Pydantic 모델을 사용하여 응답 구조를 만듭니다.
+        response_schema = schemas.CreditTransactionResponse(
+            id=trans_model.id,
+            user_id=trans_model.user_id, 
+            total_amount_deducted=trans_model.total_amount_deducted,
+            discount_pct=trans_model.discount_pct,
+            related_entity_type=trans_model.related_entity_type,
+            created_at=trans_model.created_at,
+            details=detail_schemas
+        )
+        return response_schema.model_dump()
     
 credit_service = CreditService()
