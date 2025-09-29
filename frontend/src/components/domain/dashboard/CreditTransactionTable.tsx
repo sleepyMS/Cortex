@@ -106,7 +106,7 @@ const TransactionDetailsDialogContent = ({
     return (
       <>
         <DialogTitle>{t("detailsModal.gainTitle")}</DialogTitle>
-        <DialogDescription>
+        <DialogDescription className="border-b">
           {t("detailsModal.gainDescription")}
         </DialogDescription>
         <div className="mt-4 space-y-2">
@@ -151,7 +151,7 @@ const TransactionDetailsDialogContent = ({
           <Loader2 className="mx-auto h-6 w-6 animate-spin" />
         ) : (
           <>
-            <div className="flex justify-between p-2">
+            <div className="flex justify-between mb-4 border-b border-dashed">
               <span>{t("detailsModal.totalUsed")}</span>
               <span className="font-mono text-rose-500">
                 {transaction.amount.toLocaleString()} CC

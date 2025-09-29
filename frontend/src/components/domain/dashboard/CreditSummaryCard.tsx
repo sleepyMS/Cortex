@@ -197,7 +197,7 @@ export function CreditSummaryCard() {
         <CardFooter>
           <Button
             className="w-full"
-            onClick={() => router.push("/marketplace?productType=CREDIT_PACK")}
+            onClick={() => router.push("/marketplace?tab=SHOP_ITEM")}
           >
             <ShoppingBag className="h-4 w-4 mr-2" />
             {t("purchaseButton")}
