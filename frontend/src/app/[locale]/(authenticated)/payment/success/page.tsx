@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import apiClient from "@/lib/apiClient";
 import { Order } from "@/types/marketplace";
+import { useUserStore } from "@/store/userStore";
 
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -25,6 +26,7 @@ const SuccessPageContent = () => {
   const paymentKey = searchParams.get("paymentKey");
   const orderId = searchParams.get("orderId");
   const amount = searchParams.get("amount");
+  const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
 
   const { mutate: confirmPayment, isPending: isConfirming } = useMutation({
     mutationFn: (variables: {
@@ -64,6 +66,16 @@ const SuccessPageContent = () => {
     enabled: !!orderId,
     retry: 2,
   });
+
+  useEffect(() => {
+    // order 데이터가 있고, 상태가 'COMPLETED'일 때만 실행합니다.
+    if (order?.status === "COMPLETED") {
+      console.log("✅ Order is COMPLETED. Syncing global credit balance now.");
+      // 전역 스토어의 크레딧 잔액을 갱신합니다.
+      syncCreditBalance();
+    }
+    // order.status가 변경될 때마다 이 로직을 다시 확인합니다.
+  }, [order?.status, syncCreditBalance]);
 
   useEffect(() => {
     if (hasConfirmed.current || !paymentKey || !orderId || !amount) return;

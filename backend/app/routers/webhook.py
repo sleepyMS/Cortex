@@ -56,7 +56,7 @@ async def handle_toss_payments_webhook(
                     "customer_key": customer_key,
                     "payment_data": payment_data
                 }
-                await publish_event("subscription.recurring_payment.succeeded", event_payload)
+                publish_event("subscription.recurring_payment.succeeded", event_payload)
                 logger.info(f"Published recurring payment SUCCESS event for user: {customer_key}")
 
             else:
@@ -75,7 +75,7 @@ async def handle_toss_payments_webhook(
                     "amount": amount,
                     "customer_key": customer_key
                 }
-                await publish_event("payment.succeeded", event_payload)
+                publish_event("payment.succeeded", event_payload)
                 logger.info(f"General payment for order {order_id} verified, approved, and event published.")
 
         # --- 2. [핵심] 결제 '실패' 시나리오 처리 ---
@@ -87,7 +87,7 @@ async def handle_toss_payments_webhook(
                     "customer_key": customer_key,
                     "failure_data": failure_data
                 }
-                await publish_event("subscription.recurring_payment.failed", event_payload)
+                publish_event("subscription.recurring_payment.failed", event_payload)
                 logger.warning(f"Published recurring payment FAILURE event for user: {customer_key}")
 
             else:
@@ -96,7 +96,7 @@ async def handle_toss_payments_webhook(
                     "order_id": order_id,
                     "failure_data": failure_data
                 }
-                await publish_event("payment.failed", event_payload)
+                publish_event("payment.failed", event_payload)
                 logger.warning(f"Published general payment FAILURE event for order: {order_id}")
 
     except Exception as e:

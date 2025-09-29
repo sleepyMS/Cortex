@@ -307,7 +307,7 @@ class SubscriptionService:
         failure_message = failure_data.get("message")
         
         # 필요 시, 이벤트 발행을 통해 사용자에게 알림을 보낼 수 있습니다.
-        await publish_event(
+        publish_event(
             "subscription.payment.failed",
             {
                 "user_id": customer_key,

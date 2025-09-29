@@ -28,6 +28,7 @@ import apiClient from "@/lib/apiClient";
 import { Strategy, LogicBlock, IndicatorMetadata } from "@/types/strategy";
 import { cn } from "@/lib/utils";
 import { useIndicatorStore } from "@/store/indicatorStore";
+import { useUserStore } from "@/store/userStore"; // [추가] userStore 임포트
 
 import {
   Form,
@@ -123,6 +124,7 @@ export function BacktestSetupForm() {
   const t = useTranslations("BacktestSetupForm");
   const router = useRouter();
   const queryClient = useQueryClient();
+  const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
 
   const { metadata: indicatorMetadataArray, isLoaded } = useIndicatorStore();
 
@@ -361,6 +363,7 @@ export function BacktestSetupForm() {
     },
     onSuccess: (response) => {
       toast.success(t("submitSuccess"));
+      syncCreditBalance();
       queryClient.invalidateQueries({ queryKey: ["backtests"] });
       router.push(`/backtester/${response.data.id}`);
     },

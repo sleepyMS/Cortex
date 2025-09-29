@@ -99,6 +99,7 @@ interface Actions {
   logout: () => void;
   refreshSession: () => Promise<string | null>;
   setCreditBalance: (balance: CreditBalanceSummary) => void; // 크레딧 갱신 액션 추가
+  syncCreditBalance: () => Promise<void>; // [추가] 새 액션 타입 정의
 }
 
 const initialState: State = {
@@ -169,11 +170,6 @@ export const useUserStore = create<State & Actions>()(
         set({ ...initialState, isAuthInitialized: true });
       },
 
-      // 크레딧 잔액만 단독으로 갱신하는 새 액션
-      setCreditBalance: (balance) => {
-        set({ creditBalance: balance });
-      },
-
       /**
        * 토큰 갱신(Refresh) 로직 전체를 책임지는 중앙 액션입니다.
        */
@@ -209,6 +205,24 @@ export const useUserStore = create<State & Actions>()(
           console.error("Refresh token failed, logging out:", error);
           get().logout();
           return null;
+        }
+      },
+
+      // 크레딧 잔액만 단독으로 갱신하는 새 액션
+      setCreditBalance: (balance) => {
+        set({ creditBalance: balance });
+      },
+
+      syncCreditBalance: async () => {
+        try {
+          const response = await apiClient.get<CreditBalanceSummary>(
+            "/users/me/credit-balance"
+          );
+          set({ creditBalance: response.data });
+        } catch (error) {
+          console.error("Failed to sync credit balance:", error);
+          // 에러 발생 시 크레딧 정보를 null로 처리하여 오래된 정보가 표시되지 않도록 할 수 있습니다.
+          // set({ creditBalance: null });
         }
       },
     }),
