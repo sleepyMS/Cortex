@@ -20,7 +20,7 @@ const Separator = React.forwardRef<
       decorative={decorative}
       orientation={orientation}
       className={cn(
-        "shrink-0 bg-border", // 기본 배경색 (Tailwind CSS)
+        "shrink-0 bg-muted-foreground/20", // 기본 배경색 (Tailwind CSS)
         orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]", // 수평/수직 방향
         className
       )}
