@@ -394,6 +394,10 @@
         "purchasedTooltip": "Credits you've purchased. They do not expire.",
         "bonus": "Bonus Credits",
         "bonusTooltip": "Credits from events or attendance. Check the expiration policy.",
+        "weeklyBonus": "Weekly Reward Credits",
+        "weeklyBonusTooltip": "Credits granted from attendance, etc. Expires within 7 days.",
+        "eventBonus": "Event Credits",
+        "eventBonusTooltip": "Credits from promotions, coupons, etc. Each has a different expiration date.",
         "purchaseButton": "Purchase Credits",
         "error": {
           "title": "Error",

@@ -132,7 +132,7 @@ export const BacktestCard = ({
       : t("noDateInfo");
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={100}>
       <Card
         className={cn(
           "flex flex-col h-full transition-all hover:shadow-md",

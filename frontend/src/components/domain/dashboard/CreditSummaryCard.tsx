@@ -23,7 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
-import { Wallet, ShoppingBag, Gift, AlertCircle } from "lucide-react";
+import { Wallet, ShoppingBag, Gift, AlertCircle, Clock } from "lucide-react";
 
 // 차트 라이브러리
 import {
@@ -33,11 +33,12 @@ import {
   Cell,
   Tooltip as RechartsTooltip,
 } from "recharts";
+import { cn } from "@/lib/utils";
 
 // API 응답 타입 정의 (schemas.py 기반)
 interface CreditBalanceSummary {
   totalBalance: number;
-  cashCreditBalance: number; // 유료 크레딧
+  cashCreditBalance: number;
   breakdown: {
     purchased: number;
     expiringWeekly: number;
@@ -99,18 +100,46 @@ export function CreditSummaryCard() {
   }
 
   // 데이터 기반 차트 및 정보 준비
-  const purchasedCredits = creditData?.cashCreditBalance ?? 0;
-  const bonusCredits = (creditData?.totalBalance ?? 0) - purchasedCredits;
+  const purchasedCredits = creditData?.breakdown.purchased ?? 0;
+  const weeklyCredits = creditData?.breakdown.expiringWeekly ?? 0;
+  const eventCredits =
+    creditData?.breakdown.event.reduce((sum, e) => sum + e.amount, 0) ?? 0;
+  const totalBonusCredits = weeklyCredits + eventCredits;
 
+  // 차트 데이터는 기존과 같이 '유료'와 '무료(보너스) 전체'로 단순하게 유지합니다.
   const chartData = [
-    { name: t("purchased"), value: purchasedCredits },
-    { name: t("bonus"), value: bonusCredits },
+    { name: "purchased", value: purchasedCredits },
+    { name: "bonus", value: totalBonusCredits },
   ];
 
   const COLORS = ["hsl(var(--primary))", "hsl(var(--muted-foreground))"];
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    const t = useTranslations("Dashboard.credits.summaryCard");
+
+    if (active && payload && payload.length) {
+      const data = payload[0]; // 현재 호버된 데이터 조각
+      return (
+        <div className="p-3 min-w-36 bg-popover text-popover-foreground border rounded-lg shadow-md">
+          <p className="text-xs text-muted-foreground">
+            {t("totalBalance")}
+            {" : "}
+            {(creditData?.totalBalance ?? 0).toLocaleString()}
+          </p>
+          <span className="text-sm font-semibold">{t(data.name)}</span>
+          {" : "}
+          <span className="font-mono text-lg font-bold">
+            {data.value.toLocaleString()}
+          </span>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={100}>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -123,23 +152,17 @@ export function CreditSummaryCard() {
           <div className="relative flex items-center justify-center h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <RechartsTooltip
-                  cursor={{ fill: "transparent" }}
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--background))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                />
                 <Pie
                   data={chartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={80}
-                  paddingAngle={5}
+                  paddingAngle={2}
+                  fill="#8884d8"
                   dataKey="value"
                   stroke="none"
+                  isAnimationActive={false}
                 >
                   {chartData.map((entry, index) => (
                     <Cell
@@ -148,6 +171,14 @@ export function CreditSummaryCard() {
                     />
                   ))}
                 </Pie>
+                <RechartsTooltip
+                  formatter={(value, name) => [
+                    value.toLocaleString(),
+                    t(name as "purchased" | "bonus"),
+                  ]}
+                  wrapperStyle={{ zIndex: 1000 }}
+                  content={<CustomTooltip />}
+                />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center justify-center">
@@ -160,6 +191,7 @@ export function CreditSummaryCard() {
             </div>
           </div>
           <div className="mt-6 space-y-3">
+            {/* 1. 유료 크레딧 */}
             <div className="flex justify-between items-center text-sm">
               <div className="flex items-center gap-2">
                 <div className="h-3 w-3 rounded-full bg-primary" />
@@ -176,22 +208,48 @@ export function CreditSummaryCard() {
                 {purchasedCredits.toLocaleString()}
               </span>
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-muted-foreground" />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="cursor-pointer">{t("bonus")}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("bonusTooltip")}</p>
-                  </TooltipContent>
-                </Tooltip>
+
+            {/* 2. 주간 보상 크레딧 (출석 등) */}
+            {weeklyCredits > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-muted-foreground" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-pointer">{t("weeklyBonus")}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("weeklyBonusTooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Clock className="h-3 w-3 text-amber-500" />
+                </div>
+                <span className="font-semibold">
+                  {weeklyCredits.toLocaleString()}
+                </span>
               </div>
-              <span className="font-semibold">
-                {bonusCredits.toLocaleString()}
-              </span>
-            </div>
+            )}
+
+            {/* 3. 이벤트 크레딧 (쿠폰 등) */}
+            {eventCredits > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-muted-foreground/70" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-pointer">{t("eventBonus")}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("eventBonusTooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Clock className="h-3 w-3 text-amber-500" />
+                </div>
+                <span className="font-semibold">
+                  {eventCredits.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter>

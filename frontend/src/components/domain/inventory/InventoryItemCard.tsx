@@ -73,7 +73,7 @@ export const InventoryItemCard = ({
         </div>
         <div className="flex items-center justify-between text-muted-foreground">
           <span>{t("purchasedAtLabel")}</span>
-          <TooltipProvider>
+          <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="font-bold text-foreground">

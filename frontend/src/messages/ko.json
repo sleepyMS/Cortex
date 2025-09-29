@@ -394,6 +394,10 @@
         "purchasedTooltip": "직접 구매한 크레딧으로, 유효기간이 없습니다.",
         "bonus": "보너스 크레딧",
         "bonusTooltip": "이벤트나 출석 보상으로 지급된 크레딧입니다. 소멸 정책을 확인하세요.",
+        "weeklyBonus": "주간 보상 크레딧",
+        "weeklyBonusTooltip": "출석 등으로 지급된 크레딧입니다. 7일 이내에 소멸됩니다.",
+        "eventBonus": "이벤트 크레딧",
+        "eventBonusTooltip": "프로모션, 쿠폰 등으로 지급된 크레딧입니다. 각기 다른 소멸 기한을 가집니다.",
         "purchaseButton": "크레딧 구매하기",
         "error": {
           "title": "오류",

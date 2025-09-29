@@ -251,7 +251,7 @@ const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
             <Eye className="h-4 w-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="p-6">
+        <DialogContent className="p-6 lg:max-w-2xl">
           <TransactionDetailsDialogContent transaction={row.original} />
         </DialogContent>
       </Dialog>
