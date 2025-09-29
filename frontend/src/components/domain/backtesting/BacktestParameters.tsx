@@ -125,17 +125,30 @@ const RuleDisplay = React.memo(
         </p>
         <div className="space-y-1.5 pl-2">
           {Object.entries(block).map(([key, value]) => {
+            const path = `${pathPrefix}.${key}`;
+
             if (typeof value === "number") {
-              return renderValue(key, value, `${pathPrefix}.${key}`);
+              return (
+                <React.Fragment key={path}>
+                  {renderValue(key, value, path)}
+                </React.Fragment>
+              );
             }
             if (value && typeof value === "object" && "values" in value) {
+              // 여러 파라미터를 가진 지표 렌더링
               return Object.entries(value.values).map(
-                ([paramKey, paramValue]) =>
-                  renderValue(
-                    `${value.indicatorKey} - ${paramKey}`,
-                    paramValue,
-                    `${pathPrefix}.${key}.values.${paramKey}`
-                  )
+                ([paramKey, paramValue]) => {
+                  const path = `${pathPrefix}.${key}.values.${paramKey}`;
+                  return (
+                    <React.Fragment key={path}>
+                      {renderValue(
+                        `${value.indicatorKey} - ${paramKey}`,
+                        paramValue,
+                        path
+                      )}
+                    </React.Fragment>
+                  );
+                }
               );
             }
             return null;
@@ -293,6 +306,9 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
 
   const execParams = backtest.parameters.parameters;
   const tpslSnapshot = snapshot.tpslLogic || {}; // 스냅샷의 TP/SL 로직
+  const hasTpslRules =
+    tpslSnapshot &&
+    Object.values(tpslSnapshot).some((v) => typeof v === "number");
 
   return (
     <Card>
@@ -341,26 +357,31 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
           </div>
         </div>
 
-        {/* ▼▼▼ [핵심 수정] TP/SL 파라미터 섹션 추가 ▼▼▼ */}
+        {/* TP/SL 파라미터 섹션 */}
         <div>
-          <h4 className="text-base font-semibold mb-3">TP / SL 규칙</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 border rounded-lg bg-muted/50">
-            {Object.entries(tpslSnapshot).map(([key, value]) => {
-              // 숫자 값을 가진 파라미터만 표시
-              if (typeof value !== "number") return null;
-              const path = `tpslLogic.${key}`;
-              return (
-                <ParameterDisplay
-                  key={path}
-                  label={t(key as any, {}, key)} // 번역이 없으면 키 값을 그대로 사용
-                  value={value}
-                  unit={key.toLowerCase().includes("pct") ? "%" : ""}
-                  path={path}
-                  overriddenPaths={overriddenPaths}
-                />
-              );
-            })}
-          </div>
+          <h4 className="text-base font-semibold mb-3">{t("tpslTitle")}</h4>
+          {hasTpslRules ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 border rounded-lg bg-muted/50">
+              {Object.entries(tpslSnapshot).map(([key, value]) => {
+                if (typeof value !== "number") return null;
+                const path = `tpslLogic.${key}`;
+                return (
+                  <ParameterDisplay
+                    key={path}
+                    label={t(key, { defaultMessage: key })} // 번역 키를 동적으로 사용
+                    value={value}
+                    unit={key.toLowerCase().includes("pct") ? "%" : ""}
+                    path={path}
+                    overriddenPaths={overriddenPaths}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-4 text-center border rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">{t("noRules")}</p>
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-8 pt-4 border-t">
           <RuleSection

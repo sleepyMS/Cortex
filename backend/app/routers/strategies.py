@@ -24,7 +24,7 @@ get_verified_strategy = create_owner_verifier(models.Strategy, owner_field="auth
 
 # --- 전략 CRUD 엔드포인트 ---
 
-@router.post("/", response_model=schemas.Strategy, status_code=status.HTTP_201_CREATED, summary="Create a new trading strategy")
+@router.post("", response_model=schemas.Strategy, status_code=status.HTTP_201_CREATED, summary="Create a new trading strategy")
 async def create_strategy(
     strategy_create: schemas.StrategyCreate,
     request: Request,
@@ -53,7 +53,7 @@ async def create_strategy(
         logger.error(f"Error creating strategy for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="전략 생성 중 서버 오류가 발생했습니다.")
 
-@router.get("/", response_model=List[schemas.StrategyInList], summary="Get list of user's strategies")
+@router.get("", response_model=List[schemas.StrategyInList], summary="Get list of user's strategies")
 async def get_strategies(
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db),
@@ -158,7 +158,7 @@ async def calculate_realtime_signals(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """전략 편집기 차트에 표시할 매매 신호를 실시간으로 계산합니다."""
-    logger.critical("<<<<< [STRATEGIES ROUTER] /calculate-signals API CALLED >>>>>")
+    # logger.critical("<<<<< [STRATEGIES ROUTER] /calculate-signals API CALLED >>>>>")
 
     try:
         # ▼▼▼ [핵심 수정] 튜플 반환값을 올바르게 받도록 수정 ▼▼▼

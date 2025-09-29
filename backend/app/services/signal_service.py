@@ -131,7 +131,6 @@ class SignalService:
     ) -> Optional[Union[str, float, int]]:
         """
         IndicatorValue 객체로부터 DataFrame에 실제 생성된 소문자 컬럼 이름을 안정적으로 찾아 반환합니다.
-        (다중 타임프레임 접미사 대응 추가)
         """
 
         if indicator_value is None: return None
@@ -159,7 +158,6 @@ class SignalService:
             if possible_prefixes: target_prefix = possible_prefixes[0]
             else: target_prefix = kind
         
-        # [수정] _get_resampled_dataframe에서 추가한 타임프레임 접미사를 고려
         timeframe_suffix = f"_{indicator_value.timeframe}" if indicator_value.timeframe else ""
         
         expected_col_base = f"{target_prefix}_{params_str}" if params_str else target_prefix
@@ -177,10 +175,9 @@ class SignalService:
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
         """
         단일 LogicBlock을 평가하여 boolean Series (True/False)를 반환하는 재귀 함수.
-        (로깅 기능이 추가된 버전)
         """
-        indent = "  " * depth
-        logger.warning(f"{indent}블록 처리 시작 (ID: {block.id}, Type: {block.type}, Depth: {depth})")
+        # indent = "  " * depth
+        # logger.warning(f"{indent}블록 처리 시작 (ID: {block.id}, Type: {block.type}, Depth: {depth})")
 
         # 1. 부모 블록 자체의 조건을 먼저 계산합니다.
         # 이 부분은 자식(children)이 없는 단일 블록처럼 먼저 평가합니다.
@@ -256,20 +253,18 @@ class SignalService:
                 elif block.direction == "any": parent_series = pattern_series != 0
 
         
-        # --- [로그 추가 6] --- 부모 블록 자체의 조건 평가 결과 로깅
-        parent_true_count = parent_series.sum() if parent_series is not None else 0
-        logger.warning(f"{indent} -> 부모 블록 자체 조건 만족 횟수: {parent_true_count} / {len(df)}")
+        # --- [로그] --- 부모 블록 자체의 조건 평가 결과 로깅
+        # parent_true_count = parent_series.sum() if parent_series is not None else 0
+        # logger.warning(f"{indent} -> 부모 블록 자체 조건 만족 횟수: {parent_true_count} / {len(df)}")
 
         # 2. 자식 블록이 있는지 확인하고, 그에 따라 최종 결과를 조합합니다.
         if block.children and len(block.children) > 0:
-            # ▼▼▼ [새로운 디버깅 로그] 아래 4줄을 여기에 추가해주세요 ▼▼▼
-            logger.warning(f"{indent}--- 객체 검사 시작 ---")
-            logger.warning(f"{indent}블록 ID: {block.id}")
-            logger.warning(f"{indent}블록의 실제 타입: {type(block)}")
-            logger.warning(f"{indent}블록의 모든 속성(dict): {block.__dict__}")
-            # ▲▲▲ 여기까지 추가 ▲▲▲
+            # logger.warning(f"{indent}--- 객체 검사 시작 ---")
+            # logger.warning(f"{indent}블록 ID: {block.id}")
+            # logger.warning(f"{indent}블록의 실제 타입: {type(block)}")
+            # logger.warning(f"{indent}블록의 모든 속성(dict): {block.__dict__}")
 
-            logger.warning(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logic_operator})")
+            # logger.warning(f"{indent} -> 자식 블록 {len(block.children)}개 처리 시작 (Operator: {block.logic_operator})")
             children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1) for child in block.children]
             
             all_series_in_group = [parent_series] + children_series_list
@@ -279,9 +274,9 @@ class SignalService:
         else:
             final_series = parent_series
 
-        # --- [로그 추가 7] --- 현재 블록의 최종 결과 로깅
-        final_true_count = final_series.sum() if final_series is not None else 0
-        logger.warning(f"{indent}블록 처리 완료 (ID: {block.id}): 최종 조건 만족 횟수: {final_true_count} / {len(df)}")
+        # --- [로그] --- 현재 블록의 최종 결과 로깅
+        # final_true_count = final_series.sum() if final_series is not None else 0
+        # logger.warning(f"{indent}블록 처리 완료 (ID: {block.id}): 최종 조건 만족 횟수: {final_true_count} / {len(df)}")
         
         return final_series.fillna(False)
 
@@ -301,7 +296,6 @@ class SignalService:
                         find_indicators_recursively(child)
             
             elif isinstance(obj, schemas.IndicatorValue):
-                # [수정] IndicatorValue에 timeframe이 없으면 base_timeframe을 사용
                 tf = obj.timeframe if obj.timeframe else base_timeframe
                 identifier = f"{obj.indicator_key}|{tf}|{json.dumps(obj.values, sort_keys=True)}"
                 unique_indicators.add(identifier)
@@ -418,7 +412,7 @@ class SignalService:
         # 어차피 _get_required_timeframes_and_indicators가 올바른 타임프레임을 찾아줍니다.
         base_timeframe = '1h'
 
-        logger.warning(f"--- 신호 생성 시작 (Backtest): Ticker={ticker} ---")
+        # logger.warning(f"--- 신호 생성 시작 (Backtest): Ticker={ticker} ---")
 
         async with AsyncSessionLocal() as db:
             configs = self._get_required_timeframes_and_indicators(request, base_timeframe=base_timeframe)
@@ -444,7 +438,7 @@ class SignalService:
         process_rules(request.short_entry_rules, "short_entry")
         process_rules(request.short_exit_rules, "short_exit")
 
-        logger.warning(f"--- 신호 생성 완료 ({calculation_tf} 기준): 총 {len(final_signals)}개 신호 생성됨 ---")
+        # logger.warning(f"--- 신호 생성 완료 ({calculation_tf} 기준): 총 {len(final_signals)}개 신호 생성됨 ---")
         
         if not final_signals:
             return pd.DataFrame(columns=['signal']), calculation_tf

@@ -25,7 +25,8 @@ import {
 import debounce from "lodash.debounce";
 
 import apiClient from "@/lib/apiClient";
-import { Strategy, LogicBlock, IndicatorMetadata } from "@/types/strategy";
+import { Strategy, LogicBlock } from "@/types/strategy";
+import { IndicatorMetadata } from "@/types/indicator";
 import { cn } from "@/lib/utils";
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { useUserStore } from "@/store/userStore"; // [추가] userStore 임포트

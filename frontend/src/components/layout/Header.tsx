@@ -2,7 +2,7 @@
 
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 
@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
 import { CreditTooltipContent } from "@/components/domain/CreditTooltipContent";
+import { cn } from "@/lib/utils";
 
 export function Header() {
   const t = useTranslations("Header");
@@ -71,12 +72,19 @@ export function Header() {
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex cursor-help items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium">
-                    <Coins className="h-4 w-4 text-yellow-500" />
-                    <span>
-                      {creditBalance.totalBalance.toLocaleString()} CC
-                    </span>
-                  </div>
+                  <Link href="/dashboard?tab=credits">
+                    <div
+                      className={cn(
+                        "flex cursor-pointer items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium",
+                        "transition-colors hover:bg-muted/80" // 호버 효과 추가
+                      )}
+                    >
+                      <Coins className="h-4 w-4 text-yellow-500" />
+                      <span>
+                        {creditBalance.totalBalance.toLocaleString()} CC
+                      </span>
+                    </div>
+                  </Link>
                 </TooltipTrigger>
                 <TooltipContent className="p-0">
                   <CreditTooltipContent balance={creditBalance} />
