@@ -47,7 +47,7 @@ import { PurchaseConfirmationModal } from "@/components/domain/marketplace/Purch
 type PurchasableProduct = MarketplaceStrategy | ShopItem;
 
 // =================================================================
-// [신규] 결제 위젯을 렌더링하기 위한 전용 모달 컴포넌트
+// 결제 위젯을 렌더링하기 위한 전용 모달 컴포넌트
 // =================================================================
 interface PaymentWidgetModalProps {
   isOpen: boolean;
@@ -64,7 +64,6 @@ const PaymentWidgetModal = ({
   const { renderPaymentWidgets, requestPaymentMutation } = usePaymentWidget();
 
   const widgetsRef = React.useRef<WidgetsInstance | null>(null);
-  // [추가] cleanup 함수를 저장하기 위한 ref를 추가합니다.
   const cleanupRef = React.useRef<(() => void) | null>(null);
 
   const [isReady, setIsReady] = useState(false);
@@ -73,7 +72,6 @@ const PaymentWidgetModal = ({
     const initializeWidgets = async () => {
       if (isOpen && checkoutData) {
         try {
-          // [수정] 이제 renderPaymentWidgets는 { widgets, cleanup } 객체를 반환합니다.
           const { widgets, cleanup } = await renderPaymentWidgets(
             "#payment-widget",
             checkoutData.amount
@@ -90,16 +88,14 @@ const PaymentWidgetModal = ({
 
     initializeWidgets();
 
-    // [수정] useEffect의 cleanup 함수는 이제 ref에 저장된 cleanup 함수를 호출하기만 하면 됩니다.
     return () => {
       if (cleanupRef.current) {
-        cleanupRef.current(); // 저장해둔 cleanup 함수 실행
+        cleanupRef.current();
         cleanupRef.current = null;
         widgetsRef.current = null;
         setIsReady(false);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, checkoutData]);
 
   const handlePaymentRequest = () => {
@@ -161,7 +157,7 @@ export default function MarketplacePage() {
   const [productToPurchase, setProductToPurchase] =
     useState<PurchasableProduct | null>(null);
 
-  // [신규] 결제 위젯 모달을 위한 상태
+  // 결제 위젯 모달을 위한 상태
   const [isPaymentWidgetModalOpen, setIsPaymentWidgetModalOpen] =
     useState(false);
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
@@ -199,7 +195,7 @@ export default function MarketplacePage() {
     },
   });
 
-  // [수정] 현금 결제(위젯)를 위한 뮤테이션 설정
+  // 현금 결제(위젯)를 위한 뮤테이션 설정
   const cashCheckoutMutation = useCashCheckoutMutation({
     onSuccess: (data: CheckoutData) => {
       // 백엔드로부터 주문 정보(checkoutData)를 성공적으로 받으면,
@@ -373,7 +369,7 @@ export default function MarketplacePage() {
           </DialogContent>
         </Dialog>
 
-        {/* [신규] 결제 위젯 모달 */}
+        {/* 결제 위젯 모달 */}
         <PaymentWidgetModal
           isOpen={isPaymentWidgetModalOpen}
           onOpenChange={setIsPaymentWidgetModalOpen}
