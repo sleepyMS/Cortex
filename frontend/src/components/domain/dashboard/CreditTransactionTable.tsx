@@ -219,10 +219,10 @@ const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
           )}
         >
           {isGain && expiresAt && (
-            <TooltipProvider>
+            <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger>
-                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <Clock className="h-3 w-3 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
