@@ -1145,6 +1145,7 @@
     }
   },
   "Marketplace": {
+    "paymentModalTitle": "Marketplace",
     "Common": {
       "cancel": "Cancel",
       "confirm": "Confirm",
@@ -1196,6 +1197,25 @@
       "errorTitle": "Could not load strategy",
       "errorDescription": "The requested strategy could not be found or an error occurred while loading its information.",
       "noBacktest": "This strategy does not have a representative backtest result yet."
+    },
+    "StrategyInfoCard": {
+      "title": "Strategic Information",
+      "Description": "Detailed description of strategy",
+      "noDescription": "No description registered",
+      "vitals": {
+        "title": "key indicators",
+        "period": "backtest period",
+        "profitFactor": "ProfitFactor",
+        "SharpeRadio": "Sharp Index",
+        "winRate": "WinRate",
+        "avgholding period": "average retention period",
+        "avgHoldingPeriodValue": "{value}일",
+        "totalTrades": "Total number of transactions"
+      }
+    },
+    "AuthorCard": {
+      "title": "producer",
+      "viewProfile": "View Profile"
     }
   },
   "StrategyPerformanceBadges": {

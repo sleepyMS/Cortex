@@ -131,7 +131,7 @@ export function StrategyInfoCard({
                 icon={Clock}
                 label={t("vitals.avgHoldingPeriod")}
                 value={t("vitals.avgHoldingPeriodValue", {
-                  days:
+                  value:
                     backtestResult.avgHoldingPeriodDays?.toFixed(1) ?? "N/A",
                 })}
               />
