@@ -409,10 +409,17 @@
         "description": "백테스트 실행에 필요한 크레딧을 미리 계산해 보세요.",
         "form": {
           "durationLabel": "백테스팅 기간",
+          "year": "년",
           "timeframeLabel": "최소 타임프레임",
           "timeframePlaceholder": "타임프레임 선택",
           "trialsLabel": "최적화 시도 횟수",
-          "submitButton": "예상 비용 조회"
+          "submitButton": "예상 비용 조회",
+          "1m": "1분",
+          "5m": "5분",
+          "15m": "15분",
+          "1h": "1시간",
+          "4h": "4시간",
+          "1d": "1일"
         },
         "result": {
           "title": "예상 비용",

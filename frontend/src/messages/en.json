@@ -409,10 +409,17 @@
         "description": "Calculate the required credits for your backtest in advance.",
         "form": {
           "durationLabel": "Backtest Duration",
+          "year": "Year",
           "timeframeLabel": "Min. Timeframe",
           "timeframePlaceholder": "Select timeframe",
           "trialsLabel": "Optimization Trials",
-          "submitButton": "Estimate Cost"
+          "submitButton": "Estimate Cost",
+          "1m": "1m",
+          "5m": "5m",
+          "15m": "15m",
+          "1h": "1h",
+          "4h": "4h",
+          "1d": "1d"
         },
         "result": {
           "title": "Estimated Cost",

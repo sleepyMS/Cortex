@@ -114,7 +114,8 @@ export function CostEstimator() {
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <FormLabel>
-                    {t("form.durationLabel")} ({field.value}년)
+                    {t("form.durationLabel")} ({field.value}
+                    {t("form.year")})
                   </FormLabel>
                   <FormControl>
                     <Slider
@@ -146,12 +147,12 @@ export function CostEstimator() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">1분</SelectItem>
-                      <SelectItem value="5">5분</SelectItem>
-                      <SelectItem value="15">15분</SelectItem>
-                      <SelectItem value="60">1시간</SelectItem>
-                      <SelectItem value="240">4시간</SelectItem>
-                      <SelectItem value="1440">1일</SelectItem>
+                      <SelectItem value="1">{t("form.1m")}</SelectItem>
+                      <SelectItem value="5">{t("form.5m")}</SelectItem>
+                      <SelectItem value="15">{t("form.15m")}</SelectItem>
+                      <SelectItem value="60">{t("form.1h")}</SelectItem>
+                      <SelectItem value="240">{t("form.4h")}</SelectItem>
+                      <SelectItem value="1440">{t("form.1d")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
