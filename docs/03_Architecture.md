@@ -13,15 +13,12 @@ graph TD
         User["👤 사용자"] --> Browser[/"💻 웹 브라우저 (Next.js)"/]
     end
 
-    Browser -- API Request --> APIGateway[API Gateway]
+    Browser -- API Request --> APIGateway[<b>API Gateway</b>]
 
     subgraph "Cortex Backend (Hybrid MSA)"
         APIGateway -- Route --> WebService["<b>Web & Community Service</b><br>(Well-Structured Monolith)<br>- Authentication<br>- Marketplace<br>- Community"]
-
-        subgraph "Core Quant Engine"
-            APIGateway -- Route --> BacktestService["<b>Backtesting Service</b><br>(Microservice)"]
-            APIGateway -- Route --> OptimizationService["<b>Optimization Service</b><br>(Microservice)"]
-        end
+        APIGateway -- Route --> BacktestService["<b>Backtesting Service</b><br>(Microservice)"]
+        APIGateway -- Route --> OptimizationService["<b>Optimization Service</b><br>(Microservice)"]
 
         subgraph "Internal Communication"
             WebService -- Publish Event --> MessageBus[(Message Bus)]
@@ -33,7 +30,6 @@ graph TD
     WebService --> WebDB[(DB for Web Service)]
     BacktestService --> QuantDB[(DB for Quant Engine)]
     OptimizationService --> QuantDB
-
 ```
     
 ```mermaid
