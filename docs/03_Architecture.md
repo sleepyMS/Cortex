@@ -6,6 +6,32 @@
 
 ## 1. 시스템 구조도 (System Architecture Diagram)
 
+
+```mermaid
+graph TD
+    subgraph "Client Layer"
+        User["👤 사용자"] --> Browser[/"💻 웹 브라우저 (Next.js)"/]
+    end
+
+    Browser -- API Request --> APIGateway[<b>API Gateway</b>]
+
+    subgraph "Cortex Backend (Hybrid MSA)"
+        APIGateway -- Route --> WebService["<b>Web & Community Service</b><br>(Well-Structured Monolith)<br>- Authentication<br>- Marketplace<br>- Community"]
+        APIGateway -- Route --> BacktestService["<b>Backtesting Service</b><br>(Microservice)"]
+        APIGateway -- Route --> OptimizationService["<b>Optimization Service</b><br>(Microservice)"]
+
+        subgraph "Internal Communication"
+            WebService -- Publish Event --> MessageBus[(Message Bus)]
+            BacktestService -- Subscribe/Publish --> MessageBus
+            OptimizationService -- Subscribe/Publish --> MessageBus
+        end
+    end
+
+    WebService --> WebDB[(DB for Web Service)]
+    BacktestService --> QuantDB[(DB for Quant Engine)]
+    OptimizationService --> QuantDB
+```
+    
 ```mermaid
 graph TD
     subgraph "User's Browser"
