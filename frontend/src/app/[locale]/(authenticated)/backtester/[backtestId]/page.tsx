@@ -165,7 +165,7 @@ export default function BacktestDetailPage({
   const { backtestId } = params;
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, error } = useQuery<{
+  const { data, isLoading, isError, error, isRefetching } = useQuery<{
     backtest: Backtest;
     tradeLogs: TradeLog[];
   }>({
@@ -237,7 +237,7 @@ export default function BacktestDetailPage({
   }, [data?.backtest?.status, backtestId, queryClient]);
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading || isRefetching) {
       return <LoadingSkeleton />;
     }
 

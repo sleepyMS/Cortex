@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[Any]) -> Dict[str, Any]:
     """
-    [최종 수정 버전] 중첩된 딕셔너리/리스트 구조를 안전하게 탐색하며 오버라이드를 적용합니다.
-    None 값을 만나면 경로 탐색을 중단하여 TypeError를 방지합니다.
+    [최종 안정화 버전] 프론트엔드로부터 받은 잠재적으로 부정확한 경로를
+    백엔드 데이터 구조에 맞게 '사전 정제(Sanitize)'하여 안전하게 오버라이드를 적용합니다.
     """
     if not overrides:
         return strategy_dict
@@ -36,21 +36,30 @@ def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[An
     modified_strategy = copy.deepcopy(strategy_dict)
 
     for override in overrides:
-        path_str = override.get('path') if isinstance(override, dict) else override.path
-        value = override.get('value') if isinstance(override, dict) else override.value
+        # --- [핵심 수정] ---
+        # override는 Pydantic 모델 객체이므로, .path와 .value로 직접 접근합니다.
+        # 불필요하고 오류를 유발하는 getattr, .get()을 제거합니다.
+        path_str_raw = override.path
+        value = override.value
+        # -------------------
         
-        if not path_str:
+        if not path_str_raw:
             continue
 
         try:
-            parts = path_str.split('.')
+            # --- [핵심 해결 로직] ---
+            # 경로 탐색을 시작하기 전에, 프론트엔드의 '.children.blocks.' 패턴을
+            # 백엔드 데이터 구조인 '.children.'으로 미리 변환합니다.
+            sanitized_path = path_str_raw.replace(".children.blocks.", ".children.")
+            parts = sanitized_path.split('.')
+            # -------------------------
+
             current_level = modified_strategy
             
-            # 마지막 부분을 제외하고 경로를 따라 탐색
+            # 이제 정제된 경로를 사용하므로, 루프 내에 복잡한 조건문이 필요 없습니다.
             for part in parts[:-1]:
                 key_or_index = int(part) if part.isdigit() else part
                 
-                # [안정성 강화] None이거나 더 이상 탐색할 수 없는 구조이면 중단
                 if current_level is None or not isinstance(current_level, (dict, list)):
                     raise TypeError(f"Cannot traverse path at '{part}', current level is not a collection.")
 
@@ -60,11 +69,11 @@ def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[An
             last_part = parts[-1]
             key_or_index = int(last_part) if last_part.isdigit() else last_part
             
-            if current_level is not None:
+            if current_level is not None and key_or_index in current_level:
                 current_level[key_or_index] = value
 
         except (KeyError, IndexError, TypeError) as e:
-            logger.warning(f"Failed to apply override for path '{path_str}': {e}")
+            logger.warning(f"Failed to apply override for path '{path_str_raw}': {e}")
             continue
             
     return modified_strategy
@@ -99,36 +108,40 @@ class BacktestService:
             by_alias=True 
         )
 
-        # --- [핵심 수정 로직 시작] ---
-        # 2-1. 규칙(rules) 관련 오버라이드를 먼저 적용합니다.
+        # [핵심] 이제 _apply_parameter_overrides 함수가 모든 오버라이드를 처리합니다.
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
         
-        # 2-2. TP/SL 관련 오버라이드를 명시적으로 적용합니다.
-        # 사용자가 tpsl_logic을 요청에 포함시킨 경우에만 스냅샷을 덮어씁니다.
-        if backtest_create.parameters.tpsl_logic:
-            # Pydantic 모델을 dict로 변환하여 기존 스냅샷에 업데이트
-            tpsl_override_dict = backtest_create.parameters.tpsl_logic.model_dump(mode='json', by_alias=True)
-            
-            # 기존 tpsl_logic이 None일 경우를 대비하여 안전하게 업데이트
-            if strategy_snapshot_dict.get('tpslLogic') is None:
-                strategy_snapshot_dict['tpslLogic'] = {}
-            strategy_snapshot_dict['tpslLogic'].update(tpsl_override_dict)
-        # --- [핵심 수정 로직 종료] ---
+        # --- [제거] 아래의 중복된 tpslLogic 처리 로직을 완전히 삭제합니다. ---
+        # if backtest_create.parameters.tpsl_logic:
+        #     tpsl_override_dict = backtest_create.parameters.tpsl_logic.model_dump(
+        #         mode='json', by_alias=True, exclude_unset=True
+        #     )
+        #     if strategy_snapshot_dict.get('tpslLogic') is None:
+        #         strategy_snapshot_dict['tpslLogic'] = {}
+        #     strategy_snapshot_dict['tpslLogic'].update(tpsl_override_dict)
+        # -----------------------------------------------------------------
         
         params_to_store = schemas.BacktestParametersPayload(
             start_date=backtest_create.start_date,
             end_date=backtest_create.end_date,
             initial_capital=backtest_create.initial_capital,
-            parameters=backtest_create.parameters # 중첩된 parameters 객체(leverage, overrides 등)를 그대로 전달
+            # [수정] payload의 parameters에서 tpslLogic이 제거되었으므로,
+            # 백엔드 스키마도 이에 맞춰 업데이트하거나, 아래처럼 필요한 부분만 전달합니다.
+            parameters=schemas.BacktestExecutionParameters(
+                leverage=backtest_create.parameters.leverage,
+                fee=backtest_create.parameters.fee,
+                slippage=backtest_create.parameters.slippage,
+                overrides=overrides
+            )
         )
         
         db_backtest = models.Backtest(
             user_id=user.id,
             strategy_id=backtest_create.strategy_id,
             status=BacktestStatus.PENDING,
-            parameters=params_to_store.model_dump(mode='json'), # 일관된 구조로 저장
-            strategy_snapshot=strategy_snapshot_dict # 모든 오버라이드가 적용된 최종본 저장
+            parameters=params_to_store.model_dump(mode='json'),
+            strategy_snapshot=strategy_snapshot_dict
         )
 
         db_backtest.strategy = strategy

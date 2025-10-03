@@ -329,13 +329,24 @@ export function BacktestSetupForm() {
 
   const createBacktestMutation = useMutation({
     mutationFn: (data: FormValues) => {
-      // [신규 로직] overrides 배열에서 TP/SL 값을 찾습니다.
-      const takeProfitOverride = data.overrides?.find(
-        (o) => o.path === "tpslLogic.takeProfitPct"
-      );
-      const stopLossOverride = data.overrides?.find(
-        (o) => o.path === "tpslLogic.stopLossPct"
-      );
+      // [개선] 최종 overrides 배열을 여기서 완성합니다.
+      const finalOverrides = [...(data.overrides || [])];
+
+      // trailingStop 관련 값들을 overrides 배열에 추가합니다.
+      finalOverrides.push({
+        path: "tpslLogic.trailingStopEnabled",
+        value: data.trailingStopEnabled,
+      });
+      if (data.trailingStopEnabled) {
+        finalOverrides.push({
+          path: "tpslLogic.trailingStopActivationPct",
+          value: data.trailingStopActivationPct,
+        });
+        finalOverrides.push({
+          path: "tpslLogic.trailingStopCallbackPct",
+          value: data.trailingStopCallbackPct,
+        });
+      }
 
       const payload = {
         strategyId: data.strategyId,
@@ -346,18 +357,10 @@ export function BacktestSetupForm() {
           leverage: data.leverage,
           fee: data.feePct,
           slippage: data.slippagePct,
-          // overrides 배열은 그대로 전달합니다.
-          overrides: data.overrides,
-          // [수정] tpslLogic 객체를 완전한 형태로 구성합니다.
-          tpslLogic: {
-            // 트레일링 스탑 관련 값
-            trailingStopEnabled: data.trailingStopEnabled,
-            trailingStopActivationPct: data.trailingStopActivationPct,
-            trailingStopCallbackPct: data.trailingStopCallbackPct,
-            // overrides 배열에서 찾은 TP/SL 값을 명시적으로 추가
-            takeProfitPct: takeProfitOverride ? takeProfitOverride.value : null,
-            stopLossPct: stopLossOverride ? stopLossOverride.value : null,
-          },
+          // [핵심] 이제 overrides 배열이 모든 파라미터 변경사항을 담는 유일한 진실의 원천입니다.
+          overrides: finalOverrides,
+          // [제거] 수동으로 만들던 tpslLogic 객체를 완전히 제거합니다.
+          // tpslLogic: { ... }
         },
       };
       return apiClient.post("/backtests", payload);

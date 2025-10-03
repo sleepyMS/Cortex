@@ -448,11 +448,19 @@ class SignalService:
         signals_df = signals_df.set_index('time_dt')
         signals_df = signals_df.rename(columns={'signal_type': 'signal'})
         
-        # [수정] 업샘플링 로직 제거!
-        # 중복된 인덱스(동일 시간)에 여러 신호가 발생할 경우, 첫 번째 신호만 유지합니다.
-        signals_df = signals_df[~signals_df.index.duplicated(keep='first')]
+        # 단순 중복 제거 대신, 우선순위 기반으로 신호를 선택
+        if not signals_df.index.is_unique:
+            # 우선순위 맵 정의 (낮은 숫자 = 높은 우선순위)
+            priority_map = {
+                'long_exit': 1, 'short_exit': 1,
+                'long_entry': 2, 'short_entry': 2,
+            }
+            signals_df['priority'] = signals_df['signal'].map(priority_map)
+            
+            # 동일 인덱스(시간) 내에서 우선순위가 가장 높은 신호만 선택
+            signals_df = signals_df.sort_values('priority').groupby(signals_df.index).first()
+            signals_df = signals_df.drop(columns='priority')
 
-        # [수정] (DataFrame, 계산기준_타임프레임) 튜플을 반환합니다.
         return signals_df[['signal']], calculation_tf
 
 signal_service = SignalService()

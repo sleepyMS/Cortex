@@ -76,13 +76,24 @@ const formatRuleTitle = (
   }
 };
 
-// 중첩된 객체에서 특정 경로의 값을 안전하게 가져오는 헬퍼 함수
-const getValueFromPath = (obj: any, path: string): any => {
-  return path.split(".").reduce((acc, part) => {
+const getOriginalValueByformPath = (
+  originalStrategy: any,
+  formPath: string
+): any => {
+  // "children.blocks.0" -> "children.0" 과 같이 변환
+  const dataPath = formPath.replace(/\.children\.blocks/g, ".children");
+
+  return dataPath.split(".").reduce((acc, part) => {
     if (acc === undefined || acc === null) return undefined;
+
+    // 'blocks' 같은 문자열 키는 데이터 객체에 없으므로 건너뜁니다.
+    if (Array.isArray(acc) && isNaN(Number(part))) {
+      return acc;
+    }
+
     const index = !isNaN(Number(part)) ? Number(part) : part;
     return acc[index];
-  }, obj);
+  }, originalStrategy);
 };
 
 /**
@@ -279,27 +290,29 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   );
 
   const overriddenPaths = useMemo(() => {
-    const originalStrategy = backtest.strategy; // 원본 전략
-    const snapshotStrategy = backtest.strategySnapshot; // 실행 시점 스냅샷
+    const originalStrategy = backtest.strategy; // 비교 기준이 될 원본 전략
     const overrides = backtest.parameters.parameters.overrides || [];
     const changedPaths = new Set<string>();
 
-    // overrides 배열에 있는 모든 경로에 대해 값을 비교
+    // "파라미터 오버라이드" 영역에 있는 모든 항목에 대해
     for (const override of overrides) {
-      const originalValue = getValueFromPath(originalStrategy, override.path);
-      const snapshotValue = getValueFromPath(snapshotStrategy, override.path);
+      // 1. 새로운 헬퍼 함수로 원본 전략에서 '기본값'을 찾습니다.
+      const originalValue = getOriginalValueByformPath(
+        originalStrategy,
+        override.path
+      );
 
-      // 두 값이 실제로 다를 경우에만 Set에 추가
-      if (originalValue !== snapshotValue) {
+      // 2. 현재 form의 값(스냅샷에 저장된 값)은 override.value 입니다.
+      const currentValue = override.value;
+
+      // 3. 기본값과 현재 값이 '다를' 경우에만 오버라이드된 것으로 판별합니다.
+      // (주의: null과 undefined를 동일하게 취급하지 않기 위해 엄격한 비교 사용)
+      if (originalValue !== currentValue) {
         changedPaths.add(override.path);
       }
     }
     return changedPaths;
-  }, [
-    backtest.strategy,
-    backtest.strategySnapshot,
-    backtest.parameters.parameters.overrides,
-  ]);
+  }, [backtest.strategy, backtest.parameters.parameters.overrides]);
 
   const snapshot = backtest.strategySnapshot;
   if (!snapshot) return null;
