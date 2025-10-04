@@ -4,11 +4,9 @@ import React, { useMemo, useCallback } from "react";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
 import { clsx } from "clsx";
 
-// ▼▼▼ [핵심 수정 1] Zustand 스토어를 import 합니다. ▼▼▼
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { LegendData } from "@/types/chart";
 import { IndicatorMetadata } from "@/types/indicator";
-// ▲▲▲ [수정 완료] ▲▲▲
 
 // --- 타입 정의 ---
 interface ChartLegendProps {
@@ -40,39 +38,59 @@ const formatValue = (value?: number) => {
 
 // --- 메인 컴포넌트 ---
 export function ChartLegend({ legendData }: ChartLegendProps) {
-  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
-  // ▲▲▲ [수정 완료] ▲▲▲
 
-  // ▼▼▼ [핵심 수정 3] 지표 키 파싱 로직을 개선하고, 전역 메타데이터를 사용하도록 변경합니다. ▼▼▼
   const parseIndicatorKey = useCallback(
     (fullKey: string) => {
-      const parts = fullKey.split("_");
-      if (parts.length < 2) return { label: fullKey, params: "", output: "" };
+      // 1. 'kind'를 기준으로 포괄적인 메타데이터를 먼저 찾습니다. (가장 안정적인 방법)
+      const metadata = indicatorMetadata.find((m) =>
+        fullKey.toLowerCase().startsWith(m.kind.toLowerCase())
+      );
 
-      const kind = parts[0];
-      const timeframe = parts[parts.length - 1];
-      const paramsArray = parts.slice(1, -1);
-
-      // `kind`를 기반으로 메타데이터를 찾습니다. (예: 'ema' -> EMA 메타데이터)
-      const metadata = indicatorMetadata.find((m) => m.kind === kind);
+      // 메타데이터를 찾지 못하면 원본 키를 그대로 반환합니다.
       if (!metadata) {
-        return { label: fullKey, params: "", output: "" };
+        return {
+          label: fullKey,
+          params: "",
+          outputLabel: "",
+        };
       }
 
-      // 출력(output) 이름 찾기 (예: MACD의 histogram)
-      // 이 부분은 더 정교한 로직으로 개선될 수 있습니다.
-      const output = "";
+      // 2. 메타데이터를 찾았다면, 세부 정보를 분석합니다.
+      let paramsString = fullKey.substring(metadata.kind.length);
+      let outputLabel = "";
+
+      // 3. 어떤 출력(output)에 해당하는지 찾아서 라벨과 파라미터 부분을 분리합니다.
+      if (metadata.outputs && metadata.outputs.length > 0) {
+        // 가장 긴 키부터 확인하여 정확한 output을 찾습니다 (예: 'macdh'가 'macd'보다 먼저 확인됨).
+        const sortedOutputs = [...metadata.outputs].sort(
+          (a, b) => b.key.length - a.key.length
+        );
+
+        for (const out of sortedOutputs) {
+          const outKey = out.key.toLowerCase();
+          if (paramsString.toLowerCase().startsWith(outKey)) {
+            outputLabel = out.label;
+            paramsString = paramsString.substring(outKey.length);
+            break;
+          }
+        }
+      }
+
+      // 4. 남은 부분에서 파라미터를 추출하고 포맷팅합니다.
+      const finalParams = paramsString
+        .split("_")
+        .filter((p) => p !== "") // 빈 문자열 제거
+        .join(", ");
 
       return {
         label: metadata.label,
-        params: paramsArray.length > 0 ? `(${paramsArray.join(", ")})` : "",
-        output: output,
-        timeframe: timeframe,
+        params: finalParams ? `(${finalParams})` : "",
+        outputLabel: outputLabel,
       };
     },
     [indicatorMetadata]
-  ); // 메타데이터가 변경될 때만 이 함수가 재생성됩니다.
+  );
 
   const candle = legendData.CANDLE as CandlestickData<UTCTimestamp> | undefined;
   const indicators = Object.entries(legendData).filter(
@@ -132,8 +150,9 @@ export function ChartLegend({ legendData }: ChartLegendProps) {
         <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
           {indicators.map(([key, data]) => {
             if (!data) return null;
-            const { label, params, output, timeframe } = parseIndicatorKey(key);
-            const displayOutput = output ? ` (${output})` : "";
+            const { label, params, outputLabel } = parseIndicatorKey(key);
+            // 여러 출력 라인이 있는 경우 (예: MACD 라인) 라벨을 괄호로 묶어줍니다.
+            const displayOutput = outputLabel ? ` (${outputLabel})` : "";
 
             return (
               <div key={key} className="flex items-center gap-x-2">
@@ -143,9 +162,6 @@ export function ChartLegend({ legendData }: ChartLegendProps) {
                 />
                 <span className="text-muted-foreground">
                   {label} {params}
-                  <span className="ml-1 text-primary/70 font-semibold">
-                    {timeframe}
-                  </span>
                   {displayOutput}
                 </span>
                 <span className="font-semibold font-mono ml-auto">

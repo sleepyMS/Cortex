@@ -19,13 +19,11 @@ import { useChartIndicatorManager } from "@/hooks/useChartIndicatorManager";
 import { ChartLegend } from "./ChartLegend";
 import { Spinner } from "@/components/ui/Spinner";
 
-// ▼▼▼ [핵심 수정 1] Zustand 스토어와 중앙화된 타입을 import 합니다. ▼▼▼
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { IndicatorMetadata } from "@/types/indicator";
 import { LegendData } from "@/types/chart";
 import { PositionRules, IndicatorValue, LogicBlock } from "@/types/strategy";
 import { SignalData } from "@/types/market";
-// ▲▲▲ [수정 완료] ▲▲▲
 
 // --- 타입 정의 ---
 interface StrategyChartProps {
@@ -63,13 +61,10 @@ export default function StrategyChart({
   // --- State ---
   const { resolvedTheme } = useTheme();
   const [legendData, setLegendData] = useState<LegendData>({});
-
-  // ▼▼▼ [핵심 수정 2] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다. ▼▼▼
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
-  // ▲▲▲ [수정 완료] ▲▲▲
 
-  // ▼▼▼ [핵심 수정 3] useMemo 훅을 사용하여, 규칙(rules)이 바뀔 때마다
-  // 필요한 지표 설정과 보조 패널 목록을 한 번에 계산합니다. ▼▼▼
+  // useMemo 훅을 사용하여, 규칙(rules)이 바뀔 때마다
+  // 필요한 지표 설정과 보조 패널 목록을 한 번에 계산합니다.
   const { indicatorConfigs, paneIndicators } = useMemo(() => {
     const indicators = new Map<string, IndicatorValue>();
     const requiredPanes = new Set<string>();
@@ -116,7 +111,6 @@ export default function StrategyChart({
       paneIndicators: Array.from(requiredPanes),
     };
   }, [rules, indicatorMetadata]); // 규칙이나 메타데이터가 변경될 때만 재계산
-  // ▲▲▲ [수정 완료] ▲▲▲
 
   const getPaneContainer = useCallback((key: string) => {
     return paneContainersRef.current.get(key);

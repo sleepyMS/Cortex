@@ -283,7 +283,7 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   const indicatorDefinitions = useMemo(
     () =>
       metadata.reduce((acc, meta) => {
-        acc[meta.indicatorKey] = meta;
+        acc[meta.key] = meta;
         return acc;
       }, {} as Record<string, IndicatorMetadata>),
     [metadata]

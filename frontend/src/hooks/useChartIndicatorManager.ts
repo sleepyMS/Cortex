@@ -403,20 +403,23 @@ export function useChartIndicatorManager({
     // 3. 새로운 지표 시리즈 생성
     if (indicatorData) {
       Object.entries(indicatorData).forEach(([fullSeriesKey, data], index) => {
-        // ▼▼▼ [핵심 수정] 정적 데이터 대신 전역 스토어의 메타데이터를 사용합니다. ▼▼▼
-        const metadata = indicatorMetadata.find((ind) =>
-          fullSeriesKey.toUpperCase().startsWith(ind.key.toUpperCase())
+        // [최종 버전] 'kind' 속성을 사용하여 메타데이터를 안정적으로 찾습니다.
+        const metadata = indicatorMetadata.find((meta) =>
+          fullSeriesKey.toLowerCase().startsWith(meta.kind.toLowerCase())
         );
-        // ▲▲▲ [수정 완료] ▲▲▲
 
         if (!metadata || !data || data.length === 0) return;
 
+        // 'baseKey'는 표준 속성인 'indicatorKey'를 사용합니다.
         const baseKey = metadata.key;
 
-        // baseKey 자체가 없으면 새로 pane과 상태를 만듬
         if (!manager.has(baseKey)) {
           let paneChart: IChartApi | null = null;
+
+          console.log(123, paneIndicators);
           if (paneIndicators.includes(baseKey)) {
+            // Step 1 수정으로 인해 paneIndicators가 올바른 값을 가지므로,
+            // 이 블록이 이제 정상적으로 실행됩니다.
             const container = getPaneContainer(baseKey);
             if (container) {
               const finalOptions = {
@@ -437,7 +440,9 @@ export function useChartIndicatorManager({
         const indicatorState = manager.get(baseKey)!;
         if (!indicatorState.series.has(fullSeriesKey)) {
           const targetChart = indicatorState.paneChart || mainChart;
-          const isHistogram = fullSeriesKey.toLowerCase().includes("histogram");
+          const isHistogram =
+            fullSeriesKey.toLowerCase().includes("histogram") ||
+            fullSeriesKey.toLowerCase().includes("macdh");
           let newSeries: ISeriesApi<SeriesType>;
           if (isHistogram) {
             const options: DeepPartial<HistogramSeriesOptions> = {
