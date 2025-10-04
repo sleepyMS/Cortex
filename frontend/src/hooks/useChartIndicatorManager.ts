@@ -490,7 +490,6 @@ export function useChartIndicatorManager({
         if (!manager.has(baseKey)) {
           let paneChart: IChartApi | null = null;
 
-          console.log(123, paneIndicators);
           if (paneIndicators.includes(baseKey)) {
             // Step 1 수정으로 인해 paneIndicators가 올바른 값을 가지므로,
             // 이 블록이 이제 정상적으로 실행됩니다.
@@ -553,44 +552,54 @@ export function useChartIndicatorManager({
   // Effect 4: 신호 데이터를 받아 마커를 렌더링
   useEffect(() => {
     const series = candlestickSeriesRef.current;
-    if (!series) return;
+    if (!series || !ohlcvData || ohlcvCacheRef.current.size === 0) {
+      // 마커가 있다면 초기화
+      if (markersPluginRef.current) {
+        (markersPluginRef.current as any).setMarkers([]);
+      }
+      return;
+    }
 
     const signals = signalData?.signals || [];
 
-    const markers: SeriesMarker<Time>[] = signals.map((signal) => {
-      let position: "aboveBar" | "belowBar" = "aboveBar";
-      let color = "#ef5350";
-      let shape: "arrowUp" | "arrowDown" = "arrowDown";
-      let text = "Signal";
+    const ohlcvTimes = new Set(Array.from(ohlcvCacheRef.current.keys()));
 
-      switch (signal.signalType) {
-        case "long_entry":
-          position = "belowBar";
-          color = "#26a69a";
-          shape = "arrowUp";
-          text = "L-Entry";
-          break;
-        case "long_exit":
-          position = "aboveBar";
-          color = "#f57c00";
-          shape = "arrowDown";
-          text = "L-Exit";
-          break;
-        case "short_entry":
-          position = "aboveBar";
-          color = "#ef5350";
-          shape = "arrowDown";
-          text = "S-Entry";
-          break;
-        case "short_exit":
-          position = "belowBar";
-          color = "#2962ff";
-          shape = "arrowUp";
-          text = "S-Exit";
-          break;
-      }
-      return { time: signal.time, position, color, shape, text };
-    });
+    const markers: SeriesMarker<Time>[] = signals
+      .filter((signal) => ohlcvTimes.has(timeToSeconds(signal.time)))
+      .map((signal) => {
+        let position: "aboveBar" | "belowBar" = "aboveBar";
+        let color = "#ef5350";
+        let shape: "arrowUp" | "arrowDown" = "arrowDown";
+        let text = "Signal";
+
+        switch (signal.signalType) {
+          case "long_entry":
+            position = "belowBar";
+            color = "#26a69a";
+            shape = "arrowUp";
+            text = "L-Entry";
+            break;
+          case "long_exit":
+            position = "aboveBar";
+            color = "#f57c00";
+            shape = "arrowDown";
+            text = "L-Exit";
+            break;
+          case "short_entry":
+            position = "aboveBar";
+            color = "#ef5350";
+            shape = "arrowDown";
+            text = "S-Entry";
+            break;
+          case "short_exit":
+            position = "belowBar";
+            color = "#2962ff";
+            shape = "arrowUp";
+            text = "S-Exit";
+            break;
+        }
+        return { time: signal.time, position, color, shape, text };
+      });
 
     if (!markersPluginRef.current) {
       markersPluginRef.current = createSeriesMarkers(

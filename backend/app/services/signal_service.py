@@ -114,12 +114,16 @@ class SignalService:
                 if col_name in processed_columns:
                     continue
                 
+                is_supert_col = col_name.upper().startswith('SUPERT_')
+                
                 if any(col_name.upper().startswith(p + '_') or col_name.upper() == p for p in known_prefixes):
                     series_data = df[[col_name, 'time']]
                     results[col_name.lower()] = [
                         schemas.IndicatorDataPoint(
                             time=row['time'],
                             value=(
+                                # 슈퍼트렌드 컬럼이고 값이 0이면 None으로, 아니면 기존 로직으로 처리
+                                None if is_supert_col and row[col_name] == 0 else
                                 None if row[col_name] is None or np.isnan(row[col_name]) or np.isinf(row[col_name])
                                 else row[col_name]
                             )
