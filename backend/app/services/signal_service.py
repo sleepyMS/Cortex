@@ -115,9 +115,15 @@ class SignalService:
                     continue
                 
                 if any(col_name.upper().startswith(p + '_') or col_name.upper() == p for p in known_prefixes):
-                    series_data = df[[col_name, 'time']].dropna()
+                    series_data = df[[col_name, 'time']]
                     results[col_name.lower()] = [
-                        schemas.IndicatorDataPoint(time=row['time'], value=row[col_name])
+                        schemas.IndicatorDataPoint(
+                            time=row['time'],
+                            value=(
+                                None if row[col_name] is None or np.isnan(row[col_name]) or np.isinf(row[col_name])
+                                else row[col_name]
+                            )
+                        )
                         for row in series_data.to_dict('records')
                     ]
                     processed_columns.add(col_name)

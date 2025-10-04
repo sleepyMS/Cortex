@@ -85,7 +85,7 @@ INDICATOR_DEFINITIONS = {
         "supportedLogics": ["comparison", "trend_signal"],
     },
     "SuperTrend": {
-        "kind": "supertrend", "label": "슈퍼트렌드", "description": "ATR을 활용해 추세를 명확히 표시하는 지표.", "category": "Trend", "paneType": "overlay",
+        "kind": "supert", "label": "슈퍼트렌드", "description": "ATR을 활용해 추세를 명확히 표시하는 지표.", "category": "Trend", "paneType": "overlay",
         "parameters": {
             "length": {"label": "기간", "type": "int", "default": 10, "step": 1, "validation_range": [1, 100], "optimization_range": [7, 21]},
             "multiplier": {"label": "배수", "type": "float", "default": 3.0, "step": 0.1, "validation_range": [0.1, 10.0], "optimization_range": [1.0, 5.0]},

@@ -388,7 +388,14 @@ export function useChartIndicatorManager({
       state.series.forEach((series, fullKey) => {
         if (newSeriesKeys.has(fullKey)) {
           hasActiveSeries = true;
-          series.setData(indicatorData?.[fullKey] || []); // 데이터 업데이트
+
+          // ▼▼▼ [수정 1] 시리즈 '업데이트' 시 null 값 필터링 ▼▼▼
+          const seriesData = indicatorData?.[fullKey] || [];
+          const filteredData = seriesData.filter(
+            (d) => d.value !== null && d.value !== undefined
+          );
+          series.setData(filteredData as any);
+          // ▲▲▲ [수정 완료] ▲▲▲
         } else {
           (state.paneChart || mainChart).removeSeries(series);
           state.series.delete(fullKey);
@@ -402,8 +409,75 @@ export function useChartIndicatorManager({
 
     // 3. 새로운 지표 시리즈 생성
     if (indicatorData) {
-      Object.entries(indicatorData).forEach(([fullSeriesKey, data], index) => {
-        // [최종 버전] 'kind' 속성을 사용하여 메타데이터를 안정적으로 찾습니다.
+      // ▼▼▼ [최종 해결책 1] 원본 데이터를 수정하지 않도록 복사본을 만듭니다. ▼▼▼
+      const dataToProcess = { ...indicatorData };
+      // ▲▲▲ [수정 완료] ▲▲▲
+
+      // 슈퍼트렌드 데이터를 사전 처리하는 로직 추가
+      const supertKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("supert_")
+      );
+      const supertdKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("supertd_")
+      );
+
+      if (supertKey && supertdKey) {
+        const metadata = indicatorMetadata.find(
+          (meta) => meta.kind === "supert"
+        );
+        if (metadata) {
+          const baseKey = metadata.key;
+          const supertData = dataToProcess[supertKey];
+          const supertdData = dataToProcess[supertdKey];
+
+          const directionMap = new Map(
+            supertdData.map((d) => [d.time, d.value])
+          );
+
+          const coloredSupertData = supertData
+            .filter((d) => d.value !== null && d.value !== undefined)
+            .map((d) => ({
+              ...d,
+              color: directionMap.get(d.time) === 1 ? "#26a69a" : "#ef5350",
+            }));
+
+          let indicatorState = manager.get(baseKey);
+          if (!indicatorState) {
+            indicatorState = { paneChart: null, series: new Map() };
+            manager.set(baseKey, indicatorState);
+          }
+
+          let series = indicatorState.series.get(supertKey) as
+            | ISeriesApi<"Line">
+            | undefined;
+          if (!series) {
+            series = mainChart.addSeries(LineSeries, { lineWidth: 2 });
+            indicatorState.series.set(supertKey, series);
+          }
+
+          series.setData(coloredSupertData);
+        }
+
+        // ▼▼▼ [최종 해결책 2] 원본 데이터가 아닌 '복사본'에서 키를 삭제합니다. ▼▼▼
+        delete dataToProcess[supertKey];
+        delete dataToProcess[supertdKey];
+        const supertlKey = Object.keys(dataToProcess).find((k) =>
+          k.startsWith("supertl_")
+        );
+        const supertsKey = Object.keys(dataToProcess).find((k) =>
+          k.startsWith("superts_")
+        );
+        if (supertlKey) delete dataToProcess[supertlKey];
+        if (supertsKey) delete dataToProcess[supertsKey];
+        // ▲▲▲ [수정 완료] ▲▲▲
+      }
+
+      // 나머지 지표들은 '복사본'을 사용하여 처리합니다.
+      Object.entries(dataToProcess).forEach(([fullSeriesKey, data], index) => {
+        // supertd 키는 차트에 그리지 않고 건너뜁니다.
+        if (fullSeriesKey.toLowerCase().startsWith("supertd")) return;
+
+        // 'kind' 속성을 사용하여 메타데이터를 안정적으로 찾습니다.
         const metadata = indicatorMetadata.find((meta) =>
           fullSeriesKey.toLowerCase().startsWith(meta.kind.toLowerCase())
         );
@@ -458,7 +532,10 @@ export function useChartIndicatorManager({
             };
             newSeries = targetChart.addSeries(LineSeries, options);
           }
-          newSeries.setData(data as any);
+          const filteredData = data.filter(
+            (d) => d.value !== null && d.value !== undefined
+          );
+          newSeries.setData(filteredData as any);
           indicatorState.series.set(fullSeriesKey, newSeries);
         }
       });
