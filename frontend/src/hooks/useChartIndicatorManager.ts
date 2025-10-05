@@ -27,6 +27,8 @@ import {
   TickMarkType,
   IRange,
   BusinessDay,
+  AreaSeries,
+  LineStyle,
 } from "lightweight-charts";
 import { LegendData } from "@/types/chart";
 import { SignalData } from "@/types/market";
@@ -409,9 +411,107 @@ export function useChartIndicatorManager({
 
     // 3. 새로운 지표 시리즈 생성
     if (indicatorData) {
-      // ▼▼▼ [최종 해결책 1] 원본 데이터를 수정하지 않도록 복사본을 만듭니다. ▼▼▼
       const dataToProcess = { ...indicatorData };
-      // ▲▲▲ [수정 완료] ▲▲▲
+
+      // --- 볼린저 밴드 사전 처리 ---
+      const bbuKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("bbu_")
+      );
+      const bbmKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("bbm_")
+      );
+      const bblKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("bbl_")
+      );
+
+      if (bbuKey && bbmKey && bblKey) {
+        const metadata = indicatorMetadata.find((meta) => meta.kind === "bb");
+        if (metadata) {
+          const baseKey = metadata.key;
+          let indicatorState = manager.get(baseKey);
+          if (!indicatorState) {
+            indicatorState = { paneChart: null, series: new Map() };
+            manager.set(baseKey, indicatorState);
+          }
+
+          const theme = getThemeOptions(resolvedTheme);
+          const backgroundColor =
+            theme.layout?.background?.color ||
+            (resolvedTheme === "dark" ? "#171819" : "#FFFFFF");
+          const fillColor = "rgba(33, 150, 243, 0.2)";
+          const lineColor = "rgba(33, 150, 243, 0.8)";
+          const bbmLineColor = "rgba(255, 82, 82, 0.8)";
+
+          const bbuData = (dataToProcess[bbuKey] || []).filter(
+            (d) => d.value != null
+          );
+          const bbmData = (dataToProcess[bbmKey] || []).filter(
+            (d) => d.value != null
+          );
+          const bblData = (dataToProcess[bblKey] || []).filter(
+            (d) => d.value != null
+          );
+
+          // ▼▼▼ [최종 수정] bbu와 bbl을 모두 올바른 옵션의 AreaSeries로 생성합니다. ▼▼▼
+
+          // 1. 상단 밴드 (AreaSeries, 반투명 색으로 채우기)
+          let bbuSeries = indicatorState.series.get(bbuKey) as
+            | ISeriesApi<"Area">
+            | undefined;
+          if (!bbuSeries) {
+            bbuSeries = mainChart.addSeries(AreaSeries, {
+              lineColor: lineColor,
+              topColor: fillColor,
+              bottomColor: fillColor,
+              lineWidth: 1,
+              priceLineVisible: false, // 범례에만 가격이 표시되도록 설정
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(bbuKey, bbuSeries);
+          }
+          bbuSeries.setData(bbuData as any);
+
+          // 2. 하단 밴드 (AreaSeries, 배경색으로 채워서 '지우개' 역할)
+          let bblSeries = indicatorState.series.get(bblKey) as
+            | ISeriesApi<"Area">
+            | undefined;
+          if (!bblSeries) {
+            bblSeries = mainChart.addSeries(AreaSeries, {
+              lineColor: lineColor,
+              topColor: backgroundColor, // 배경색
+              bottomColor: backgroundColor, // 배경색
+              lineWidth: 1,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(bblKey, bblSeries);
+          }
+          bblSeries.setData(bblData as any);
+
+          // ▲▲▲ [수정 완료] ▲▲▲
+
+          // 3. 중간 밴드 (LineSeries, 점선으로 표시)
+          let bbmSeries = indicatorState.series.get(bbmKey) as
+            | ISeriesApi<"Line">
+            | undefined;
+          if (!bbmSeries) {
+            bbmSeries = mainChart.addSeries(LineSeries, {
+              color: bbmLineColor,
+              lineWidth: 1,
+              lineStyle: LineStyle.Dotted,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(bbmKey, bbmSeries);
+          }
+          bbmSeries.setData(bbmData as any);
+
+          // 처리된 키들을 복사본에서 삭제
+          delete dataToProcess[bbuKey];
+          delete dataToProcess[bbmKey];
+          delete dataToProcess[bblKey];
+        }
+      }
 
       // 슈퍼트렌드 데이터를 사전 처리하는 로직 추가
       const supertKey = Object.keys(dataToProcess).find((k) =>

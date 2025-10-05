@@ -140,9 +140,9 @@ class SignalService:
         indicator_value: Union[schemas.IndicatorValue, float, int]
     ) -> Optional[Union[str, float, int]]:
         """
-        IndicatorValue 객체로부터 DataFrame에 실제 생성된 소문자 컬럼 이름을 안정적으로 찾아 반환합니다.
+        [최종 수정 버전] IndicatorValue 객체로부터 DataFrame에 실제 생성된 소문자 컬럼 이름을
+        'startswith'와 개선된 나머지(remainder) 검사를 사용하여 유연하게 찾아 반환합니다.
         """
-
         if indicator_value is None: return None
         if isinstance(indicator_value, (int, float)): return indicator_value
 
@@ -156,6 +156,7 @@ class SignalService:
         possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
         target_prefix = ""
 
+        # 특정 지표들의 접두사를 결정하는 로직
         if kind == 'macd' and output_key in ['macd', 'histogram', 'signal']:
             prefix_map = {'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds'}
             target_prefix = prefix_map.get(output_key, 'macd')
@@ -168,18 +169,20 @@ class SignalService:
             if possible_prefixes: target_prefix = possible_prefixes[0]
             else: target_prefix = kind
         
-        timeframe_suffix = f"_{indicator_value.timeframe}" if indicator_value.timeframe else ""
-        
+        # 1. 예상 기본 컬럼명을 생성합니다. (예: 'bbu_20_2')
         expected_col_base = f"{target_prefix}_{params_str}" if params_str else target_prefix
-        expected_col_with_tf = f"{expected_col_base}{timeframe_suffix}"
 
-        # DataFrame의 컬럼은 모두 소문자이므로, 직접 비교
-        if expected_col_with_tf in df_columns:
-            return expected_col_with_tf
-        if expected_col_base in df_columns: # 접미사가 없는 경우 (base_tf 지표)
-            return expected_col_base
+        # 2. 실제 df에 있는 모든 컬럼을 순회하며 'startswith'로 확인합니다.
+        for col in df_columns:
+            if col.startswith(expected_col_base):
+                remainder = col[len(expected_col_base):]
+                
+                # ▼▼▼ [핵심 수정] 실수(float) 파라미터를 고려하여 '.'으로 시작하는 경우도 허용합니다. ▼▼▼
+                if not remainder or remainder.startswith('_') or remainder.startswith('.'):
+                     return col
+                # ▲▲▲ [수정 완료] ▲▲▲
 
-        logger.warning(f"지표 컬럼 탐색 실패: {indicator_value.model_dump()}, 예상 컬럼명: '{expected_col_with_tf}' 또는 '{expected_col_base}'")
+        logger.warning(f"지표 컬럼 탐색 실패: {indicator_value.model_dump()}, 예상 컬럼명 시작: '{expected_col_base}'")
         return None
 
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
