@@ -435,9 +435,14 @@ export function useChartIndicatorManager({
           }
 
           const theme = getThemeOptions(resolvedTheme);
-          const backgroundColor =
-            theme.layout?.background?.color ||
-            (resolvedTheme === "dark" ? "#171819" : "#FFFFFF");
+          let backgroundColor =
+            resolvedTheme === "dark" ? "#171819" : "#FFFFFF";
+          if (
+            theme.layout?.background?.type === ColorType.Solid &&
+            theme.layout.background.color
+          ) {
+            backgroundColor = theme.layout.background.color;
+          }
           const fillColor = "rgba(33, 150, 243, 0.2)";
           const lineColor = "rgba(33, 150, 243, 0.8)";
           const bbmLineColor = "rgba(255, 82, 82, 0.8)";
@@ -451,8 +456,6 @@ export function useChartIndicatorManager({
           const bblData = (dataToProcess[bblKey] || []).filter(
             (d) => d.value != null
           );
-
-          // ▼▼▼ [최종 수정] bbu와 bbl을 모두 올바른 옵션의 AreaSeries로 생성합니다. ▼▼▼
 
           // 1. 상단 밴드 (AreaSeries, 반투명 색으로 채우기)
           let bbuSeries = indicatorState.series.get(bbuKey) as
@@ -488,8 +491,6 @@ export function useChartIndicatorManager({
           }
           bblSeries.setData(bblData as any);
 
-          // ▲▲▲ [수정 완료] ▲▲▲
-
           // 3. 중간 밴드 (LineSeries, 점선으로 표시)
           let bbmSeries = indicatorState.series.get(bbmKey) as
             | ISeriesApi<"Line">
@@ -512,6 +513,7 @@ export function useChartIndicatorManager({
           delete dataToProcess[bblKey];
         }
       }
+      // --- 볼린저 밴드 처리 완료 ---
 
       // 슈퍼트렌드 데이터를 사전 처리하는 로직 추가
       const supertKey = Object.keys(dataToProcess).find((k) =>
