@@ -95,7 +95,7 @@ INDICATOR_DEFINITIONS = {
         "supportedLogics": ["comparison", "trend_signal"],
     },
     "Ichimoku": {
-        "kind": "ichimoku", "label": "일목균형표", "description": "종합적인 추세 및 지지/저항 지표.", "category": "Trend", "paneType": "overlay",
+        "kind": "i", "label": "일목균형표", "description": "종합적인 추세 및 지지/저항 지표.", "category": "Trend", "paneType": "overlay",
         "parameters": {
             "tenkan": {"label": "전환선 기간", "type": "int", "default": 9, "step": 1, "validation_range": [1, 100], "optimization_range": [5, 20]},
             "kijun": {"label": "기준선 기간", "type": "int", "default": 26, "step": 1, "validation_range": [2, 200], "optimization_range": [20, 60]},
@@ -154,7 +154,7 @@ INDICATOR_DEFINITIONS = {
         "supportedLogics": ["comparison", "crossover"],
     },
     "BBands": {
-        "kind": "bbands", "label": "볼린저 밴드 (Bollinger Bands)", "description": "주가의 변동성 범위를 나타내는 지표.", "category": "Channel", "paneType": "overlay",
+        "kind": "bb", "label": "볼린저 밴드 (Bollinger Bands)", "description": "주가의 변동성 범위를 나타내는 지표.", "category": "Channel", "paneType": "overlay",
         "parameters": {
             "length": {"label": "기간", "type": "int", "default": 20, "step": 1, "validation_range": [2, 200], "optimization_range": [10, 50]},
             "std": {"label": "표준편차", "type": "float", "default": 2.0, "step": 0.1, "validation_range": [0.1, 5.0], "optimization_range": [1.0, 3.0]},

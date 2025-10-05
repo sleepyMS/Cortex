@@ -474,8 +474,15 @@ export function useChartIndicatorManager({
 
       // 나머지 지표들은 '복사본'을 사용하여 처리합니다.
       Object.entries(dataToProcess).forEach(([fullSeriesKey, data], index) => {
-        // supertd 키는 차트에 그리지 않고 건너뜁니다.
-        if (fullSeriesKey.toLowerCase().startsWith("supertd")) return;
+        // 무시할 지표 키 접두사 목록을 만들어 한번에 필터링합니다.
+        const ignoredPrefixes = ["supertd", "bbb", "bbp"];
+        if (
+          ignoredPrefixes.some((prefix) =>
+            fullSeriesKey.toLowerCase().startsWith(prefix)
+          )
+        ) {
+          return;
+        }
 
         // 'kind' 속성을 사용하여 메타데이터를 안정적으로 찾습니다.
         const metadata = indicatorMetadata.find((meta) =>
