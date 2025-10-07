@@ -24,6 +24,7 @@ INDICATOR_KIND_MAP = {
     "STOCHASTIC": "stoch",
     "PARABOLICSAR": "psar",
     "KELTNERCHANNEL": "kc",
+    "ICHIMOKU": "ichimoku",
 }
 
 OUTPUT_PREFIX_MAP = {
@@ -140,8 +141,7 @@ class SignalService:
         indicator_value: Union[schemas.IndicatorValue, float, int]
     ) -> Optional[Union[str, float, int]]:
         """
-        [최종 수정 버전] IndicatorValue 객체로부터 DataFrame에 실제 생성된 소문자 컬럼 이름을
-        'startswith'와 개선된 나머지(remainder) 검사를 사용하여 유연하게 찾아 반환합니다.
+        [최종 완성 버전] 모든 복합 지표의 고유한 이름 규칙을 처리하여 컬럼 이름을 유연하게 찾아 반환합니다.
         """
         if indicator_value is None: return None
         if isinstance(indicator_value, (int, float)): return indicator_value
@@ -156,7 +156,7 @@ class SignalService:
         possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
         target_prefix = ""
 
-        # 특정 지표들의 접두사를 결정하는 로직
+        # 각 복합 지표의 고유한 이름 규칙 처리
         if kind == 'macd' and output_key in ['macd', 'histogram', 'signal']:
             prefix_map = {'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds'}
             target_prefix = prefix_map.get(output_key, 'macd')
@@ -165,22 +165,43 @@ class SignalService:
         elif kind == 'supertrend' and output_key in ['supertrend', 'direction']:
             prefix_map = {'supertrend': 'supert', 'direction': 'supertd'}
             target_prefix = prefix_map.get(output_key, 'supert')
+        elif kind == 'ichimoku': # Ichimoku
+            # 각 구성요소 계산에 필요한 파라미터를 가져옵니다.
+            tenkan = indicator_value.values.get('tenkan', 9)
+            kijun = indicator_value.values.get('kijun', 26)
+            senkou = indicator_value.values.get('senkou', 52)
+            
+            # pandas-ta의 실제 이름 생성 규칙을 그대로 적용합니다.
+            if output_key == 'tenkan_sen':
+                target_prefix = 'its'
+                params_str = str(tenkan)
+            elif output_key == 'kijun_sen':
+                target_prefix = 'iks'
+                params_str = str(kijun)
+            elif output_key == 'span_a' or output_key == 'upper': # 'upper'는 채널 로직 호환용
+                target_prefix = 'isa'
+                params_str = f"{tenkan}_{kijun}"
+            elif output_key == 'span_b' or output_key == 'lower': # 'lower'는 채널 로직 호환용
+                target_prefix = 'isb'
+                params_str = str(senkou)
+            elif output_key == 'lagging':
+                target_prefix = 'ics'
+                params_str = str(kijun) # 후행스팬은 기준선(kijun)을 따라갑니다.
+            else: # 기본값
+                target_prefix = 'its'
+                params_str = str(tenkan)
         else:
             if possible_prefixes: target_prefix = possible_prefixes[0]
             else: target_prefix = kind
         
-        # 1. 예상 기본 컬럼명을 생성합니다. (예: 'bbu_20_2')
         expected_col_base = f"{target_prefix}_{params_str}" if params_str else target_prefix
 
-        # 2. 실제 df에 있는 모든 컬럼을 순회하며 'startswith'로 확인합니다.
+        # 유연한 방식으로 컬럼 탐색
         for col in df_columns:
             if col.startswith(expected_col_base):
                 remainder = col[len(expected_col_base):]
-                
-                # ▼▼▼ [핵심 수정] 실수(float) 파라미터를 고려하여 '.'으로 시작하는 경우도 허용합니다. ▼▼▼
                 if not remainder or remainder.startswith('_') or remainder.startswith('.'):
                      return col
-                # ▲▲▲ [수정 완료] ▲▲▲
 
         logger.warning(f"지표 컬럼 탐색 실패: {indicator_value.model_dump()}, 예상 컬럼명 시작: '{expected_col_base}'")
         return None
@@ -235,15 +256,51 @@ class SignalService:
 
         elif block_type == "channel":
             close_series = df['close']
-            upper_ind_val = schemas.IndicatorValue(**{**block.indicator.model_dump(), "outputs": ["upper"]})
-            lower_ind_val = schemas.IndicatorValue(**{**block.indicator.model_dump(), "outputs": ["lower"]})
-            upper_col = self._get_indicator_column_name(df.columns, upper_ind_val)
-            lower_col = self._get_indicator_column_name(df.columns, lower_ind_val)
-            if upper_col is None or lower_col is None: return pd.Series(False, index=df.index)
-            series_upper = df.get(upper_col, pd.Series(np.inf, index=df.index))
-            series_lower = df.get(lower_col, pd.Series(-np.inf, index=df.index))
+            indicator = block.indicator
+            is_ichimoku = indicator and indicator.indicator_key == 'Ichimoku'
+
+            upper_col, lower_col = None, None
+
+            if is_ichimoku:
+                # 파라미터 값을 직접 가져옵니다.
+                tenkan = indicator.values.get('tenkan', 9)
+                kijun = indicator.values.get('kijun', 26)
+                # senkou는 더 이상 컬럼명 생성에 사용되지 않습니다.
+                
+                # [핵심 수정] 실제 생성된 컬럼명 규칙에 정확히 맞춰줍니다.
+                upper_col_name = f"isa_{tenkan}"      # Senkou A는 tenkan 기간을 따름
+                lower_col_name = f"isb_{kijun}"       # Senkou B는 kijun 기간을 따름
+                
+                if upper_col_name in df.columns:
+                    upper_col = upper_col_name
+                if lower_col_name in df.columns:
+                    lower_col = lower_col_name
+            else:
+                # 다른 채널 지표(볼린저밴드 등)를 위한 기존 로직
+                upper_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": ["upper"]})
+                lower_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": ["lower"]})
+                
+                upper_col = self._get_indicator_column_name(df.columns, upper_ind_val)
+                lower_col = self._get_indicator_column_name(df.columns, lower_ind_val)
+            
+            if upper_col is None or lower_col is None:
+                logger.warning(f"채널 컬럼 탐색 실패: upper='{upper_col}', lower='{lower_col}'")
+                return pd.Series(False, index=df.index)
+
+            # (이후 로직은 이전과 동일하게 유지됩니다)
+            series_upper_raw = df[upper_col]
+            series_lower_raw = df[lower_col]
+
+            if is_ichimoku:
+                series_upper = pd.concat([series_upper_raw, series_lower_raw], axis=1).max(axis=1)
+                series_lower = pd.concat([series_upper_raw, series_lower_raw], axis=1).min(axis=1)
+            else:
+                series_upper = series_upper_raw
+                series_lower = series_lower_raw
+                
             is_within = (close_series >= series_lower) & (close_series <= series_upper)
             was_within = is_within.shift(1).fillna(False).infer_objects(copy=False)
+            
             if block.action == "within": parent_series = is_within
             elif block.action == "enter": parent_series = ~was_within & is_within
             elif block.action == "exit": parent_series = was_within & ~is_within
@@ -372,11 +429,51 @@ class SignalService:
 
         # 2. '계산 기준' 타임프레임의 데이터를 메인 데이터프레임으로 로드합니다.
         base_df = await market_data_service.get_latest_data(db, ticker, calculation_base_tf, limit=2000)
+
+        # --- [디버깅 코드 1단계 추가] ---
+        # print("--- [DEBUG] 1. 입력 데이터프레임 정보 ---")
+        # if base_df.empty:
+        #     print("데이터프레임이 비어있습니다.")
+        # else:
+        #     print(base_df.info())
+        #     print("\n--- [DEBUG] 2. 데이터프레임 상위 5개 행 ---")
+        #     print(base_df.head())
+        # print("--------------------------------------\n")
+        # --- [디버깅 코드 추가 종료] ---
+
         if base_df.empty: 
             return pd.DataFrame(), calculation_base_tf
         
-        if configs['indicators'].get(calculation_base_tf):
-            base_df.ta.strategy(ta.Strategy(name=f"strat_{calculation_base_tf}", ta=configs['indicators'][calculation_base_tf]), append=True)
+        # 1. 계산할 지표 목록을 가져옵니다.
+        indicators_to_process = configs['indicators'].get(calculation_base_tf, [])
+        
+        # 2. Ichimoku 지표 설정을 별도로 분리합니다.
+        ichimoku_config = None
+        other_indicators = []
+        for indicator in indicators_to_process:
+            if indicator.get("kind") == "ichimoku":
+                ichimoku_config = indicator
+            else:
+                other_indicators.append(indicator)
+
+        # 3. Ichimoku 지표가 있다면, 직접 호출하여 계산합니다. (가장 안정적인 방법)
+        if ichimoku_config:
+            # kind 키는 실제 ta 함수에 전달되면 안되므로 제거합니다.
+            params = {k: v for k, v in ichimoku_config.items() if k != 'kind'}
+            base_df.ta.ichimoku(append=True, **params)
+            logger.info(f"Ichimoku 지표 직접 계산 완료. Params: {params}")
+
+            # --- [디버깅 코드 2단계 추가] ---
+            # print("\n--- [DEBUG] 3. Ichimoku 계산 후 컬럼 목록 ---")
+            # print(sorted(base_df.columns))
+            # print("-----------------------------------------\n")
+            # --- [디버깅 코드 추가 종료] ---
+
+        # 4. 나머지 다른 지표들은 기존처럼 strategy를 통해 계산합니다.
+        if other_indicators:
+            strategy_name = f"strat_{calculation_base_tf}"
+            base_df.ta.strategy(ta.Strategy(name=strategy_name, ta=other_indicators), append=True)
+            logger.info(f"'{strategy_name}' 전략의 나머지 지표 {len(other_indicators)}개 계산 완료.")
 
         # 3. 나머지 (더 긴) 타임프레임들의 데이터를 '계산 기준'에 맞게 다운샘플링하여 병합합니다.
         for tf in all_timeframes:

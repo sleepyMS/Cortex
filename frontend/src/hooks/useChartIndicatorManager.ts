@@ -515,6 +515,157 @@ export function useChartIndicatorManager({
       }
       // --- 볼린저 밴드 처리 완료 ---
 
+      // --- 일목균형표 사전 처리 (구름대 채우기) ---
+      const isaKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("isa_")
+      ); // 선행스팬 A
+      const isbKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("isb_")
+      ); // 선행스팬 B
+      const itsKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("its_")
+      ); // 전환선
+      const iksKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("iks_")
+      ); // 기준선
+      const icsKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("ics_")
+      ); // 후행스팬
+
+      if (isaKey && isbKey && itsKey && iksKey && icsKey) {
+        const metadata = indicatorMetadata.find((meta) => meta.kind === "i");
+        if (metadata) {
+          const baseKey = metadata.key;
+          let indicatorState = manager.get(baseKey);
+          if (!indicatorState) {
+            indicatorState = { paneChart: null, series: new Map() };
+            manager.set(baseKey, indicatorState);
+          }
+
+          const theme = getThemeOptions(resolvedTheme);
+          let backgroundColor =
+            resolvedTheme === "dark" ? "#171819" : "#FFFFFF";
+          if (
+            theme.layout?.background?.type === ColorType.Solid &&
+            theme.layout.background.color
+          ) {
+            backgroundColor = theme.layout.background.color;
+          }
+
+          const cloudFillColor = "rgba(76, 175, 80, 0.2)"; // 반투명 초록색 (구름대)
+
+          const isaData = (dataToProcess[isaKey] || []).filter(
+            (d) => d.value != null
+          );
+          const isbData = (dataToProcess[isbKey] || []).filter(
+            (d) => d.value != null
+          );
+
+          const isaMap = new Map(isaData.map((d) => [d.time, d.value]));
+          const isbMap = new Map(isbData.map((d) => [d.time, d.value]));
+          const allTimes = new Set([...isaMap.keys(), ...isbMap.keys()]);
+
+          const cloudTopData: LineData[] = [];
+          const cloudBottomData: LineData[] = [];
+
+          allTimes.forEach((time) => {
+            const a = isaMap.get(time);
+            const b = isbMap.get(time);
+            if (a !== undefined && b !== undefined) {
+              cloudTopData.push({ time, value: Math.max(a, b) });
+              cloudBottomData.push({ time, value: Math.min(a, b) });
+            }
+          });
+
+          // ▼▼▼ [최종 수정] 시리즈를 그리는 순서를 변경하고, 옵션을 단순화합니다. ▼▼▼
+
+          // 1. 구름대 상단 (먼저 색칠)
+          const topKey = `${baseKey}_cloud_top`;
+          let topSeries = indicatorState.series.get(topKey) as
+            | ISeriesApi<"Area">
+            | undefined;
+          if (!topSeries) {
+            topSeries = mainChart.addSeries(AreaSeries, {
+              lineColor: "transparent",
+              topColor: cloudFillColor,
+              bottomColor: cloudFillColor,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(topKey, topSeries);
+          }
+          topSeries.setData(cloudTopData as any);
+
+          // 2. 구름대 하단 (나중에 덧그려서 지우기)
+          const bottomKey = `${baseKey}_cloud_bottom`;
+          let bottomSeries = indicatorState.series.get(bottomKey) as
+            | ISeriesApi<"Area">
+            | undefined;
+          if (!bottomSeries) {
+            bottomSeries = mainChart.addSeries(AreaSeries, {
+              lineColor: "transparent",
+              topColor: backgroundColor,
+              bottomColor: backgroundColor,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(bottomKey, bottomSeries);
+          }
+          bottomSeries.setData(cloudBottomData as any);
+
+          // ▲▲▲ [수정 완료] ▲▲▲
+
+          // 3. 실제 5개 라인을 얇은 LineSeries로 위에 다시 그립니다.
+          const allLines = [
+            {
+              key: itsKey,
+              data: (dataToProcess[itsKey] || []).filter(
+                (d) => d.value != null
+              ),
+              color: "#FF6A8A",
+            }, // 전환선
+            {
+              key: iksKey,
+              data: (dataToProcess[iksKey] || []).filter(
+                (d) => d.value != null
+              ),
+              color: "#3399FF",
+            }, // 기준선
+            {
+              key: icsKey,
+              data: (dataToProcess[icsKey] || []).filter(
+                (d) => d.value != null
+              ),
+              color: "#D2B48C",
+            }, // 후행스팬
+            { key: isaKey, data: isaData, color: "rgba(76, 175, 80, 0.5)" }, // 선행스팬 A (구름대 경계선)
+            { key: isbKey, data: isbData, color: "rgba(239, 83, 80, 0.5)" }, // 선행스팬 B (구름대 경계선)
+          ];
+
+          for (const line of allLines) {
+            let series = indicatorState.series.get(line.key) as
+              | ISeriesApi<"Line">
+              | undefined;
+            if (!series) {
+              series = mainChart.addSeries(LineSeries, {
+                color: line.color,
+                lineWidth: 1,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+              indicatorState.series.set(line.key, series);
+            }
+            series.setData(line.data as any);
+          }
+
+          // 처리된 키들을 복사본에서 삭제
+          [isaKey, isbKey, itsKey, iksKey, icsKey].forEach((key) => {
+            if (key) delete dataToProcess[key];
+          });
+        }
+      }
+      // --- 일목균형표 처리 완료 ---
+
       // 슈퍼트렌드 데이터를 사전 처리하는 로직 추가
       const supertKey = Object.keys(dataToProcess).find((k) =>
         k.startsWith("supert_")
