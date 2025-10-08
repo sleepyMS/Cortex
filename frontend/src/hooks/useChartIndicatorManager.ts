@@ -809,22 +809,21 @@ export function useChartIndicatorManager({
     indicatorMetadata,
   ]);
 
-  // Effect 4: 신호 데이터를 받아 마커를 렌더링
+  // Effect 4: 신호 및 파라볼릭 SAR 마커 렌더링
   useEffect(() => {
     const series = candlestickSeriesRef.current;
     if (!series || !ohlcvData || ohlcvCacheRef.current.size === 0) {
-      // 마커가 있다면 초기화
       if (markersPluginRef.current) {
         (markersPluginRef.current as any).setMarkers([]);
       }
       return;
     }
 
-    const signals = signalData?.signals || [];
-
+    // --- 1. 매수/매도 신호 마커 생성 (기존 로직) ---
     const ohlcvTimes = new Set(Array.from(ohlcvCacheRef.current.keys()));
 
-    const markers: SeriesMarker<Time>[] = signals
+    // 기존 markers 변수명을 signalMarkers로 변경하여 역할 명확화
+    const signalMarkers: SeriesMarker<Time>[] = (signalData?.signals || [])
       .filter((signal) => ohlcvTimes.has(timeToSeconds(signal.time)))
       .map((signal) => {
         let position: "aboveBar" | "belowBar" = "aboveBar";
@@ -861,13 +860,59 @@ export function useChartIndicatorManager({
         return { time: signal.time, position, color, shape, text };
       });
 
+    // --- 2. 파라볼릭 SAR 마커 생성 (새로운 로직) ---
+    let psarMarkers: SeriesMarker<Time>[] = [];
+    if (indicatorData) {
+      const psarlKey = Object.keys(indicatorData).find((k) =>
+        k.startsWith("psarl_")
+      );
+      const psarsKey = Object.keys(indicatorData).find((k) =>
+        k.startsWith("psars_")
+      );
+
+      if (psarlKey && indicatorData[psarlKey]) {
+        const psarlData = indicatorData[psarlKey].filter(
+          (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
+        );
+        psarMarkers = psarMarkers.concat(
+          psarlData.map((d) => ({
+            time: d.time,
+            position: "belowBar",
+            color: "#26a69a", // 반투명 제거
+            shape: "circle",
+            size: 1, // 가장 작은 크기로 변경
+            text: "",
+          }))
+        );
+      }
+      if (psarsKey && indicatorData[psarsKey]) {
+        const psarsData = indicatorData[psarsKey].filter(
+          (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
+        );
+        psarMarkers = psarMarkers.concat(
+          psarsData.map((d) => ({
+            time: d.time,
+            position: "aboveBar",
+            color: "#ef5350", // 반투명 제거
+            shape: "circle",
+            size: 1, // 가장 작은 크기로 변경
+            text: "",
+          }))
+        );
+      }
+    }
+
+    // --- 3. 모든 마커를 하나로 합치기 ---
+    const allMarkers = [...signalMarkers, ...psarMarkers];
+
+    // --- 4. 마커 플러그인에 최종 마커 데이터 설정 ---
     if (!markersPluginRef.current) {
       markersPluginRef.current = createSeriesMarkers(
         series,
-        markers
+        allMarkers
       ) as ReturnType<typeof createSeriesMarkers>;
     } else {
-      (markersPluginRef.current as any).setMarkers(markers);
+      (markersPluginRef.current as any).setMarkers(allMarkers);
     }
-  }, [signalData, ohlcvData]);
+  }, [signalData, ohlcvData, indicatorData]); // 의존성 배열에 indicatorData 추가
 }
