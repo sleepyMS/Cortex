@@ -135,7 +135,7 @@ export const BacktestCard = ({
     <TooltipProvider delayDuration={100}>
       <Card
         className={cn(
-          "flex flex-col h-full transition-all hover:shadow-md",
+          "flex flex-col h-full transition-all hover:shadow-md border border-border hover:border-primary",
           (status === "failed" || status === "canceled") &&
             "opacity-70 bg-muted/50"
         )}
