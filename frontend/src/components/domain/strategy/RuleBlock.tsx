@@ -547,8 +547,8 @@ export function RuleBlock({
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
               onClick={() => onDelete(item.id)}
+              className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               <span>{t("delete")}</span>

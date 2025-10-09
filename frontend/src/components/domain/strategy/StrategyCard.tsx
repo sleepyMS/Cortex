@@ -192,7 +192,7 @@ export function StrategyCard({
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onSelect={handleDelete}
-        className="text-destructive focus:text-destructive"
+        className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
         disabled={deleteStrategyMutation.isPending}
       >
         {deleteStrategyMutation.isPending ? (

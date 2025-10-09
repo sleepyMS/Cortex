@@ -53,14 +53,14 @@
   .dark {
     /* * 다크 모드: 칠흑 같은 검정 대신 깊고 푸른 '우주' 톤으로 변경 
      */
-    --background: 240 6% 10%;
-    --foreground: 240 5% 95%;
+    --background: 240 6% 13%; /* 어두운 배경을 조금 더 밝게 */
+    --foreground: 240 5% 96%;
 
-    --card: 240 6% 12%;
-    --card-foreground: 240 5% 95%;
+    --card: 240 6% 16%; /* 카드 배경을 더 밝게 하여 깊이감 부여 */
+    --card-foreground: 240 5% 96%;
 
-    --popover: 240 6% 8%;
-    --popover-foreground: 240 5% 95%;
+    --popover: 240 6% 11%; /* 팝오버 배경도 함께 조정 */
+    --popover-foreground: 240 5% 96%;
 
     --primary: 259 92% 66%;
     --primary-foreground: 259 92% 98%;
@@ -75,11 +75,11 @@
     --accent: 240 5% 22%;
     --accent-foreground: 240 5% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 51%; /* HSL(색상, 채도, 밝기) - 밝기를 높여 가독성 확보 */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5% 16%;
-    --input: 240 5% 16%;
+    --border: 240 5% 20%; /* 경계선이 조금 더 잘 보이도록 조정 */
+    --input: 240 5% 20%; /* 입력 필드 배경도 함께 조정 */
     --ring: 259 92% 66%;
 
     --basic-primary: 30 60% 40%;
