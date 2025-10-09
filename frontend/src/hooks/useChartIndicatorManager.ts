@@ -287,13 +287,13 @@ export function useChartIndicatorManager({
     };
     const mainChart = setupChart(container, finalOptions);
     chartRef.current = mainChart;
-    candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
-      upColor: "#26a69a",
-      downColor: "#ef5350",
-      borderVisible: false,
-      wickUpColor: "#26a69a",
-      wickDownColor: "#ef5350",
-    });
+    // candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
+    //   upColor: "#26a69a",
+    //   downColor: "#ef5350",
+    //   borderVisible: false,
+    //   wickUpColor: "#26a69a",
+    //   wickDownColor: "#ef5350",
+    // });
     const resizeObserver = new ResizeObserver((entries) => {
       const { width } = entries[0].contentRect;
       if (width > 0) mainChart.resize(width, mainChartHeight);
@@ -342,13 +342,26 @@ export function useChartIndicatorManager({
   // Effect 3: 데이터 업데이트 및 캐싱
   // Effect 3-1: OHLCV 데이터 동기화
   useEffect(() => {
-    if (ohlcvData && candlestickSeriesRef.current) {
+    if (ohlcvData && chartRef.current) {
+      // chartRef.current만 확인
+      const mainChart = chartRef.current; // 추가
+
+      // ▼▼▼ [수정 2] candlestickSeriesRef.current가 null이면 생성합니다. ▼▼▼
+      if (!candlestickSeriesRef.current) {
+        candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
+          upColor: "#26a69a",
+          downColor: "#ef5350",
+          borderVisible: false,
+          wickUpColor: "#26a69a",
+          wickDownColor: "#ef5350",
+        });
+      }
       const cache = new Map<number, CandlestickData<UTCTimestamp>>();
       ohlcvData.forEach((d) => cache.set(timeToSeconds(d.time), d));
       ohlcvCacheRef.current = cache;
-      candlestickSeriesRef.current.setData(ohlcvData);
-      // 데이터 로드 후 차트 뷰 자동 조정
-      chartRef.current?.timeScale().fitContent();
+      // candlestickSeriesRef.current.setData(ohlcvData);
+      // // 데이터 로드 후 차트 뷰 자동 조정
+      // chartRef.current?.timeScale().fitContent();
     }
   }, [ohlcvData]);
 
@@ -464,8 +477,8 @@ export function useChartIndicatorManager({
           if (!bbuSeries) {
             bbuSeries = mainChart.addSeries(AreaSeries, {
               lineColor: lineColor,
-              topColor: fillColor,
-              bottomColor: fillColor,
+              topColor: "transparent",
+              bottomColor: "transparent",
               lineWidth: 1,
               priceLineVisible: false, // 범례에만 가격이 표시되도록 설정
               lastValueVisible: false,
@@ -481,8 +494,8 @@ export function useChartIndicatorManager({
           if (!bblSeries) {
             bblSeries = mainChart.addSeries(AreaSeries, {
               lineColor: lineColor,
-              topColor: backgroundColor, // 배경색
-              bottomColor: backgroundColor, // 배경색
+              topColor: "transparent",
+              bottomColor: "transparent",
               lineWidth: 1,
               priceLineVisible: false,
               lastValueVisible: false,
@@ -514,6 +527,109 @@ export function useChartIndicatorManager({
         }
       }
       // --- 볼린저 밴드 처리 완료 ---
+
+      // --- 켈트너 채널 사전 처리 ---
+      const kcueKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("kcue_")
+      ); // Upper
+      const kcbeKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("kcbe_")
+      ); // Middle (Basis)
+      const kcleKey = Object.keys(dataToProcess).find((k) =>
+        k.startsWith("kcle_")
+      ); // Lower
+
+      if (kcueKey && kcbeKey && kcleKey) {
+        const metadata = indicatorMetadata.find((meta) => meta.kind === "kc");
+        if (metadata) {
+          const baseKey = metadata.key;
+          let indicatorState = manager.get(baseKey);
+          if (!indicatorState) {
+            indicatorState = { paneChart: null, series: new Map() };
+            manager.set(baseKey, indicatorState);
+          }
+
+          const theme = getThemeOptions(resolvedTheme);
+          let backgroundColor =
+            resolvedTheme === "dark" ? "#171819" : "#FFFFFF";
+          if (
+            theme.layout?.background?.type === ColorType.Solid &&
+            theme.layout.background.color
+          ) {
+            backgroundColor = theme.layout.background.color;
+          }
+
+          // 볼린저 밴드와 다른 색상으로 구분 (예: 보라색 계열)
+          const fillColor = "rgba(126, 87, 194, 0.2)";
+          const lineColor = "rgba(126, 87, 194, 0.8)";
+          const kcbeLineColor = "rgba(126, 87, 194, 0.8)";
+
+          const kcueData = (dataToProcess[kcueKey] || []).filter(
+            (d) => d.value != null
+          );
+          const kcbeData = (dataToProcess[kcbeKey] || []).filter(
+            (d) => d.value != null
+          );
+          const kcleData = (dataToProcess[kcleKey] || []).filter(
+            (d) => d.value != null
+          );
+
+          // 1. 상단 채널 (AreaSeries, 색 채우기)
+          let kcueSeries = indicatorState.series.get(kcueKey) as
+            | ISeriesApi<"Area">
+            | undefined;
+          if (!kcueSeries) {
+            kcueSeries = mainChart.addSeries(AreaSeries, {
+              lineColor: lineColor,
+              topColor: "transparent",
+              bottomColor: "transparent",
+              lineWidth: 1,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(kcueKey, kcueSeries);
+          }
+          kcueSeries.setData(kcueData as any);
+
+          // 2. 하단 채널 (AreaSeries, 지우개 역할)
+          let kcleSeries = indicatorState.series.get(kcleKey) as
+            | ISeriesApi<"Area">
+            | undefined;
+          if (!kcleSeries) {
+            kcleSeries = mainChart.addSeries(AreaSeries, {
+              lineColor: lineColor,
+              topColor: "transparent",
+              bottomColor: "transparent",
+              lineWidth: 1,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(kcleKey, kcleSeries);
+          }
+          kcleSeries.setData(kcleData as any);
+
+          // 3. 중간선 (LineSeries, 점선)
+          let kcbeSeries = indicatorState.series.get(kcbeKey) as
+            | ISeriesApi<"Line">
+            | undefined;
+          if (!kcbeSeries) {
+            kcbeSeries = mainChart.addSeries(LineSeries, {
+              color: kcbeLineColor,
+              lineWidth: 1,
+              lineStyle: LineStyle.Dotted,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(kcbeKey, kcbeSeries);
+          }
+          kcbeSeries.setData(kcbeData as any);
+
+          delete dataToProcess[kcueKey];
+          delete dataToProcess[kcbeKey];
+          delete dataToProcess[kcleKey];
+        }
+      }
+      // --- 켈트너 채널 처리 완료 ---
 
       // --- 일목균형표 사전 처리 (구름대 채우기) ---
       const isaKey = Object.keys(dataToProcess).find((k) =>
@@ -577,8 +693,6 @@ export function useChartIndicatorManager({
             }
           });
 
-          // ▼▼▼ [최종 수정] 시리즈를 그리는 순서를 변경하고, 옵션을 단순화합니다. ▼▼▼
-
           // 1. 구름대 상단 (먼저 색칠)
           const topKey = `${baseKey}_cloud_top`;
           let topSeries = indicatorState.series.get(topKey) as
@@ -587,8 +701,8 @@ export function useChartIndicatorManager({
           if (!topSeries) {
             topSeries = mainChart.addSeries(AreaSeries, {
               lineColor: "transparent",
-              topColor: cloudFillColor,
-              bottomColor: cloudFillColor,
+              topColor: "transparent",
+              bottomColor: "transparent",
               priceLineVisible: false,
               lastValueVisible: false,
             });
@@ -604,8 +718,8 @@ export function useChartIndicatorManager({
           if (!bottomSeries) {
             bottomSeries = mainChart.addSeries(AreaSeries, {
               lineColor: "transparent",
-              topColor: backgroundColor,
-              bottomColor: backgroundColor,
+              topColor: "transparent",
+              bottomColor: "transparent",
               priceLineVisible: false,
               lastValueVisible: false,
             });
@@ -711,7 +825,6 @@ export function useChartIndicatorManager({
           series.setData(coloredSupertData);
         }
 
-        // ▼▼▼ [최종 해결책 2] 원본 데이터가 아닌 '복사본'에서 키를 삭제합니다. ▼▼▼
         delete dataToProcess[supertKey];
         delete dataToProcess[supertdKey];
         const supertlKey = Object.keys(dataToProcess).find((k) =>
@@ -722,7 +835,6 @@ export function useChartIndicatorManager({
         );
         if (supertlKey) delete dataToProcess[supertlKey];
         if (supertsKey) delete dataToProcess[supertsKey];
-        // ▲▲▲ [수정 완료] ▲▲▲
       }
 
       // 나머지 지표들은 '복사본'을 사용하여 처리합니다.
@@ -799,6 +911,36 @@ export function useChartIndicatorManager({
         }
       });
     }
+    // const mainChart = chartRef.current;
+    const ohlcvDataToSet = ohlcvData || [];
+
+    if (mainChart) {
+      if (candlestickSeriesRef.current) {
+        // 기존 캔들 시리즈를 제거하여 Z-Order를 리셋할 준비를 합니다.
+        const oldSeries = candlestickSeriesRef.current;
+        mainChart.removeSeries(oldSeries);
+      }
+
+      // 새 시리즈를 추가하여 모든 지표 시리즈보다 가장 높은 Z-Order를 부여합니다.
+      const newCandleSeries = mainChart.addSeries(CandlestickSeries, {
+        upColor: "#26a69a",
+        downColor: "#ef5350",
+        borderVisible: false,
+        wickUpColor: "#26a69a",
+        wickDownColor: "#ef5350",
+      });
+
+      // 데이터 및 ref 업데이트
+      newCandleSeries.setData(ohlcvDataToSet as any);
+      candlestickSeriesRef.current = newCandleSeries;
+
+      // 마커 플러그인을 리셋하여 Effect 4가 새 시리즈로 다시 만들게 합니다. (마커 사라짐 문제 해결)
+      markersPluginRef.current = null;
+
+      // 모든 데이터 로드 후 차트 뷰 자동 조정
+      mainChart.timeScale().fitContent();
+    }
+    // ▲▲▲ [수정 3] Z-Order 및 마커 리셋 로직 완료 ▲▲▲
   }, [
     indicatorData,
     paneIndicators,
@@ -807,6 +949,7 @@ export function useChartIndicatorManager({
     resolvedTheme,
     setupChart,
     indicatorMetadata,
+    ohlcvData, // 의존성 추가
   ]);
 
   // Effect 4: 신호 및 파라볼릭 SAR 마커 렌더링
