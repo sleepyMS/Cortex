@@ -114,8 +114,10 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
     """[동기] OHLCV 데이터 수집 태스크 (네트워크 I/O 위주)"""
     try:
         with SyncSessionLocal() as session:
-            exchange = ccxt.binance()
+            exchange = ccxt.binanceusdm()
             logger.info(f"Starting sync OHLCV fetch for {ticker} ({timeframe})")
+            ticker = ticker.replace('/', '')
+
             ohlcv = exchange.fetch_ohlcv(ticker, timeframe, since=since, limit=limit)
 
             if not ohlcv:
@@ -135,6 +137,8 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
                  "open": item[1], "high": item[2], "low": item[3], "close": item[4], "volume": item[5]}
                 for item in ohlcv
             ]
+
+            logger.info(ohlcv)
 
             session.execute(sql_query, data_to_insert)
             session.commit()
