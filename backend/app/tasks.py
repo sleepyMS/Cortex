@@ -138,8 +138,6 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
                 for item in ohlcv
             ]
 
-            logger.info(ohlcv)
-
             session.execute(sql_query, data_to_insert)
             session.commit()
             
