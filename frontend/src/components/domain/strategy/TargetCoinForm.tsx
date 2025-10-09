@@ -59,7 +59,7 @@ interface TargetCoinFormProps {
 
 // 서비스에서 지원하는 코인 목록 (실제 앱에서는 API 또는 별도 설정 파일에서 가져옵니다)
 const SUPPORTED_COINS = [
-  { value: "BTC/USDT", label: "Bitcoin (BTC/USDT)" },
+  { value: "BTCUSDT", label: "Bitcoin (BTCUSDT)" },
   { value: "ETH/USDT", label: "Ethereum (ETH/USDT)" },
   { value: "SOL/USDT", label: "Solana (SOL/USDT)" },
   { value: "BNB/USDT", label: "Binance Coin (BNB/USDT)" },

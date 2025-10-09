@@ -504,7 +504,7 @@
     },
     "targetCoins": [
       {
-        "ticker": "BTC/USDT",
+        "ticker": "BTCUSDT",
         "allocationPct": 100
       }
     ]
@@ -521,7 +521,7 @@
     "createdAt": "2025-09-17T19:00:00Z",
     "updatedAt": null,
     "longEntryRules": { "...": "..." },
-    "targetCoins": [{ "ticker": "BTC/USDT", "allocationPct": 100 }],
+    "targetCoins": [{ "ticker": "BTCUSDT", "allocationPct": 100 }],
     "backtests": []
   }
   ```
@@ -579,7 +579,7 @@
 - **Request Body:**
   ```json
   {
-    "ticker": "BTC/USDT",
+    "ticker": "BTCUSDT",
     "timeframe": "1h",
     "indicators": [
       { "indicatorKey": "SMA", "values": { "period": 20 }, "outputs": ["sma"] }
@@ -621,7 +621,7 @@
     "strategyId": "s1b2c3d4-e5f6-7890-1234-567890abcdef",
     "apiKeyId": "k1b2c3d4-e5f6-7890-1234-567890abcdef",
     "initialCapital": 5000,
-    "ticker": "BTC/USDT"
+    "ticker": "BTCUSDT"
   }
   ```
 - **Success Response (201 Created):**

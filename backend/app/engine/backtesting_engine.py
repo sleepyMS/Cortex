@@ -155,10 +155,16 @@ class BacktestingEngine:
         pnl, commission = None, 0.0
         quantity = 0.0
 
+        trade_action_type = ""
+
         if is_entry:
             if self.position_size != 0: return
             self.position_type = 'long' if side == 'buy' else 'short'
             self.entry_timestamp = timestamp
+
+            #  진입 시점에 trade_action_type 결정
+            trade_action_type = "LONG_ENTRY" if self.position_type == 'long' else "SHORT_ENTRY"
+
             invest_amount = self.balance * self.leverage * 0.99
             quantity = invest_amount / trade_price
             commission = invest_amount * (self.fee_pct / 100)
@@ -176,6 +182,10 @@ class BacktestingEngine:
         
         else: # Exit Logic
             if self.position_size == 0: return
+
+            # 청산 시점에 trade_action_type 결정
+            trade_action_type = "LONG_EXIT" if self.position_type == 'long' else "SHORT_EXIT"
+
             quantity = abs(self.position_size)
             raw_pnl = (trade_price - self.position_avg_price) * quantity if self.position_type == 'long' else (self.position_avg_price - trade_price) * quantity
             
@@ -197,7 +207,7 @@ class BacktestingEngine:
             self.highest_price_since_entry, self.lowest_price_since_entry, self.entry_commission = 0.0, float('inf'), 0.0
 
         self.trade_logs.append({
-            "timestamp": timestamp, "side": side, "price": trade_price, "quantity": abs(quantity),
+            "timestamp": timestamp, "side": trade_action_type, "price": trade_price, "quantity": abs(quantity),
             "commission": commission, "pnl": pnl, "current_balance": self.balance + self.invested_capital,
             "reason": reason
         })

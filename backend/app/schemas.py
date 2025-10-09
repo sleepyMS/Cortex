@@ -547,7 +547,7 @@ class BacktestCostEstimationRequest(CamelCaseModel):
 
 class TradeLogEntry(CamelCaseModel):
     timestamp: datetime
-    side: Literal["buy", "sell"]
+    side: Literal["LONG_ENTRY", "LONG_EXIT", "SHORT_ENTRY", "SHORT_EXIT"]
     price: float
     quantity: float
     commission: Optional[float] = None
@@ -721,7 +721,7 @@ class SignalDataPoint(CamelCaseModel):
 
 class SignalCalculationRequest(CamelCaseModel):
     """실시간 신호 계산 요청을 위한 스키마"""
-    ticker: str = Field("BTC/USDT", description="대상 티커")
+    ticker: str = Field("BTCUSDT", description="대상 티커")
     timeframe: str = Field("1h", description="대상 타임프레임")
     # 사용자가 편집 중인 규칙을 그대로 받습니다.
     long_entry_rules: Optional[PositionRules] = None

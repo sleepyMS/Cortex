@@ -228,7 +228,7 @@ def run_backtest(self, backtest_id: str):
         WebSocketManager.send_status_update(backtest_id, "running", f"{calculation_base_tf} 시세 데이터 로딩 중...", 50)
         
         # target_coins가 비어있을 경우를 대비한 기본값 설정
-        ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTC/USDT"
+        ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTCUSDT"
         
         ohlcv_df = market_data_service.get_historical_data_sync(
             ticker=ticker,

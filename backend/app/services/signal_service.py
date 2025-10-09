@@ -522,7 +522,7 @@ class SignalService:
         if isinstance(request, schemas.StrategyCreate) and request.target_coins:
             ticker = request.target_coins[0].ticker
         else:
-            ticker = getattr(request, 'ticker', "BTC/USDT")
+            ticker = getattr(request, 'ticker', "BTCUSDT")
 
         # backtest_task에서 사용할 timeframe은 snapshot에 없으므로, 기본값을 사용합니다.
         # 어차피 _get_required_timeframes_and_indicators가 올바른 타임프레임을 찾아줍니다.

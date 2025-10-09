@@ -69,16 +69,21 @@ const columns: ColumnDef<TradeLog>[] = [
   {
     accessorKey: "side",
     header: "종류",
-    cell: ({ row }) => (
-      <span
-        className={cn(
-          "font-medium",
-          row.getValue("side") === "buy" ? "text-emerald-500" : "text-rose-500"
-        )}
-      >
-        {row.getValue("side") === "buy" ? "매수" : "매도"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const side = row.getValue<string>("side");
+
+      // --- [핵심 수정] 4가지 거래 종류에 대한 텍스트와 색상 매핑 ---
+      const styleMap = {
+        LONG_ENTRY: { text: "롱 진입", color: "text-emerald-500" },
+        LONG_EXIT: { text: "롱 청산", color: "text-rose-500" },
+        SHORT_ENTRY: { text: "숏 진입", color: "text-rose-500" },
+        SHORT_EXIT: { text: "숏 청산", color: "text-emerald-500" },
+      };
+
+      const { text, color } = styleMap[side as keyof typeof styleMap] || {};
+
+      return <span className={cn("font-medium", color)}>{text || side}</span>;
+    },
   },
   {
     accessorKey: "price",

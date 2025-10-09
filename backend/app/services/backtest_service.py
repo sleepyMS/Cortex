@@ -1,7 +1,7 @@
 # file: backend/app/services/backtest_service.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import joinedload, selectinload
 from fastapi import HTTPException, status
 from typing import List, Optional, Dict, Any
@@ -270,9 +270,18 @@ class BacktestService:
         """
         특정 백테스트 기록과 관련된 모든 자식 데이터(결과, 거래 로그 등)를 삭제합니다.
         """
-        # backtest 모델에 cascade="all, delete-orphan" 설정이 되어 있으므로,
-        # 부모인 Backtest 객체만 삭제하면 관련된 BacktestResult, TradeLog 등이
-        # 연쇄적으로 자동 삭제됩니다.
+        # --- [핵심 수정] ---
+        # 1. 삭제하려는 백테스트를 '대표 백테스트'로 사용하는 모든 상품을 찾습니다.
+        # 2. 해당 상품들의 representative_backtest_id를 NULL로 업데이트하여 연결을 끊습니다.
+        stmt = (
+            update(models.MarketplaceProduct)
+            .where(models.MarketplaceProduct.representative_backtest_id == backtest_to_delete.id)
+            .values(representative_backtest_id=None)
+        )
+        await db.execute(stmt)
+        # -------------------
+        
+        # 연결이 모두 해제되었으므로, 이제 안전하게 백테스트를 삭제할 수 있습니다.
         await db.delete(backtest_to_delete)
         await db.flush()
         logger.info(f"Backtest record ID {backtest_to_delete.id} and all associated data deleted.")

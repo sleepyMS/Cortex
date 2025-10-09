@@ -255,7 +255,7 @@ class TradeLog(Base):
     backtest_id = Column(UUID(as_uuid=True), ForeignKey("backtests.id", ondelete="CASCADE"), nullable=True)
     live_bot_id = Column(UUID(as_uuid=True), ForeignKey("live_bots.id", ondelete="CASCADE"), nullable=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
-    side = Column(String(10), nullable=False)
+    side = Column(String(20), nullable=False)
     price = Column(Float, nullable=False)
     quantity = Column(Float, nullable=False)
     commission = Column(Float, nullable=True)

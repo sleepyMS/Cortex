@@ -169,7 +169,7 @@ export default function StrategyEditorPage({
   const [hubSelectionMode, setHubSelectionMode] = useState<
     "full" | "indicatorOnly"
   >("full");
-  const [chartTicker, setChartTicker] = useState("BTC/USDT");
+  const [chartTicker, setChartTicker] = useState("BTCUSDT");
   const [chartTimeframe, setChartTimeframe] = useState("1h");
 
   const { data: existingStrategy, isLoading: isLoadingStrategy } = useQuery({
@@ -242,9 +242,9 @@ export default function StrategyEditorPage({
       setChartTicker(strategyState.targetCoins[0].ticker);
     } else if (
       strategyState.targetCoins.length === 0 &&
-      chartTicker !== "BTC/USDT"
+      chartTicker !== "BTCUSDT"
     ) {
-      setChartTicker("BTC/USDT");
+      setChartTicker("BTCUSDT");
     }
   }, [strategyState.targetCoins, chartTicker]);
 

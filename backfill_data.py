@@ -7,8 +7,8 @@
 
 # # 👈 1. 백필링을 원하는 코인과 타임프레임 목록을 여기에 정의합니다.
 # TARGETS = [
-#     {'ticker': 'BTC/USDT', 'timeframe': '1h'},
-#     {'ticker': 'BTC/USDT', 'timeframe': '1d'},
+#     {'ticker': 'BTCUSDT', 'timeframe': '1h'},
+#     {'ticker': 'BTCUSDT', 'timeframe': '1d'},
 #     {'ticker': 'ETH/USDT', 'timeframe': '1h'},
 #     {'ticker': 'ETH/USDT', 'timeframe': '1d'},
 # ]

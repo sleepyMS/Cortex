@@ -103,7 +103,7 @@ export default function PricingPage() {
           <div className="py-16">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
               <PricingCard
-                planId="a9ba3484-51ae-47e4-bf3b-647919bed332"
+                planId="e46bd8ab-cb34-49e0-af88-466b37afc864"
                 planName={pricingData.basic.planName}
                 tagline={pricingData.basic.tagline}
                 features={pricingData.basic.features}
@@ -115,7 +115,7 @@ export default function PricingPage() {
                 isFree
               />
               <PricingCard
-                planId="f8959910-c9fb-44ff-9368-5ad96052dff3"
+                planId="43962805-8dfc-4cb3-8fc7-651bbb79ee07"
                 planName={pricingData.trader.planName}
                 tagline={pricingData.trader.tagline}
                 features={pricingData.trader.features}
@@ -127,7 +127,7 @@ export default function PricingPage() {
                 isHighlighted
               />
               <PricingCard
-                planId="882e1e74-57a4-4670-b52b-94421e847ba7"
+                planId="302cdf48-b4d0-4304-abe3-666ba3640dac"
                 planName={pricingData.pro.planName}
                 tagline={pricingData.pro.tagline}
                 features={pricingData.pro.features}
