@@ -39,7 +39,7 @@ export function Providers({
             Object.keys(messages).filter((key) => key !== "formats")
           )}
           timeZone={timeZone}
-          // [핵심 수정] messages 객체에서 formats 키를 명시적으로 추출하여 별도의 prop으로 전달합니다.
+          // messages 객체에서 formats 키를 명시적으로 추출하여 별도의 prop으로 전달합니다.
           formats={messages.formats as any}
         >
           {children}
