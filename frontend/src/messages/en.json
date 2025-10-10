@@ -1,4 +1,29 @@
 {
+  "formats": {
+    "dateTime": {
+      "short": {
+        "year": "numeric",
+        "month": "2-digit",
+        "day": "2-digit",
+        "hour": "2-digit",
+        "minute": "2-digit",
+        "hour12": false
+      }
+    },
+    "number": {
+      "currency": {
+        "style": "currency",
+        "currency": "USD",
+        "minimumFractionDigits": 2,
+        "currencyDisplay": "narrowSymbol"
+      },
+      "pnl": {
+        "signDisplay": "always",
+        "minimumFractionDigits": 2,
+        "maximumFractionDigits": 2
+      }
+    }
+  },
   "Header": {
     "login": "Log In",
     "startFree": "Start Free",
@@ -1125,22 +1150,36 @@
     },
     "TradeLogTable": {
       "title": "Detailed Trade Logs",
-      "description": "Review all individual trade records in chronological order.",
-      "noResults": "No trade records found.",
-      "totalTrades": "Total {total} trades",
+      "description": "Review every individual trade in chronological order.",
+      "noResults": "No trade logs available.",
+      "totalTrades": "{total} trades in total",
       "rowsPerPage": "Rows per page",
       "pageInfo": "Page {page} of {totalPages}",
-      "columns": {
-        "timestamp": "Timestamp",
-        "side": "Side",
+      "headers": {
+        "timestamp": "Timestamp (GMT+9)",
+        "type": "Type",
         "price": "Price",
         "quantity": "Quantity",
         "pnl": "PNL",
-        "currentBalance": "Balance"
+        "currentBalance": "Balance",
+        "reason": "Reason"
       },
-      "sides": {
-        "buy": "Buy",
-        "sell": "Sell"
+      "types": {
+        "longEntry": "Long Entry",
+        "longExit": "Long Exit",
+        "shortEntry": "Short Entry",
+        "shortExit": "Short Exit"
+      },
+      "reasons": {
+        "Signal": "Signal",
+        "Take Profit": "Take Profit",
+        "Stop Loss": "Stop Loss"
+      },
+      "pagination": {
+        "firstPage": "Go to first page",
+        "previousPage": "Previous page",
+        "nextPage": "Next page",
+        "lastPage": "Go to last page"
       }
     }
   },

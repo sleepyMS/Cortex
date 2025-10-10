@@ -1,4 +1,29 @@
 {
+  "formats": {
+    "dateTime": {
+      "short": {
+        "year": "numeric",
+        "month": "2-digit",
+        "day": "2-digit",
+        "hour": "2-digit",
+        "minute": "2-digit",
+        "hour12": false
+      }
+    },
+    "number": {
+      "currency": {
+        "style": "currency",
+        "currency": "USD",
+        "minimumFractionDigits": 2,
+        "currencyDisplay": "narrowSymbol"
+      },
+      "pnl": {
+        "signDisplay": "always",
+        "minimumFractionDigits": 2,
+        "maximumFractionDigits": 2
+      }
+    }
+  },
   "Header": {
     "login": "로그인",
     "startFree": "무료로 시작하기",
@@ -1176,17 +1201,31 @@
       "totalTrades": "총 {total}개 거래",
       "rowsPerPage": "페이지 당 행",
       "pageInfo": "{totalPages} 중 {page} 페이지",
-      "columns": {
-        "timestamp": "거래 시각",
-        "side": "종류",
+      "headers": {
+        "timestamp": "거래 시각 (GMT+9)",
+        "type": "종류",
         "price": "거래 가격",
         "quantity": "수량",
         "pnl": "손익 (PNL)",
-        "currentBalance": "누적 자산"
+        "currentBalance": "누적 자산",
+        "reason": "거래 이유"
       },
-      "sides": {
-        "buy": "매수",
-        "sell": "매도"
+      "types": {
+        "longEntry": "롱 진입",
+        "longExit": "롱 청산",
+        "shortEntry": "숏 진입",
+        "shortExit": "숏 청산"
+      },
+      "reasons": {
+        "Signal": "신호",
+        "Take Profit": "익절",
+        "Stop Loss": "손절"
+      },
+      "pagination": {
+        "firstPage": "첫 페이지로 이동",
+        "previousPage": "이전 페이지",
+        "nextPage": "다음 페이지",
+        "lastPage": "마지막 페이지로 이동"
       }
     }
   },

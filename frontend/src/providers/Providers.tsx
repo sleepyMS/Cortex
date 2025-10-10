@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useReAuth } from "@/hooks/useReAuth";
 import { Toaster } from "sonner";
+import { pick } from "lodash";
 
 export function Providers({
   children,
@@ -33,8 +34,13 @@ export function Providers({
       <QueryClientProvider client={queryClient}>
         <NextIntlClientProvider
           locale={locale}
-          messages={messages}
+          messages={pick(
+            messages,
+            Object.keys(messages).filter((key) => key !== "formats")
+          )}
           timeZone={timeZone}
+          // [핵심 수정] messages 객체에서 formats 키를 명시적으로 추출하여 별도의 prop으로 전달합니다.
+          formats={messages.formats as any}
         >
           {children}
           <Toaster />

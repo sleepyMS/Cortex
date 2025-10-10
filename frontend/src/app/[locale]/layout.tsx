@@ -1,4 +1,4 @@
-// file: frontend/src/app/layout.tsx
+// file: frontend/src/app/[locale]/layout.tsx
 
 import type { Metadata } from "next";
 import localFont from "next/font/local";
