@@ -66,12 +66,13 @@ export const PricingCard = ({
     if (!isDark) {
       cardStyles = `bg-gradient-to-br from-basic-secondary to-background border border-basic-primary/50 shadow-[0_0_15px_theme(colors.basic-primary)/30]`;
       headerTextColor = "text-basic-primary";
-      buttonStyle = "bg-amber-700/80 text-white hover:bg-amber-700/60";
+      buttonStyle = "!bg-basic-primary text-white hover:!bg-basic-primary/80";
     } else {
       cardStyles =
         "bg-gradient-to-br from-basic-primary/20 to-basic-secondary/10 border border-basic-primary/50 shadow-[0_0_25px_theme(colors.basic-primary)/30]";
       headerTextColor = "text-basic-primary";
-      buttonStyle = "bg-amber-700/80 text-foreground hover:bg-amber-700/70";
+      buttonStyle =
+        "!bg-basic-primary text-foreground hover:!bg-basic-primary/80";
     }
   } else if (isTrader) {
     if (!isDark) {
