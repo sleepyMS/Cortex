@@ -9,7 +9,7 @@ import secrets
 
 from .. import models, schemas
 from ..security import get_password_hash, hash_refresh_token_secret, verify_refresh_token_secret
-from .email_service import email_service # 👈 이메일 서비스 임포트
+from .email_service import email_service 
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class PasswordResetService:
         # JTI 및 Secret을 포함한 새로운 토큰 생성
         jti = str(uuid.uuid4())
         plain_secret = secrets.token_urlsafe(32)
-        hashed_secret = hash_refresh_token_secret(plain_secret) # security.py의 함수 재사용
+        hashed_secret = hash_refresh_token_secret(plain_secret) 
 
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
         
@@ -115,7 +115,7 @@ class PasswordResetService:
             logger.error(f"User associated with password reset token JTI {jti} not found or deleted.")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="관련 사용자를 찾을 수 없습니다.")
 
-        user.hashed_password = get_password_hash(new_password) # security.py의 함수 사용
+        user.hashed_password = get_password_hash(new_password) # 비밀번호 저장이므로 get_password_hash 함수 사용
         db.add(user)
         db.add(token_record)
         # db.commit()는 라우터에서 처리
