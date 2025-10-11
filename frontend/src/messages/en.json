@@ -377,7 +377,8 @@
       "resendSuccess": "A new verification email has been sent successfully. Please check your inbox.",
       "errorTitle": "Error",
       "resendErrorGeneric": "An error occurred while sending the email. Please try again in a moment.",
-      "emailMissingError": "Email address is missing. Please try again."
+      "emailMissingError": "Email address is missing. Please try again.",
+      "goToInboxButton": "Go to My Inbox"
     }
   },
   "AuthCallback": {
