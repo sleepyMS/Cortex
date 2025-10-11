@@ -31,6 +31,11 @@ class UserService:
         """이메일로 사용자를 비동기 조회합니다."""
         result = await db.execute(select(models.User).filter(models.User.email == email))
         return result.scalar_one_or_none()
+    
+    async def get_user_by_username(self, db: AsyncSession, username: str) -> Optional[models.User]:
+        """사용자 이름으로 사용자를 조회합니다."""
+        result = await db.execute(select(models.User).filter(models.User.username == username))
+        return result.scalar_one_or_none()
 
     async def create_user(self, db: AsyncSession, user_create: schemas.UserCreate) -> models.User:
         """이메일/패스워드 기반의 신규 사용자를 생성하고 기본 구독을 할당합니다."""
@@ -42,14 +47,11 @@ class UserService:
             is_email_verified=False
         )
         db.add(new_user)
+        
         await db.flush()
-
         await self._assign_basic_plan(db, new_user)
         
-        created_user = await self.get_user_by_id_with_subscription(db, new_user.id)
-        if not created_user:
-            raise HTTPException(status_code=500, detail="사용자 생성 후 조회에 실패했습니다.")
-        return created_user
+        return new_user
         
     async def get_or_create_social_user(
         self, db: AsyncSession, provider: str, social_id: str, email: str, username: Optional[str]
@@ -370,6 +372,10 @@ class UserService:
             current_period_end=datetime.max.replace(tzinfo=timezone.utc)
         )
         db.add(new_subscription)
+        
+        user.subscription = new_subscription
+        new_subscription.plan = basic_plan
+
 
     async def _generate_unique_username(self, db: AsyncSession, username: Optional[str], email: str) -> str:
         """제공된 사용자 이름이 중복될 경우, 고유한 이름을 생성합니다."""

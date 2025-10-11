@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -32,15 +32,16 @@ export default function SignupForm() {
     defaultValues: { email: "", password: "" },
   });
 
-  const { isSubmitting } = form.formState; // 👈 2. 폼 제출 상태 가져오기
+  const { isSubmitting } = form.formState; // 2. 폼 제출 상태 가져오기
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const response = await apiClient.post("/auth/signup", values);
 
       if (response.status === 201) {
-        alert(t("signupSuccess")); // 번역 키 사용
-        router.push("/login");
+        router.push(
+          `/auth/check-email?email=${encodeURIComponent(values.email)}`
+        );
       }
     } catch (error: any) {
       const errorMessage =

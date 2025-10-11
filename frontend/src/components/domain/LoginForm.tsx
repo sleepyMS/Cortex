@@ -1,26 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-// motion과 Variants는 사용되지 않으므로 import 문을 정리합니다.
-// import { motion, Variants } from "framer-motion";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
-import SocialLogins from "./SocialLogins";
 import { useRouter } from "@/i18n/navigation";
 import apiClient from "@/lib/apiClient";
 import { useUserStore } from "@/store/userStore";
+import SocialLogins from "./SocialLogins";
+import EmailVerificationDialog from "./EmailVerificationDialog";
 
 export default function LoginForm() {
   const t = useTranslations("Auth");
   const router = useRouter();
-  // 1. 'setTokens' 대신 'loginAndUpdateUser' 액션을 가져옵니다.
   const loginAndUpdateUser = useUserStore((state) => state.loginAndUpdateUser);
+  const [isVerificationDialogOpen, setIsVerificationDialogOpen] =
+    useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const formSchema = z.object({
     email: z
@@ -51,21 +53,26 @@ export default function LoginForm() {
 
       const tokens = response.data;
 
-      if (tokens.access_token) {
-        // 2. [핵심 개선] 토큰 저장과 사용자 정보 로딩을 한번에 처리하는 중앙 액션을 호출합니다.
+      if (tokens.accessToken) {
         await loginAndUpdateUser({
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
         });
-
-        // 3. 스토어에서 모든 인증 상태 준비가 끝난 후 대시보드로 이동합니다.
         router.push("/dashboard");
       }
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || t("loginFailedGeneric");
-      // UI/UX 개선을 위해 alert 대신 toast를 사용하는 것을 권장합니다.
-      alert(`${t("loginFailedPrefix")}: ${errorMessage}`);
+      const detail = error.response?.data?.detail;
+      const status = error.response?.status;
+
+      if (status === 403 && detail === "EMAIL_NOT_VERIFIED") {
+        // 백엔드에서 보낸 '이메일 미인증' 신호를 받으면 Dialog를 엽니다.
+        setUserEmail(values.email);
+        setIsVerificationDialogOpen(true);
+      } else {
+        // 그 외 다른 모든 에러는 기존처럼 처리합니다.
+        const errorMessage = detail || t("loginFailedGeneric");
+        alert(`${t("loginFailedPrefix")}: ${errorMessage}`);
+      }
     }
   }
 
@@ -130,6 +137,12 @@ export default function LoginForm() {
           </Link>
         </p>
       </div>
+
+      <EmailVerificationDialog
+        isOpen={isVerificationDialogOpen}
+        onOpenChange={setIsVerificationDialogOpen}
+        email={userEmail}
+      />
     </>
   );
 }

@@ -49,7 +49,6 @@ export const ProductGrid = ({
   }
 
   if (isError) {
-    // ... (기존 에러 처리 UI와 동일)
     return (
       <Alert variant="destructive" className="mt-8 max-w-lg mx-auto">
         <AlertTriangle className="h-4 w-4" />

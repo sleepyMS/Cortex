@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     """
     이메일 전송을 담당하는 서비스 클래스.
-    SendGrid, Mailgun, AWS SES 등 외부 이메일 서비스 API를 연동합니다.
+    SendGrid, MailerSend 등 외부 이메일 서비스 API를 연동합니다.
     """
     def __init__(self):
         # --- 모든 설정을 settings 객체에서 가져옴 ---
@@ -26,7 +26,7 @@ class EmailService:
             self.is_configured = False
         else:
             self.is_configured = True
-            logger.info("Email service is configured.")
+            logger.info("Email service is configured for MailerSend.")
 
     async def send_email(
         self,
@@ -36,6 +36,7 @@ class EmailService:
         plain_text_content: str | None = None
     ) -> bool:
         """단일 이메일을 비동기적으로 전송합니다."""
+
         if not self.is_configured:
             logger.error(f"Email service not configured. Skipping email to {to_email} with subject '{subject}'.")
             return False
@@ -44,16 +45,18 @@ class EmailService:
             "Authorization": f"Bearer {self.mail_api_key}",
             "Content-Type": "application/json"
         }
-        
-        # SendGrid API v3 요청 페이로드 예시
+
         payload = {
-            "personalizations": [{"to": [{"email": to_email}]}],
-            "from": {"email": self.mail_sender_email, "name": "Cortex Team"}, # 보내는 사람 이름 추가
+            "from": {
+                "email": self.mail_sender_email,
+                "name": "Cortex"
+            },
+            "to": [
+                {"email": to_email}
+            ],
             "subject": subject,
-            "content": [
-                {"type": "text/plain", "value": plain_text_content or html_content},
-                {"type": "text/html", "value": html_content}
-            ]
+            "text": plain_text_content or " ",
+            "html": html_content
         }
 
         try:
@@ -62,6 +65,8 @@ class EmailService:
                 response.raise_for_status()
                 logger.info(f"Email sent successfully to {to_email} with subject '{subject}'.")
                 return True
+        except httpx.HTTPStatusError as e:
+            logger.error(f"MailerSend API returned an error: {e.response.text}", exc_info=True)
         except httpx.RequestError as e:
             logger.error(f"Network error sending email to {to_email}: {e}", exc_info=True)
         except Exception as e:

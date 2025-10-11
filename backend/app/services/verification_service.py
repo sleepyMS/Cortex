@@ -1,7 +1,8 @@
 # file: backend/app/services/verification_service.py
 
-from sqlalchemy.orm import Session
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta, timezone
 import logging
@@ -24,12 +25,13 @@ class VerificationService:
     def __init__(self):
         self.email_service = email_service
 
-    async def request_email_verification(self, user: models.User, db: Session, base_url: str) -> None:
+    # --- 1. (신규) DB 트랜잭션 내에서 토큰을 준비하는 함수 ---
+    async def prepare_verification_token(self, user: models.User, db: Session) -> str:
         """
-        사용자에게 이메일 인증 링크를 포함한 이메일을 발송하고,
-        인증 토큰을 데이터베이스에 저장합니다.
+        이메일 인증 토큰을 생성하고 DB 세션에 추가합니다. (COMMIT은 하지 않음)
+        생성된 토큰 문자열(jti.secret)을 반환합니다.
         """
-        # 기존에 만료되지 않고 사용되지 않은 토큰이 있다면 무효화 (일회성 토큰 보장)
+        # 기존 토큰 무효화
         update_stmt = (
             update(models.EmailVerificationToken)
             .where(
@@ -56,26 +58,34 @@ class VerificationService:
             is_used=False
         )
         db.add(token_record)
+        
+        logger.info(f"Prepared verification token for {user.email} (User ID: {user.id}) with JTI: {jti}")
+        
+        # 이메일 발송에 사용할 원본 토큰 반환
+        return f"{jti}.{plain_secret}"
 
-        verification_link = f"{base_url}/verify-email?token={jti}.{plain_secret}"
-
+    # --- 2. (신규) 준비된 토큰으로 이메일을 발송하는 함수 ---
+    async def send_prepared_verification_email(self, user: models.User, token_string: str, base_url: str):
+        """
+        주어진 토큰 문자열로 인증 링크를 만들어 이메일을 발송합니다.
+        """
+        verification_link = f"{base_url}/verify-email?token={token_string}"
         username = user.username if user.username else user.email.split('@')[0]
         email_content = self.email_service.get_verification_email_content(username, verification_link)
-        
+
         success = await self.email_service.send_email(
             to_email=user.email,
             subject=email_content["subject"],
             html_content=email_content["html"],
             plain_text_content=email_content["plain_text"]
         )
+        if not success:
+            # 이 함수는 DB 트랜잭션 밖에서 호출되므로, 실패 시 에러를 로깅하고
+            # 필요에 따라 재시도 큐에 넣는 등의 후속 조치를 고려할 수 있습니다.
+            # 지금은 에러를 발생시켜 호출자가 인지하게 합니다.
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="이메일 전송에 실패했습니다.")
 
-        if success:
-            logger.warning(f"Verification email sent to {user.email} (User ID: {user.id}) with JTI: {jti}")
-        else:
-            logger.error(f"Failed to send verification email to {user.email} (User ID: {user.id}) for JTI: {jti}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="이메일 전송에 실패했습니다. 잠시 후 다시 시도해주세요.")
-
-    async def verify_email(self, token_string: str, db: Session) -> models.User:
+    async def verify_email(self, token_string: str, db: AsyncSession) -> models.User:
         """
         제공된 토큰 문자열을 검증하고, 유효하면 사용자의 이메일 인증 상태를 업데이트합니다.
         """
@@ -88,7 +98,11 @@ class VerificationService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="유효하지 않은 인증 링크입니다.")
 
         # JTI를 사용하여 데이터베이스에서 토큰 레코드 조회 (비동기 방식)
-        select_stmt = select(models.EmailVerificationToken).where(models.EmailVerificationToken.jti == jti)
+        select_stmt = (
+            select(models.EmailVerificationToken)
+            .options(joinedload(models.EmailVerificationToken.user)) # user만 eager loading
+            .where(models.EmailVerificationToken.jti == jti)
+        )
         result = await db.execute(select_stmt)
         token_record = result.scalar_one_or_none()
 

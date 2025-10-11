@@ -41,6 +41,13 @@ class AuthService:
             )
         if not user.is_active:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비활성화된 계정입니다.")
+        
+        if not user.is_email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="EMAIL_NOT_VERIFIED" # 프론트에서 구분할 수 있는 에러 코드
+            )
+            
         return user
 
     async def create_and_set_tokens(self, user: models.User, db: AsyncSession) -> tuple[str, str]:

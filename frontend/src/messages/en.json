@@ -346,7 +346,39 @@
     "loginLink": "Log in",
     "loginSuccess": "Login successful!",
     "loginFailedPrefix": "Login failed",
-    "loginFailedGeneric": "An error occurred during login."
+    "loginFailedGeneric": "An error occurred during login.",
+    "VerificationDialog": {
+      "title": "Email Verification Required",
+      "description": "To use your account, you must first verify your email address. Would you like us to resend the verification link to the email you signed up with?",
+      "cancelButton": "Cancel",
+      "resendButton": "Resend Verification Email",
+      "successTitle": "Success",
+      "resendSuccess": "A new verification email has been sent successfully. Please check your inbox.",
+      "errorTitle": "Error",
+      "resendErrorGeneric": "An error occurred while sending the email. Please try again in a moment."
+    },
+    "VerifyEmail": {
+      "verifyingTitle": "Verifying Your Email",
+      "verifyingSubtitle": "Please wait a moment while we confirm your account.",
+      "successTitle": "Verification Successful!",
+      "successDescription": "Your email address has been successfully verified. You can now access all of our services.",
+      "goToLoginButton": "Go to Login Page",
+      "errorTitle": "Verification Failed",
+      "errorNoToken": "No verification token was found. Please ensure you are using the correct link.",
+      "errorInvalidToken": "This verification link is invalid or has expired. Please try again.",
+      "backToLoginButton": "Back to Login Page"
+    },
+    "CheckEmail": {
+      "title": "Please Check Your Email",
+      "description": "We've sent an account activation link to {email}. Please check your inbox to continue.",
+      "resendButton": "Resend Verification Email",
+      "resendHint": "Didn't receive the email? Check your spam folder or try resending.",
+      "successTitle": "Success",
+      "resendSuccess": "A new verification email has been sent successfully. Please check your inbox.",
+      "errorTitle": "Error",
+      "resendErrorGeneric": "An error occurred while sending the email. Please try again in a moment.",
+      "emailMissingError": "Email address is missing. Please try again."
+    }
   },
   "AuthCallback": {
     "processingLogin": "Processing login information...",

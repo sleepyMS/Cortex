@@ -221,6 +221,16 @@ class SubscriptionSchema(CamelCaseModel):
     current_period_end: Optional[datetime]
     plan: PlanSchema
 
+class UserSignupResponse(CamelCaseModel):
+    """회원가입 성공 시 반환되는 최소한의 사용자 정보"""
+    id: uuid.UUID
+    email: EmailStr
+    username: Optional[str] = None
+    is_active: bool
+    is_email_verified: bool
+    role: str
+    created_at: datetime
+    
 class User(CamelCaseModel):
     id: uuid.UUID
     email: EmailStr

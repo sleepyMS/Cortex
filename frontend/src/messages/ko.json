@@ -346,7 +346,39 @@
     "loginLink": "로그인",
     "loginSuccess": "로그인 성공!",
     "loginFailedPrefix": "로그인 실패",
-    "loginFailedGeneric": "로그인 중 오류가 발생했습니다."
+    "loginFailedGeneric": "로그인 중 오류가 발생했습니다.",
+    "VerificationDialog": {
+      "title": "이메일 인증 필요",
+      "description": "계정을 사용하시려면 먼저 이메일 주소를 인증해야 합니다. 가입 시 입력하신 주소로 인증 링크를 다시 보내드릴까요?",
+      "cancelButton": "취소",
+      "resendButton": "인증 이메일 재전송",
+      "successTitle": "성공",
+      "resendSuccess": "인증 이메일을 성공적으로 발송했습니다. 받은 편지함을 확인해주세요.",
+      "errorTitle": "오류",
+      "resendErrorGeneric": "이메일 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+    },
+    "VerifyEmail": {
+      "verifyingTitle": "이메일 인증 확인 중",
+      "verifyingSubtitle": "잠시만 기다려주세요. 회원님의 계정을 확인하고 있습니다.",
+      "successTitle": "인증 성공!",
+      "successDescription": "회원님의 이메일 주소가 성공적으로 인증되었습니다. 이제 모든 서비스를 이용하실 수 있습니다.",
+      "goToLoginButton": "로그인 페이지로 이동",
+      "errorTitle": "인증 실패",
+      "errorNoToken": "인증 토큰이 존재하지 않습니다. 올바른 링크로 접속했는지 확인해주세요.",
+      "errorInvalidToken": "인증 링크가 유효하지 않거나 만료되었습니다. 다시 시도해주세요.",
+      "backToLoginButton": "로그인 페이지로 돌아가기"
+    },
+    "CheckEmail": {
+      "title": "이메일을 확인해주세요",
+      "description": "계정 활성화를 위한 인증 링크를 {email} 주소로 발송했습니다. 받은 편지함을 확인해주세요.",
+      "resendButton": "인증 이메일 재전송",
+      "resendHint": "이메일을 받지 못하셨나요? 스팸 편지함을 확인하거나 다시 보내보세요.",
+      "successTitle": "성공",
+      "resendSuccess": "인증 이메일을 성공적으로 다시 보냈습니다. 받은 편지함을 확인해주세요.",
+      "errorTitle": "오류",
+      "resendErrorGeneric": "이메일 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      "emailMissingError": "이메일 정보가 없습니다. 다시 시도해주세요."
+    }
   },
   "AuthCallback": {
     "processingLogin": "로그인 정보를 처리 중입니다...",

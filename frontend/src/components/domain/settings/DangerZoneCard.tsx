@@ -69,9 +69,9 @@ export function DangerZoneCard() {
             <AlertDialogFooter>
               <AlertDialogCancel>{t("dialog.cancel")}</AlertDialogCancel>
               <AlertDialogAction
-                disabled={
-                  !isConfirmationMatching || deleteAccountMutation.isPending
-                }
+                // disabled={
+                //   !isConfirmationMatching || deleteAccountMutation.isPending
+                // }
                 onClick={() => deleteAccountMutation.mutate()}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
