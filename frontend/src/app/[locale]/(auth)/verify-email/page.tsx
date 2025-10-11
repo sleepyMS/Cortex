@@ -69,10 +69,11 @@ function VerifyEmailComponent() {
             <CheckCircle className="h-8 w-8 text-green-500" />
 
             {/* 👇 2. Title, Description, Button을 div로 감싸고 text-center를 적용합니다. */}
-            <div className="text-center pl-0">
+            <div className="text-center !pl-0">
               <AlertTitle className="text-2xl font-bold mb-2">
                 {t("successTitle")}
               </AlertTitle>
+              <div className="p-1" />
               <AlertDescription className="mb-6">
                 {t("successDescription")}
               </AlertDescription>
@@ -94,6 +95,7 @@ function VerifyEmailComponent() {
               <AlertTitle className="text-2xl font-bold mb-2">
                 {t("errorTitle")}
               </AlertTitle>
+              <div className="p-1" />
               <AlertDescription className="mb-6">
                 {errorMessage}
               </AlertDescription>

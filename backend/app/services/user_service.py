@@ -38,11 +38,19 @@ class UserService:
         return result.scalar_one_or_none()
 
     async def create_user(self, db: AsyncSession, user_create: schemas.UserCreate) -> models.User:
-        """이메일/패스워드 기반의 신규 사용자를 생성하고 기본 구독을 할당합니다."""
+        """
+        이메일/패스워드 기반의 신규 사용자를 생성하고, 고유한 사용자 이름을 할당한 뒤,
+        기본 구독을 할당합니다.
+        """
+        
+        final_username = await self._generate_unique_username(
+            db, user_create.username, user_create.email
+        )
+
         hashed_password = get_password_hash(user_create.password)
         new_user = models.User(
             email=user_create.email,
-            username=user_create.username,
+            username=final_username,
             hashed_password=hashed_password,
             is_email_verified=False
         )
