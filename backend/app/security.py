@@ -10,6 +10,8 @@ import logging
 from typing import Optional
 import secrets
 import string
+import hmac
+import hashlib
 
 from . import models
 from .database import AsyncSessionLocal  # 비동기 세션을 직접 사용해야 할 경우를 위해 임포트
@@ -22,7 +24,7 @@ import base64
 
 logger = logging.getLogger(__name__)
 
-# --- 비밀번호 해싱 설정 (Passlib Bcrypt) ---
+# --- 1. 비밀번호 해싱 설정 (Bcrypt) ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -48,6 +50,22 @@ def get_password_hash(password: str) -> str:
     """주어진 비밀번호를 해싱합니다."""
     return pwd_context.hash(password)
 
+# --- 2. 토큰 해싱 전용 함수 (HMAC) ---
+
+def hash_token_secret_hmac(plain_secret: str) -> str:
+    """토큰의 비밀 부분을 HMAC-SHA256으로 빠르고 안전하게 해싱합니다."""
+    return hmac.new(
+        settings.AUTH.TOKEN_HMAC_SECRET_KEY.encode(),
+        plain_secret.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+def verify_token_secret_hmac(plain_secret: str, hashed_secret: str) -> bool:
+    """HMAC으로 해싱된 비밀 부분을 검증합니다."""
+    expected_hash = hash_token_secret_hmac(plain_secret)
+    # 타이밍 공격 방지를 위해 hmac.compare_digest 사용
+    return hmac.compare_digest(expected_hash, hashed_secret)
+
 def generate_random_password(length: int = 16) -> str:
     """소셜 로그인 사용자를 위한 안전한 랜덤 비밀번호를 생성합니다."""
     characters = string.ascii_letters + string.digits + "!@#$%^&*()"
@@ -56,15 +74,11 @@ def generate_random_password(length: int = 16) -> str:
 
 def hash_refresh_token_secret(plain_secret: str) -> str:
     """리프레시 토큰의 비밀 부분을 해싱합니다."""
-    return pwd_context.hash(plain_secret)
+    return hash_token_secret_hmac(plain_secret)
 
 def verify_refresh_token_secret(plain_secret: str, hashed_secret: str) -> bool:
     """평문 비밀 부분과 해싱된 비밀 부분을 비교합니다."""
-    try:
-        return pwd_context.verify(plain_secret, hashed_secret)
-    except (ValueError, TypeError):
-        logger.warning("Attempted to verify malformed hashed refresh token secret.")
-        return False
+    return verify_token_secret_hmac(plain_secret, hashed_secret)
 
 # --- JWT 설정 ---
 SECRET_KEY = settings.AUTH.SECRET_KEY

@@ -8,7 +8,7 @@ import uuid
 import secrets
 
 from .. import models, schemas
-from ..security import get_password_hash, hash_refresh_token_secret, verify_refresh_token_secret # 👈 보안 함수 임포트
+from ..security import get_password_hash, hash_refresh_token_secret, verify_refresh_token_secret
 from .email_service import email_service # 👈 이메일 서비스 임포트
 
 logger = logging.getLogger(__name__)

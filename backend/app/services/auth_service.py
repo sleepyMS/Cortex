@@ -52,14 +52,17 @@ class AuthService:
 
     async def create_and_set_tokens(self, user: models.User, db: AsyncSession) -> tuple[str, str]:
         """새로운 액세스 토큰과 리프레시 토큰을 생성하고 DB에 저장합니다."""
-        # (변경) security 모듈의 함수를 직접 호출
+        # security 모듈의 함수를 직접 호출
         access_token = security.create_access_token(data={"sub": user.email, "type": "access"})
 
         jti = str(uuid.uuid4())
         refresh_token_secret = secrets.token_urlsafe(32)
-        hashed_refresh_token_secret = security.get_password_hash(refresh_token_secret) # 해싱 함수 재사용
+
+        # hashed_refresh_token_secret = security.get_password_hash(refresh_token_secret) # 해싱 함수 재사용
+        # --- 👇 [핵심 수정] 비밀번호용 해시 함수 대신 토큰용 해시 함수를 사용합니다. ---
+        hashed_refresh_token_secret = security.hash_refresh_token_secret(refresh_token_secret)
         
-        # (변경) settings 객체에서 만료 시간 가져오기
+        # settings 객체에서 만료 시간 가져오기
         expires_at = datetime.now(timezone.utc) + timedelta(days=settings.AUTH.REFRESH_TOKEN_EXPIRE_DAYS)
 
         new_token_record = models.RefreshToken(
@@ -83,7 +86,8 @@ class AuthService:
 
         if not token_record or token_record.is_revoked or \
            token_record.expires_at < datetime.now(timezone.utc) or \
-           not security.verify_password(secret, token_record.hashed_token): # 해싱 함수 재사용
+           not security.verify_refresh_token_secret(secret, token_record.hashed_token):
+            #    not security.verify_password(secret, token_record.hashed_token): # 해싱 함수 재사용
             
             if token_record and token_record.user_id:
                 await user_service.revoke_all_refresh_tokens(db, token_record.user_id)
