@@ -332,6 +332,7 @@
     "rememberPassword": "Remember your password?",
     "forgotPasswordFailedPrefix": "Request Failed",
     "forgotPasswordFailedGeneric": "An error occurred while processing your request. Please try again.",
+    "signupFailedPrefix": "Validation Error",
     "errors": {
       "emailRequired": "Email is required.",
       "invalidEmail": "Invalid email format.",

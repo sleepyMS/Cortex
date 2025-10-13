@@ -1,6 +1,7 @@
 // file: src/components/domain/dashboard/AccountSettingsTab.tsx
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChangePasswordForm } from "@/components/domain/settings/ChangePasswordForm";
 import { SubscriptionCard } from "@/components/domain/settings/SubscriptionCard";
 import { NotificationSettingsCard } from "@/components/domain/settings/NotificationSettingsCard";
@@ -14,6 +15,8 @@ import {
 import { DangerZoneCard } from "../settings/DangerZoneCard";
 
 export function AccountSettingsTab() {
+  const t = useTranslations("Dashboard.settings");
+
   return (
     <div className="space-y-8">
       {/* 1. 구독 관리 카드 */}
@@ -25,10 +28,8 @@ export function AccountSettingsTab() {
       {/* 3. 비밀번호 변경 카드 */}
       <Card>
         <CardHeader>
-          <CardTitle>비밀번호 변경</CardTitle>
-          <CardDescription>
-            계정 보안을 위해 주기적으로 비밀번호를 변경하는 것을 권장합니다.
-          </CardDescription>
+          <CardTitle>{t("password.title")}</CardTitle>
+          <CardDescription>{t("password.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <ChangePasswordForm />

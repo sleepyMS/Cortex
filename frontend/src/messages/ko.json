@@ -332,6 +332,7 @@
     "rememberPassword": "비밀번호가 기억나셨나요?",
     "forgotPasswordFailedPrefix": "요청 실패",
     "forgotPasswordFailedGeneric": "요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    "signupFailedPrefix": "유효성 검사 오류",
     "errors": {
       "emailRequired": "이메일은 필수 항목입니다.",
       "invalidEmail": "유효한 이메일 형식이 아닙니다.",
