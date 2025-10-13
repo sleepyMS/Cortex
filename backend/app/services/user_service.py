@@ -167,9 +167,7 @@ class UserService:
             setattr(user, key, value)
             
         db.add(user)
-        # commit은 라우터에서 처리하므로 여기서는 flush만 호출
-        await db.flush()
-        await db.refresh(user)
+        
         return user
 
     async def update_user_password(self, db: AsyncSession, user: models.User, password_update: schemas.UserUpdatePassword) -> models.User:

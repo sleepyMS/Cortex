@@ -66,17 +66,18 @@ async def update_users_me_profile(
     db: AsyncSession = Depends(get_async_db)
 ):
     """현재 로그인된 사용자의 프로필 정보를 비동기로 업데이트합니다."""
-    try:
-        updated_user = await user_service.update_user_profile(db, current_user, user_update)
-        await db.commit()
-        await db.refresh(updated_user)
-        logger.info(f"User {current_user.email} successfully updated their profile.")
-        return updated_user
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Error updating profile for user {current_user.email}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="프로필 업데이트 중 서버 오류가 발생했습니다.")
+    # 1. 서비스는 메모리 상의 current_user 객체만 변경합니다.
+    updated_user = await user_service.update_user_profile(db, current_user, user_update)
+    
+    # 2. commit, refresh, try...except 블록을 모두 제거합니다.
+    #    - 함수가 성공적으로 끝나면 get_async_db가 자동으로 commit합니다.
+    #    - 실패 시(예: username 중복)에는 자동으로 rollback되고 HTTPException이 클라이언트에 전달됩니다.
+    
+    logger.info(f"User {current_user.email} successfully updated their profile.")
 
+    # 3. get_current_user가 이미 모든 관계를 eager loading 했으므로,
+    #    수정된 객체를 그대로 반환해도 ResponseValidationError가 발생하지 않습니다.
+    return updated_user
 
 @router.put("/me/password", status_code=status.HTTP_200_OK, summary="Update current user's password")
 async def update_users_me_password(
