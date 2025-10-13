@@ -173,12 +173,19 @@ class UserService:
         return user
 
     async def update_user_password(self, db: AsyncSession, user: models.User, password_update: schemas.UserUpdatePassword) -> models.User:
-        """사용자의 비밀번호를 비동기 업데이트합니다."""
+        """사용자의 비밀번호를 업데이트하고, 다른 모든 활성 세션을 강제 로그아웃시킵니다."""
         if not user.hashed_password or not verify_password(password_update.old_password, user.hashed_password):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="기존 비밀번호가 정확하지 않습니다.")
+        
+        # 1. 새로운 비밀번호 설정
         user.hashed_password = get_password_hash(password_update.new_password)
         db.add(user)
-        await db.flush(); await db.refresh(user)
+        
+        # 2. 현재 사용자의 모든 리프레시 토큰을 무효화하여 다른 세션에서 로그아웃 처리
+        #    (현재 세션은 access token이 유효한 동안 유지되며, 만료 후 재로그인 필요)
+        await self.revoke_all_refresh_tokens(db, user.id)
+        logger.info(f"Revoked all refresh tokens for user {user.email} after password change.")
+        
         return user
 
     async def get_refresh_token_by_jti(self, db: AsyncSession, jti: str) -> Optional[models.RefreshToken]:

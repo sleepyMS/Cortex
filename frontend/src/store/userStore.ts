@@ -91,6 +91,10 @@ interface State {
 }
 
 interface Actions {
+  setTokens: (tokens: {
+    accessToken: string;
+    refreshToken?: string | null;
+  }) => void;
   loginAndUpdateUser: (tokens: {
     accessToken: string;
     refreshToken?: string | null;
@@ -98,8 +102,8 @@ interface Actions {
   rehydrateAndSetUser: () => Promise<void>;
   logout: () => void;
   refreshSession: () => Promise<string | null>;
-  setCreditBalance: (balance: CreditBalanceSummary) => void; // 크레딧 갱신 액션 추가
-  syncCreditBalance: () => Promise<void>; // [추가] 새 액션 타입 정의
+  setCreditBalance: (balance: CreditBalanceSummary) => void;
+  syncCreditBalance: () => Promise<void>;
 }
 
 const initialState: State = {
@@ -116,20 +120,24 @@ export const useUserStore = create<State & Actions>()(
     (set, get) => ({
       ...initialState,
 
+      setTokens: (tokens) => {
+        set({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        });
+      },
+
       // 로그인 성공 후 호출되는 중앙 액션
       loginAndUpdateUser: async (tokens) => {
-        const { accessToken, refreshToken } = tokens;
-        set({ accessToken, refreshToken });
-        apiClient.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${accessToken}`;
+        // 먼저 토큰부터 설정
+        get().setTokens(tokens);
 
         try {
-          // 백엔드 /users/me 응답에 user와 creditBalance가 모두 포함되어 있다고 가정
+          // 그 다음 사용자 정보 가져오기
           const response = await apiClient.get<User>("/users/me");
           set({
             user: response.data,
-            creditBalance: response.data.creditBalance, // 응답에서 크레딧 정보 추출
+            creditBalance: response.data.creditBalance,
             isAuthInitialized: true,
           });
         } catch (error) {
@@ -140,33 +148,36 @@ export const useUserStore = create<State & Actions>()(
 
       // 페이지 로드/새로고침 시 호출되는 재인증 액션
       rehydrateAndSetUser: async () => {
+        // --- 👇 [핵심 수정] 기존 코드의 방어 로직을 복원합니다. ---
         const { accessToken } = get();
         if (!accessToken) {
+          // 토큰이 없으면 인증 시도를 할 필요가 없으므로,
+          // '인증 초기화 완료' 상태만 true로 바꾸고 즉시 종료합니다.
           set({ isAuthInitialized: true });
           return;
         }
-        apiClient.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${accessToken}`;
+        // --- 👆 [핵심 수정] ---
 
         try {
+          // 토큰이 존재할 경우에만 API를 호출합니다.
           const response = await apiClient.get<User>("/users/me");
           set({
             user: response.data,
-            creditBalance: response.data.creditBalance, // 응답에서 크레딧 정보 추출
+            creditBalance: response.data.creditBalance,
             isAuthInitialized: true,
           });
         } catch (error) {
-          console.error("재인증 실패:", error);
-          // 401 에러의 경우 apiClient 인터셉터에서 refreshSession을 호출하므로,
-          // 여기서는 일반적인 로그아웃 처리만 수행
-          get().logout();
+          // API 호출 실패 시, apiClient 인터셉터가 로그아웃을 처리할 것이므로,
+          // 여기서는 앱이 크래시되지 않도록 에러를 잡아주고
+          // '인증 초기화 완료' 상태만 true로 설정합니다.
+          set({ isAuthInitialized: true });
+          console.error("재인증 과정에서 최종 에러가 발생했습니다:", error);
         }
       },
 
       // 사용자를 로그아웃 처리하는 액션
       logout: () => {
-        delete apiClient.defaults.headers.common["Authorization"];
+        // 4. [개선] 중복되는 헤더 설정 코드 제거
         set({ ...initialState, isAuthInitialized: true });
       },
 
@@ -191,14 +202,10 @@ export const useUserStore = create<State & Actions>()(
           const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
             response.data;
 
-          set({
+          get().setTokens({
             accessToken: newAccessToken,
             refreshToken: newRefreshToken,
           });
-
-          apiClient.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${newAccessToken}`;
 
           return newAccessToken;
         } catch (error) {

@@ -602,12 +602,13 @@
     "settings": {
       "password": {
         "title": "Change Password",
-        "description": "We recommend changing your password periodically for account security.",
+        "description": "We recommend changing your password periodically for account security. If you change your password, you need to re-login.",
         "currentPasswordLabel": "Current Password",
         "newPasswordLabel": "New Password",
         "confirmPasswordLabel": "Confirm New Password",
         "saveButton": "Save Changes",
-        "updateSuccess": "Password has been changed successfully.",
+        "updateSuccess": "Password changed successfully. You will be logged out from other devices for security.",
+        "updateSuccessRedirect": "Password changed successfully. For security, you've been logged out from other devices and will need to log in again.",
         "updateError": "Failed to change password: {error}",
         "validation": {
           "currentPasswordRequired": "Please enter your current password.",

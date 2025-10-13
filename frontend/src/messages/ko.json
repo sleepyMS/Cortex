@@ -602,12 +602,12 @@
     "settings": {
       "password": {
         "title": "비밀번호 변경",
-        "description": "계정 보안을 위해 주기적으로 비밀번호를 변경하는 것을 권장합니다.",
+        "description": "계정 보안을 위해 주기적으로 비밀번호를 변경하는 것을 권장합니다. 비밀번호 변경시 재로그인이 필요합니다.",
         "currentPasswordLabel": "현재 비밀번호",
         "newPasswordLabel": "새 비밀번호",
         "confirmPasswordLabel": "새 비밀번호 확인",
         "saveButton": "변경사항 저장",
-        "updateSuccess": "비밀번호가 성공적으로 변경되었습니다.",
+        "updateSuccessRedirect": "비밀번호가 성공적으로 변경되었습니다. 보안을 위해 다른 기기에서 로그아웃 처리되며, 재로그인이 필요합니다.",
         "updateError": "비밀번호 변경에 실패했습니다: {error}",
         "validation": {
           "currentPasswordRequired": "현재 비밀번호를 입력해주세요.",
