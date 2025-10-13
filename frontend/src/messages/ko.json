@@ -598,7 +598,7 @@
         "strategyDescription": "가장 자신 있는 판매 전략을 프로필에 고정합니다."
       },
       "saveSuccess": "프로필이 성공적으로 업데이트되었습니다.",
-      "saveError": "프로필 업데이트에 실패했습니다: {error}"
+      "saveError": "프로필 업데이트에 실패했습니다."
     },
     "settings": {
       "password": {
@@ -1412,5 +1412,19 @@
     "orderIdLabel": "주문번호",
     "retryPayment": "다시 시도하기",
     "goToMarketplace": "마켓플레이스로 돌아가기"
+  },
+  "PublicProfile": {
+    "featuredStrategyTitle": "대표 전략",
+    "noFeaturedContent": "이 사용자는 아직 대표 콘텐츠를 설정하지 않았습니다."
+  },
+  "FeaturedStrategyCard": {
+    "featuredLabel": "대표 전략",
+    "noDescription": "설명이 없습니다.",
+    "totalReturn": "총 수익률",
+    "totalReturnTooltip": "백테스트 기간 동안의 누적 총 수익률입니다.",
+    "winRate": "승률",
+    "winRateTooltip": "전체 거래 중 수익을 낸 거래의 비율입니다.",
+    "keyIndicators": "주요 사용 지표",
+    "viewStrategy": "전략 상세보기"
   }
 }

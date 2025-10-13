@@ -239,27 +239,6 @@ async def get_my_credit_balance(
     balance_summary = await credit_service.get_balance_summary(db, current_user.id)
     return balance_summary
 
-
-# @router.get(
-#     "/me/credit-transactions",
-#     response_model=schemas.PaginatedCreditTransactions,
-#     summary="Get current user's credit transaction history"
-# )
-# async def get_my_credit_transactions(
-#     current_user: models.User = Depends(get_current_active_user),
-#     db: AsyncSession = Depends(get_async_db),
-#     page: int = Query(1, ge=1),
-#     limit: int = Query(10, ge=1, le=100),
-# ):
-#     """
-#     현재 로그인된 사용자의 크레딧 거래 내역을 페이지네이션하여 조회합니다.
-#     credit_service의 list_transactions_paginated 함수를 호출합니다.
-#     """
-#     paginated_result = await credit_service.list_transactions_paginated(
-#         db, current_user.id, page, limit
-#     )
-#     return paginated_result
-
 @router.get(
     "/me/credit-history", # 새로운 API 경로
     # response_model은 새로운 통합 스키마를 정의해야 합니다.
@@ -277,3 +256,21 @@ async def get_my_credit_history(
     )
     return unified_history
 
+@router.get(
+    "/{username}/profile",
+    response_model=schemas.UserProfileResponse, 
+    summary="Get public user profile by username"
+)
+async def get_public_user_profile(
+    username: str,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """사용자 이름으로 공개 프로필 정보를 조회합니다."""
+    user = await user_service.get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다."
+        )
+    # 서비스 함수를 통해 User 모델을 스키마로 변환
+    return await user_service.get_user_profile(db, user)

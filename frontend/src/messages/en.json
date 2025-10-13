@@ -598,7 +598,7 @@
         "strategyDescription": "Pin your most confident strategy for sale to your profile."
       },
       "saveSuccess": "Profile updated successfully.",
-      "saveError": "Failed to update profile: {error}"
+      "saveError": "Failed to update profile."
     },
     "settings": {
       "password": {
@@ -1367,5 +1367,19 @@
     "orderIdLabel": "Order ID",
     "retryPayment": "Try Again",
     "goToMarketplace": "Back to Marketplace"
+  },
+  "PublicProfile": {
+    "featuredStrategyTitle": "Featured Strategy",
+    "noFeaturedContent": "This user has not set any featured content yet."
+  },
+  "FeaturedStrategyCard": {
+    "featuredLabel": "Featured Strategy",
+    "noDescription": "No description provided.",
+    "totalReturn": "Total Return",
+    "totalReturnTooltip": "The cumulative total return over the backtest period.",
+    "winRate": "Win Rate",
+    "winRateTooltip": "The percentage of winning trades out of all trades.",
+    "keyIndicators": "Key Indicators Used",
+    "viewStrategy": "View Strategy Details"
   }
 }
