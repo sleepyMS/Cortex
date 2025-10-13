@@ -201,23 +201,20 @@ async def request_password_reset(
     await db.commit()
     return {"message": "비밀번호 재설정 이메일이 전송되었습니다. 받은 편지함을 확인해주세요."}
 
-@router.post("/reset-password", response_model=schemas.User)
+@router.post("/reset-password", response_model=schemas.UserSignupResponse)
 async def reset_password(
     request_data: schemas.ResetPasswordRequest,
     db: Annotated[AsyncSession, Depends(get_async_db)]
 ):
     """비밀번호 재설정 토큰을 확인하고 비밀번호를 업데이트합니다."""
     
-    # 1. 서비스 호출하여 메모리 상의 user 객체 상태 변경
-    in_memory_user = await password_reset_service.reset_password(
+    # 1. 서비스가 'user' 객체의 상태를 메모리에서 변경 후 반환합니다.
+    user = await password_reset_service.reset_password(
         request_data.token, request_data.new_password, db
     )
     
-    # 2. 변경사항을 DB에 영구 저장하고 트랜잭션 종료
+    # 2. 변경사항을 커밋합니다.
     await db.commit()
-
-    final_user = await user_service.get_user_by_id_with_subscription(db, in_memory_user.id)
-    if not final_user:
-        raise HTTPException(status_code=500, detail="비밀번호 변경 후 사용자 조회에 실패했습니다.")
-        
-    return final_user
+    
+    # 3. '재조회' 없이, 필요한 최소 정보만 담긴 객체를 바로 반환합니다.
+    return user

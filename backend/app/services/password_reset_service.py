@@ -100,7 +100,7 @@ class PasswordResetService:
 
         select_stmt = (
             select(models.PasswordResetToken)
-            .options(joinedload(models.PasswordResetToken.user)) # user 관계를 함께 로드
+            .options(joinedload(models.PasswordResetToken.user)) # user만 eager loading
             .where(models.PasswordResetToken.jti == jti)
         )
         result = await db.execute(select_stmt)
