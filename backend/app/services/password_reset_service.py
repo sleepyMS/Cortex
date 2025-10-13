@@ -13,6 +13,7 @@ import secrets
 from .. import models, schemas
 from ..security import get_password_hash, hash_refresh_token_secret, verify_refresh_token_secret
 from .email_service import email_service 
+from .user_service import user_service
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,10 @@ class PasswordResetService:
         user.hashed_password = get_password_hash(new_password) # 비밀번호 저장이므로 get_password_hash 함수 사용
         db.add(user)
         db.add(token_record)
+
+        # 비밀번호가 재설정되었으므로, 보안을 위해 이 사용자의 모든 활성 세션을 강제 로그아웃시킵니다.
+        await user_service.revoke_all_refresh_tokens(db, user.id)
+        logger.info(f"Revoked all refresh tokens for user {user.email} after password reset.")
 
         logger.info(f"User {user.email} (ID: {token_record.user_id}) password reset successfully with JTI: {jti}")
         return user

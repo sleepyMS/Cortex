@@ -54,7 +54,7 @@ import {
   Globe,
 } from "lucide-react";
 
-// 타입 정의 (가상)
+// 타입 정의
 interface UserProfile {
   username: string;
   bio?: string;
@@ -224,7 +224,6 @@ export function ProfileManagementTab() {
               name="socialLinks.twitter"
               render={({ field }) => (
                 <FormItem>
-                  {/* [수정] 언어팩 적용 */}
                   <FormLabel className="flex items-center">
                     <Twitter className="h-4 w-4 mr-2" />{" "}
                     {t("socialLinks.twitterLabel")}
@@ -245,7 +244,6 @@ export function ProfileManagementTab() {
               name="socialLinks.github"
               render={({ field }) => (
                 <FormItem>
-                  {/* [수정] 언어팩 적용 */}
                   <FormLabel className="flex items-center">
                     <Github className="h-4 w-4 mr-2" />{" "}
                     {t("socialLinks.githubLabel")}
@@ -261,7 +259,6 @@ export function ProfileManagementTab() {
                 </FormItem>
               )}
             />
-            {/* ▼▼▼ [핵심 수정 2] 누락된 Website FormField 추가 ▼▼▼ */}
             <FormField
               control={form.control}
               name="socialLinks.website"
@@ -282,7 +279,6 @@ export function ProfileManagementTab() {
                 </FormItem>
               )}
             />
-            {/* ▲▲▲ [수정 완료] ▲▲▲ */}
           </CardContent>
         </Card>
 
