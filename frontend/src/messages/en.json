@@ -326,11 +326,18 @@
     "emailLabel": "Email",
     "passwordLabel": "Password",
     "signupButton": "Sign Up",
+    "forgotPasswordTitle": "Reset Your Password",
+    "forgotPasswordSubtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "sendResetLinkButton": "Send Reset Link",
+    "rememberPassword": "Remember your password?",
+    "forgotPasswordFailedPrefix": "Request Failed",
+    "forgotPasswordFailedGeneric": "An error occurred while processing your request. Please try again.",
     "errors": {
       "emailRequired": "Email is required.",
       "invalidEmail": "Invalid email format.",
       "passwordRequired": "Password is required.",
-      "passwordLength": "Password must be at least 8 characters long."
+      "passwordLength": "Password must be at least 8 characters long.",
+      "passwordMismatch": "Passwords do not match."
     },
     "loginTitle": "Welcome Back",
     "loginSubtitle": "Log in to Cortex to continue your analysis.",
@@ -379,6 +386,18 @@
       "resendErrorGeneric": "An error occurred while sending the email. Please try again in a moment.",
       "emailMissingError": "Email address is missing. Please try again.",
       "goToInboxButton": "Go to My Inbox"
+    },
+    "resetPasswordTitle": "Set a New Password",
+    "resetPasswordSubtitle": "Please enter your new password.",
+    "newPasswordLabel": "New Password",
+    "confirmPasswordLabel": "Confirm New Password",
+    "resetPasswordButton": "Reset Password",
+    "resetSuccessMessage": "Your password has been changed successfully. Please log in again.",
+    "resetFailedPrefix": "Reset Failed",
+    "resetFailedGeneric": "An error occurred. The link may be invalid or expired.",
+    "ResetPassword": {
+      "errorTitle": "Invalid Access",
+      "tokenMissingError": "Invalid reset link. Please try again."
     }
   },
   "AuthCallback": {

@@ -207,7 +207,17 @@ async def reset_password(
     db: Annotated[AsyncSession, Depends(get_async_db)]
 ):
     """비밀번호 재설정 토큰을 확인하고 비밀번호를 업데이트합니다."""
-    user = await password_reset_service.reset_password(request_data.token, request_data.new_password, db)
+    
+    # 1. 서비스 호출하여 메모리 상의 user 객체 상태 변경
+    in_memory_user = await password_reset_service.reset_password(
+        request_data.token, request_data.new_password, db
+    )
+    
+    # 2. 변경사항을 DB에 영구 저장하고 트랜잭션 종료
     await db.commit()
-    await db.refresh(user)
-    return user
+
+    final_user = await user_service.get_user_by_id_with_subscription(db, in_memory_user.id)
+    if not final_user:
+        raise HTTPException(status_code=500, detail="비밀번호 변경 후 사용자 조회에 실패했습니다.")
+        
+    return final_user

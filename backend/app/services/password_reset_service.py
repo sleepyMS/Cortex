@@ -1,6 +1,9 @@
 # file: backend/app/services/password_reset_service.py
 
-from sqlalchemy.orm import Session
+# --- 👇 [수정] 필요한 모듈들을 sqlalchemy에서 직접 임포트 ---
+from sqlalchemy import select, update
+from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta, timezone
 import logging
@@ -24,24 +27,29 @@ class PasswordResetService:
     def __init__(self):
         self.email_service = email_service
 
-    async def request_password_reset(self, email: str, db: Session, base_url: str) -> None:
+    async def request_password_reset(self, email: str, db: AsyncSession, base_url: str) -> None:
         """
         사용자에게 비밀번호 재설정 링크를 포함한 이메일을 발송하고,
-        재설정 토큰을 데이터베이스에 저장합니다.
+        재설정 토큰을 데이터베이스에 저장합니다. (비동기 방식으로 수정)
         """
-        user = db.query(models.User).filter(models.User.email == email).first()
+        result = await db.execute(select(models.User).filter(models.User.email == email))
+        user = result.scalar_one_or_none()
+        
         if not user:
-            # 보안을 위해 이메일이 등록되지 않았더라도 사용자에게 동일한 메시지 반환
             logger.info(f"Password reset requested for non-existent email: {email}")
-            return # 이메일이 없어도 오류를 발생시키지 않고 조용히 종료
+            return
 
-        # 기존에 만료되지 않고 사용되지 않은 토큰이 있다면 모두 무효화 (일회성 토큰 보장)
-        db.query(models.PasswordResetToken).filter(
-            models.PasswordResetToken.user_id == user.id,
-            models.PasswordResetToken.is_used == False,
-            models.PasswordResetToken.expires_at > datetime.now(timezone.utc)
-        ).update({"is_used": True})
-        db.flush()
+        update_stmt = (
+            update(models.PasswordResetToken)
+            .where(
+                models.PasswordResetToken.user_id == user.id,
+                models.PasswordResetToken.is_used == False,
+                models.PasswordResetToken.expires_at > datetime.now(timezone.utc)
+            )
+            .values(is_used=True)
+        )
+        await db.execute(update_stmt)
+        await db.flush()
 
         # JTI 및 Secret을 포함한 새로운 토큰 생성
         jti = str(uuid.uuid4())
@@ -58,7 +66,6 @@ class PasswordResetService:
             is_used=False
         )
         db.add(token_record)
-        # db.commit()는 라우터에서 처리
 
         # 프론트엔드 비밀번호 재설정 페이지 URL 조합 (예: /reset-password?token=JTI.SECRET)
         reset_link = f"{base_url}/reset-password?token={jti}.{plain_secret}"
@@ -80,7 +87,7 @@ class PasswordResetService:
             logger.error(f"Failed to send password reset email to {user.email} (User ID: {user.id}) for JTI: {jti}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="이메일 전송에 실패했습니다.")
 
-    def reset_password(self, token_string: str, new_password: str, db: Session) -> models.User:
+    async def reset_password(self, token_string: str, new_password: str, db: AsyncSession) -> models.User:
         """
         제공된 토큰 문자열을 검증하고, 유효하면 사용자의 비밀번호를 업데이트합니다.
         """
@@ -89,12 +96,15 @@ class PasswordResetService:
             if not jti or not secret:
                 raise ValueError("Invalid token format.")
         except ValueError:
-            logger.warning(f"Received malformed password reset token: {token_string[:10]}...")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="유효하지 않은 재설정 링크입니다.")
+            raise HTTPException(...)
 
-        token_record = db.query(models.PasswordResetToken).filter(
-            models.PasswordResetToken.jti == jti
-        ).first()
+        select_stmt = (
+            select(models.PasswordResetToken)
+            .options(joinedload(models.PasswordResetToken.user)) # user 관계를 함께 로드
+            .where(models.PasswordResetToken.jti == jti)
+        )
+        result = await db.execute(select_stmt)
+        token_record = result.scalar_one_or_none()
 
         if not token_record:
             logger.warning(f"Password reset token not found for JTI: {jti}")
@@ -118,7 +128,6 @@ class PasswordResetService:
         user.hashed_password = get_password_hash(new_password) # 비밀번호 저장이므로 get_password_hash 함수 사용
         db.add(user)
         db.add(token_record)
-        # db.commit()는 라우터에서 처리
 
         logger.info(f"User {user.email} (ID: {token_record.user_id}) password reset successfully with JTI: {jti}")
         return user
