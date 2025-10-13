@@ -1,4 +1,4 @@
-# cuantitativa y cualitativamente
+# Cortex: 데이터 기반 투자 전략 플랫폼
 
 <p align="center">
   <img src="./assets/images/logo.svg" alt="Cortex Logo" width="150"/>
