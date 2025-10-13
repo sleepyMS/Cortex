@@ -7,9 +7,9 @@ import Link from "next/link";
 import { Star, HelpCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Strategy } from "@/types/strategy";
+// --- 👇 [1. 핵심 수정] 상세 타입 대신, 요약 타입(StrategyInList)을 임포트합니다. ---
+import { StrategyInList } from "@/types/strategy";
 
-// --- 재사용 컴포넌트 임포트 ---
 import {
   Card,
   CardContent,
@@ -25,10 +25,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
-import { KeyIndicatorBadges } from "../strategy/KeyIndicatorBadges";
 
+// --- 👇 [2. 핵심 수정] Props 타입을 StrategyInList로 변경합니다. ---
 interface FeaturedStrategyCardProps {
-  strategy: Strategy;
+  strategy: StrategyInList;
 }
 
 export function FeaturedStrategyCard({ strategy }: FeaturedStrategyCardProps) {
@@ -50,8 +50,7 @@ export function FeaturedStrategyCard({ strategy }: FeaturedStrategyCardProps) {
             {strategy.description || t("noDescription")}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* 1. BacktestCard의 핵심 성과 표시 UI를 차용 */}
+        <CardContent>
           <div className="flex justify-around text-center border-y py-4">
             <div className="w-1/2 border-r">
               <Tooltip>
@@ -91,18 +90,11 @@ export function FeaturedStrategyCard({ strategy }: FeaturedStrategyCardProps) {
               </Tooltip>
             </div>
           </div>
-          {/* 2. StrategyCard의 핵심 지표 뱃지 UI를 재사용 */}
-          <div>
-            <h4 className="text-sm font-semibold mb-2 text-muted-foreground">
-              {t("keyIndicators")}
-            </h4>
-            <div className="min-h-[24px]">
-              <KeyIndicatorBadges strategy={strategy} />
-            </div>
-          </div>
+          {/* --- 👆 [3. 핵심 수정] 상세 규칙을 보여주던 KeyIndicatorBadges를 제거합니다. --- */}
         </CardContent>
         <CardFooter>
           <Button asChild className="w-full">
+            {/* 이 링크는 전략 '상세보기' 페이지가 아닌, 마켓플레이스 '상품' 페이지 등으로 변경될 수 있습니다. */}
             <Link href={`/strategies/${strategy.id}`}>{t("viewStrategy")}</Link>
           </Button>
         </CardFooter>

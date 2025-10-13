@@ -825,7 +825,9 @@
     "performanceTitle": "최근 성과",
     "indicatorsTitle": "핵심 지표",
     "selectedBacktestDetails": "선택된 대표 백테스트 상세 정보",
-    "perfSummary": "주요 성과 요약"
+    "perfSummary": "주요 성과 요약",
+    "selectBacktestPlaceholder": "백테스트 정보 없음",
+    "noBacktests": "백테스트 정보 없음"
   },
   "StrategyListingForm": {
     "title": "전략 마켓 등록",

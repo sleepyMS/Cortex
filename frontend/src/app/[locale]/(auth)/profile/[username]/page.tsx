@@ -25,10 +25,12 @@ async function getUserProfile(username: string) {
   }
 }
 
-async function getFeaturedStrategy(strategyId: string) {
+async function getFeaturedStrategy(
+  strategyId: string
+): Promise<StrategyInList | null> {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/strategies/${strategyId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/strategies/${strategyId}/summary`,
       {
         next: { revalidate: 60 },
       }
@@ -36,7 +38,7 @@ async function getFeaturedStrategy(strategyId: string) {
     if (!response.ok) return null;
     return response.json();
   } catch (error) {
-    console.error("Failed to fetch featured strategy:", error);
+    console.error("Failed to fetch featured strategy summary:", error);
     return null;
   }
 }

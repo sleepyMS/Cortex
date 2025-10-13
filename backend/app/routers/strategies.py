@@ -1,6 +1,8 @@
 # file: backend/app/routers/strategies.py
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from typing import List, Optional
@@ -73,6 +75,44 @@ async def get_strategies(
     )
     logger.info(f"User {current_user.email} fetched {len(strategies)} strategies.")
     return strategies
+
+@router.get(
+    "/{strategy_id}/summary",
+    response_model=schemas.StrategyInList, # 응답 모델을 '요약' 스키마로 지정
+    summary="Get public summary of a strategy"
+)
+async def get_strategy_summary(
+    strategy_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    인증 없이 전략의 공개 가능한 요약 정보만 조회합니다.
+    전략 규칙(longEntryRules 등)은 절대 반환하지 않습니다.
+    """
+    # 서비스 계층에 이와 같은 요약 정보만 조회하는 함수를 만드는 것이 좋습니다.
+    # 예: strategy_service.get_strategy_summary_by_id(db, strategy_id)
+    # 여기서는 간단하게 상세 조회 후, 스키마에 의해 필터링되는 것을 보여줍니다.
+    
+    result = await db.execute(
+        select(models.Strategy)
+        .options(
+            # 목록 페이지와 같이 필요한 최소한의 관계만 로드합니다.
+            joinedload(models.Strategy.latest_backtest_summary),
+            joinedload(models.Strategy.marketplace_listing)
+        )
+        .filter(models.Strategy.id == strategy_id)
+    )
+    strategy = result.scalar_one_or_none()
+
+    if not strategy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="전략을 찾을 수 없습니다."
+        )
+        
+    # response_model=schemas.StrategyInList 덕분에,
+    # strategy 객체에 longEntryRules 등이 있더라도 자동으로 필터링되어 반환됩니다.
+    return strategy
 
 @router.get("/{strategy_id}", response_model=schemas.Strategy, summary="Get a specific strategy by ID")
 async def get_strategy_by_id(

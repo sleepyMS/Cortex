@@ -134,59 +134,25 @@ export interface TargetCoin {
   allocationPct: number;
 }
 
-// 전략의 간소화된 백테스트 이력 타입
-export interface BacktestHistoryItem {
-  id: string;
-  createdAt: string;
-  // totalReturnPct 등을 직접 갖는 대신, result 객체를 포함합니다.
-  result: {
-    totalReturnPct: number;
-    winRatePct: number;
-    mddPct: number;
-  } | null; // 백테스트 결과가 없을 수도 있으므로 null 허용
+export interface BacktestResultSummaryForCard {
+  totalReturnPct: number | null;
+  winRatePct: number | null;
+  mddPct: number | null;
+  // 필요에 따라 백엔드 스키마와 맞춰 필드 추가 가능
 }
 
 export interface MarketplaceListing {
-  productId: string; // 이전 listingId에서 productId로 이름 변경 (DB 모델과 일관성)
+  productId: string;
   price: number;
   category: string;
   positionType: "LongOnly" | "ShortOnly" | "LongShort";
   representativeBacktestId?: string | null;
 }
 
-// --- 4. 전체 전략 객체 타입 ---
-export interface Strategy {
+export interface BacktestHistoryItem {
   id: string;
-  authorId: string;
-  name: string;
-  description: string | null; // Nullable 타입 명시
-  isPublic: boolean;
-
-  longEntryRules: PositionRules | null;
-  longExitRules: PositionRules | null;
-  shortEntryRules: PositionRules | null;
-  shortExitRules: PositionRules | null;
-
-  // [수정] any -> 명확한 타입으로 변경
-  tpslLogic: TpslLogic | null;
-  targetCoins: TargetCoin[];
-
   createdAt: string;
-  updatedAt: string | null; // Nullable 타입 명시
-  paidFeatureLevel: "Basic" | "Trader" | "Pro";
-
-  // 나의 전략 페이지에서 성과 뱃지 표시용
-  latestBacktestSummary: {
-    totalReturnPct: number | null;
-    winRatePct: number | null;
-    mddPct: number | null;
-  } | null;
-
-  // 마켓플레이스 등록 정보 (등록된 경우에만 존재)
-  marketplaceListing: MarketplaceListing | null;
-
-  // [핵심 추가] 대표 백테스트 선택 UI를 위한 전체 백테스트 이력
-  backtests: BacktestHistoryItem[];
+  result: BacktestResultSummaryForCard | null;
 }
 
 // --- UI 상호작용을 위한 컨텍스트 타입 ---
@@ -231,30 +197,6 @@ export interface RuleBlockProps {
 }
 
 /**
- * 마켓플레이스 등록 정보 타입
- */
-export interface MarketplaceListing {
-  /** 마켓 등록 ID */
-  listingId: string;
-  /** 판매 가격 */
-  price: number;
-  /**
-   * 전략 카테고리 (백엔드와 협의된 Enum 값)
-   * 예: 'Scalping', 'Swing', 'TrendFollowing', 'Grid' 등
-   */
-  category: string;
-  /**
-   * 포지션 타입
-   * - 'LongOnly': 롱 포지션만 진입
-   * - 'ShortOnly': 숏 포지션만 진입
-   * - 'LongShort': 양방향 포지션 진입
-   */
-  positionType: "LongOnly" | "ShortOnly" | "LongShort";
-  /** 마켓에 등록된 시각 */
-  listedAt: string;
-}
-
-/**
  * 목록 조회를 위한 가벼운 전략 정보 타입.
  * 백엔드의 `StrategyInList` 스키마와 일치합니다.
  */
@@ -266,5 +208,30 @@ export interface StrategyInList {
   isPublic: boolean;
   createdAt: string;
   updatedAt: string | null;
-  // 필요에 따라 latestBacktestSummary, marketplaceListing 등 추가 가능
+  latestBacktestSummary: BacktestResultSummaryForCard | null;
+  marketplaceListing: MarketplaceListing | null;
+}
+
+/**
+ * 상세 조회를 위한 완전한 전략 정보 타입.
+ * 백엔드의 `Strategy` 스키마와 일치합니다.
+ */
+export interface Strategy {
+  id: string;
+  authorId: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  longEntryRules: PositionRules | null;
+  longExitRules: PositionRules | null;
+  shortEntryRules: PositionRules | null;
+  shortExitRules: PositionRules | null;
+  tpslLogic: TpslLogic | null;
+  targetCoins: TargetCoin[];
+  createdAt: string;
+  updatedAt: string | null;
+  paidFeatureLevel: "Basic" | "Trader" | "Pro";
+  latestBacktestSummary: BacktestResultSummaryForCard | null;
+  marketplaceListing: MarketplaceListing | null;
+  backtests: BacktestHistoryItem[];
 }
