@@ -84,8 +84,20 @@ const createProfileSchema = (t: any) =>
           .optional(),
       })
       .optional(),
-    featuredStrategyId: z.string().optional(),
-    featuredPostId: z.string().optional(),
+
+    // featuredStrategyId와 featuredPostId에 transform을 추가하여,
+    // 빈 문자열이나 null이 제출될 경우 undefined로 변환합니다.
+    featuredStrategyId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => val || undefined),
+
+    featuredPostId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => val || undefined),
   });
 
 export function ProfileManagementTab() {
