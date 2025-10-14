@@ -278,6 +278,17 @@ export default function StrategyEditorPage({
     }
   }, [isEditMode, strategyState.reset, formMethods.reset]);
 
+  /**
+   * 컴포넌트가 화면에서 사라질 때 Zustand 상태를 초기화하는 클린업 함수
+   */
+  useEffect(() => {
+    // 이 Effect는 컴포넌트가 처음 마운트될 때 한 번만 실행됩니다.
+    // 반환되는 함수는 컴포넌트가 언마운트될 때(페이지를 벗어날 때) 호출됩니다.
+    return () => {
+      strategyState.reset();
+    };
+  }, [strategyState.reset]);
+
   useEffect(() => {
     if (
       strategyState.targetCoins.length > 0 &&

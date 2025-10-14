@@ -575,7 +575,6 @@
       "usernameLabel": "Username",
       "bioLabel": "Bio",
       "bioPlaceholder": "Tell others about your trading philosophy or area of expertise.",
-      "saveChanges": "Save Changes",
       "socialLinks": {
         "title": "Social Links",
         "description": "Increase your credibility by connecting external channels.",
@@ -598,7 +597,10 @@
         "strategyDescription": "Pin your most confident strategy for sale to your profile."
       },
       "saveSuccess": "Profile updated successfully.",
-      "saveError": "Failed to update profile."
+      "saveError": "Failed to update profile.",
+      "unsavedChanges": "You have unsaved changes.",
+      "cancel": "Cancel",
+      "saveChanges": "Save Changes"
     },
     "settings": {
       "password": {
@@ -759,8 +761,6 @@
       "upgradeButton": "Upgrade Plan"
     },
     "form": {
-      "goBackButton": "Back",
-      "saveButton": "Save Strategy",
       "basicInfoTitle": "Basic Information",
       "basicInfoDescription": "Enter the name and description for your strategy.",
       "nameLabel": "Strategy Name",
@@ -773,7 +773,12 @@
       "saveError": "Failed to save strategy: {error}",
       "saveFailedGeneric": "An unknown error occurred.",
       "updateError": "Strategy Update Error",
-      "rulesRequired": "At least one entry rule is required."
+      "rulesRequired": "At least one entry rule is required.",
+      "unsavedChanges": "You have unsaved changes.",
+      "goBackButton": "Go Back",
+      "cancel": "Cancel",
+      "saveButton": "Save Strategy",
+      "changesCanceled": "Your changes have been discarded."
     }
   },
   "StrategyListingPreview": {
