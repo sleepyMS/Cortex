@@ -1045,8 +1045,8 @@
     "noDateInfo": "날짜 정보 없음",
     "totalReturn": "총 수익률",
     "totalReturnTooltip": "백테스팅 기간 동안의 누적 수익률입니다.",
-    "winRate": "승률",
-    "winRateTooltip": "전체 거래 중 수익을 낸 거래의 비율입니다.",
+    "mddPct": "최대 낙폭 (MDD)",
+    "mddPctTooltip": "전 고점 대비 최대 자산 하락률입니다. 변동성 관리의 핵심 지표입니다.",
     "simulating": "시뮬레이션 진행 중...",
     "actions": {
       "cancel": "실행 취소",

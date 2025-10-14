@@ -57,7 +57,7 @@ export interface Backtest {
   };
   result: {
     totalReturnPct: number | null;
-    winRatePct: number | null;
+    mddPct: number | null;
   } | null;
   strategy: Strategy;
   progress?: number;
@@ -180,14 +180,14 @@ export const BacktestCard = ({
                 <Tooltip>
                   <TooltipTrigger className="cursor-help">
                     <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                      {t("winRate")}
+                      {t("mddPct")}
                       <HelpCircle className="h-3 w-3" />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>{t("winRateTooltip")}</TooltipContent>
+                  <TooltipContent>{t("mddPctTooltip")}</TooltipContent>
                 </Tooltip>
                 <p className="text-lg font-bold text-foreground">
-                  {result?.winRatePct?.toFixed(1) ?? "N/A"}%
+                  {result?.mddPct?.toFixed(2) ?? "N/A"}%
                 </p>
               </div>
             </div>

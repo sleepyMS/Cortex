@@ -1001,8 +1001,8 @@
     "noDateInfo": "No date info",
     "totalReturn": "Total Return",
     "totalReturnTooltip": "The cumulative return over the backtesting period.",
-    "winRate": "Win Rate",
-    "winRateTooltip": "The percentage of profitable trades out of all trades.",
+    "mddPct": "Max Drawdown",
+    "mddPctTooltip": "The largest peak-to-trough decline in portfolio value.",
     "simulating": "Simulation in progress...",
     "actions": {
       "cancel": "Cancel Run",
