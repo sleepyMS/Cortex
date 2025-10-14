@@ -1,6 +1,7 @@
 // file: src/components/domain/dashboard/ProfileManagementTab.tsx
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useUserStore } from "@/store/userStore";
@@ -24,8 +25,6 @@ import {
 } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { PlanAvatar } from "@/components/ui/PlanAvatar";
-
 import {
   Form,
   FormControl,
@@ -35,7 +34,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/Form";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import {
   Select,
   SelectContent,
@@ -52,7 +50,9 @@ import {
   Bot,
   Loader2,
   Globe,
+  X,
 } from "lucide-react";
+import { PlanAvatar } from "@/components/ui/PlanAvatar"; // PlanAvatar 경로 수정 가정
 
 // 타입 정의
 interface UserProfile {
@@ -67,6 +67,33 @@ interface UserProfile {
   featuredStrategyId?: string;
   featuredPostId?: string;
 }
+
+// --- 애니메이션 효과를 정의 ---
+const barVariants = {
+  hidden: {
+    y: 50, // 아래쪽 50px 위치에서 시작
+    opacity: 0,
+  },
+  visible: {
+    y: 0, // 최종 위치로 이동
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+      damping: 15,
+      staggerChildren: 0.2, // 자식 요소들을 0.1초 간격으로 애니메이션
+    },
+  },
+  exit: {
+    y: 50,
+    opacity: 0,
+  },
+} as const;
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1 },
+} as const;
 
 // Zod 스키마
 const createProfileSchema = (t: any) =>
@@ -127,6 +154,8 @@ export function ProfileManagementTab() {
     resolver: zodResolver(formSchema),
   });
 
+  const { isDirty } = form.formState;
+
   useEffect(() => {
     if (profileData) {
       form.reset({
@@ -167,16 +196,19 @@ export function ProfileManagementTab() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      {/* --- 👇 [2. 핵심 수정] onSumbit을 form 태그가 아닌, 플로팅 바의 '저장' 버튼에서 처리합니다. --- */}
+      <div className="space-y-8">
         {/* 기본 정보 카드 */}
         <Card>
           <CardHeader>
+            {/* --- 👇 [3. 핵심 수정] 버튼을 form 바깥으로 빼내고, type="button"을 명시합니다. --- */}
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle>{t("basicInfo.title")}</CardTitle>
                 <CardDescription>{t("basicInfo.description")}</CardDescription>
               </div>
               <Button
+                type="button" // 폼 제출 방지
                 variant="outline"
                 onClick={() => router.push(`/profile/${user?.username}`)}
               >
@@ -224,143 +256,180 @@ export function ProfileManagementTab() {
           </CardContent>
         </Card>
 
-        {/* 소셜 링크 카드 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("socialLinks.title")}</CardTitle>
-            <CardDescription>{t("socialLinks.description")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="socialLinks.twitter"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center">
-                    <Twitter className="h-4 w-4 mr-2" />{" "}
-                    {t("socialLinks.twitterLabel")}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://twitter.com/username"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="socialLinks.github"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center">
-                    <Github className="h-4 w-4 mr-2" />{" "}
-                    {t("socialLinks.githubLabel")}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://github.com/username"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="socialLinks.website"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center">
-                    <Globe className="h-4 w-4 mr-2" />{" "}
-                    {t("socialLinks.websiteLabel")}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t("socialLinks.websitePlaceholder")}
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        {/* 대표 콘텐츠 카드 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("featuredContent.title")}</CardTitle>
-            <CardDescription>
-              {t("featuredContent.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={form.control}
-              name="featuredStrategyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center">
-                    <Bot className="h-4 w-4 mr-2" />
-                    {t("featuredContent.strategyLabel")}
-                  </FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      // "none"을 선택하면 form의 상태를 null로 설정
-                      field.onChange(value === "none" ? null : value);
-                    }}
-                    value={field.value || "none"} // form 상태가 null 또는 undefined일 때 "none"을 표시
-                  >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* 소셜 링크 카드 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("socialLinks.title")}</CardTitle>
+              <CardDescription>{t("socialLinks.description")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="socialLinks.twitter"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Twitter className="h-4 w-4 mr-2" />{" "}
+                      {t("socialLinks.twitterLabel")}
+                    </FormLabel>
                     <FormControl>
-                      <SelectTrigger disabled={isLoadingStrategies}>
-                        <SelectValue
-                          placeholder={
-                            isLoadingStrategies
-                              ? t("featuredContent.loading")
-                              : t("featuredContent.selectPlaceholder")
-                          }
-                        />
-                      </SelectTrigger>
+                      <Input
+                        placeholder="https://twitter.com/username"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        {t("featuredContent.none")}
-                      </SelectItem>
-                      {myStrategies &&
-                        myStrategies.map((strategy) => (
-                          <SelectItem key={strategy.id} value={strategy.id}>
-                            {strategy.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {t("featuredContent.strategyDescription")}
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="socialLinks.github"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Github className="h-4 w-4 mr-2" />{" "}
+                      {t("socialLinks.githubLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://github.com/username"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="socialLinks.website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Globe className="h-4 w-4 mr-2" />{" "}
+                      {t("socialLinks.websiteLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t("socialLinks.websitePlaceholder")}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={updateProfileMutation.isPending}>
-            {updateProfileMutation.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            <Save className="mr-2 h-4 w-4" />
-            {t("saveChanges")}
-          </Button>
-        </div>
-      </form>
+          {/* 대표 콘텐츠 카드 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("featuredContent.title")}</CardTitle>
+              <CardDescription>
+                {t("featuredContent.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="featuredStrategyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Bot className="h-4 w-4 mr-2" />
+                      {t("featuredContent.strategyLabel")}
+                    </FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        // "none"을 선택하면 form의 상태를 null로 설정
+                        field.onChange(value === "none" ? null : value);
+                      }}
+                      value={field.value || "none"} // form 상태가 null 또는 undefined일 때 "none"을 표시
+                    >
+                      <FormControl>
+                        <SelectTrigger disabled={isLoadingStrategies}>
+                          <SelectValue
+                            placeholder={
+                              isLoadingStrategies
+                                ? t("featuredContent.loading")
+                                : t("featuredContent.selectPlaceholder")
+                            }
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("featuredContent.none")}
+                        </SelectItem>
+                        {myStrategies &&
+                          myStrategies.map((strategy) => (
+                            <SelectItem key={strategy.id} value={strategy.id}>
+                              {strategy.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {t("featuredContent.strategyDescription")}
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        </form>
+      </div>
+
+      <div className="p-2" />
+
+      {/* --- isDirty가 true일 때만 보이는 플로팅 저장 바 --- */}
+      <AnimatePresence>
+        {isDirty && (
+          <motion.div
+            className="sticky bottom-4 inset-x-0 flex justify-center z-10"
+            variants={barVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-4xl p-3 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center justify-between">
+              <motion.span
+                className="text-sm font-semibold text-foreground"
+                variants={itemVariants}
+              >
+                {t("unsavedChanges")}
+              </motion.span>
+              <motion.div className="space-x-2" variants={itemVariants}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => form.reset()}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  {t("cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={form.handleSubmit(onSubmit)}
+                  disabled={updateProfileMutation.isPending}
+                >
+                  {updateProfileMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  <Save className="mr-2 h-4 w-4" />
+                  {t("saveChanges")}
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Form>
   );
 }
