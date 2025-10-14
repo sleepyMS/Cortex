@@ -205,7 +205,7 @@ export function useChartIndicatorManager({
     typeof createSeriesMarkers
   > | null>(null);
 
-  // [핵심] 전역 스토어에서 최신 지표 메타데이터를 가져옵니다.
+  // 전역 스토어에서 최신 지표 메타데이터를 가져옵니다.
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
 
   const setupChart = useCallback(
@@ -287,13 +287,6 @@ export function useChartIndicatorManager({
     };
     const mainChart = setupChart(container, finalOptions);
     chartRef.current = mainChart;
-    // candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
-    //   upColor: "#26a69a",
-    //   downColor: "#ef5350",
-    //   borderVisible: false,
-    //   wickUpColor: "#26a69a",
-    //   wickDownColor: "#ef5350",
-    // });
     const resizeObserver = new ResizeObserver((entries) => {
       const { width } = entries[0].contentRect;
       if (width > 0) mainChart.resize(width, mainChartHeight);
@@ -346,7 +339,7 @@ export function useChartIndicatorManager({
       // chartRef.current만 확인
       const mainChart = chartRef.current; // 추가
 
-      // ▼▼▼ [수정 2] candlestickSeriesRef.current가 null이면 생성합니다. ▼▼▼
+      // candlestickSeriesRef.current가 null이면 생성합니다.
       if (!candlestickSeriesRef.current) {
         candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
           upColor: "#26a69a",
@@ -726,8 +719,6 @@ export function useChartIndicatorManager({
             indicatorState.series.set(bottomKey, bottomSeries);
           }
           bottomSeries.setData(cloudBottomData as any);
-
-          // ▲▲▲ [수정 완료] ▲▲▲
 
           // 3. 실제 5개 라인을 얇은 LineSeries로 위에 다시 그립니다.
           const allLines = [

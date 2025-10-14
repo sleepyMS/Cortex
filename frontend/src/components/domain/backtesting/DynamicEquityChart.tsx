@@ -1,17 +1,15 @@
+// file: frontend/src/components/domain/backtesting/DynamicEquityChart.tsx
+
+"use client";
+
 import React from "react";
 import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { ChartDataPoint } from "./EquityChart"; // 타입 공유
-import {
-  createChart,
-  ColorType,
-  UTCTimestamp,
-  AreaData,
-} from "lightweight-charts";
+import { ChartDataPoint } from "./EquityChart";
+import { AreaData, UTCTimestamp } from "lightweight-charts";
 
-// 'EquityChart' 컴포넌트를 dynamic import로 불러오기
-// ssr: false 옵션이 핵심입니다.
 const EquityChartClient = dynamic(() => import("./EquityChart"), {
   ssr: false,
   loading: () => (
@@ -33,6 +31,8 @@ export const DynamicEquityChart = ({
   benchmarkData,
   title,
 }: DynamicEquityChartProps) => {
+  const { resolvedTheme } = useTheme();
+
   return (
     <Card>
       <CardHeader>
@@ -42,6 +42,7 @@ export const DynamicEquityChart = ({
         <EquityChartClient
           pnlData={pnlData ?? []}
           benchmarkData={benchmarkData ?? []}
+          dark={resolvedTheme === "dark"}
         />
       </CardContent>
     </Card>
