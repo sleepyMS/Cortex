@@ -566,10 +566,21 @@ export default function StrategyEditorPage({
             className="space-y-8"
           >
             <div className="space-y-8">
-              <div className="text-center">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                  {isEditMode ? t("editTitle") : t("title")}
-                </h1>
+              <div className="flex items-center justify-center relative">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-0"
+                  onClick={() => router.back()}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div className="text-center">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                    {isEditMode ? t("editTitle") : t("title")}
+                  </h1>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
@@ -743,25 +754,32 @@ export default function StrategyEditorPage({
       <AnimatePresence>
         {isDirty && (
           <motion.div
-            className="sticky bottom-4 inset-x-0 flex justify-center z-10"
+            className="sticky bottom-4 inset-x-0 flex justify-center z-10 px-4"
             variants={barVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
-            <div className="w-full max-w-7xl p-3 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center justify-between">
-              <motion.span className="text-sm font-semibold text-foreground hidden sm:inline">
+            {/* ✅ [수정] justify-between 제거, 일반 flex 컨테이너로 변경 */}
+            <div className="w-full max-w-7xl p-3 sm:p-4 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center gap-4">
+              <motion.span className="text-sm font-semibold text-foreground hidden sm:inline flex-shrink-0">
                 {t("form.unsavedChanges")}
               </motion.span>
-              <div className="space-x-2">
+
+              {/* ✅ [수정] ml-auto 클래스를 추가하여 버튼 그룹을 항상 오른쪽으로 밀어냅니다. */}
+              <div className="flex items-center justify-end gap-2 ml-auto">
+                {/* '뒤로가기' 버튼: sm 사이즈 이상에서만 보이도록 유지 */}
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.back()}
+                  className="hidden sm:inline-flex"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   {t("form.goBackButton")}
                 </Button>
+
+                {/* '취소'와 '저장' 버튼 */}
                 <Button
                   type="button"
                   variant="ghost"

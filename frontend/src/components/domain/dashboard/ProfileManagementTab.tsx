@@ -81,7 +81,7 @@ const barVariants = {
       type: "spring",
       stiffness: 100,
       damping: 15,
-      staggerChildren: 0.2, // 자식 요소들을 0.1초 간격으로 애니메이션
+      staggerChildren: 0.2, // 자식 요소들을 0.2초 간격으로 애니메이션
     },
   },
   exit: {
@@ -392,38 +392,48 @@ export function ProfileManagementTab() {
       <AnimatePresence>
         {isDirty && (
           <motion.div
-            className="sticky bottom-4 inset-x-0 flex justify-center z-10"
+            // ✅ [수정] 모바일 화면 좌우 여백 추가
+            className="sticky bottom-4 inset-x-0 flex justify-center z-10 px-4"
             variants={barVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
-            <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-4xl p-3 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center justify-between">
+            {/* ✅ [수정] max-w 체인 단순화 및 justify-between 제거 */}
+            <div className="w-full max-w-4xl p-3 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center">
+              {/* ✅ [수정] 안내 문구는 sm 사이즈 이상에서만 보이도록 처리 */}
               <motion.span
-                className="text-sm font-semibold text-foreground"
+                className="text-sm font-semibold text-foreground hidden sm:inline"
                 variants={itemVariants}
               >
                 {t("unsavedChanges")}
               </motion.span>
-              <motion.div className="space-x-2" variants={itemVariants}>
+
+              {/* ✅ [수정] ml-auto를 사용하여 버튼 그룹을 항상 오른쪽으로 밀어냄 */}
+              <motion.div
+                className="flex items-center gap-2 ml-auto"
+                variants={itemVariants}
+              >
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => form.reset()}
                 >
-                  <X className="mr-2 h-4 w-4" />
-                  {t("cancel")}
+                  <X className="h-4 w-4 sm:mr-2" />
+                  {/* ✅ [수정] 버튼 텍스트도 sm 사이즈 이상에서만 표시 */}
+                  <span className="hidden sm:inline">{t("cancel")}</span>
                 </Button>
                 <Button
                   type="button"
                   onClick={form.handleSubmit(onSubmit)}
                   disabled={updateProfileMutation.isPending}
                 >
-                  {updateProfileMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {updateProfileMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 sm:mr-2" />
                   )}
-                  <Save className="mr-2 h-4 w-4" />
-                  {t("saveChanges")}
+                  <span className="hidden sm:inline">{t("saveChanges")}</span>
                 </Button>
               </motion.div>
             </div>
