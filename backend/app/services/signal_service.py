@@ -136,12 +136,13 @@ class SignalService:
         return results
 
     def _get_indicator_column_name(
-        self,
-        df_columns: List[str],
-        indicator_value: Union[schemas.IndicatorValue, float, int]
+    self,
+    df_columns: List[str],
+    indicator_value: Union[schemas.IndicatorValue, float, int]
     ) -> Optional[Union[str, float, int]]:
         """
-        [최종 완성 버전] 모든 복합 지표의 고유한 이름 규칙(대소문자, 기본값 생략)을 처리하여 컬럼 이름을 유연하게 찾아 반환합니다.
+        [수정 완료] 모든 복합 지표의 실제 생성 규칙을 정확히 반영하여
+        데이터프레임에서 해당 지표 컬럼 이름을 안정적으로 찾아 반환합니다.
         """
         if indicator_value is None: return None
         if isinstance(indicator_value, (int, float)): return indicator_value
@@ -156,52 +157,69 @@ class SignalService:
         params_str = ""
         target_prefix = ""
 
-        # 각 복합 지표의 고유한 이름 규칙 처리
+        # 각 복합 지표의 실제 컬럼명 생성 규칙을 정확하게 반영
         if kind == 'macd' and output_key in ['macd', 'histogram', 'signal']:
             prefix_map = {'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds'}
             target_prefix = prefix_map.get(output_key, 'macd')
             params_str = "_".join(map(str, values.values()))
+            
         elif kind == 'stoch' and output_key in ['k', 'd']:
-             target_prefix = f"stoch{output_key}"
-             params_str = "_".join(map(str, values.values()))
-        elif kind == 'supertrend' and output_key in ['supertrend', 'direction']:
-            prefix_map = {'supertrend': 'supert', 'direction': 'supertd'}
+            target_prefix = f"stoch{output_key}"
+            params_str = "_".join(map(str, values.values()))
+            
+        elif kind == 'supertrend' and output_key in ['supertrend', 'direction', 'long', 'short']:
+            prefix_map = {'supertrend': 'supert', 'direction': 'supertd', 'long': 'supertl', 'short': 'superts'}
             target_prefix = prefix_map.get(output_key, 'supert')
             params_str = "_".join(map(str, values.values()))
+            
         elif kind == 'ichimoku':
-            tenkan, kijun, senkou = values.get('tenkan', 9), values.get('kijun', 26), values.get('senkou', 52)
+            tenkan, kijun, senkou, chikou = values.get('tenkan', 9), values.get('kijun', 26), values.get('senkou', 52), values.get('chikou', 26)
             if output_key == 'tenkan_sen': target_prefix, params_str = 'its', str(tenkan)
             elif output_key == 'kijun_sen': target_prefix, params_str = 'iks', str(kijun)
-            elif output_key in ['span_a', 'upper']: target_prefix, params_str = 'isa', f"{tenkan}_{kijun}"
-            elif output_key in ['span_b', 'lower']: target_prefix, params_str = 'isb', str(senkou)
-            elif output_key == 'lagging': target_prefix, params_str = 'ics', str(kijun)
-            else: target_prefix, params_str = 'its', str(tenkan)
-        elif kind == 'kc':
-            # 라이브러리가 컬럼명에 atr_length를 포함하지 않으므로, length와 scalar만 사용합니다.
-            length = values.get('length', 20)
-            scalar = values.get('scalar', 1.5)
-            params_str = f"{length}_{scalar}"
+            elif output_key in ['span_a', 'upper']: target_prefix, params_str = 'isa', str(tenkan) # 실제로는 tenkan 기간을 따름
+            elif output_key in ['span_b', 'lower']: target_prefix, params_str = 'isb', str(kijun) # 실제로는 kijun 기간을 따름
+            elif output_key == 'lagging': target_prefix, params_str = 'ics', str(chikou)
+            else: target_prefix, params_str = 'its', str(tenkan) # 기본값
 
+        elif kind == 'kc':
+            # 라이브러리는 atr_length를 컬럼명에 포함하지 않으므로, length와 scalar만 사용합니다.
+            length = values.get('length', 20)
+            scalar = values.get('scalar', 2) # pandas-ta 기본값은 2
+            params_str = f"{length}_{scalar}"
             if output_key == 'upper': target_prefix = 'kcue'
             elif output_key == 'middle': target_prefix = 'kcbe'
             elif output_key == 'lower': target_prefix = 'kcle'
-            else: target_prefix = 'kcbe'
-        else:
+            else: target_prefix = 'kcbe' # 기본값
+            
+        else: # EMA, SMA 등 다른 모든 기본 지표 처리
             possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
-            if possible_prefixes: target_prefix = possible_prefixes[0]
-            else: target_prefix = kind
-            if values: params_str = "_".join(map(str, values.values()))
-        
+            if possible_prefixes:
+                # 여러 출력값(e.g., BBANDS)이 있을 경우, output_key를 기반으로 정확한 prefix를 찾습니다.
+                found = False
+                for p in possible_prefixes:
+                    # bbu, bbm, bbl
+                    if output_key and p.endswith(output_key):
+                        target_prefix = p
+                        found = True
+                        break
+                if not found:
+                    target_prefix = possible_prefixes[0]
+            else:
+                target_prefix = kind
+            
+            if values:
+                # 값의 순서가 아닌, 키-값 쌍을 정렬하여 일관된 파라미터 문자열 생성
+                params_str = "_".join([f"{v}" for k, v in sorted(values.items())])
+
+        # 최종적으로 예상되는 컬럼명 (소문자로 비교)
         expected_col_base = f"{target_prefix}_{params_str}".lower() if params_str else target_prefix.lower()
 
-        # 대소문자 구분 없이 컬럼을 찾도록 .lower()를 사용하여 비교합니다.
+        # df_columns를 순회하며 대소문자 구분 없이 정확히 일치하는 컬럼을 찾습니다.
         for col in df_columns:
-            if col.lower().startswith(expected_col_base):
-                remainder = col.lower()[len(expected_col_base):]
-                if not remainder or remainder.startswith('_') or remainder.startswith('.'):
-                     return col
+            if col.lower() == expected_col_base:
+                return col
 
-        logger.warning(f"지표 컬럼 탐색 최종 실패: {indicator_value.model_dump()}, 예상 컬럼명 시작: '{expected_col_base}'")
+        logger.warning(f"지표 컬럼 탐색 최종 실패: {indicator_value.model_dump()}, 예상 컬럼명: '{expected_col_base}'")
         return None
 
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
@@ -516,7 +534,6 @@ class SignalService:
         self, request: Union[schemas.SignalCalculationRequest, schemas.StrategyCreate]
     ) -> Tuple[pd.DataFrame, str]:
         """
-        [최종 수정 버전]
         전략 규칙 기반으로 매매 신호 DataFrame과 '계산 기준 타임프레임'을 함께 반환합니다.
         """
         if isinstance(request, schemas.StrategyCreate) and request.target_coins:
@@ -564,19 +581,6 @@ class SignalService:
         signals_df = signals_df.set_index('time_dt')
         signals_df = signals_df.rename(columns={'signal_type': 'signal'})
         
-        # 단순 중복 제거 대신, 우선순위 기반으로 신호를 선택
-        if not signals_df.index.is_unique:
-            # 우선순위 맵 정의 (낮은 숫자 = 높은 우선순위)
-            priority_map = {
-                'long_exit': 1, 'short_exit': 1,
-                'long_entry': 2, 'short_entry': 2,
-            }
-            signals_df['priority'] = signals_df['signal'].map(priority_map)
-            
-            # 동일 인덱스(시간) 내에서 우선순위가 가장 높은 신호만 선택
-            signals_df = signals_df.sort_values('priority').groupby(signals_df.index).first()
-            signals_df = signals_df.drop(columns='priority')
-
         return signals_df[['signal']], calculation_tf
 
 signal_service = SignalService()
