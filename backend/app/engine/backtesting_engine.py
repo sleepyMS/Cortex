@@ -62,53 +62,64 @@ class BacktestingEngine:
 
     def run(self) -> Tuple[Dict, List[Dict]]:
         """
-        [로직 복원] 명확한 우선순위(SL > TP > Signal)에 따라 청산 이유와 가격을 결정하는
+        명확한 우선순위(SL > TP > Signal)에 따라 청산 이유와 가격을 결정하는
         통합 로직을 사용하는 메인 시뮬레이션 루프.
         """
-        for timestamp, row in self.data.iterrows():
-            exit_reason, exit_price = None, None
+        for timestamp, group in self.data.groupby(level=0, sort=False):
+            # 그룹 내 마지막 행을 해당 타임스탬프의 대표 OHLCV 값으로 사용
+            row_for_ohlc = group.iloc[-1]
 
             # --- 1. 청산 조건 우선 확인 (포지션 보유 시) ---
+            exit_reason, exit_price = None, None
             if self.position_type:
                 # 우선순위 1: Stop Loss
                 if self.sl_price:
-                    if self.position_type == 'long' and row['low'] <= self.sl_price:
+                    if self.position_type == 'long' and row_for_ohlc['low'] <= self.sl_price:
                         exit_reason, exit_price = "Stop Loss", self.sl_price
-                    elif self.position_type == 'short' and row['high'] >= self.sl_price:
+                    elif self.position_type == 'short' and row_for_ohlc['high'] >= self.sl_price:
                         exit_reason, exit_price = "Stop Loss", self.sl_price
                 
-                # 우선순위 2: Take Profit (Stop Loss가 발동하지 않았을 경우)
+                # 우선순위 2: Take Profit
                 if not exit_reason and self.tp_price:
-                    if self.position_type == 'long' and row['high'] >= self.tp_price:
+                    if self.position_type == 'long' and row_for_ohlc['high'] >= self.tp_price:
                         exit_reason, exit_price = "Take Profit", self.tp_price
-                    elif self.position_type == 'short' and row['low'] <= self.tp_price:
+                    elif self.position_type == 'short' and row_for_ohlc['low'] <= self.tp_price:
                         exit_reason, exit_price = "Take Profit", self.tp_price
 
-                # 우선순위 3: Exit Signal (TP/SL이 발동하지 않았을 경우)
-                signal = row.get('signal')
-                if not exit_reason and signal:
-                    if signal == 'long_exit' and self.position_type == 'long':
-                        exit_reason, exit_price = "Signal", row['close']
-                    elif signal == 'short_exit' and self.position_type == 'short':
-                        exit_reason, exit_price = "Signal", row['close']
+                # 우선순위 3: Exit Signal (그룹 내 모든 신호 확인)
+                if not exit_reason:
+                    for _, signal_row in group.iterrows():
+                        signal = signal_row.get('signal')
+                        if signal == 'long_exit' and self.position_type == 'long':
+                            exit_reason, exit_price = "Signal", row_for_ohlc['close']
+                            break 
+                        elif signal == 'short_exit' and self.position_type == 'short':
+                            exit_reason, exit_price = "Signal", row_for_ohlc['close']
+                            break
 
             # --- 2. 결정된 행동 실행 ---
             if exit_reason and exit_price:
                 # 청산 실행
                 self._execute_trade(timestamp, exit_price, 'sell' if self.position_type == 'long' else 'buy', is_entry=False, reason=exit_reason)
-            else:
-                # 진입 실행 (포지션이 없고, 진입 신호가 있을 경우)
-                signal = row.get('signal')
-                if self.position_size == 0 and signal:
+            
+            # 포지션이 없고, 진입 신호가 있을 경우
+            # (청산과 진입이 같은 캔들에서 일어날 수 있으므로 if/else가 아닌 별도 if문 사용)
+            if self.position_size == 0:
+                for _, signal_row in group.iterrows():
+                    signal = signal_row.get('signal')
                     if signal == 'long_entry':
-                        self._execute_trade(timestamp, row['close'], 'buy', is_entry=True, reason="Signal")
+                        self._execute_trade(timestamp, row_for_ohlc['close'], 'buy', is_entry=True, reason="Signal")
+                        break # 한 캔들에서 진입은 한 번만
                     elif signal == 'short_entry':
-                        self._execute_trade(timestamp, row['close'], 'sell', is_entry=True, reason="Signal")
+                        self._execute_trade(timestamp, row_for_ohlc['close'], 'sell', is_entry=True, reason="Signal")
+                        break # 한 캔들에서 진입은 한 번만
 
-            # --- 3. 후처리 ---
-            self._update_equity(timestamp, row['close'])
+            # --- 3. 후처리 (루프의 마지막) ---
+            # 모든 거래 처리가 끝난 후, 해당 타임스탬프의 자산 상태를 "한 번만" 기록
+            self._update_equity(timestamp, row_for_ohlc['close'])
             if self.position_type:
-                self._update_trailing_stop(row)
+                self._update_trailing_stop(row_for_ohlc)
+        # ▲▲▲ 여기까지 교체 ▲▲▲
 
         return self._calculate_summary_stats(), self.trade_logs
 
