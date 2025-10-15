@@ -37,7 +37,6 @@ import { useIndicatorStore } from "@/store/indicatorStore";
 // =================================================================================
 // #region 유틸리티 및 상수 (기존과 동일)
 // =================================================================================
-
 const LEGEND_KEY_CANDLE = "CANDLE";
 const INDICATOR_COLOR_PALETTE = [
   "#2962FF",
@@ -51,9 +50,8 @@ const INDICATOR_COLOR_PALETTE = [
 ];
 
 const timeToSeconds = (time: Time): number => {
-  if (typeof time === "string") {
+  if (typeof time === "string")
     return Math.floor(new Date(time).getTime() / 1000);
-  }
   if (typeof time === "object" && time !== null && "year" in time) {
     const businessDay = time as BusinessDay;
     return Math.floor(
@@ -156,7 +154,6 @@ const getThemeOptions = (resolvedTheme?: string): DeepPartial<ChartOptions> => {
     },
   };
 };
-
 // #endregion
 
 interface IndicatorState {
@@ -204,14 +201,11 @@ export function useChartIndicatorManager({
   const markersPluginRef = useRef<ReturnType<
     typeof createSeriesMarkers
   > | null>(null);
-
-  // 전역 스토어에서 최신 지표 메타데이터를 가져옵니다.
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
 
   const setupChart = useCallback(
     (container: HTMLElement, options: DeepPartial<ChartOptions>): IChartApi => {
       const chart = createChart(container, options);
-
       chart
         .timeScale()
         .subscribeVisibleTimeRangeChange((range: IRange<Time> | null) => {
@@ -237,7 +231,6 @@ export function useChartIndicatorManager({
             });
           }
         });
-
       chart.subscribeCrosshairMove((param) => {
         if (!param.point || param.time == null) {
           setLegendData({});
@@ -292,33 +285,27 @@ export function useChartIndicatorManager({
       if (width > 0) mainChart.resize(width, mainChartHeight);
     });
     resizeObserver.observe(container);
-
     return () => {
-      // 1. indicatorManager의 모든 차트와 시리즈를 먼저 제거
       indicatorManagerRef.current.forEach((state) => {
         state.series.forEach((series) => {
           try {
             (state.paneChart || chartRef.current)?.removeSeries(series);
           } catch (e) {
-            /* 이미 제거된 경우 무시 */
+            /* 무시 */
           }
         });
         try {
           state.paneChart?.remove();
         } catch (e) {
-          /* 이미 제거된 경우 무시 */
+          /* 무시 */
         }
       });
-
-      // 2. 메인 차트를 마지막에 제거
       if (chartRef.current) {
         chartRef.current.remove();
       }
-
-      // 3. 모든 ref를 명시적으로 초기화하여 '유령' 객체 방지
       chartRef.current = null;
       candlestickSeriesRef.current = null;
-      indicatorManagerRef.current.clear(); // Map을 비움
+      indicatorManagerRef.current.clear();
       markersPluginRef.current = null;
     };
   }, [mainChartContainerRef, mainChartHeight, setupChart, resolvedTheme]);
@@ -332,43 +319,25 @@ export function useChartIndicatorManager({
     );
   }, [resolvedTheme]);
 
-  // Effect 3: 데이터 업데이트 및 캐싱
-  // Effect 3-1: OHLCV 데이터 동기화
+  // Effect 3: OHLCV 데이터 캐싱
   useEffect(() => {
-    if (ohlcvData && chartRef.current) {
-      // chartRef.current만 확인
-      const mainChart = chartRef.current; // 추가
-
-      // candlestickSeriesRef.current가 null이면 생성합니다.
-      if (!candlestickSeriesRef.current) {
-        candlestickSeriesRef.current = mainChart.addSeries(CandlestickSeries, {
-          upColor: "#26a69a",
-          downColor: "#ef5350",
-          borderVisible: false,
-          wickUpColor: "#26a69a",
-          wickDownColor: "#ef5350",
-        });
-      }
+    if (ohlcvData) {
       const cache = new Map<number, CandlestickData<UTCTimestamp>>();
       ohlcvData.forEach((d) => cache.set(timeToSeconds(d.time), d));
       ohlcvCacheRef.current = cache;
-      // candlestickSeriesRef.current.setData(ohlcvData);
-      // // 데이터 로드 후 차트 뷰 자동 조정
-      // chartRef.current?.timeScale().fitContent();
     }
   }, [ohlcvData]);
 
-  // Effect 3-2: 지표 데이터 및 시리즈 동기화
+  // Effect 4: 지표, 캔들, 마커를 모두 처리하는 통합 Effect
   useEffect(() => {
     const mainChart = chartRef.current;
     if (!mainChart) return;
 
+    // --- 지표 로직 ---
     const manager = indicatorManagerRef.current;
     const newSeriesKeys = new Set(
       indicatorData ? Object.keys(indicatorData) : []
     );
-
-    // 1. 캐시 업데이트
     const newIndicatorCache = new Map<
       string,
       Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
@@ -390,20 +359,16 @@ export function useChartIndicatorManager({
     }
     indicatorCacheRef.current = newIndicatorCache;
 
-    // 2. 기존 시리즈 순회: 더 이상 필요없는 시리즈는 제거, 있는 시리즈는 데이터 업데이트
     manager.forEach((state, baseKey) => {
       let hasActiveSeries = false;
       state.series.forEach((series, fullKey) => {
         if (newSeriesKeys.has(fullKey)) {
           hasActiveSeries = true;
-
-          // ▼▼▼ [수정 1] 시리즈 '업데이트' 시 null 값 필터링 ▼▼▼
           const seriesData = indicatorData?.[fullKey] || [];
           const filteredData = seriesData.filter(
             (d) => d.value !== null && d.value !== undefined
           );
           series.setData(filteredData as any);
-          // ▲▲▲ [수정 완료] ▲▲▲
         } else {
           (state.paneChart || mainChart).removeSeries(series);
           state.series.delete(fullKey);
@@ -902,49 +867,25 @@ export function useChartIndicatorManager({
         }
       });
     }
-    // const mainChart = chartRef.current;
+
+    // --- 캔들 시리즈 재생성 로직 ---
     const ohlcvDataToSet = ohlcvData || [];
-
-    if (mainChart) {
-      if (candlestickSeriesRef.current) {
-        // 기존 캔들 시리즈를 제거하여 Z-Order를 리셋할 준비를 합니다.
-        const oldSeries = candlestickSeriesRef.current;
-        mainChart.removeSeries(oldSeries);
-      }
-
-      // 새 시리즈를 추가하여 모든 지표 시리즈보다 가장 높은 Z-Order를 부여합니다.
-      const newCandleSeries = mainChart.addSeries(CandlestickSeries, {
-        upColor: "#26a69a",
-        downColor: "#ef5350",
-        borderVisible: false,
-        wickUpColor: "#26a69a",
-        wickDownColor: "#ef5350",
-      });
-
-      // 데이터 및 ref 업데이트
-      newCandleSeries.setData(ohlcvDataToSet as any);
-      candlestickSeriesRef.current = newCandleSeries;
-
-      // 마커 플러그인을 리셋하여 Effect 4가 새 시리즈로 다시 만들게 합니다. (마커 사라짐 문제 해결)
-      markersPluginRef.current = null;
-
-      // 모든 데이터 로드 후 차트 뷰 자동 조정
-      mainChart.timeScale().fitContent();
+    if (candlestickSeriesRef.current) {
+      mainChart.removeSeries(candlestickSeriesRef.current);
     }
-    // ▲▲▲ [수정 3] Z-Order 및 마커 리셋 로직 완료 ▲▲▲
-  }, [
-    indicatorData,
-    paneIndicators,
-    getPaneContainer,
-    paneChartHeight,
-    resolvedTheme,
-    setupChart,
-    indicatorMetadata,
-    ohlcvData, // 의존성 추가
-  ]);
+    const newCandleSeries = mainChart.addSeries(CandlestickSeries, {
+      upColor: "#26a69a",
+      downColor: "#ef5350",
+      borderVisible: false,
+      wickUpColor: "#26a69a",
+      wickDownColor: "#ef5350",
+    });
+    newCandleSeries.setData(ohlcvDataToSet as any);
+    candlestickSeriesRef.current = newCandleSeries;
+    mainChart.timeScale().fitContent();
+    // --- 캔들 시리즈 재생성 로직 종료 ---
 
-  // Effect 4: 신호 및 파라볼릭 SAR 마커 렌더링
-  useEffect(() => {
+    // --- 마커 생성 로직 ---
     const series = candlestickSeriesRef.current;
     if (!series || !ohlcvData || ohlcvCacheRef.current.size === 0) {
       if (markersPluginRef.current) {
@@ -953,10 +894,7 @@ export function useChartIndicatorManager({
       return;
     }
 
-    // --- 1. 매수/매도 신호 마커 생성 (기존 로직) ---
     const ohlcvTimes = new Set(Array.from(ohlcvCacheRef.current.keys()));
-
-    // 기존 markers 변수명을 signalMarkers로 변경하여 역할 명확화
     const signalMarkers: SeriesMarker<Time>[] = (signalData?.signals || [])
       .filter((signal) => ohlcvTimes.has(timeToSeconds(signal.time)))
       .map((signal) => {
@@ -964,7 +902,6 @@ export function useChartIndicatorManager({
         let color = "#ef5350";
         let shape: "arrowUp" | "arrowDown" = "arrowDown";
         let text = "Signal";
-
         switch (signal.signalType) {
           case "long_entry":
             position = "belowBar";
@@ -994,7 +931,6 @@ export function useChartIndicatorManager({
         return { time: signal.time, position, color, shape, text };
       });
 
-    // --- 2. 파라볼릭 SAR 마커 생성 (새로운 로직) ---
     let psarMarkers: SeriesMarker<Time>[] = [];
     if (indicatorData) {
       const psarlKey = Object.keys(indicatorData).find((k) =>
@@ -1003,44 +939,46 @@ export function useChartIndicatorManager({
       const psarsKey = Object.keys(indicatorData).find((k) =>
         k.startsWith("psars_")
       );
-
       if (psarlKey && indicatorData[psarlKey]) {
-        const psarlData = indicatorData[psarlKey].filter(
-          (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
-        );
         psarMarkers = psarMarkers.concat(
-          psarlData.map((d) => ({
-            time: d.time,
-            position: "belowBar",
-            color: "#26a69a", // 반투명 제거
-            shape: "circle",
-            size: 1, // 가장 작은 크기로 변경
-            text: "",
-          }))
+          indicatorData[psarlKey]
+            .filter(
+              (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
+            )
+            .map((d) => ({
+              time: d.time,
+              position: "belowBar",
+              color: "#26a69a",
+              shape: "circle",
+              size: 1,
+              text: "",
+            }))
         );
       }
       if (psarsKey && indicatorData[psarsKey]) {
-        const psarsData = indicatorData[psarsKey].filter(
-          (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
-        );
         psarMarkers = psarMarkers.concat(
-          psarsData.map((d) => ({
-            time: d.time,
-            position: "aboveBar",
-            color: "#ef5350", // 반투명 제거
-            shape: "circle",
-            size: 1, // 가장 작은 크기로 변경
-            text: "",
-          }))
+          indicatorData[psarsKey]
+            .filter(
+              (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
+            )
+            .map((d) => ({
+              time: d.time,
+              position: "aboveBar",
+              color: "#ef5350",
+              shape: "circle",
+              size: 1,
+              text: "",
+            }))
         );
       }
     }
 
-    // --- 3. 모든 마커를 하나로 합치기 ---
     const allMarkers = [...signalMarkers, ...psarMarkers];
 
-    // --- 4. 마커 플러그인에 최종 마커 데이터 설정 ---
-    if (!markersPluginRef.current) {
+    if (
+      !markersPluginRef.current ||
+      (markersPluginRef.current as any).series !== series
+    ) {
       markersPluginRef.current = createSeriesMarkers(
         series,
         allMarkers
@@ -1048,5 +986,16 @@ export function useChartIndicatorManager({
     } else {
       (markersPluginRef.current as any).setMarkers(allMarkers);
     }
-  }, [signalData, ohlcvData, indicatorData]); // 의존성 배열에 indicatorData 추가
+    // --- 마커 생성 로직 종료 ---
+  }, [
+    indicatorData,
+    ohlcvData,
+    signalData,
+    paneIndicators,
+    getPaneContainer,
+    paneChartHeight,
+    resolvedTheme,
+    setupChart,
+    indicatorMetadata,
+  ]);
 }
