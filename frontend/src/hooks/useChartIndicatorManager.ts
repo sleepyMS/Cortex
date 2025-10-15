@@ -201,6 +201,8 @@ export function useChartIndicatorManager({
   const markersPluginRef = useRef<ReturnType<
     typeof createSeriesMarkers
   > | null>(null);
+  const allMarkersRef = useRef<SeriesMarker<Time>[]>([]);
+
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
 
   const setupChart = useCallback(
@@ -230,7 +232,11 @@ export function useChartIndicatorManager({
               }
             });
           }
+          if (markersPluginRef.current) {
+            (markersPluginRef.current as any).setMarkers(allMarkersRef.current);
+          }
         });
+
       chart.subscribeCrosshairMove((param) => {
         if (!param.point || param.time == null) {
           setLegendData({});
@@ -319,30 +325,22 @@ export function useChartIndicatorManager({
     );
   }, [resolvedTheme]);
 
-  // Effect 3: OHLCV 데이터 캐싱
+  // Effect 3: 데이터 처리 통합 Effect (기존 Effect 3 + Effect 4)
   useEffect(() => {
+    const mainChart = chartRef.current;
+    if (!mainChart) return;
+
+    // 1. 데이터 캐싱
     if (ohlcvData) {
       const cache = new Map<number, CandlestickData<UTCTimestamp>>();
       ohlcvData.forEach((d) => cache.set(timeToSeconds(d.time), d));
       ohlcvCacheRef.current = cache;
     }
-  }, [ohlcvData]);
-
-  // Effect 4: 지표, 캔들, 마커를 모두 처리하는 통합 Effect
-  useEffect(() => {
-    const mainChart = chartRef.current;
-    if (!mainChart) return;
-
-    // --- 지표 로직 ---
-    const manager = indicatorManagerRef.current;
-    const newSeriesKeys = new Set(
-      indicatorData ? Object.keys(indicatorData) : []
-    );
-    const newIndicatorCache = new Map<
-      string,
-      Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
-    >();
     if (indicatorData) {
+      const newIndicatorCache = new Map<
+        string,
+        Map<number, LineData<UTCTimestamp> | HistogramData<UTCTimestamp>>
+      >();
       Object.entries(indicatorData).forEach(([key, dataPoints]) => {
         const innerMap = new Map<
           number,
@@ -356,8 +354,14 @@ export function useChartIndicatorManager({
         );
         newIndicatorCache.set(key, innerMap);
       });
+      indicatorCacheRef.current = newIndicatorCache;
     }
-    indicatorCacheRef.current = newIndicatorCache;
+
+    // 2. 지표 시리즈 관리
+    const manager = indicatorManagerRef.current;
+    const newSeriesKeys = new Set(
+      indicatorData ? Object.keys(indicatorData) : []
+    );
 
     manager.forEach((state, baseKey) => {
       let hasActiveSeries = false;
@@ -380,11 +384,10 @@ export function useChartIndicatorManager({
       }
     });
 
-    // 3. 새로운 지표 시리즈 생성
     if (indicatorData) {
       const dataToProcess = { ...indicatorData };
 
-      // --- 볼린저 밴드 사전 처리 ---
+      // 볼린저 밴드 사전 처리
       const bbuKey = Object.keys(dataToProcess).find((k) =>
         k.startsWith("bbu_")
       );
@@ -405,16 +408,6 @@ export function useChartIndicatorManager({
             manager.set(baseKey, indicatorState);
           }
 
-          const theme = getThemeOptions(resolvedTheme);
-          let backgroundColor =
-            resolvedTheme === "dark" ? "#171819" : "#FFFFFF";
-          if (
-            theme.layout?.background?.type === ColorType.Solid &&
-            theme.layout.background.color
-          ) {
-            backgroundColor = theme.layout.background.color;
-          }
-          const fillColor = "rgba(33, 150, 243, 0.2)";
           const lineColor = "rgba(33, 150, 243, 0.8)";
           const bbmLineColor = "rgba(255, 82, 82, 0.8)";
 
@@ -428,30 +421,28 @@ export function useChartIndicatorManager({
             (d) => d.value != null
           );
 
-          // 1. 상단 밴드 (AreaSeries, 반투명 색으로 채우기)
           let bbuSeries = indicatorState.series.get(bbuKey) as
             | ISeriesApi<"Area">
             | undefined;
           if (!bbuSeries) {
             bbuSeries = mainChart.addSeries(AreaSeries, {
-              lineColor: lineColor,
+              lineColor,
               topColor: "transparent",
               bottomColor: "transparent",
               lineWidth: 1,
-              priceLineVisible: false, // 범례에만 가격이 표시되도록 설정
+              priceLineVisible: false,
               lastValueVisible: false,
             });
             indicatorState.series.set(bbuKey, bbuSeries);
           }
           bbuSeries.setData(bbuData as any);
 
-          // 2. 하단 밴드 (AreaSeries, 배경색으로 채워서 '지우개' 역할)
           let bblSeries = indicatorState.series.get(bblKey) as
             | ISeriesApi<"Area">
             | undefined;
           if (!bblSeries) {
             bblSeries = mainChart.addSeries(AreaSeries, {
-              lineColor: lineColor,
+              lineColor,
               topColor: "transparent",
               bottomColor: "transparent",
               lineWidth: 1,
@@ -462,7 +453,6 @@ export function useChartIndicatorManager({
           }
           bblSeries.setData(bblData as any);
 
-          // 3. 중간 밴드 (LineSeries, 점선으로 표시)
           let bbmSeries = indicatorState.series.get(bbmKey) as
             | ISeriesApi<"Line">
             | undefined;
@@ -478,7 +468,6 @@ export function useChartIndicatorManager({
           }
           bbmSeries.setData(bbmData as any);
 
-          // 처리된 키들을 복사본에서 삭제
           delete dataToProcess[bbuKey];
           delete dataToProcess[bbmKey];
           delete dataToProcess[bblKey];
@@ -736,7 +725,7 @@ export function useChartIndicatorManager({
       }
       // --- 일목균형표 처리 완료 ---
 
-      // 슈퍼트렌드 데이터를 사전 처리하는 로직 추가
+      // 슈퍼트렌드 데이터를 사전 처리하는 로직
       const supertKey = Object.keys(dataToProcess).find((k) =>
         k.startsWith("supert_")
       );
@@ -795,7 +784,6 @@ export function useChartIndicatorManager({
 
       // 나머지 지표들은 '복사본'을 사용하여 처리합니다.
       Object.entries(dataToProcess).forEach(([fullSeriesKey, data], index) => {
-        // 무시할 지표 키 접두사 목록을 만들어 한번에 필터링합니다.
         const ignoredPrefixes = ["supertd", "bbb", "bbp"];
         if (
           ignoredPrefixes.some((prefix) =>
@@ -804,23 +792,15 @@ export function useChartIndicatorManager({
         ) {
           return;
         }
-
-        // 'kind' 속성을 사용하여 메타데이터를 안정적으로 찾습니다.
         const metadata = indicatorMetadata.find((meta) =>
           fullSeriesKey.toLowerCase().startsWith(meta.kind.toLowerCase())
         );
-
         if (!metadata || !data || data.length === 0) return;
 
-        // 'baseKey'는 표준 속성인 'indicatorKey'를 사용합니다.
         const baseKey = metadata.key;
-
         if (!manager.has(baseKey)) {
           let paneChart: IChartApi | null = null;
-
           if (paneIndicators.includes(baseKey)) {
-            // Step 1 수정으로 인해 paneIndicators가 올바른 값을 가지므로,
-            // 이 블록이 이제 정상적으로 실행됩니다.
             const container = getPaneContainer(baseKey);
             if (container) {
               const finalOptions = {
@@ -846,18 +826,16 @@ export function useChartIndicatorManager({
             fullSeriesKey.toLowerCase().includes("macdh");
           let newSeries: ISeriesApi<SeriesType>;
           if (isHistogram) {
-            const options: DeepPartial<HistogramSeriesOptions> = {
+            newSeries = targetChart.addSeries(HistogramSeries, {
               color: "#26a69a",
               priceFormat: { type: "volume" },
-            };
-            newSeries = targetChart.addSeries(HistogramSeries, options);
+            });
           } else {
-            const options: DeepPartial<LineSeriesOptions> = {
+            newSeries = targetChart.addSeries(LineSeries, {
               color:
                 INDICATOR_COLOR_PALETTE[index % INDICATOR_COLOR_PALETTE.length],
               lineWidth: 2,
-            };
-            newSeries = targetChart.addSeries(LineSeries, options);
+            });
           }
           const filteredData = data.filter(
             (d) => d.value !== null && d.value !== undefined
@@ -868,7 +846,7 @@ export function useChartIndicatorManager({
       });
     }
 
-    // --- 캔들 시리즈 재생성 로직 ---
+    // 3. 캔들 시리즈 재생성
     const ohlcvDataToSet = ohlcvData || [];
     if (candlestickSeriesRef.current) {
       mainChart.removeSeries(candlestickSeriesRef.current);
@@ -882,111 +860,112 @@ export function useChartIndicatorManager({
     });
     newCandleSeries.setData(ohlcvDataToSet as any);
     candlestickSeriesRef.current = newCandleSeries;
-    mainChart.timeScale().fitContent();
-    // --- 캔들 시리즈 재생성 로직 종료 ---
 
-    // --- 마커 생성 로직 ---
+    // 4. 마커 생성
     const series = candlestickSeriesRef.current;
     if (!series || !ohlcvData || ohlcvCacheRef.current.size === 0) {
       if (markersPluginRef.current) {
         (markersPluginRef.current as any).setMarkers([]);
       }
-      return;
-    }
-
-    const ohlcvTimes = new Set(Array.from(ohlcvCacheRef.current.keys()));
-    const signalMarkers: SeriesMarker<Time>[] = (signalData?.signals || [])
-      .filter((signal) => ohlcvTimes.has(timeToSeconds(signal.time)))
-      .map((signal) => {
-        let position: "aboveBar" | "belowBar" = "aboveBar";
-        let color = "#ef5350";
-        let shape: "arrowUp" | "arrowDown" = "arrowDown";
-        let text = "Signal";
-        switch (signal.signalType) {
-          case "long_entry":
-            position = "belowBar";
-            color = "#26a69a";
-            shape = "arrowUp";
-            text = "L-Entry";
-            break;
-          case "long_exit":
-            position = "aboveBar";
-            color = "#f57c00";
-            shape = "arrowDown";
-            text = "L-Exit";
-            break;
-          case "short_entry":
-            position = "aboveBar";
-            color = "#ef5350";
-            shape = "arrowDown";
-            text = "S-Entry";
-            break;
-          case "short_exit":
-            position = "belowBar";
-            color = "#2962ff";
-            shape = "arrowUp";
-            text = "S-Exit";
-            break;
-        }
-        return { time: signal.time, position, color, shape, text };
-      });
-
-    let psarMarkers: SeriesMarker<Time>[] = [];
-    if (indicatorData) {
-      const psarlKey = Object.keys(indicatorData).find((k) =>
-        k.startsWith("psarl_")
-      );
-      const psarsKey = Object.keys(indicatorData).find((k) =>
-        k.startsWith("psars_")
-      );
-      if (psarlKey && indicatorData[psarlKey]) {
-        psarMarkers = psarMarkers.concat(
-          indicatorData[psarlKey]
-            .filter(
-              (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
-            )
-            .map((d) => ({
-              time: d.time,
-              position: "belowBar",
-              color: "#26a69a",
-              shape: "circle",
-              size: 1,
-              text: "",
-            }))
-        );
-      }
-      if (psarsKey && indicatorData[psarsKey]) {
-        psarMarkers = psarMarkers.concat(
-          indicatorData[psarsKey]
-            .filter(
-              (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
-            )
-            .map((d) => ({
-              time: d.time,
-              position: "aboveBar",
-              color: "#ef5350",
-              shape: "circle",
-              size: 1,
-              text: "",
-            }))
-        );
-      }
-    }
-
-    const allMarkers = [...signalMarkers, ...psarMarkers];
-
-    if (
-      !markersPluginRef.current ||
-      (markersPluginRef.current as any).series !== series
-    ) {
-      markersPluginRef.current = createSeriesMarkers(
-        series,
-        allMarkers
-      ) as ReturnType<typeof createSeriesMarkers>;
     } else {
-      (markersPluginRef.current as any).setMarkers(allMarkers);
+      const ohlcvTimes = new Set(Array.from(ohlcvCacheRef.current.keys()));
+      const signalMarkers: SeriesMarker<Time>[] = (signalData?.signals || [])
+        .filter((signal) => ohlcvTimes.has(timeToSeconds(signal.time)))
+        .map((signal) => {
+          let position: "aboveBar" | "belowBar" = "aboveBar";
+          let color = "#ef5350";
+          let shape: "arrowUp" | "arrowDown" = "arrowDown";
+          let text = "Signal";
+          switch (signal.signalType) {
+            case "long_entry":
+              position = "belowBar";
+              color = "#26a69a";
+              shape = "arrowUp";
+              text = "L-Entry";
+              break;
+            case "long_exit":
+              position = "aboveBar";
+              color = "#f57c00";
+              shape = "arrowDown";
+              text = "L-Exit";
+              break;
+            case "short_entry":
+              position = "aboveBar";
+              color = "#ef5350";
+              shape = "arrowDown";
+              text = "S-Entry";
+              break;
+            case "short_exit":
+              position = "belowBar";
+              color = "#2962ff";
+              shape = "arrowUp";
+              text = "S-Exit";
+              break;
+          }
+          return { time: signal.time, position, color, shape, text };
+        });
+
+      let psarMarkers: SeriesMarker<Time>[] = [];
+      if (indicatorData) {
+        const psarlKey = Object.keys(indicatorData).find((k) =>
+          k.startsWith("psarl_")
+        );
+        const psarsKey = Object.keys(indicatorData).find((k) =>
+          k.startsWith("psars_")
+        );
+        if (psarlKey && indicatorData[psarlKey]) {
+          psarMarkers = psarMarkers.concat(
+            indicatorData[psarlKey]
+              .filter(
+                (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
+              )
+              .map((d) => ({
+                time: d.time,
+                position: "belowBar",
+                color: "#26a69a",
+                shape: "circle",
+                size: 1,
+                text: "",
+              }))
+          );
+        }
+        if (psarsKey && indicatorData[psarsKey]) {
+          psarMarkers = psarMarkers.concat(
+            indicatorData[psarsKey]
+              .filter(
+                (d) => d.value != null && ohlcvTimes.has(timeToSeconds(d.time))
+              )
+              .map((d) => ({
+                time: d.time,
+                position: "aboveBar",
+                color: "#ef5350",
+                shape: "circle",
+                size: 1,
+                text: "",
+              }))
+          );
+        }
+      }
+
+      const allMarkers = [...signalMarkers, ...psarMarkers];
+
+      allMarkersRef.current = allMarkers;
+
+      if (
+        !markersPluginRef.current ||
+        (markersPluginRef.current as any).series !== series
+      ) {
+        markersPluginRef.current = createSeriesMarkers(
+          series,
+          allMarkers
+        ) as ReturnType<typeof createSeriesMarkers>;
+      } else {
+        (markersPluginRef.current as any).setMarkers(allMarkers);
+      }
     }
-    // --- 마커 생성 로직 종료 ---
+
+    // 5. 차트 뷰 조정 (항상 마지막에)
+    mainChart.timeScale().fitContent();
   }, [
     indicatorData,
     ohlcvData,
