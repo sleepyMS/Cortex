@@ -880,7 +880,7 @@
     "changeIndicatorButton": "Change Indicator"
   },
   "StrategiesPage": {
-    "title": "My Strategies",
+    "title": "Strategies Hub",
     "createNewStrategy": "Create New Strategy",
     "searchPlaceholder": "Search by strategy name...",
     "filterPlaceholder": "Filter by status",

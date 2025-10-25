@@ -924,7 +924,7 @@
     "changeIndicatorButton": "지표 변경"
   },
   "StrategiesPage": {
-    "title": "나의 전략",
+    "title": "전략 허브",
     "createNewStrategy": "새 전략 생성",
     "searchPlaceholder": "전략 이름으로 검색...",
     "filterPlaceholder": "상태 필터",

@@ -108,7 +108,7 @@ export default function StrategyDetailPage() {
           productName: strategyDetail?.name,
         }),
       });
-      // 성공 시 '나의 전략' 목록 페이지로 이동하여 구매한 전략을 바로 확인할 수 있도록 유도
+      // 성공 시 '전략 허브' 목록 페이지로 이동하여 구매한 전략을 바로 확인할 수 있도록 유도
       router.push("/strategies");
     },
   });
