@@ -15,7 +15,7 @@ import { toast } from "sonner";
 interface PricingCardProps {
   planId: string;
   planName: string;
-  price: string;
+  price: number;
   tagline: string;
   features: string[];
   isHighlighted?: boolean;
@@ -31,7 +31,10 @@ export const PricingCard = ({
   isHighlighted = false,
   isFree = false,
 }: PricingCardProps) => {
-  const t = useTranslations("Pricing.card");
+  // 1. t 함수를 용도에 맞게 분리합니다.
+  const tCard = useTranslations("Pricing.card");
+  const tDashboard = useTranslations("Dashboard.overview");
+
   const { user } = useUserSubscription();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -44,8 +47,10 @@ export const PricingCard = ({
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
+    // 다크 모드 초기 상태 설정
     setIsDark(document.documentElement.classList.contains("dark"));
 
+    // 다크 모드 변경 감지
     const observer = new MutationObserver(() => {
       setIsDark(document.documentElement.classList.contains("dark"));
     });
@@ -58,6 +63,7 @@ export const PricingCard = ({
     return () => observer.disconnect();
   }, []);
 
+  // --- (카드 스타일링 로직 - 기존과 동일) ---
   let cardStyles = "";
   let headerTextColor = "";
   let buttonStyle = "";
@@ -99,16 +105,19 @@ export const PricingCard = ({
       buttonStyle = "bg-primary text-black hover:bg-primary/80";
     }
   }
+  // --- (스타일링 로직 끝) ---
 
   const handleSubscribeClick = async () => {
     if (!user) {
-      toast.error("로그인이 필요합니다.");
+      // 2. [개선] i18n 키 사용
+      toast.error(tCard("loginRequired"));
       return;
     }
 
     setIsRedirecting(true);
     try {
       const clientKey = process.env.NEXT_PUBLIC_TOSS_BILLING_CLIENT_KEY!;
+      // user.id는 UUID일 수 있으므로(models.py 참고), 문자열로 변환
       const customerKey = String(user.id);
 
       const tossPayments = await loadTossPayments(clientKey);
@@ -123,13 +132,22 @@ export const PricingCard = ({
       });
     } catch (error: any) {
       if (error.code === "USER_CANCEL") {
-        toast.info("카드 등록을 취소했습니다.");
+        // 3. [개선] i18n 키 사용
+        toast.info(tCard("paymentCanceled"));
       } else {
-        toast.error(`오류가 발생했습니다: ${error.message}`);
+        // 4. [개선] i18n 키 (동적 값 포함) 사용
+        toast.error(tCard("paymentError", { error: error.message }));
       }
       setIsRedirecting(false);
     }
   };
+
+  // 가격 포맷팅 로직 (기존과 동일)
+  const formattedPrice = new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+    minimumFractionDigits: 0,
+  }).format(price);
 
   return (
     <motion.div
@@ -148,7 +166,7 @@ export const PricingCard = ({
               : "bg-trader-primary text-foreground"
           }`}
         >
-          <Sparkles className="inline h-3 w-3 mr-1" /> {t("recommendation")}
+          <Sparkles className="inline h-3 w-3 mr-1" /> {tCard("recommendation")}
         </div>
       )}
 
@@ -160,11 +178,14 @@ export const PricingCard = ({
           <p className="text-xl font-medium text-muted-foreground">{tagline}</p>
           <div className="mt-2 text-3xl font-extrabold text-foreground">
             {isFree ? (
-              price
+              tDashboard("free") // 5. [개선] tDashboard 훅 사용
             ) : (
               <>
-                {price}
-                <span className="text-xl font-medium text-gray-500">/월</span>
+                {formattedPrice}
+                {/* 6. [개선] /월 텍스트를 i18n 키로 대체 */}
+                <span className="text-xl font-medium text-gray-500">
+                  {tCard("perMonth")}
+                </span>
               </>
             )}
           </div>
@@ -185,15 +206,16 @@ export const PricingCard = ({
       </div>
 
       <Button
-        onClick={handleSubscribeClick} // 이제 이 함수는 비동기로 동작
+        onClick={handleSubscribeClick}
         className={`w-full mt-10 text-lg font-semibold ${buttonStyle}`}
-        disabled={checkoutMutation.isPending}
+        disabled={checkoutMutation.isPending || isRedirecting}
       >
-        {checkoutMutation.isPending
-          ? t("button.processing")
+        {checkoutMutation.isPending || isRedirecting
+          ? tCard("button.processing") // 7. [개선] tCard 훅 사용
           : isFree
-          ? t("button.start")
-          : t("button.subscribe")}
+          ? tCard("button.start") // 7. [개선] tCard 훅 사용
+          : tCard("button.subscribe")}{" "}
+        {/* 7. [개선] tCard 훅 사용 */}
       </Button>
     </motion.div>
   );

@@ -103,93 +103,49 @@
       "title": "Plans to Unleash Your Potential",
       "subtitle": "Start and expand your investment journey with Cortex through our variety of plans designed for everyone."
     },
-    "toggle": {
-      "monthly": "Monthly",
-      "yearly": "Yearly"
-    },
     "card": {
       "recommendation": "Recommended",
       "button": {
         "processing": "processing...",
         "start": "Get Started",
         "subscribe": "Subscribe"
+      },
+      "perMonth": "/month",
+      "loginRequired": "Login is required.",
+      "paymentCanceled": "Card registration has been canceled.",
+      "paymentError": "An error occurred: {error}"
+    },
+    "common": {
+      "unlimited": "Unlimited",
+      "countUnit": "{value}",
+      "notSupported": "Not Supported",
+      "basicTimeframes": "1h, 4h, 1d",
+      "allTimeframes": "All Timeframes"
+    },
+    "plans": {
+      "Basic": {
+        "tagline": "Start your quant journey"
+      },
+      "Trader": {
+        "tagline": "Grow your quant trading"
+      },
+      "Pro": {
+        "tagline": "Master your quant trading"
       }
     },
-    "data": {
-      "plans": {
-        "basic": {
-          "planName": "Basic",
-          "tagline": "Start your quant journey",
-          "features": [
-            "Basic backtesting (10/day)",
-            "Single-asset strategy (1)",
-            "Basic indicators (10 types)",
-            "Fixed % profit/loss"
-          ],
-          "price": {
-            "monthly": "Free",
-            "yearly": "Free"
-          }
-        },
-        "trader": {
-          "planName": "Trader",
-          "tagline": "Grow your quant trading",
-          "features": [
-            "Advanced backtesting (100/day)",
-            "Asset allocation strategy (up to 5)",
-            "All indicators (50+ types)",
-            "ATR-based profit/loss",
-            "3 live bots",
-            "Join strategy marketplace"
-          ],
-          "price": {
-            "monthly": "$49.99",
-            "yearly": "$499.99"
-          }
-        },
-        "pro": {
-          "planName": "Pro",
-          "tagline": "Master your quant trading",
-          "features": [
-            "Unlimited backtesting",
-            "Portfolio strategy (unlimited)",
-            "All indicators (50+ types)",
-            "ATR-based profit/loss",
-            "Unlimited live bots",
-            "Join strategy marketplace",
-            "Priority technical support"
-          ],
-          "price": {
-            "monthly": "$129.99",
-            "yearly": "$1299.99"
-          }
-        }
-      },
-      "faq": {
-        "title": "Frequently Asked Questions",
-        "items": [
-          {
-            "question": "How do I change my subscription plan?",
-            "answer": "You can change or cancel your plan at any time on the 'Subscription Management' page after logging in."
-          },
-          {
-            "question": "What is the difference between monthly and yearly billing?",
-            "answer": "Monthly billing is charged automatically each month. Yearly billing is a one-time payment for 12 months, which offers a discounted price compared to the monthly plan."
-          },
-          {
-            "question": "Is there a time limit for the free plan?",
-            "answer": "No, the free plan can be used indefinitely. However, some features are limited."
-          },
-          {
-            "question": "How are payments handled?",
-            "answer": "Payments are processed via Stripe (international) or I'mport (domestic) payment gateways."
-          }
-        ]
-      }
+    "planFeatures": {
+      "maxStrategies": "Max Strategies: {value}",
+      "maxCoinsPerBacktest": "Coins per Strategy: {value}",
+      "liveBotsLimit": "Live Bots: {value}",
+      "supportedTimeframes": "Timeframes: {value}",
+      "communityAccess": "Community Access",
+      "telegramAlerts": "Telegram Alerts",
+      "advancedFeaturesAccess": "Advanced Features Access",
+      "portfolioBacktestAccess": "Portfolio Backtesting"
     },
     "comparison": {
       "title": "Full Plan Comparison",
-      "basicLabel": "Basic (Free)",
+      "basicLabel": "Basic",
       "traderLabel": "Trader",
       "proLabel": "Pro",
       "tableHeader": {
@@ -200,28 +156,12 @@
           "category": "Strategy Building",
           "features": [
             {
-              "name": "Number of Assets per Strategy",
-              "basic": "1 (Single Asset)",
-              "trader": "Up to 5 (Asset Allocation)",
-              "pro": "Unlimited (Portfolio)"
-            },
-            {
-              "name": "TP/SL (Take Profit/Stop Loss) Method",
-              "basic": "Fixed % Only",
-              "trader": "Fixed % + ATR Based",
-              "pro": "Fixed % + ATR Based"
-            },
-            {
               "name": "Number of Strategies Saved",
-              "basic": "3",
-              "trader": "20",
-              "pro": "Unlimited"
+              "key": "maxStrategies"
             },
             {
-              "name": "Available Indicators",
-              "basic": "Basic Indicators (10 types)",
-              "trader": "All Indicators (50+ types)",
-              "pro": "All Indicators (50+ types)"
+              "name": "Number of Assets per Strategy",
+              "key": "maxCoinsPerBacktest"
             }
           ]
         },
@@ -229,28 +169,12 @@
           "category": "Backtesting",
           "features": [
             {
-              "name": "Data History Period",
-              "basic": "Recent 1 year",
-              "trader": "Recent 5 years",
-              "pro": "All-time"
-            },
-            {
-              "name": "Daily Backtest Count",
-              "basic": "10 times",
-              "trader": "100 times",
-              "pro": "Unlimited"
-            },
-            {
-              "name": "Walk Forward & Monte Carlo",
-              "basic": false,
-              "trader": false,
-              "pro": true
+              "name": "Supported Timeframes",
+              "key": "supportedTimeframes"
             },
             {
               "name": "Portfolio Backtesting",
-              "basic": false,
-              "trader": false,
-              "pro": true
+              "key": "portfolioBacktestAccess"
             }
           ]
         },
@@ -258,16 +182,12 @@
           "category": "Live Trading",
           "features": [
             {
-              "name": "Number of Live Bots (Real Trading)",
-              "basic": false,
-              "trader": "3",
-              "pro": "10"
+              "name": "Number of Live Bots",
+              "key": "liveBotsLimit"
             },
             {
-              "name": "Paper Trading",
-              "basic": false,
-              "trader": true,
-              "pro": true
+              "name": "Telegram Alerts",
+              "key": "telegramAlerts"
             }
           ]
         },
@@ -275,16 +195,8 @@
           "category": "Community",
           "features": [
             {
-              "name": "Leaderboard & Public Profile",
-              "basic": "View Only",
-              "trader": "Participate",
-              "pro": "Participate"
-            },
-            {
-              "name": "Strategy Marketplace Access",
-              "basic": "View Only",
-              "trader": "Purchase/Sell Supported",
-              "pro": "Purchase/Sell Supported"
+              "name": "Community Access",
+              "key": "communityAccess"
             }
           ]
         },
@@ -292,30 +204,27 @@
           "category": "Advanced Features",
           "features": [
             {
-              "name": "Advanced Money Management Models",
-              "basic": false,
-              "trader": false,
-              "pro": true
-            },
-            {
-              "name": "Advanced Notifications (Telegram, Discord)",
-              "basic": false,
-              "trader": "Limited Use",
-              "pro": "Unlimited Use"
-            },
-            {
-              "name": "AI-based Strategy Optimization Coupons",
-              "basic": false,
-              "trader": "3 Included",
-              "pro": "10 Included"
-            },
-            {
-              "name": "Optimization Options",
-              "basic": false,
-              "trader": "Return Rate, Sharpe Ratio",
-              "pro": "Return Rate, Sharpe Ratio"
+              "name": "Advanced Features Access",
+              "key": "advancedFeaturesAccess"
             }
           ]
+        }
+      ]
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "items": [
+        {
+          "question": "How do I change my subscription plan?",
+          "answer": "You can change or cancel your plan at any time on the 'Subscription Management' page after logging in."
+        },
+        {
+          "question": "Is there a time limit for the free plan?",
+          "answer": "No, the free plan can be used indefinitely. However, some features are limited."
+        },
+        {
+          "question": "How are payments handled?",
+          "answer": "Payments are processed securely via our payment gateway, Toss Payments."
         }
       ]
     }

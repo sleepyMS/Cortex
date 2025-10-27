@@ -4,11 +4,13 @@
 
 import { useTranslations } from "next-intl";
 import { motion, Variants } from "framer-motion";
-import { PricingToggle } from "./PricingToggle";
+// 1. PricingToggle 임포트 제거
+// import { PricingToggle } from "./PricingToggle";
 
+// 2. Props 인터페이스에서 불필요한 props 제거
 interface PricingHeroSectionProps {
-  isMonthlySelected: boolean;
-  onSelectPeriod: (isMonthly: boolean) => void;
+  // isMonthlySelected: boolean;  <-- 제거
+  // onSelectPeriod: (isMonthly: boolean) => void; <-- 제거
 }
 
 const containerVariants: Variants = {
@@ -35,10 +37,8 @@ const itemVariants: Variants = {
   },
 };
 
-export const PricingHeroSection = ({
-  isMonthlySelected,
-  onSelectPeriod,
-}: PricingHeroSectionProps) => {
+// 3. 컴포넌트 시그니처에서 props 제거
+export const PricingHeroSection = ({}: PricingHeroSectionProps) => {
   const t = useTranslations("Pricing");
 
   return (
@@ -65,6 +65,8 @@ export const PricingHeroSection = ({
           {t("hero.subtitle")}
         </motion.p>
 
+        {/* 4. PricingToggle 컴포넌트 제거 */}
+        {/*
         <motion.div variants={itemVariants}>
           <PricingToggle
             isMonthlySelected={isMonthlySelected}
@@ -72,6 +74,7 @@ export const PricingHeroSection = ({
           />
           <div className="p-1"></div>
         </motion.div>
+        */}
       </motion.div>
     </section>
   );
