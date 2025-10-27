@@ -9,10 +9,11 @@ import { PricingHeroSection } from "@/components/domain/pricing/PricingHeroSecti
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import React from "react";
-import { usePlans, PlanFeature } from "@/hooks/usePlans"; // 👈 1. API 호출 훅 및 타입 임포트
-import { Spinner } from "@/components/ui/Spinner"; // 👈 2. 로딩 스피너 임포트
+// 1. usePlans 훅에서 PlanSchema, PlanFeature 타입을 함께 가져옵니다.
+import { usePlans, PlanSchema, PlanFeature } from "@/hooks/usePlans";
+import { Spinner } from "@/components/ui/Spinner";
 
-// --- 배경 애니메이션 관련 코드 (기존과 동일) ---
+// --- 배경 애니메이션 관련 코드 ---
 const floatingColors = [
   "rgba(var(--primary-rgb), 0.20)",
   "rgba(var(--accent-rgb), 0.25)",
@@ -64,24 +65,61 @@ function createFloatingElements(
 // --- 배경 애니메이션 코드 끝 ---
 
 export default function PricingPage() {
-  // 3. 월/연간 토글 관련 state 및 핸들러 제거
-
-  // 4. i18n 훅을 최상위에서 호출
   const t = useTranslations("Pricing");
   const tFeatures = useTranslations("Pricing.planFeatures");
   const tCommon = useTranslations("Pricing.common");
 
-  // 5. API로부터 플랜 데이터를 동적으로 가져옵니다.
   const { data: plans, isLoading } = usePlans();
-
-  // 6. i18n에서 정적 데이터(FAQ)를 로드합니다.
   const faqItems = t.raw("faq.items");
 
-  // 7. API 데이터와 i18n 템플릿을 조합해 동적 기능 목록을 생성하는 함수
-  const getFeaturesForPlan = (planFeatures: PlanFeature): string[] => {
-    const features: string[] = [];
+  // 2. 할인율 계산의 기준이 되는 Basic 플랜의 부가율(2.0)을
+  //    하드코딩하지 않고 API 응답에서 동적으로 찾습니다.
+  const baselineMultiplier = useMemo(() => {
+    // price: 0 (무료)인 플랜을 Basic 플랜으로 간주합니다.
+    const basicPlan = plans?.find((p) => p.price === 0);
+    if (basicPlan && basicPlan.creditSurchargeMultiplier > 0) {
+      return basicPlan.creditSurchargeMultiplier;
+    }
+    // 만약의 사태(API 로드 실패 등)를 대비한 기본값
+    return 2.0;
+  }, [plans]); // plans 데이터가 로드되면 이 값은 재계산됩니다.
 
-    // maxStrategies
+  // API 데이터와 i18n 템플릿을 조합해 동적 기능 목록을 생성하는 함수
+  const getFeaturesForPlan = (plan: PlanSchema): string[] => {
+    const features: string[] = [];
+    const planFeatures = plan.features; // { maxStrategies: 3, ... }
+
+    // --- 월간 보너스 크레딧 ---
+    if (plan.monthlyCreditReward > 0) {
+      // API에서 받은 숫자(예: 3000)를 포맷팅 (예: "3,000")
+      const formattedReward = new Intl.NumberFormat().format(
+        plan.monthlyCreditReward
+      );
+      // "월간 보너스 크레딧: {value}" 템플릿에
+      // "{value}C 지급" 템플릿을 조합하여 삽입
+      features.push(
+        tFeatures("monthlyCreditReward", {
+          value: tCommon("creditReward", { value: formattedReward }),
+        })
+      );
+    }
+
+    // --- 크레딧 사용 할인율 ---
+    const discountRate =
+      ((baselineMultiplier - plan.creditSurchargeMultiplier) /
+        baselineMultiplier) *
+      100;
+
+    // 0% 초과일 때만 표시 (Basic은 0%라 표시 안 됨)
+    if (discountRate > 0) {
+      features.push(
+        tFeatures("creditSurchargeMultiplier", {
+          value: tCommon("creditDiscount", { value: discountRate.toFixed(0) }),
+        })
+      );
+    }
+
+    // --- 나머지 기능들 (기존과 동일) ---
     features.push(
       tFeatures("maxStrategies", {
         value:
@@ -90,8 +128,6 @@ export default function PricingPage() {
             : planFeatures.maxStrategies,
       })
     );
-
-    // maxCoinsPerBacktest
     features.push(
       tFeatures("maxCoinsPerBacktest", {
         value:
@@ -100,8 +136,6 @@ export default function PricingPage() {
             : planFeatures.maxCoinsPerBacktest,
       })
     );
-
-    // liveBotsLimit
     if (planFeatures.liveBotsLimit === 0) {
       features.push(
         tFeatures("liveBotsLimit", { value: tCommon("notSupported") })
@@ -116,10 +150,7 @@ export default function PricingPage() {
         })
       );
     }
-
-    // supportedTimeframes
     let timeframeValue = planFeatures.supportedTimeframes;
-    // (이 값들은 plan_service.py의 시딩 데이터와 일치해야 함)
     if (timeframeValue === "1m,5m,15m,30m,1h,4h,1d,1w,1M") {
       timeframeValue = tCommon("allTimeframes");
     } else if (timeframeValue === "1h,4h,1d") {
@@ -127,7 +158,6 @@ export default function PricingPage() {
     }
     features.push(tFeatures("supportedTimeframes", { value: timeframeValue }));
 
-    // Booleans (i18n 파일에 정의된 순서대로)
     if (planFeatures.communityAccess) {
       features.push(tFeatures("communityAccess"));
     }
@@ -144,19 +174,18 @@ export default function PricingPage() {
     return features;
   };
 
-  // 8. 배경 애니메이션 메모이제이션 (기존과 동일)
   const floatingCircles = useMemo(() => createFloatingElements(15, false), []);
   const floatingBlobs = useMemo(() => createFloatingElements(5, true), []);
 
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden">
-      {/* Animated Aurora Background (기존과 동일) */}
+      {/* Animated Aurora Background */}
       <div className="absolute inset-0 -z-20">
         <div className="absolute bottom-0 left-[-20%] right-0 top-[-10%] h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle_farthest-side,rgba(100,50,200,0.5),rgba(255,255,255,0))] animate-[spin_20s_linear_infinite]"></div>
         <div className="absolute bottom-[-40%] right-[-20%] top-auto h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle_farthest-side,rgba(80,40,180,0.55),rgba(255,255,255,0))] animate-[spin_25s_linear_infinite_reverse]"></div>
       </div>
 
-      {/* Floating Circles and Blobs Overlay (기존과 동일) */}
+      {/* Floating Circles and Blobs Overlay */}
       <div className="absolute inset-0 -z-10">
         {floatingCircles}
         {floatingBlobs}
@@ -165,34 +194,32 @@ export default function PricingPage() {
       {/* Main content wrapper */}
       <div className="relative z-0 flex min-h-screen flex-col">
         <div className="p-12"></div>
-
-        {/* 9. 월/연간 토글 props가 제거된 Hero 섹션 */}
+        {/* Hero 섹션 (props 없음) */}
         <PricingHeroSection />
 
         <div className="container mx-auto max-w-5xl px-4">
           {/* 플랜 카드 섹션 */}
           <div className="py-16">
-            {/* 10. 로딩 상태 처리 */}
+            {/* 로딩 상태 처리 */}
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
                 <Spinner size="lg" />
               </div>
             ) : (
-              // 11. API 데이터를 기반으로 동적 렌더링
+              // API 데이터를 기반으로 동적 렌더링
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
                 {plans?.map((plan) => {
-                  // 12. API 데이터와 i18n 정적/동적 데이터 결합
                   const staticTagline = t(`plans.${plan.name}.tagline`);
-                  const dynamicFeatures = getFeaturesForPlan(plan.features);
+                  const dynamicFeatures = getFeaturesForPlan(plan);
 
                   return (
                     <PricingCard
                       key={plan.id}
-                      planId={plan.id} // 👈 [Dynamic] DB의 고유 UUID
-                      planName={plan.name} // 👈 [Dynamic] DB의 이름 ("Basic", "Trader", "Pro")
-                      price={plan.price} // 👈 [Dynamic] DB의 가격 (숫자)
-                      tagline={staticTagline} // 👈 [Static] i18n의 태그라인
-                      features={dynamicFeatures} // 👈 [Dynamic] 조합된 기능 목록
+                      planId={plan.id}
+                      planName={plan.name}
+                      price={plan.price}
+                      tagline={staticTagline}
+                      features={dynamicFeatures}
                       isFree={plan.price === 0}
                       isHighlighted={plan.name === "Trader"}
                     />
@@ -202,10 +229,14 @@ export default function PricingPage() {
             )}
           </div>
 
-          {/* 13. 기능 상세 비교 테이블 섹션 (API 데이터 전달) */}
-          <PricingComparisonTable plans={plans} isLoading={isLoading} />
+          {/* 기능 상세 비교 테이블 섹션 (동적 baselineMultiplier 전달) */}
+          <PricingComparisonTable
+            plans={plans}
+            isLoading={isLoading}
+            baselineMultiplier={baselineMultiplier}
+          />
 
-          {/* 14. FAQ 섹션 (i18n 기반으로 기존과 동일하게 작동) */}
+          {/* FAQ 섹션 */}
           <FaqSection faqItems={faqItems} />
         </div>
         <div className="p-12"></div>

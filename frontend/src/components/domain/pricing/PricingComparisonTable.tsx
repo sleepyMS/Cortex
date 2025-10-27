@@ -3,11 +3,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Check, X, Code, BarChart3, Bot, Users, Zap } from "lucide-react";
+import {
+  Check,
+  X,
+  Code,
+  BarChart3,
+  Bot,
+  Users,
+  Zap,
+  Sparkles, // 👈 크레딧 혜택 아이콘 추가
+} from "lucide-react";
 import React, { useMemo } from "react";
 import { Spinner } from "@/components/ui/Spinner";
 
 // --- 1. Plan 스키마 타입 정의 (usePlans.ts와 동일하게) ---
+// (types/api.ts 파일이 없으므로 여기에 직접 정의합니다)
 interface PlanFeature {
   maxStrategies: number;
   maxCoinsPerBacktest: number;
@@ -24,106 +34,151 @@ interface PlanSchema {
   name: "Basic" | "Trader" | "Pro";
   price: number;
   features: PlanFeature;
+  // 👈 API 응답 구조에 맞게 features 객체 밖에 정의합니다.
+  creditSurchargeMultiplier: number;
+  monthlyCreditReward: number;
 }
 
-// --- 2. 컴포넌트 Props 타입 정의 ---
+// --- 2. 컴포넌트 Props 타입 정의 (baselineMultiplier 추가) ---
 interface PricingComparisonTableProps {
   plans: PlanSchema[] | undefined;
   isLoading: boolean;
+  baselineMultiplier: number; // 👈 Basic 플랜의 부가율을 props로 받음
 }
 
 export const PricingComparisonTable = ({
   plans,
   isLoading,
+  baselineMultiplier, // 👈 props 사용
 }: PricingComparisonTableProps) => {
-  // 👈 3. 두 개의 t 함수를 올바른 범위로 가져옵니다.
+  // 3. i18n 훅을 올바른 범위로 분리
   const t = useTranslations("Pricing.comparison");
-  const tCommon = useTranslations("Pricing.common"); // 👈 [수정] 'common' 범위 추가
+  const tCommon = useTranslations("Pricing.common");
 
   const featureCategories = t.raw("categories");
 
-  // --- 4. API로 받은 plans 데이터를 이름별로 빠르게 찾기 위한 Map 생성 ---
-  const planFeatureMap = useMemo(() => {
-    const map: Record<string, PlanFeature | undefined> = {
+  // 4. API로 받은 plans 객체 전체를 이름별로 매핑
+  const planMap = useMemo(() => {
+    const map: Record<string, PlanSchema | undefined> = {
       Basic: undefined,
       Trader: undefined,
       Pro: undefined,
     };
     if (plans) {
       for (const plan of plans) {
-        map[plan.name] = plan.features;
+        map[plan.name] = plan; // Plan 객체 전체를 저장
       }
     }
     return map;
   }, [plans]);
 
-  // --- (아이콘 맵 - 기존과 동일) ---
+  // 5. 아이콘 맵 (크레딧 혜택 추가)
   const iconMap: Record<string, JSX.Element> = {
     "전략 구성": <Code className="h-6 w-6" />,
     백테스팅: <BarChart3 className="h-6 w-6" />,
     자동매매: <Bot className="h-6 w-6" />,
     커뮤니티: <Users className="h-6 w-6" />,
     "고급 기능": <Zap className="h-6 w-6" />,
+    "크레딧 혜택": <Sparkles className="h-6 w-6" />,
     "Strategy Building": <Code className="h-6 w-6" />,
     Backtesting: <BarChart3 className="h-6 w-6" />,
     "Automated Trading": <Bot className="h-6 w-6" />,
     Community: <Users className="h-6 w-6" />,
     "Advanced Features": <Zap className="h-6 w-6" />,
+    "Credit Benefits": <Sparkles className="h-6 w-6" />,
   };
 
-  // --- 5. [수정] renderValue 함수가 'key'를 받도록 개선 ---
+  // --- 6. [핵심] renderValue 함수: 동적 포맷팅 로직 ---
   const renderValue = (
-    value: string | number | boolean | undefined,
-    featureKey: keyof PlanFeature // 👈 'key'를 받아 로직을 분기
+    plan: PlanSchema | undefined,
+    featureKey: string // i18n에서 받은 key (e.g., "maxStrategies")
   ) => {
-    // 1. Boolean 값 처리 (가장 빠름)
-    if (value === true) {
-      return <Check className="text-green-400 text-2xl" />;
-    }
-    if (value === false) {
-      return <X className="text-red-500 text-xl" />;
-    }
-    // 2. Undefined/Null 값 처리
-    if (value === undefined || value === null) {
+    // 플랜 데이터가 없으면 "-"
+    if (!plan) {
       return <span className="text-muted-foreground">-</span>;
     }
 
-    // 3. 'key'에 따른 동적 포맷팅
-    switch (featureKey) {
-      // 3-1. 타임프레임 포맷팅
-      case "supportedTimeframes":
-        // (이 값들은 plan_service.py의 시딩 데이터와 일치해야 함)
-        if (value === "1m,5m,15m,30m,1h,4h,1d,1w,1M") {
-          return tCommon("allTimeframes"); // 👈 올바른 t 함수 사용
+    // 7. key가 PlanSchema 최상위에 있는지 확인
+    if (
+      featureKey === "creditSurchargeMultiplier" ||
+      featureKey === "monthlyCreditReward"
+    ) {
+      if (featureKey === "monthlyCreditReward") {
+        if (plan.monthlyCreditReward === 0) {
+          return tCommon("notSupported"); // "미지원"
         }
-        if (value === "1h,4h,1d") {
-          return tCommon("basicTimeframes"); // 👈 올바른 t 함수 사용
-        }
-        return String(value); // 그 외의 경우
+        const formattedReward = new Intl.NumberFormat().format(
+          plan.monthlyCreditReward
+        );
+        // "3,000C 지급"
+        return tCommon("creditReward", { value: formattedReward });
+      }
 
-      // 3-2. 수량/제한 포맷팅
-      case "maxStrategies":
-      case "maxCoinsPerBacktest":
-      case "liveBotsLimit":
-        if (value === -1 || value === 999999) {
-          // -1을 '무제한'으로 가정
-          return tCommon("unlimited"); // 👈 올바른 t 함수 사용
+      if (featureKey === "creditSurchargeMultiplier") {
+        // props로 받은 동적 baselineMultiplier 사용
+        const discountRate =
+          ((baselineMultiplier - plan.creditSurchargeMultiplier) /
+            baselineMultiplier) *
+          100;
+        if (discountRate === 0) {
+          return <span className="text-muted-foreground">0%</span>;
         }
-        if (value === 0) {
-          return tCommon("notSupported"); // 👈 '미지원' 키 사용
-        }
-        return tCommon("countUnit", { value: value }); // 👈 "{value}개" 템플릿 사용
-
-      // 3-3. 그 외의 모든 값 (숫자, 문자열)
-      default:
-        return String(value);
+        // "25% 할인"
+        return tCommon("creditDiscount", { value: discountRate.toFixed(0) });
+      }
     }
+
+    // 8. key가 중첩된 features 객체 내부에 있는지 확인
+    // key를 PlanFeature의 키로 타입 단언
+    const key = featureKey as keyof PlanFeature;
+    if (key in plan.features) {
+      const value = plan.features[key];
+
+      switch (key) {
+        case "supportedTimeframes":
+          const tf = String(value);
+          if (tf === "1m,5m,15m,30m,1h,4h,1d,1w,1M") {
+            return tCommon("allTimeframes"); // "모든 타임프레임"
+          }
+          if (tf === "1h,4h,1d") {
+            return tCommon("basicTimeframes"); // "1h, 4h, 1d"
+          }
+          return tf;
+
+        case "maxStrategies":
+        case "maxCoinsPerBacktest":
+        case "liveBotsLimit":
+          if (value === -1 || value === 999999) {
+            return tCommon("unlimited"); // "무제한"
+          }
+          if (value === 0) {
+            return tCommon("notSupported"); // "미지원"
+          }
+          return tCommon("countUnit", { value: value }); // "{value}개"
+
+        case "communityAccess":
+        case "telegramAlerts":
+        case "advancedFeaturesAccess":
+        case "portfolioBacktestAccess":
+          if (value === true) {
+            return <Check className="text-green-400 text-2xl" />;
+          }
+          if (value === false) {
+            return <X className="text-red-500 text-xl" />;
+          }
+          break; // 알 수 없는 boolean 값일 경우 default로
+      }
+      return String(value); // 그 외
+    }
+
+    // 9. 키를 어디에서도 찾지 못한 경우
+    return <span className="text-muted-foreground">?</span>;
   };
 
   return (
     <div className="w-full overflow-x-auto">
       <div className="container mx-auto max-w-5xl py-12">
-        {/* 테이블 헤더 (기존과 동일) */}
+        {/* 테이블 헤더 */}
         <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-border pb-4 sticky top-0 z-10">
           <div className="text-muted-foreground">
             {t("tableHeader.features")}
@@ -137,14 +192,14 @@ export const PricingComparisonTable = ({
           <div className="text-center text-primary">{t("proLabel")}</div>
         </div>
 
-        {/* --- 6. 로딩 상태 처리 (기존과 동일) --- */}
+        {/* 로딩 상태 처리 */}
         {isLoading && (
           <div className="flex justify-center items-center h-64">
             <Spinner size="lg" />
           </div>
         )}
 
-        {/* --- 7. 동적 데이터 렌더링 --- */}
+        {/* 동적 데이터 렌더링 */}
         {!isLoading &&
           plans &&
           featureCategories.map((category: any, catIndex: number) => (
@@ -155,11 +210,12 @@ export const PricingComparisonTable = ({
               </h3>
               <div className="space-y-2">
                 {category.features.map((feature: any, featIndex: number) => {
-                  // 8. i18n의 'key'를 사용해 DB feature 객체에 접근
-                  const featureKey = feature.key as keyof PlanFeature;
-                  const basicValue = planFeatureMap.Basic?.[featureKey];
-                  const traderValue = planFeatureMap.Trader?.[featureKey];
-                  const proValue = planFeatureMap.Pro?.[featureKey];
+                  // i18n의 'key' (e.g., "maxStrategies")
+                  const featureKey = feature.key;
+                  // API 데이터 (e.g., PlanSchema for "Basic")
+                  const basicPlan = planMap.Basic;
+                  const traderPlan = planMap.Trader;
+                  const proPlan = planMap.Pro;
 
                   return (
                     <div
@@ -173,22 +229,19 @@ export const PricingComparisonTable = ({
                         <span className="md:hidden font-bold text-foreground">
                           {t("basicLabel")}:
                         </span>
-                        {/* 👈 [수정] renderValue에 featureKey 전달 */}
-                        {renderValue(basicValue, featureKey)}
+                        {renderValue(basicPlan, featureKey)}
                       </div>
                       <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
                         <span className="md:hidden font-bold text-foreground">
                           {t("traderLabel")}:
                         </span>
-                        {/* 👈 [수정] renderValue에 featureKey 전달 */}
-                        {renderValue(traderValue, featureKey)}
+                        {renderValue(traderPlan, featureKey)}
                       </div>
                       <div className="flex justify-between md:justify-center items-center md:text-center text-primary font-bold md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
                         <span className="md:hidden font-bold text-foreground">
                           {t("proLabel")}:
                         </span>
-                        {/* 👈 [수정] renderValue에 featureKey 전달 */}
-                        {renderValue(proValue, featureKey)}
+                        {renderValue(proPlan, featureKey)}
                       </div>
                     </div>
                   );

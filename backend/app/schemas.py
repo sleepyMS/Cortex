@@ -212,6 +212,8 @@ class PlanSchema(CamelCaseModel):
     name: PlanType 
     price: float
     features: PlanFeatureSchema
+    credit_surcharge_multiplier: float 
+    monthly_credit_reward: int
 
 class SubscriptionSchema(CamelCaseModel):
     id: uuid.UUID

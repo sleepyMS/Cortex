@@ -21,6 +21,8 @@ export interface PlanSchema {
   name: "Basic" | "Trader" | "Pro"; // PlanType Enum
   price: number; // float은 number로 받음
   features: PlanFeature;
+  creditSurchargeMultiplier: number;
+  monthlyCreditReward: number;
 }
 
 // GET /plans API를 호출하는 비동기 함수

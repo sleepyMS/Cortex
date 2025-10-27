@@ -120,7 +120,9 @@
       "countUnit": "{value}",
       "notSupported": "Not Supported",
       "basicTimeframes": "1h, 4h, 1d",
-      "allTimeframes": "All Timeframes"
+      "allTimeframes": "All Timeframes",
+      "creditDiscount": "{value}% Discount",
+      "creditReward": "{value}C Reward"
     },
     "plans": {
       "Basic": {
@@ -141,7 +143,9 @@
       "communityAccess": "Community Access",
       "telegramAlerts": "Telegram Alerts",
       "advancedFeaturesAccess": "Advanced Features Access",
-      "portfolioBacktestAccess": "Portfolio Backtesting"
+      "portfolioBacktestAccess": "Portfolio Backtesting",
+      "monthlyCreditReward": "Monthly Bonus Credits: {value}",
+      "creditSurchargeMultiplier": "Credit Usage Discount: {value}"
     },
     "comparison": {
       "title": "Full Plan Comparison",
@@ -206,6 +210,19 @@
             {
               "name": "Advanced Features Access",
               "key": "advancedFeaturesAccess"
+            }
+          ]
+        },
+        {
+          "category": "Credit Benefits",
+          "features": [
+            {
+              "name": "Monthly Bonus Credits",
+              "key": "monthlyCreditReward"
+            },
+            {
+              "name": "Credit Usage Discount",
+              "key": "creditSurchargeMultiplier"
             }
           ]
         }

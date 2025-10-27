@@ -110,14 +110,19 @@
         "start": "시작하기",
         "subscribe": "구독하기"
       },
-      "perMonth": "/월"
+      "perMonth": "/월",
+      "loginRequired": "로그인이 필요합니다.",
+      "paymentCanceled": "카드 등록을 취소했습니다.",
+      "paymentError": "오류가 발생했습니다: {error}"
     },
     "common": {
       "unlimited": "무제한",
       "countUnit": "{value}개",
       "notSupported": "미지원",
       "basicTimeframes": "1h, 4h, 1d",
-      "allTimeframes": "모든 타임프레임"
+      "allTimeframes": "모든 타임프레임",
+      "creditDiscount": "{value}% 할인",
+      "creditReward": "{value}C 지급"
     },
     "plans": {
       "Basic": {
@@ -138,7 +143,9 @@
       "communityAccess": "커뮤니티 접근",
       "telegramAlerts": "텔레그램 알림",
       "advancedFeaturesAccess": "고급 기능 접근",
-      "portfolioBacktestAccess": "포트폴리오 백테스팅"
+      "portfolioBacktestAccess": "포트폴리오 백테스팅",
+      "monthlyCreditReward": "월간 보너스 크레딧: {value}",
+      "creditSurchargeMultiplier": "크레딧 사용 할인: {value}"
     },
     "comparison": {
       "title": "플랜별 전체 기능 비교",
@@ -203,6 +210,19 @@
             {
               "name": "고급 기능 접근",
               "key": "advancedFeaturesAccess"
+            }
+          ]
+        },
+        {
+          "category": "크레딧 혜택",
+          "features": [
+            {
+              "name": "월간 보너스 크레딧",
+              "key": "monthlyCreditReward"
+            },
+            {
+              "name": "크레딧 사용 할인율",
+              "key": "creditSurchargeMultiplier"
             }
           ]
         }
