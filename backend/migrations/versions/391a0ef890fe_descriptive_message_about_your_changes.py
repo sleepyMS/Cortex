@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: a824933372f1
+Revision ID: 391a0ef890fe
 Revises: 
-Create Date: 2025-10-10 06:24:35.795656
+Create Date: 2025-10-30 00:13:52.497957
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'a824933372f1'
+revision: str = '391a0ef890fe'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -183,6 +183,9 @@ def upgrade() -> None:
     sa.Column('telegram_alerts', sa.Boolean(), nullable=False),
     sa.Column('advanced_features_access', sa.Boolean(), nullable=False),
     sa.Column('portfolio_backtest_access', sa.Boolean(), nullable=False),
+    sa.Column('attendance_daily_reward', sa.Integer(), server_default='20', nullable=False, comment='일일 출석 보상 크레딧'),
+    sa.Column('attendance_bonus_5_day', sa.Integer(), server_default='30', nullable=False, comment='5일 연속 출석 보너스'),
+    sa.Column('attendance_bonus_7_day', sa.Integer(), server_default='50', nullable=False, comment='7일 연속 출석 보너스'),
     sa.ForeignKeyConstraint(['plan_id'], ['plans.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('plan_id')

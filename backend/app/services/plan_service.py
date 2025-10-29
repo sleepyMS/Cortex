@@ -27,7 +27,10 @@ class PlanService:
                     "max_strategies": 3, "max_coins_per_backtest": 1, "live_bots_limit": 0,
                     "supported_timeframes": "1h,4h,1d",
                     "community_access": True, "telegram_alerts": False, 
-                    "advanced_features_access": False, "portfolio_backtest_access": False
+                    "advanced_features_access": False, "portfolio_backtest_access": False,
+                    "attendance_daily_reward": 20,
+                    "attendance_bonus_5_day": 30,
+                    "attendance_bonus_7_day": 50
                 }
             },
             PlanType.TRADER: {
@@ -36,7 +39,10 @@ class PlanService:
                     "max_strategies": 20, "max_coins_per_backtest": 5, "live_bots_limit": 3,
                     "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
                     "community_access": True, "telegram_alerts": True, 
-                    "advanced_features_access": True, "portfolio_backtest_access": True
+                    "advanced_features_access": True, "portfolio_backtest_access": True,
+                    "attendance_daily_reward": 500,
+                    "attendance_bonus_5_day": 700,
+                    "attendance_bonus_7_day": 1000
                 }
             },
             PlanType.PRO: {
@@ -45,7 +51,10 @@ class PlanService:
                     "max_strategies": 100, "max_coins_per_backtest": 20, "live_bots_limit": 10,
                     "supported_timeframes": "1m,5m,15m,30m,1h,4h,1d,1w,1M",
                     "community_access": True, "telegram_alerts": True, 
-                    "advanced_features_access": True, "portfolio_backtest_access": True
+                    "advanced_features_access": True, "portfolio_backtest_access": True,
+                    "attendance_daily_reward": 2000,
+                    "attendance_bonus_5_day": 2500,
+                    "attendance_bonus_7_day": 3000
                 }
             }
         }
@@ -77,8 +86,6 @@ class PlanService:
     async def get_user_plan_level(self, user: models.User, db: AsyncSession) -> PlanType:
         """사용자의 현재 플랜 등급을 비동기로 반환합니다."""
         features = await self.get_user_plan_features(user, db)
-        # PlanFeature 모델에는 Plan과의 관계가 설정되어 있어야 합니다.
-        # Plan 모델의 name 필드를 통해 PlanType Enum 값을 반환합니다.
         plan_result = await db.execute(select(models.Plan).filter(models.Plan.id == features.plan_id))
         plan = plan_result.scalar_one_or_none()
         return plan.name if plan else PlanType.BASIC

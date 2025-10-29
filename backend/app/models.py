@@ -118,6 +118,9 @@ class PlanFeature(Base):
     telegram_alerts = Column(Boolean, default=False, nullable=False)
     advanced_features_access = Column(Boolean, default=False, nullable=False)
     portfolio_backtest_access = Column(Boolean, default=False, nullable=False)
+    attendance_daily_reward = Column(Integer, nullable=False, server_default="20", comment="일일 출석 보상 크레딧")
+    attendance_bonus_5_day = Column(Integer, nullable=False, server_default="30", comment="5일 연속 출석 보너스")
+    attendance_bonus_7_day = Column(Integer, nullable=False, server_default="50", comment="7일 연속 출석 보너스")
 
     plan = relationship("Plan", back_populates="features")
 
@@ -535,7 +538,7 @@ class UserPurchasedStrategy(Base):
     order_item = relationship("MarketplaceOrderItem")
 
 class UserInventory(Base):
-    """[개선] 사용자가 보유한 '소모성 아이템'의 수량을 관리하는 모델"""
+    """사용자가 보유한 '소모성 아이템'의 수량을 관리하는 모델"""
     __tablename__ = "user_inventory"
     __table_args__ = (UniqueConstraint('user_id', 'product_id', name='_user_product_uc'),)
 
