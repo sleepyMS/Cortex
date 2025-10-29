@@ -9,9 +9,7 @@ import uuid
 from .. import schemas, models, security
 from ..dependencies import get_current_user, get_async_db, get_current_active_user, get_current_admin_user
 from ..services.user_service import user_service
-from ..services.attendance_service import attendance_service
 from ..services.credit_service import credit_service
-from ..services.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 
