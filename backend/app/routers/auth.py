@@ -15,6 +15,7 @@ from ..services.password_reset_service import password_reset_service
 from ..services.user_service import user_service
 from ..limiter import limiter
 from ..config import settings
+from ..event_bus import publish_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])

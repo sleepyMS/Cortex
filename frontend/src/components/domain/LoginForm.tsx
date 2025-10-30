@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
 import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import apiClient from "@/lib/apiClient";
 import { useUserStore } from "@/store/userStore";
 import SocialLogins from "./SocialLogins";
@@ -19,6 +20,7 @@ import EmailVerificationDialog from "./EmailVerificationDialog";
 export default function LoginForm() {
   const t = useTranslations("Auth");
   const router = useRouter();
+  const searchParams = useSearchParams(); // 👈 2. 훅 사용
   const loginAndUpdateUser = useUserStore((state) => state.loginAndUpdateUser);
   const [isVerificationDialogOpen, setIsVerificationDialogOpen] =
     useState(false);
@@ -58,18 +60,27 @@ export default function LoginForm() {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
         });
-        router.push("/dashboard");
+
+        // --- 👇 [수정] 3. 로그인 성공 후 리디렉션 로직 ---
+        const redirectUrl = searchParams.get("redirect");
+
+        // 4. 보안 검사: Open Redirect 취약점을 막기 위해
+        //    redirectUrl이 존재하고, 반드시 '/'로 시작하는 내부 경로인지 확인합니다.
+        if (redirectUrl && redirectUrl.startsWith("/")) {
+          router.push(redirectUrl); // 예: /strategies/new로 이동
+        } else {
+          router.push("/dashboard"); // 기본값 대시보드로 이동
+        }
+        // --- [수정] 로직 끝 ---
       }
     } catch (error: any) {
       const detail = error.response?.data?.detail;
       const status = error.response?.status;
 
       if (status === 403 && detail === "EMAIL_NOT_VERIFIED") {
-        // 백엔드에서 보낸 '이메일 미인증' 신호를 받으면 Dialog를 엽니다.
         setUserEmail(values.email);
         setIsVerificationDialogOpen(true);
       } else {
-        // 그 외 다른 모든 에러는 기존처럼 처리합니다.
         const errorMessage = detail || t("loginFailedGeneric");
         alert(`${t("loginFailedPrefix")}: ${errorMessage}`);
       }
