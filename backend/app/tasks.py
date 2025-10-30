@@ -41,7 +41,7 @@ from .services.signal_service import signal_service
 from .services.marketplace_service import marketplace_service
 from .services.notification_service import notification_service 
 from .services.subscription_service import subscription_service
-
+from .services.verification_service import verification_service
 
 
 logger = get_task_logger(__name__)
@@ -310,7 +310,7 @@ def run_backtest(self, backtest_id: str):
             session.close()
 
 # ==============================================================================
-# Part 3: Event-Driven Tasks (신규 섹션)
+# Part 3: Event-Driven Tasks
 # ==============================================================================
 
 # --- 이벤트 구독자 (Subscribers) ---
@@ -367,6 +367,43 @@ def handle_recurring_payment_failure_task(payload: dict):
             )
     return asyncio.run(_cancel())
 
+@celery_app.task(name="send_verification_email_task", queue="io_bound_queue", bind=True)
+def send_verification_email_task(self, payload: dict):
+    """'user.needs_verification' 이벤트를 구독하여 인증 이메일을 보냅니다."""
+    user_id = payload.get("user_id")
+    email = payload.get("email")
+    token_string = payload.get("token_string")
+    base_url = payload.get("base_url")
+    
+    logger.info(f"Event received: Sending verification email to {email} (User ID: {user_id})")
+    
+    # verification_service의 함수가 async이므로 래퍼가 필요합니다.
+    async def _send():
+        # user 객체를 만들 필요 없이, 페이로드로 받은 정보만 넘겨줍니다.
+        # (verification_service.py의 send_prepared_verification_email 함수 시그니처 수정 필요)
+        
+        # --- [수정] verification_service 함수 시그니처에 맞게 User 객체 생성 ---
+        # (더 나은 방법은 service 함수가 user_id, email, username을 받도록 수정하는 것이지만,
+        #  현재 구조를 최소한으로 변경하는 안입니다.)
+        
+        # 임시 User 객체 생성 (이메일 발송에 필요한 최소 정보만)
+        temp_user = models.User(
+            id=uuid.UUID(user_id), 
+            email=email, 
+            username=payload.get("username")
+        )
+        
+        try:
+            await verification_service.send_prepared_verification_email(
+                temp_user, token_string, base_url
+            )
+        except Exception as e:
+            logger.error(f"Failed to send verification email for {email}: {e}", exc_info=True)
+            # Celery가 재시도하도록 예외를 다시 발생시킵니다.
+            raise self.retry(exc=e, countdown=60, max_retries=3)
+
+    return asyncio.run(_send())
+
 
 # --- 중앙 이벤트 분배기 (Dispatcher) ---
 
@@ -377,6 +414,7 @@ EVENT_SUBSCRIBERS = {
     "backtest.failed": ["send_backtest_notification_task"],
     "subscription.recurring_payment.succeeded": ["handle_recurring_payment_success_task"],
     "subscription.recurring_payment.failed": ["handle_recurring_payment_failure_task"],
+    "user.needs_verification": ["send_verification_email_task"],
 }
 
 @celery_app.task(name="dispatch_event", queue="io_bound_queue")

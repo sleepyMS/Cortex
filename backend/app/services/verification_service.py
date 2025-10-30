@@ -83,11 +83,12 @@ class VerificationService:
             # 이 함수는 DB 트랜잭션 밖에서 호출되므로, 실패 시 에러를 로깅하고
             # 필요에 따라 재시도 큐에 넣는 등의 후속 조치를 고려할 수 있습니다.
             # 지금은 에러를 발생시켜 호출자가 인지하게 합니다.
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="이메일 전송에 실패했습니다.")
+            raise Exception(f"Email service failed to send verification to {user.email}")
 
     async def verify_email(self, token_string: str, db: AsyncSession) -> models.User:
         """
         제공된 토큰 문자열을 검증하고, 유효하면 사용자의 이메일 인증 상태를 업데이트합니다.
+        이미 인증된 사용자가 중복 클릭해도 성공으로 처리합니다 (멱등성).
         """
         try:
             jti, secret = token_string.split('.')
@@ -97,38 +98,48 @@ class VerificationService:
             logger.warning(f"Received malformed verification token: {token_string[:10]}...")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="유효하지 않은 인증 링크입니다.")
 
-        # JTI를 사용하여 데이터베이스에서 토큰 레코드 조회 (비동기 방식)
+        # JTI를 사용하여 토큰 레코드와 사용자 정보를 함께 조회합니다.
         select_stmt = (
             select(models.EmailVerificationToken)
-            .options(joinedload(models.EmailVerificationToken.user)) # user만 eager loading
+            .options(joinedload(models.EmailVerificationToken.user)) 
             .where(models.EmailVerificationToken.jti == jti)
         )
         result = await db.execute(select_stmt)
         token_record = result.scalar_one_or_none()
 
-        if not token_record:
-            logger.warning(f"Verification token not found for JTI: {jti}.")
+        if not token_record or not token_record.user:
+            logger.warning(f"Verification token not found or user deleted for JTI: {jti}.")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="유효하지 않은 인증 링크입니다.")
 
-        if token_record.is_used or \
-           token_record.expires_at < datetime.now(timezone.utc) or \
-           not verify_refresh_token_secret(secret, token_record.hashed_token):
-            
-            logger.warning(f"Invalid/Expired/Used verification token for JTI: {jti}. "
-                           f"Used: {token_record.is_used}, "
-                           f"Expired: {token_record.expires_at < datetime.now(timezone.utc)}.")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="인증 링크가 유효하지 않거나 만료되었습니다.")
+        # --- 유효성 검사 순서 변경 및 멱등성 보장 ---
 
+        # 1. 만료 체크
+        if token_record.expires_at < datetime.now(timezone.utc):
+            logger.warning(f"Expired verification token for JTI: {jti}.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="인증 링크가 만료되었습니다.")
+
+        # 2. 서명(시크릿) 체크
+        if not verify_refresh_token_secret(secret, token_record.hashed_token):
+            logger.warning(f"Invalid verification token signature for JTI: {jti}.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="인증 링크가 유효하지 않습니다.")
+
+        # 3. 이미 사용된 토큰(Used: True)인 경우
+        if token_record.is_used:
+            # [멱등성] 사용자가 이미 인증되었는지 확인합니다.
+            if token_record.user.is_email_verified:
+                logger.info(f"User {token_record.user.email} is already verified. Treating as success (idempotency).")
+                # 이미 인증된 상태이므로, 에러 대신 성공으로 간주하고 사용자 객체를 반환합니다.
+                return token_record.user
+            else:
+                # 토큰은 사용됐는데 사용자가 미인증 상태인 경우 (비정상)
+                logger.error(f"Token {jti} is used but user {token_record.user.email} is not verified. Investigate.")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이미 처리된 인증 링크입니다.")
+
+        # 4. 토큰이 유효하고, 만료되지 않았고, 사용되지 않았고, 서명이 올바른 '첫 클릭'
         token_record.is_used = True
+        token_record.user.is_email_verified = True
         
-        user = token_record.user
-        if not user:
-            logger.error(f"User associated with email verification token JTI {jti} not found or deleted.")
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="관련 사용자를 찾을 수 없습니다.")
-
-        user.is_email_verified = True
-        
-        logger.info(f"User {user.email} (ID: {user.id}) email verified successfully with JTI: {jti}.")
-        return user
+        logger.info(f"User {token_record.user.email} (ID: {token_record.user.id}) email verified successfully with JTI: {jti}.")
+        return token_record.user
 
 verification_service = VerificationService()

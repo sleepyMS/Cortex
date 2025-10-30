@@ -16,6 +16,7 @@ from ..services.user_service import user_service
 from ..limiter import limiter
 from ..config import settings
 from ..event_bus import publish_event
+from ..security import get_password_hash
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -29,52 +30,111 @@ async def signup(
     user_in: schemas.UserCreate,
     db: Annotated[AsyncSession, Depends(get_async_db)]
 ):
-    """신규 사용자를 생성하고 이메일 인증 링크를 발송합니다."""
+    """
+    신규 사용자를 생성하고 이메일 인증 이벤트를 발행합니다.
 
-    # 1. 이메일 및 사용자 이름 중복을 사전에 확인합니다.
-    if await user_service.get_user_by_email(db, user_in.email):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="이미 이 이메일로 가입된 계정이 존재합니다."
-        )
-    if await user_service.get_user_by_username(db, user_in.username):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="이미 사용 중인 사용자 이름입니다."
-        )
-
+    [개선된 로직]
+    1. 사용자가 이미 존재하지만 '미인증' 상태인 경우:
+       - 409 오류 대신, 사용자가 새로 입력한 비밀번호와 사용자 이름으로 정보를 갱신합니다.
+       - 새로운 인증 토큰을 발급하고 인증 이메일 발송 '이벤트'를 다시 발행합니다.
+    2. 사용자가 존재하며 '인증 완료' 상태인 경우:
+       - 409 Conflict 오류를 반환합니다.
+    3. 신규 사용자인 경우:
+       - 사용자를 생성하고 인증 이메일 발송 '이벤트'를 발행합니다.
+    """
+    
     token_string_for_email: str | None = None
     new_user: models.User | None = None
-
+    
     try:
-        new_user = await auth_service.register_new_user(db, user_in)
+        # --- 1. 사용자 조회 ---
+        existing_user = await user_service.get_user_by_email(db, user_in.email)
+
+        if existing_user:
+            # --- 2. 시나리오: 기존 사용자 ---
+            
+            # [2-1. 인증 완료 사용자]
+            if existing_user.is_email_verified:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="이미 이 이메일로 가입된 계정이 존재합니다."
+                )
+            
+            # [2.2. 미인증 사용자 (유령 계정)]
+            logger.info(f"미인증 사용자({user_in.email})가 재가입을 시도합니다. 정보를 갱신합니다.")
+            
+            # (주석 로직 반영) 새로 입력받은 비밀번호로 갱신
+            existing_user.hashed_password = get_password_hash(user_in.password)
+            
+            # (주석 로직 반영) 사용자 이름이 다를 경우, 중복 체크 후 갱신
+            if user_in.username and user_in.username != existing_user.username:
+                if await user_service.get_user_by_username(db, user_in.username):
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="이미 사용 중인 사용자 이름입니다."
+                    )
+                existing_user.username = user_in.username
+            
+            db.add(existing_user)
+            new_user = existing_user
+
+        else:
+            # --- 3. 시나리오: 신규 사용자 ---
+            
+            # 사용자 이름 중복 확인
+            if user_in.username and await user_service.get_user_by_username(db, user_in.username):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="이미 사용 중인 사용자 이름입니다."
+                )
+            
+            # 신규 사용자 생성 (auth_service가 db.add 및 flush 처리)
+            new_user = await auth_service.register_new_user(db, user_in)
+        
+        # --- 4. 공통 로직: 토큰 준비 및 DB 커밋 ---
+        
+        # 신규 생성이든 미인증 갱신이든, 항상 새 인증 토큰을 준비합니다.
         token_string_for_email = await verification_service.prepare_verification_token(new_user, db)
+        
+        # 모든 DB 변경사항(사용자 생성/수정, 토큰 생성)을 '단일 트랜잭션'으로 커밋
         await db.commit()
-    except IntegrityError:
+
+    except IntegrityError as e:
+        # (방어 코드) 동시성 문제로 DB 레벨에서 충돌이 발생한 경우
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="이메일 또는 사용자 이름이 이미 사용 중입니다. 다시 시도해주세요."
-        )
+        logger.warning(f"Signup IntegrityError for {user_in.email}: {e}", exc_info=True)
+        if "username" in str(e).lower():
+                raise HTTPException(status_code=409, detail="이미 사용 중인 사용자 이름입니다.")
+        raise HTTPException(status_code=409, detail="이메일 또는 사용자 이름이 이미 사용 중입니다. 다시 시도해주세요.")
+    
+    except HTTPException as e:
+        # 코드 내에서 의도적으로 발생시킨 HTTPException (e.g., 409)
+        await db.rollback()
+        raise e
+        
     except Exception as e:
+        # 그 외 모든 예외 (e.g., DB 연결 실패)
         await db.rollback()
         logger.error(f"Database error during signup for {user_in.email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="회원가입 중 서버 오류가 발생했습니다.")
     
-    # 이메일 발송 로직
+    # --- 5. (이벤트 기반) 이메일 발송 이벤트 발행 ---
+    # DB 트랜잭션이 성공적으로 완료된 후에만 실행됩니다.
+    
     if new_user and token_string_for_email:
-        try:
-            await verification_service.send_prepared_verification_email(
-                new_user, token_string_for_email, settings.APP.FRONTEND_BASE_URL
-            )
-        except Exception as e:
-            logger.error(
-                f"User {new_user.email} was created, but failed to send verification email: {e}",
-                exc_info=True
-            )
-            
+        publish_event(
+            "user.needs_verification", 
+            {
+                "user_id": str(new_user.id), 
+                "email": new_user.email,
+                "username": new_user.username,
+                "token_string": token_string_for_email,
+                "base_url": settings.APP.FRONTEND_BASE_URL
+            }
+        )
+        
+    # 이메일 발송을 기다리지 않고, 즉시 사용자 정보 반환
     return new_user
-
 
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("20/minute")

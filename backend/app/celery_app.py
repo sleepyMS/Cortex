@@ -63,6 +63,12 @@ celery_app.conf.task_routes = {
     'fulfill_order_task': {'queue': 'io_bound_queue'},
     'dispatch_event': {'queue': 'io_bound_queue'},
     'send_order_notification_task': {'queue': 'io_bound_queue'},
+
+    'send_verification_email_task': {'queue': 'io_bound_queue'},
+    'send_purchase_notification_task': {'queue': 'io_bound_queue'},
+    'send_backtest_notification_task': {'queue': 'io_bound_queue'},
+    'handle_recurring_payment_success_task': {'queue': 'io_bound_queue'},
+    'handle_recurring_payment_failure_task': {'queue': 'io_bound_queue'},
 }
 
 # --- 4. 기타 설정 ---
