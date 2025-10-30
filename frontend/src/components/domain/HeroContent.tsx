@@ -59,7 +59,7 @@ export const HeroContent = ({
       </motion.p>
 
       <motion.div variants={itemVariants}>
-        <Link href="/signup" passHref>
+        <Link href="/strategies/new" passHref>
           <Button size="lg" className="mt-4">
             {ctaButton}
           </Button>
