@@ -3,12 +3,15 @@
 import uuid
 import logging
 from typing import Dict, Any
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-from pathlib import Path
+
+from sqlalchemy.orm import selectinload, joinedload
 
 from .. import models, schemas
 from ..config import settings
-from ..utils.email_provider import EmailProvider, ConsoleEmailProvider, SendGridEmailProvider
+
+from .email_service import email_service 
+from .. import models, schemas
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,56 +20,76 @@ class NotificationService:
     구매 확인, 작업 완료 등 사용자에게 보내는 모든 알림을 담당하는 서비스.
     """
     def __init__(self):
-        # Jinja2 템플릿 엔진 초기화
-        template_dir = Path(__file__).resolve().parent.parent / "templates"
-        self.jinja_env = Environment(
-            loader=FileSystemLoader(template_dir),
-            autoescape=select_autoescape(['html', 'xml'])
-        )
+        self.email_service = email_service
+        logger.info("NotificationService initialized (using EmailService).")
 
-        # 설정에 따라 이메일 전송기(Provider) 선택
-        if settings.EMAIL.MAIL_API_KEY:
-            self.email_provider: EmailProvider = SendGridEmailProvider(
-                api_key=settings.EMAIL.MAIL_API_KEY,
-                sender_email=settings.EMAIL.MAIL_SENDER_EMAIL
-            )
-            logger.info("Using SendGridEmailProvider for notifications.")
-        else:
-            self.email_provider: EmailProvider = ConsoleEmailProvider()
-            logger.warning("No email API key found. Using ConsoleEmailProvider for notifications.")
-
-    def _render_template(self, template_name: str, context: Dict[str, Any]) -> str:
-        """Jinja2 템플릿을 렌더링합니다."""
-        template = self.jinja_env.get_template(template_name)
-        return template.render(context)
-
-    async def send_purchase_confirmation(self, db_session, order_id: str):
-        """구매 완료 알림을 보냅니다."""
-        # DB에서 주문 정보, 사용자 정보 등을 조회
-        order = await db_session.get(models.MarketplaceOrder, uuid.UUID(order_id), options=[...])
-        if not order: return
-
-        context = {"user": order.buyer, "order": order, "frontend_url": settings.APP.FRONTEND_BASE_URL}
-        html_content = self._render_template("email_purchase_confirmation.html", context)
+    async def send_purchase_confirmation(self, payload: Dict[str, Any]): 
+        """페이로드 정보로 구매 완료 알림을 보냅니다."""
         
-        await self.email_provider.send_email(
-            to_email=order.buyer.email,
-            subject="Cortex 마켓플레이스 구매가 완료되었습니다.",
-            html_content=html_content
+        buyer_email = payload.get("buyer_email")
+        if not buyer_email:
+            logger.error(f"send_purchase_confirmation missing 'buyer_email' in payload.")
+            return
+
+        # email_service로 템플릿 context 생성
+        context = {
+            "user_email": buyer_email,
+            "user_username": payload.get("buyer_username"),
+            "order_name": payload.get("order_name"),
+            "order_id": payload.get("order_id"),
+            "total_amount": payload.get("total_amount"),
+            "frontend_url": settings.APP.FRONTEND_BASE_URL
+        }
+        
+        # email_service에서 템플릿 내용 가져오기
+        email_content = self.email_service.get_purchase_confirmation_content(context)
+        
+        # email_service로 이메일 발송
+        await self.email_service.send_email(
+            to_email=buyer_email,
+            subject=email_content["subject"],
+            html_content=email_content["html"],
+            plain_text_content=email_content["plain_text"]
         )
 
     async def send_backtest_completed_notification(self, db_session, backtest_id: str):
-        """백테스트 완료 알림을 보냅니다."""
-        backtest = await db_session.get(models.Backtest, uuid.UUID(backtest_id), options=[...])
-        if not backtest: return
+        """
+        백테스트 완료 알림을 email_service를 통해 보냅니다.
+        (이 태스크는 DB 접근이 필수입니다.)
+        """
+        
+        # 1. DB에서 백테스트 정보와 사용자, 전략 이름을 Eager Loading
+        backtest = await db_session.get(
+            models.Backtest, 
+            uuid.UUID(backtest_id), 
+            options=[
+                joinedload(models.Backtest.user),
+                joinedload(models.Backtest.strategy)
+            ]
+        )
+        
+        if not backtest or not backtest.user or not backtest.strategy:
+            logger.warning(f"Notification service: Backtest {backtest_id} or relations not found. Aborting email.")
+            return
 
-        context = {"user": backtest.user, "backtest": backtest, "frontend_url": settings.APP.FRONTEND_BASE_URL}
-        html_content = self._render_template("email_backtest_completed.html", context)
+        # 2. email_service에 전달할 context 생성
+        context = {
+            "username": backtest.user.username or backtest.user.email.split('@')[0],
+            "user_email": backtest.user.email,
+            "strategy_name": backtest.strategy.name,
+            "backtest_id": str(backtest.id),
+            "frontend_url": settings.APP.FRONTEND_BASE_URL
+        }
 
-        await self.email_provider.send_email(
+        # 3. email_service를 통해 템플릿 생성
+        email_content = self.email_service.get_backtest_completed_content(context)
+        
+        # 4. email_service를 통해 이메일 발송
+        await self.email_service.send_email(
             to_email=backtest.user.email,
-            subject=f"'{backtest.strategy.name}' 전략의 백테스트가 완료되었습니다.",
-            html_content=html_content
+            subject=email_content["subject"],
+            html_content=email_content["html"],
+            plain_text_content=email_content["plain_text"]
         )
 
 # 서비스 인스턴스 생성

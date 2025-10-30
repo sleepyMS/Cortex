@@ -214,14 +214,22 @@ class MarketplaceService:
     ):
         """Celery Task 또는 서비스에서 직접 호출되는 주문 이행 비즈니스 로직."""
         logger.info(f"Fulfilling order: {order_id}")
+
         order = await db.get(
             models.MarketplaceOrder, order_id,
-            options=[selectinload(models.MarketplaceOrder.items).joinedload(models.MarketplaceOrderItem.product)]
+            options=[
+                selectinload(models.MarketplaceOrder.items).joinedload(models.MarketplaceOrderItem.product),
+                selectinload(models.MarketplaceOrder.buyer) 
+            ]
         )
 
         if not order or order.status not in [models.OrderStatus.PAID, models.OrderStatus.PENDING]:
             logger.warning(f"Order {order_id} cannot be fulfilled. Status: {order.status if order else 'Not Found'}.")
             return
+        
+        if not order.buyer:
+             logger.error(f"Fulfilling order {order_id} failed: Buyer object not loaded or None.")
+             return
 
         for item in order.items:
             product = item.product
@@ -264,7 +272,18 @@ class MarketplaceService:
             order.gateway_transaction_id = gateway_transaction_id
         await db.flush()
 
-        publish_event("order.fulfilled", {"order_id": str(order_id), "buyer_id": str(order.buyer_id)})
+        order_name = order.items[0].product.name if order.items else "상품"
+        if len(order.items) > 1:
+            order_name += f" 외 {len(order.items) - 1}건"
+
+        publish_event("order.fulfilled", {
+            "order_id": str(order_id), 
+            "buyer_id": str(order.buyer_id),
+            "buyer_email": order.buyer.email,
+            "buyer_username": order.buyer.username,
+            "order_name": order_name,
+            "total_amount": order.total_amount
+        })
         logger.info(f"Successfully fulfilled order {order_id}. Published 'order.fulfilled' event.")
 
     async def get_order_by_id(self, db: AsyncSession, order_id: uuid.UUID) -> Optional[models.MarketplaceOrder]:

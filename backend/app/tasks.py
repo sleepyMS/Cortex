@@ -316,12 +316,15 @@ def run_backtest(self, backtest_id: str):
 # --- 이벤트 구독자 (Subscribers) ---
 
 @celery_app.task(name="send_purchase_notification_task", queue="io_bound_queue")
-def send_purchase_notification_task(order_id: str, buyer_id: str):
+def send_purchase_notification_task(payload: dict):
     """'order.fulfilled' 이벤트를 구독하여 구매 완료 알림을 보냅니다."""
+    
+    order_id = payload.get("order_id")
     logger.info(f"Event received: Sending purchase notification for order {order_id}")
+
     async def _send():
-        async with AsyncSessionLocal() as session:
-            await notification_service.send_purchase_confirmation(session, order_id)
+        await notification_service.send_purchase_confirmation(payload)
+            
     return asyncio.run(_send())
 
 @celery_app.task(name="send_backtest_notification_task", queue="io_bound_queue")

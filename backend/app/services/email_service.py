@@ -2,7 +2,7 @@
 
 import httpx
 import logging
-from typing import Dict
+from typing import Dict, Any
 
 # --- 중앙 설정 객체 임포트 ---
 from ..config import settings
@@ -128,6 +128,84 @@ class EmailService:
         {reset_link}
         이 링크는 1시간 후 만료됩니다.
         만약 본인이 요청한 것이 아니라면, 이 이메일을 무시해주세요.
+        감사합니다,
+        Cortex 팀 드림
+        """
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+    
+    def get_purchase_confirmation_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        구매 완료 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        subject = f"Cortex: '{context.get('order_name', '상품')}' 구매가 완료되었습니다."
+        username = context.get('user_username') or context.get('user_email', '고객')
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님!</p>
+            <p>Cortex 마켓플레이스에서 주문이 성공적으로 처리되었습니다.</p>
+            <ul style="list-style-type: none; padding-left: 0;">
+                <li><strong>주문명:</strong> {context.get('order_name', 'N/A')}</li>
+                <li><strong>주문 ID:</strong> {context.get('order_id', 'N/A')}</li>
+                <li><strong>결제 금액:</strong> {int(context.get('total_amount', 0))}원</li>
+            </ul>
+            <p>구매하신 상품(크레딧 등)은 계정에 즉시 반영되었습니다. 인벤토리 또는 크레딧 내역을 확인해주세요.</p>
+            <p>Cortex를 이용해 주셔서 감사합니다!</p>
+            <br>
+            <p><a href="{context.get('frontend_url', '#')}/dashboard?tab=credits" style="display: inline-block; padding: 10px 20px; background-color: #6a0dad; color: white; text-decoration: none; border-radius: 5px;">크레딧 관리하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님!
+        Cortex 마켓플레이스에서 주문이 성공적으로 처리되었습니다.
+        - 주문명: {context.get('order_name', 'N/A')}
+        - 주문 ID: {context.get('order_id', 'N/A')}
+        - 결제 금액: {int(context.get('total_amount', 0))}원
+
+        구매하신 상품(크레딧 등)은 계정에 즉시 반영되었습니다. 인벤토리 또는 크레딧 내역을 확인해주세요.
+        Cortex를 이용해 주셔서 감사합니다!
+
+        내 인벤토리 보러가기: {context.get('frontend_url', '#')}/settings/inventory
+        
+        감사합니다,
+        Cortex 팀 드림
+        """
+        
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+    
+    def get_backtest_completed_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        백테스트 완료 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        subject = f"Cortex: '{context.get('strategy_name', '전략')}' 백테스트가 완료되었습니다."
+        username = context.get('username', '고객')
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님!</p>
+            <p>'<b>{context.get('strategy_name', 'N/A')}</b>' 전략에 대한 백테스트가 성공적으로 완료되었습니다.</p>
+            <p>지금 바로 결과를 확인해보세요.</p>
+            <br>
+            <p><a href="{context.get('frontend_url', '#')}/backtester/{context.get('backtest_id', '')}" style="display: inline-block; padding: 10px 20px; background-color: #6a0dad; color: white; text-decoration: none; border-radius: 5px;">결과 확인하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님!
+        '{context.get('strategy_name', 'N/A')}' 전략에 대한 백테스트가 성공적으로 완료되었습니다.
+        지금 바로 결과를 확인해보세요: {context.get('frontend_url', '#')}/backtester/{context.get('backtest_id', '')}
+        
         감사합니다,
         Cortex 팀 드림
         """
