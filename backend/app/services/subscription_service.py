@@ -233,6 +233,18 @@ class SubscriptionService:
         
         await db.commit()
 
+        publish_event(
+            "subscription.created",
+            {
+                "user_id": str(user.id),
+                "user_email": user.email,
+                "username": user.username,
+                "plan_name": target_plan.name.value,
+                "amount": target_plan.price,
+                "next_payment_date": subscription.current_period_end
+            }
+        )
+
         return schemas.SubscriptionSchema.model_validate(subscription)
 
 
@@ -242,32 +254,42 @@ class SubscriptionService:
     ) -> models.Subscription:
         """
         정기결제 성공 웹훅을 받아 구독을 활성화하거나 기간을 갱신합니다. (멱등성 보장)
+        user 객체를 함께 로드하여 commit 전에 이벤트 페이로드를 준비합니다.
         """
         user_uuid = uuid.UUID(customer_key)
         payment_key = payment_data.get("paymentKey")
 
-        # [개선] 멱등성 체크: 이 결제(paymentKey)를 이미 처리했는지 확인합니다.
-        existing_sub = await db.scalar(
-            select(models.Subscription).filter_by(payment_gateway_sub_id=payment_key)
-        )
-        if existing_sub:
-            logger.warning(f"Webhook for paymentKey {payment_key} has already been processed. Skipping.")
-            return existing_sub
-
+        # 멱등성 체크를 위한 쿼리와 메인 쿼리를 분리하거나,
+        # 메인 쿼리에서 user 정보를 함께 가져옵니다.
+        
         subscription = await db.scalar(
             select(models.Subscription)
-            .options(joinedload(models.Subscription.plan))
-            .filter_by(user_id=user_uuid)
+            .options(
+                joinedload(models.Subscription.plan),
+                joinedload(models.Subscription.user)
+            )
+            .filter(models.Subscription.user_id == user_uuid)
         )
 
         if not subscription:
             logger.error(f"Cannot update subscription. No subscription found for user_id: {customer_key}")
             raise HTTPException(status_code=404, detail="Subscription not found for webhook processing.")
 
+        # 멱등성 체크를 subscription 조회 이후로 이동 (더 효율적)
+        if subscription.payment_gateway_sub_id == payment_key:
+            logger.warning(f"Webhook for paymentKey {payment_key} has already been processed. Skipping.")
+            return subscription
+
+        user = subscription.user
+        if not user:
+             logger.error(f"Data integrity error: Subscription {subscription.id} has no associated user.")
+             raise HTTPException(status_code=500, detail="Subscription has no user.")
+
+        # --- DB 상태 갱신 ---
         new_period_end = datetime.now(timezone.utc) + relativedelta(months=1)
         subscription.status = "active"
         subscription.current_period_end = new_period_end
-        subscription.payment_gateway_sub_id = payment_key # [개선] 마지막으로 성공한 결제 ID를 기록
+        subscription.payment_gateway_sub_id = payment_key # 마지막 성공한 결제 ID 기록
 
         if subscription.plan and subscription.plan.monthly_credit_reward > 0:
             await credit_service.grant_subscription_bonus_credits(
@@ -275,13 +297,26 @@ class SubscriptionService:
                 amount=subscription.plan.monthly_credit_reward,
                 source_id=uuid.UUID(payment_data.get("orderId"))
             )
-            logger.info(f"Granted {subscription.plan.monthly_credit_reward} bonus credits to recurring subscriber {customer_key}.")
+            logger.info(f"Granted {subscription.plan.monthly_credit_reward} bonus credits...")
         
         logger.info(
             f"Subscription for user {customer_key} successfully renewed. "
             f"Plan: {subscription.plan.name.value}, New expiration: {new_period_end.isoformat()}"
         )
-        await db.commit() # [추가] 세션 커밋
+
+        event_payload = {
+            "user_id": str(user.id),
+            "user_email": user.email,
+            "username": user.username,
+            "plan_name": subscription.plan.name.value,
+            "amount": payment_data.get("totalAmount", subscription.plan.price),
+            "next_payment_date": subscription.current_period_end
+        }
+        
+        await db.commit() 
+
+        publish_event("subscription.renewed", event_payload)
+            
         return subscription
     
     async def handle_subscription_payment_failure(
@@ -290,28 +325,32 @@ class SubscriptionService:
         customer_key: str,
         failure_data: dict,
     ):
-        """
-        정기결제 실패 웹훅을 받아 구독을 비활성화(취소) 처리합니다.
-        """
         user_uuid = uuid.UUID(customer_key)
-        subscription = await db.scalar(select(models.Subscription).filter_by(user_id=user_uuid))
+        subscription = await db.scalar(
+            select(models.Subscription)
+            .options(
+                joinedload(models.Subscription.user), 
+                joinedload(models.Subscription.plan)
+            )
+            .filter_by(user_id=user_uuid)
+        )
 
-        if not subscription:
-            logger.warning(f"Received payment failure webhook for non-existent subscription. User ID: {customer_key}")
+        if not subscription or not subscription.user or not subscription.plan:
+            logger.warning(f"Received payment failure webhook for non-existent subscription/user. User ID: {customer_key}")
             return
 
-        # 구독 상태를 'canceled' 또는 'past_due'(유예 기간을 줄 경우) 등으로 변경
         subscription.status = "canceled"
         
         failure_code = failure_data.get("code")
         failure_message = failure_data.get("message")
         
-        # 필요 시, 이벤트 발행을 통해 사용자에게 알림을 보낼 수 있습니다.
         publish_event(
             "subscription.payment.failed",
             {
                 "user_id": customer_key,
-                "plan_id": str(subscription.plan_id),
+                "user_email": subscription.user.email,
+                "username": subscription.user.username,
+                "plan_name": subscription.plan.name.value,
                 "failure_code": failure_code,
                 "failure_message": failure_message,
             },
@@ -319,7 +358,6 @@ class SubscriptionService:
         
         await db.commit()
         logger.info(f"Subscription for user {customer_key} has been canceled due to payment failure: {failure_message}")
-
 
 # 서비스 인스턴스 생성
 subscription_service = SubscriptionService()

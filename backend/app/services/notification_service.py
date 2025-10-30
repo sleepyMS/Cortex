@@ -92,5 +92,80 @@ class NotificationService:
             plain_text_content=email_content["plain_text"]
         )
 
+    async def send_subscription_created_email(self, payload: Dict[str, Any]):
+        """
+        'subscription.created' 이벤트를 받아 환영 이메일을 보냅니다.
+        (DB 접근 없음)
+        """
+        user_email = payload.get("user_email")
+        if not user_email:
+            logger.error(f"send_subscription_created_email missing 'user_email' in payload.")
+            return
+
+        logger.info(f"Sending subscription WELCOME email to {user_email}.")
+
+        # 1. email_service에 전달할 context 생성 (payload 재사용)
+        #    (email_service 템플릿 함수가 frontend_url을 사용하므로 추가)
+        payload["frontend_url"] = settings.APP.FRONTEND_BASE_URL
+        
+        # 2. email_service에서 템플릿 내용 가져오기
+        email_content = self.email_service.get_subscription_welcome_content(payload)
+        
+        # 3. email_service로 이메일 발송
+        await self.email_service.send_email(
+            to_email=user_email,
+            subject=email_content["subject"],
+            html_content=email_content["html"],
+            plain_text_content=email_content["plain_text"]
+        )
+
+    async def send_subscription_renewed_email(self, payload: Dict[str, Any]):
+        """
+        'subscription.renewed' 이벤트를 받아 갱신 이메일을 보냅니다.
+        (DB 접근 없음)
+        """
+        user_email = payload.get("user_email")
+        if not user_email:
+            logger.error(f"send_subscription_renewed_email missing 'user_email' in payload.")
+            return
+            
+        logger.info(f"Sending subscription RENEWAL email to {user_email}.")
+
+        # 1. email_service에 전달할 context 생성 (payload 재사용)
+        payload["frontend_url"] = settings.APP.FRONTEND_BASE_URL
+        
+        # 2. email_service에서 템플릿 내용 가져오기
+        email_content = self.email_service.get_subscription_renewal_content(payload)
+        
+        # 3. email_service로 이메일 발송
+        await self.email_service.send_email(
+            to_email=user_email,
+            subject=email_content["subject"],
+            html_content=email_content["html"],
+            plain_text_content=email_content["plain_text"]
+        )
+
+    async def send_subscription_failed_email(self, payload: Dict[str, Any]):
+        """
+        'subscription.payment.failed' 이벤트를 받아 실패 이메일을 보냅니다.
+        (DB 접근 없음)
+        """
+        user_email = payload.get("user_email")
+        if not user_email:
+            logger.error(f"send_subscription_failed_email missing 'user_email' in payload.")
+            return
+
+        logger.info(f"Sending subscription FAILED email to {user_email}.")
+
+        payload["frontend_url"] = settings.APP.FRONTEND_BASE_URL
+        email_content = self.email_service.get_subscription_failed_content(payload)
+        
+        await self.email_service.send_email(
+            to_email=user_email,
+            subject=email_content["subject"],
+            html_content=email_content["html"],
+            plain_text_content=email_content["plain_text"]
+        )
+
 # 서비스 인스턴스 생성
 notification_service = NotificationService()

@@ -210,6 +210,141 @@ class EmailService:
         Cortex 팀 드림
         """
         return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+    
+    def get_subscription_welcome_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        첫 구독 결제(환영) 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        plan_name = context.get('plan_name', '플랜')
+        username = context.get('username') or context.get('user_email', '고객')
+        next_payment_date = context.get('next_payment_date')
+        
+        subject = f"Cortex: {plan_name} 플랜 구독을 시작해주셔서 감사합니다!"
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님!</p>
+            <p>Cortex의 '<b>{plan_name}</b>' 플랜 구독이 성공적으로 시작되었습니다. Cortex의 모든 기능을 지금 바로 이용해보세요.</p>
+            <br>
+            <p><strong>결제 내역:</strong></p>
+            <ul style="list-style-type: none; padding-left: 0;">
+                <li><strong>플랜명:</strong> {plan_name}</li>
+                <li><strong>결제 금액:</strong> {int(context.get('amount', 0))}원</li>
+                <li><strong>다음 결제일:</strong> {next_payment_date.strftime('%Y년 %m월 %d일') if next_payment_date else 'N/A'}</li>
+            </ul>
+            <br>
+            <p><a href="{context.get('frontend_url', '#')}/dashboard" style="display: inline-block; padding: 10px 20px; background-color: #6a0dad; color: white; text-decoration: none; border-radius: 5px;">대시보드로 이동하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님!
+        Cortex의 '{plan_name}' 플랜 구독이 성공적으로 시작되었습니다. Cortex의 모든 기능을 지금 바로 이용해보세요.
+
+        [결제 내역]
+        - 플랜명: {plan_name}
+        - 결제 금액: {int(context.get('amount', 0))}원
+        - 다음 결제일: {next_payment_date.strftime('%Y년 %m월 %d일') if next_payment_date else 'N/A'}
+
+        대시보드로 이동하기: {context.get('frontend_url', '#')}/dashboard
+        
+        감사합니다,
+        Cortex 팀 드림
+        """
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+
+    def get_subscription_renewal_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        정기 결제(갱신) 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        plan_name = context.get('plan_name', '플랜')
+        username = context.get('username') or context.get('user_email', '고객')
+        next_payment_date = context.get('next_payment_date')
+
+        subject = f"Cortex: {plan_name} 플랜 구독이 갱신되었습니다."
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님!</p>
+            <p>Cortex의 '<b>{plan_name}</b>' 플랜 구독이 성공적으로 갱신되었습니다. 이용해주셔서 감사합니다.</p>
+            <br>
+            <p><strong>결제 내역:</strong></p>
+            <ul style="list-style-type: none; padding-left: 0;">
+                <li><strong>플랜명:</strong> {plan_name}</li>
+                <li><strong>결제 금액:</strong> {int(context.get('amount', 0))}원</li>
+                <li><strong>다음 결제일:</strong> {next_payment_date.strftime('%Y년 %m월 %d일') if next_payment_date else 'N/A'}</li>
+            </ul>
+            <br>
+            <p>구독 상태는 언제든지 '설정' 메뉴에서 관리하실 수 있습니다.</p>
+            <p><a href="{context.get('frontend_url', '#')}/settings/subscription" style="display: inline-block; padding: 10px 20px; background-color: #6a0dad; color: white; text-decoration: none; border-radius: 5px;">구독 관리하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님!
+        Cortex의 '{plan_name}' 플랜 구독이 성공적으로 갱신되었습니다. 이용해주셔서 감사합니다.
+
+        [결제 내역]
+        - 플랜명: {plan_name}
+        - 결제 금액: {int(context.get('amount', 0))}원
+        - 다음 결제일: {next_payment_date.strftime('%Y년 %m월 %d일') if next_payment_date else 'N/A'}
+
+        구독 관리하기: {context.get('frontend_url', '#')}/settings/subscription
+        
+        감사합니다,
+        Cortex 팀 드림
+        """
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+    
+    def get_subscription_failed_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        정기 결제 실패 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        plan_name = context.get('plan_name', '플랜')
+        username = context.get('username') or context.get('user_email', '고객')
+        
+        subject = f"Cortex: {plan_name} 플랜 결제에 실패했습니다."
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님.</p>
+            <p>'<b>{plan_name}</b>' 플랜의 정기 결제에 실패하여 구독이 비활성화되었습니다.</p>
+            <br>
+            <p><strong>실패 사유:</strong> {context.get('failure_message', '카드사 또는 은행에서 결제를 거부했습니다.')}</p>
+            <p>서비스를 계속 이용하시려면, '설정' 메뉴에서 결제 정보를 업데이트하고 구독을 다시 시작해주세요.</p>
+            <br>
+            <p><a href="{context.get('frontend_url', '#')}/settings/subscription" style="display: inline-block; padding: 10px 20px; background-color: #D92D20; color: white; text-decoration: none; border-radius: 5px;">결제 정보 업데이트하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님.
+        '{plan_name}' 플랜의 정기 결제에 실패하여 구독이 비활성화되었습니다.
+
+        실패 사유: {context.get('failure_message', '카드사 또는 은행에서 결제를 거부했습니다.')}
+        서비스를 계속 이용하시려면, '설정' 메뉴에서 결제 정보를 업데이트하고 구독을 다시 시작해주세요.
+
+        결제 정보 업데이트하기: {context.get('frontend_url', '#')}/settings/subscription
+        
+        감사합니다,
+        Cortex 팀 드림
+        """
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
 
 # 서비스 인스턴스 생성
 email_service = EmailService()

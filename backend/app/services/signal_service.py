@@ -446,17 +446,6 @@ class SignalService:
         # 2. '계산 기준' 타임프레임의 데이터를 메인 데이터프레임으로 로드합니다.
         base_df = await market_data_service.get_latest_data(db, ticker, calculation_base_tf, limit=2000)
 
-        # --- [디버깅 코드 1단계 추가] ---
-        # print("--- [DEBUG] 1. 입력 데이터프레임 정보 ---")
-        # if base_df.empty:
-        #     print("데이터프레임이 비어있습니다.")
-        # else:
-        #     print(base_df.info())
-        #     print("\n--- [DEBUG] 2. 데이터프레임 상위 5개 행 ---")
-        #     print(base_df.head())
-        # print("--------------------------------------\n")
-        # --- [디버깅 코드 추가 종료] ---
-
         if base_df.empty: 
             return pd.DataFrame(), calculation_base_tf
         

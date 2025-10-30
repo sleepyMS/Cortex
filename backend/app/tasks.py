@@ -153,7 +153,7 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
     
 @celery_app.task(name="fulfill_order_task", queue="io_bound_queue")
 def fulfill_order_task(payload: dict):
-    """ 결제가 완료된 주문에 대해 자산을 지급하는 I/O-Bound Task"""
+    """결제가 완료된 주문에 대해 자산을 지급하는 I/O-Bound Task"""
     order_id = payload.get("order_id")
     gateway_transaction_id = payload.get("gateway_transaction_id")
     
@@ -372,39 +372,79 @@ def handle_recurring_payment_failure_task(payload: dict):
 
 @celery_app.task(name="send_verification_email_task", queue="io_bound_queue", bind=True)
 def send_verification_email_task(self, payload: dict):
-    """'user.needs_verification' 이벤트를 구독하여 인증 이메일을 보냅니다."""
+    """
+    'user.needs_verification' 이벤트를 구독하여 인증 이메일을 보냅니다.
+    (DB 접근 없이 httpx만 사용하므로 asyncio.run() 래퍼를 사용합니다)
+    """
     user_id = payload.get("user_id")
     email = payload.get("email")
     token_string = payload.get("token_string")
     base_url = payload.get("base_url")
-    
+
+    # 페이로드 검증
+    if not all([user_id, email, token_string, base_url]):
+        logger.error(f"send_verification_email_task가 페이로드에서 필수 데이터를 받지 못했습니다: {payload}")
+        # 페이로드가 잘못되었으므로 재시도하지 않음
+        return
+
     logger.info(f"Event received: Sending verification email to {email} (User ID: {user_id})")
+
+    # verification_service의 함수 시그니처에 맞게 임시 User 객체 생성
+    # (DB에 접근하지 않음)
+    temp_user = models.User(
+        id=uuid.UUID(user_id), 
+        email=email, 
+        username=payload.get("username")
+    )
     
-    # verification_service의 함수가 async이므로 래퍼가 필요합니다.
     async def _send():
-        # user 객체를 만들 필요 없이, 페이로드로 받은 정보만 넘겨줍니다.
-        # (verification_service.py의 send_prepared_verification_email 함수 시그니처 수정 필요)
-        
-        # --- [수정] verification_service 함수 시그니처에 맞게 User 객체 생성 ---
-        # (더 나은 방법은 service 함수가 user_id, email, username을 받도록 수정하는 것이지만,
-        #  현재 구조를 최소한으로 변경하는 안입니다.)
-        
-        # 임시 User 객체 생성 (이메일 발송에 필요한 최소 정보만)
-        temp_user = models.User(
-            id=uuid.UUID(user_id), 
-            email=email, 
-            username=payload.get("username")
-        )
-        
+        """
+        email_service(httpx)를 호출하는 비동기 헬퍼 함수
+        """
         try:
+            # 이 함수는 httpx 네트워크 호출만 수행합니다.
             await verification_service.send_prepared_verification_email(
                 temp_user, token_string, base_url
             )
         except Exception as e:
+            # email_service에서 전송 실패 시 발생시킨 예외를 처리
             logger.error(f"Failed to send verification email for {email}: {e}", exc_info=True)
             # Celery가 재시도하도록 예외를 다시 발생시킵니다.
             raise self.retry(exc=e, countdown=60, max_retries=3)
 
+    # 윈도우/eventlet 환경에서 httpx를 실행하기 위해 asyncio.run() 사용
+    return asyncio.run(_send())
+
+@celery_app.task(name="send_subscription_created_task", queue="io_bound_queue")
+def send_subscription_created_task(payload: dict):
+    """'subscription.created' 이벤트를 구독하여 환영 이메일을 보냅니다."""
+    logger.info(f"Event received: Sending subscription WELCOME email to {payload.get('user_email')}")
+    
+    async def _send():
+        # 이 함수는 DB 접근 없이 email_service(httpx)만 호출합니다.
+        await notification_service.send_subscription_created_email(payload)
+            
+    return asyncio.run(_send())
+
+@celery_app.task(name="send_subscription_renewed_task", queue="io_bound_queue")
+def send_subscription_renewed_task(payload: dict):
+    """'subscription.renewed' 이벤트를 구독하여 갱신 이메일을 보냅니다."""
+    logger.info(f"Event received: Sending subscription RENEWAL email to {payload.get('user_email')}")
+    
+    async def _send():
+        # 이 함수는 DB 접근 없이 email_service(httpx)만 호출합니다.
+        await notification_service.send_subscription_renewed_email(payload)
+            
+    return asyncio.run(_send())
+
+@celery_app.task(name="send_subscription_failed_task", queue="io_bound_queue")
+def send_subscription_failed_task(payload: dict):
+    """'subscription.payment.failed' 이벤트를 구독하여 실패 알림 이메일을 보냅니다."""
+    logger.info(f"Event received: Sending subscription FAILED email to {payload.get('user_email')}")
+    
+    async def _send():
+        await notification_service.send_subscription_failed_email(payload)
+            
     return asyncio.run(_send())
 
 
@@ -418,6 +458,9 @@ EVENT_SUBSCRIBERS = {
     "subscription.recurring_payment.succeeded": ["handle_recurring_payment_success_task"],
     "subscription.recurring_payment.failed": ["handle_recurring_payment_failure_task"],
     "user.needs_verification": ["send_verification_email_task"],
+    "subscription.created": ["send_subscription_created_task"],
+    "subscription.renewed": ["send_subscription_renewed_task"],
+    "subscription.payment.failed": ["send_subscription_failed_task"],
 }
 
 @celery_app.task(name="dispatch_event", queue="io_bound_queue")
