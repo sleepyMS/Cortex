@@ -1,21 +1,42 @@
+// file: frontend/src/components/auth/SocialLogins.tsx
+
 "use client";
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
+import { useSearchParams } from "next/navigation";
 
 export default function SocialLogins() {
   const t = useTranslations("Auth");
+  const searchParams = useSearchParams();
 
-  // 각 소셜 로그인 제공자의 인증 페이지 URL. .env 파일에서 관리하는 것이 좋습니다.
-  const GOOGLE_AUTH_URL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI}&response_type=code&scope=openid%20email%20profile`;
-  const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI}&response_type=code`;
-  const NAVER_AUTH_URL = `https://nid.naver.com/oauth2.0/authorize?client_id=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_NAVER_REDIRECT_URI}&response_type=code&state=STATE_STRING`; // state는 CSRF 방지를 위해 랜덤 문자열 생성 필요
+  const redirectUrl = searchParams.get("redirect");
+
+  const state =
+    redirectUrl && redirectUrl.startsWith("/") ? redirectUrl : "/dashboard";
+
+  // 5. 각 URL에 동적으로 생성된 state 값을 삽입합니다.
+  const GOOGLE_AUTH_URL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  }&redirect_uri=${
+    process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
+  }&response_type=code&scope=openid%20email%20profile&state=${encodeURIComponent(
+    state
+  )}`;
+  const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${
+    process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID
+  }&redirect_uri=${
+    process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI
+  }&response_type=code&state=${encodeURIComponent(state)}`;
+  const NAVER_AUTH_URL = `https://nid.naver.com/oauth2.0/authorize?client_id=${
+    process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
+  }&redirect_uri=${
+    process.env.NEXT_PUBLIC_NAVER_REDIRECT_URI
+  }&response_type=code&state=${encodeURIComponent(state)}`;
 
   const handleSocialLogin = (provider: string, url: string) => {
-    // 👈 1. 어떤 제공자인지 localStorage에 저장
     localStorage.setItem("social_provider", provider);
-    // 2. 사용자를 해당 소셜 플랫폼의 인증 페이지로 보냄
     window.location.href = url;
   };
 
@@ -33,10 +54,9 @@ export default function SocialLogins() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Google 로그인 버튼 */}
         <Button
           variant="outline"
-          onClick={() => handleSocialLogin("google", GOOGLE_AUTH_URL)} // 👈 provider 이름 전달
+          onClick={() => handleSocialLogin("google", GOOGLE_AUTH_URL)}
         >
           <Image
             src="/images/google-icon.svg"
@@ -48,10 +68,9 @@ export default function SocialLogins() {
           Google
         </Button>
 
-        {/* Kakao 로그인 버튼 */}
         <Button
           variant="outline"
-          onClick={() => handleSocialLogin("kakao", KAKAO_AUTH_URL)} // 👈 provider 이름 전달
+          onClick={() => handleSocialLogin("kakao", KAKAO_AUTH_URL)}
         >
           <Image
             src="/images/kakao-icon.svg"
@@ -63,10 +82,9 @@ export default function SocialLogins() {
           Kakao
         </Button>
 
-        {/* Naver 로그인 버튼 */}
         <Button
           variant="outline"
-          onClick={() => handleSocialLogin("naver", NAVER_AUTH_URL)} // 👈 provider 이름 전달
+          onClick={() => handleSocialLogin("naver", NAVER_AUTH_URL)}
         >
           <Image
             src="/images/naver-icon.svg"
