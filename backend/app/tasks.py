@@ -151,27 +151,31 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
         logger.error(f"Unhandled exception in fetch_and_store_ohlcv: {e}", exc_info=True)
         raise self.retry(exc=e)
     
-@celery_app.task(name="fulfill_order_task", queue="io_bound_queue")
-def fulfill_order_task(payload: dict):
-    """결제가 완료된 주문에 대해 자산을 지급하는 I/O-Bound Task"""
+@celery_app.task(name="fulfill_order_task", queue="io_bound_queue", bind=True)
+def fulfill_order_task(self, payload: dict):
+    """ [윈도우 호환] 결제 완료 주문 이행 (asyncio.run 래퍼 사용)"""
     order_id = payload.get("order_id")
     gateway_transaction_id = payload.get("gateway_transaction_id")
     
     logger.info(f"Starting fulfillment for order ID: {order_id}")
     
     async def _fulfill():
+        # [핵심] 세션을 헬퍼 함수 내부에서 생성
         async with AsyncSessionLocal() as session:
             try:
-                # marketplace_service에 인자들을 전달
                 await marketplace_service.fulfill_order(session, uuid.UUID(order_id), gateway_transaction_id)
                 await session.commit()
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Critical error fulfilling order {order_id}: {e}", exc_info=True)
-                # Task 실패 시, celery_app.py의 DatabaseTask가 DB 상태를 'failed'로 처리해 줄 수 있음
-                raise
+                # 예외를 다시 발생시켜 Celery가 재시도하게 함
+                raise e 
 
-    return asyncio.run(_fulfill())
+    try:
+        return asyncio.run(_fulfill())
+    except Exception as exc:
+        # asyncio.run()에서 발생한 예외를 잡아 Celery 재시도 로직으로 전달
+        raise self.retry(exc=exc, countdown=10, max_retries=3)
 
 
 # ==============================================================================
@@ -315,79 +319,90 @@ def run_backtest(self, backtest_id: str):
 
 # --- 이벤트 구독자 (Subscribers) ---
 
-@celery_app.task(name="send_purchase_notification_task", queue="io_bound_queue")
-def send_purchase_notification_task(payload: dict):
-    """'order.fulfilled' 이벤트를 구독하여 구매 완료 알림을 보냅니다."""
-    
+@celery_app.task(name="send_purchase_notification_task", queue="io_bound_queue", bind=True)
+def send_purchase_notification_task(self, payload: dict):
+    """ [윈도우 호환] 구매 완료 알림 (asyncio.run 래퍼 사용)"""
     order_id = payload.get("order_id")
     logger.info(f"Event received: Sending purchase notification for order {order_id}")
 
     async def _send():
+        # 이 함수는 DB 접근이 없으므로 세션이 필요 없음
         await notification_service.send_purchase_confirmation(payload)
             
-    return asyncio.run(_send())
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
 
-@celery_app.task(name="send_backtest_notification_task", queue="io_bound_queue")
-def send_backtest_notification_task(event_name: str, payload: dict):
-    """'backtest.completed' 또는 'backtest.failed' 이벤트를 구독하여 알림을 보냅니다."""
+
+@celery_app.task(name="send_backtest_notification_task", queue="io_bound_queue", bind=True)
+def send_backtest_notification_task(self, event_name: str, payload: dict):
+    """ [윈도우 호환] 백테스트 알림 (asyncio.run 래퍼 사용)"""
     backtest_id = payload.get("backtest_id")
     logger.info(f"Event received: Sending backtest notification for {backtest_id} ({event_name})")
+    
     async def _send():
+        # [핵심] 세션을 헬퍼 함수 내부에서 생성
         async with AsyncSessionLocal() as session:
             if event_name == "backtest.completed":
                 await notification_service.send_backtest_completed_notification(session, backtest_id)
             elif event_name == "backtest.failed":
-                # notification_service에 실패 알림 함수 추가 필요
-                # await notification_service.send_backtest_failed_notification(session, backtest_id, payload.get("error"))
                 pass
-    return asyncio.run(_send())
+            
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
 
-@celery_app.task(name="handle_recurring_payment_success_task", queue="io_bound_queue")
-def handle_recurring_payment_success_task(payload: dict):
-    """'subscription.recurring_payment.succeeded' 이벤트를 처리하여 구독을 갱신합니다."""
+
+@celery_app.task(name="handle_recurring_payment_success_task", queue="io_bound_queue", bind=True)
+def handle_recurring_payment_success_task(self, payload: dict):
+    """ [윈도우 호환] 구독 갱신 (asyncio.run 래퍼 사용)"""
     customer_key = payload.get("customer_key")
     payment_data = payload.get("payment_data")
     logger.info(f"Event received: Renewing subscription for user {customer_key}")
     
-    async def _renew():
+    async def _process():
+        # [핵심] 세션을 헬퍼 함수 내부에서 생성
         async with AsyncSessionLocal() as session:
             await subscription_service.activate_or_update_subscription(
                 db=session, customer_key=customer_key, payment_data=payment_data
             )
-    return asyncio.run(_renew())
+    
+    try:
+        return asyncio.run(_process())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=10, max_retries=3)
 
-@celery_app.task(name="handle_recurring_payment_failure_task", queue="io_bound_queue")
-def handle_recurring_payment_failure_task(payload: dict):
-    """'subscription.recurring_payment.failed' 이벤트를 처리하여 구독을 취소합니다."""
+
+@celery_app.task(name="handle_recurring_payment_failure_task", queue="io_bound_queue", bind=True)
+def handle_recurring_payment_failure_task(self, payload: dict):
+    """ [윈도우 호환] 구독 실패 처리 (asyncio.run 래퍼 사용)"""
     customer_key = payload.get("customer_key")
     failure_data = payload.get("failure_data")
     logger.info(f"Event received: Canceling subscription for user {customer_key}")
 
-    async def _cancel():
+    async def _process():
+        # [핵심] 세션을 헬퍼 함수 내부에서 생성
         async with AsyncSessionLocal() as session:
             await subscription_service.handle_subscription_payment_failure(
                 db=session, customer_key=customer_key, failure_data=failure_data
             )
-    return asyncio.run(_cancel())
+
+    try:
+        return asyncio.run(_process())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=10, max_retries=3)
+
 
 @celery_app.task(name="send_verification_email_task", queue="io_bound_queue", bind=True)
 def send_verification_email_task(self, payload: dict):
-    """
-    'user.needs_verification' 이벤트를 구독하여 인증 이메일을 보냅니다.
-    (DB 접근 없이 httpx만 사용하므로 asyncio.run() 래퍼를 사용합니다)
-    """
+    """ [윈도우 호환] 이메일 인증 (asyncio.run 래퍼 사용)"""
+    # ... (payload 추출) ...
     user_id = payload.get("user_id")
     email = payload.get("email")
     token_string = payload.get("token_string")
     base_url = payload.get("base_url")
-
-    # 페이로드 검증
-    if not all([user_id, email, token_string, base_url]):
-        logger.error(f"send_verification_email_task가 페이로드에서 필수 데이터를 받지 못했습니다: {payload}")
-        # 페이로드가 잘못되었으므로 재시도하지 않음
-        return
-
-    logger.info(f"Event received: Sending verification email to {email} (User ID: {user_id})")
 
     # verification_service의 함수 시그니처에 맞게 임시 User 객체 생성
     # (DB에 접근하지 않음)
@@ -396,56 +411,60 @@ def send_verification_email_task(self, payload: dict):
         email=email, 
         username=payload.get("username")
     )
+    logger.info(f"Event received: Sending verification email to {email} (User ID: {user_id})")
+    
     
     async def _send():
-        """
-        email_service(httpx)를 호출하는 비동기 헬퍼 함수
-        """
-        try:
-            # 이 함수는 httpx 네트워크 호출만 수행합니다.
-            await verification_service.send_prepared_verification_email(
-                temp_user, token_string, base_url
-            )
-        except Exception as e:
-            # email_service에서 전송 실패 시 발생시킨 예외를 처리
-            logger.error(f"Failed to send verification email for {email}: {e}", exc_info=True)
-            # Celery가 재시도하도록 예외를 다시 발생시킵니다.
-            raise self.retry(exc=e, countdown=60, max_retries=3)
+        # 이 함수는 DB 접근이 없으므로 세션이 필요 없음
+        await verification_service.send_prepared_verification_email(
+            temp_user, token_string, base_url
+        )
+            
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
 
-    # 윈도우/eventlet 환경에서 httpx를 실행하기 위해 asyncio.run() 사용
-    return asyncio.run(_send())
+# --- (이하 모든 알림 태스크도 동일한 패턴으로 수정) ---
 
-@celery_app.task(name="send_subscription_created_task", queue="io_bound_queue")
-def send_subscription_created_task(payload: dict):
-    """'subscription.created' 이벤트를 구독하여 환영 이메일을 보냅니다."""
+@celery_app.task(name="send_subscription_created_task", queue="io_bound_queue", bind=True)
+def send_subscription_created_task(self, payload: dict):
+    """ [윈도우 호환] 구독 환영 (asyncio.run 래퍼 사용)"""
     logger.info(f"Event received: Sending subscription WELCOME email to {payload.get('user_email')}")
     
     async def _send():
-        # 이 함수는 DB 접근 없이 email_service(httpx)만 호출합니다.
         await notification_service.send_subscription_created_email(payload)
             
-    return asyncio.run(_send())
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
 
-@celery_app.task(name="send_subscription_renewed_task", queue="io_bound_queue")
-def send_subscription_renewed_task(payload: dict):
-    """'subscription.renewed' 이벤트를 구독하여 갱신 이메일을 보냅니다."""
+@celery_app.task(name="send_subscription_renewed_task", queue="io_bound_queue", bind=True)
+def send_subscription_renewed_task(self, payload: dict):
+    """ [윈도우 호환] 구독 갱신 (asyncio.run 래퍼 사용)"""
     logger.info(f"Event received: Sending subscription RENEWAL email to {payload.get('user_email')}")
     
     async def _send():
-        # 이 함수는 DB 접근 없이 email_service(httpx)만 호출합니다.
         await notification_service.send_subscription_renewed_email(payload)
             
-    return asyncio.run(_send())
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
 
-@celery_app.task(name="send_subscription_failed_task", queue="io_bound_queue")
-def send_subscription_failed_task(payload: dict):
-    """'subscription.payment.failed' 이벤트를 구독하여 실패 알림 이메일을 보냅니다."""
+@celery_app.task(name="send_subscription_failed_task", queue="io_bound_queue", bind=True)
+def send_subscription_failed_task(self, payload: dict):
+    """ [윈도우 호환] 구독 실패 (asyncio.run 래퍼 사용)"""
     logger.info(f"Event received: Sending subscription FAILED email to {payload.get('user_email')}")
     
     async def _send():
         await notification_service.send_subscription_failed_email(payload)
             
-    return asyncio.run(_send())
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 
 # --- 중앙 이벤트 분배기 (Dispatcher) ---
