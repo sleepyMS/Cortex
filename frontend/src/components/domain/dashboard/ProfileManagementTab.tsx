@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
+import Link from "next/link";
 import { StrategyInList } from "@/types/strategy";
 
 // UI 컴포넌트
@@ -128,6 +129,7 @@ function ProfileForm({ profileData }: { profileData: UserProfile }) {
   const t = useTranslations("Dashboard.profile");
   const { user } = useUserStore();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const formSchema = createProfileSchema(t);
 
   // 'myStrategies' 쿼리는 폼 내부(자식)에서 호출
@@ -164,11 +166,16 @@ function ProfileForm({ profileData }: { profileData: UserProfile }) {
       apiClient.put("/users/me/profile", data),
     onSuccess: (data) => {
       toast.success(t("saveSuccess"));
-      // 쿼리 무효화 (서버 상태 동기화)
+
+      // 1. react-query(Zustand) 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["userProfile", user?.id] });
-      // 폼 제출 성공 후, 현재 값(제출한 값)을 새로운 '기본값'으로 설정
-      // 이렇게 해야 isDirty가 false가 되어 플로팅 바가 사라집니다.
+
+      // 2. 폼 상태를 'clean'으로 변경
       form.reset(form.getValues());
+
+      // 3. Next.js의 클라이언트 사이드 라우터 캐시를 강제 갱신
+      //    이것이 '뒤로 가기'나 <Link> 클릭 시 새 데이터를 보장합니다.
+      router.refresh();
     },
     onError: (error: any) => {
       toast.error(
@@ -444,13 +451,11 @@ export function ProfileManagementTab() {
   return (
     <div className="space-y-8">
       <div className="flex justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push(`/profile/${profileData.username}`)}
-        >
-          <LinkIcon className="mr-2 h-4 w-4" />
-          {t("viewPublicProfile")}
+        <Button type="button" variant="outline" asChild>
+          <Link href={`/profile/${profileData.username}`}>
+            <LinkIcon className="mr-2 h-4 w-4" />
+            {t("viewPublicProfile")}
+          </Link>
         </Button>
       </div>
 
