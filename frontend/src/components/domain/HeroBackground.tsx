@@ -4,11 +4,11 @@ import React from "react";
 
 // HeroSection에서 복사한 배경 생성 로직
 const floatingColors = [
-  "rgba(var(--primary-rgb), 0.20)",
-  "rgba(var(--accent-rgb), 0.25)",
-  "rgba(179, 229, 252, 0.20)",
-  "rgba(255, 204, 255, 0.20)",
-  "rgba(255, 255, 153, 0.15)",
+  "rgba(var(--primary-rgb), 0.45)", // Primary 색상의 옅은 버전 (투명도 0.45로 상향)
+  "rgba(var(--accent-rgb), 0.50)", // Accent 색상의 옅은 버전 (투명도 0.50으로 상향)
+  "rgba(179, 229, 252, 0.45)", // 연한 하늘색 (투명도 0.45로 상향)
+  "rgba(255, 204, 255, 0.45)", // 연한 분홍/보라색 (투명도 0.45로 상향)
+  "rgba(255, 255, 153, 0.40)", // 연한 노란색 추가 (선택 사항, 다양성 부여)
 ];
 
 function getRandom(min: number, max: number): number {
