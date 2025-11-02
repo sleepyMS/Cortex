@@ -14,7 +14,7 @@ async function getUserProfile(username: string) {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/users/${username}/profile`,
       {
-        next: { revalidate: false }, // 한 번 캐싱하고, 데이터 갱신 없음
+        next: { revalidate: 86400 }, // '1일' (86400초) 캐싱하고, 데이터 갱신 없음
       }
     );
     if (!response.ok) return null;
@@ -32,7 +32,7 @@ async function getFeaturedStrategy(
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/strategies/${strategyId}/summary`,
       {
-        next: { revalidate: 60 },
+        next: { revalidate: 86400 },
       }
     );
     if (!response.ok) return null;
