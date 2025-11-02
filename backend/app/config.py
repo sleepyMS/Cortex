@@ -42,6 +42,7 @@ class AppSettings(BaseModel):
     ENCRYPTION_SALT: str
     ADMIN_EMAIL: Optional[str] = None
     ADMIN_PASSWORD: Optional[str] = None
+    REVALIDATE_TOKEN: str
 
 
 class EmailSettings(BaseModel):

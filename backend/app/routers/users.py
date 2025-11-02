@@ -5,7 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from typing import List, Optional
 import uuid
+import httpx
 
+from ..config import settings
 from .. import schemas, models, security
 from ..dependencies import get_current_user, get_async_db, get_current_active_user, get_current_admin_user
 from ..services.user_service import user_service
@@ -63,18 +65,32 @@ async def update_users_me_profile(
     current_user: models.User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db)
 ):
-    """현재 로그인된 사용자의 프로필 정보를 비동기로 업데이트합니다."""
-    # 1. 서비스는 메모리 상의 current_user 객체만 변경합니다.
+    """현재 로그인된 사용자의 프로필 정보를 비동기로 업데이트하고, 프론트엔드 캐시를 무효화합니다."""
+    
+    # 1. (기존 로직) 프로필 업데이트
     updated_user = await user_service.update_user_profile(db, current_user, user_update)
     
-    # 2. commit, refresh, try...except 블록을 모두 제거합니다.
-    #    - 함수가 성공적으로 끝나면 get_async_db가 자동으로 commit합니다.
-    #    - 실패 시(예: username 중복)에는 자동으로 rollback되고 HTTPException이 클라이언트에 전달됩니다.
+    # 2. (기존 로직) 커밋 (get_async_db가 처리)
     
     logger.info(f"User {current_user.email} successfully updated their profile.")
 
-    # 3. get_current_user가 이미 모든 관계를 eager loading 했으므로,
-    #    수정된 객체를 그대로 반환해도 ResponseValidationError가 발생하지 않습니다.
+    try:
+        username_to_revalidate = updated_user.username
+        # Next.js의 재검증 API 엔드포인트
+        # revalidate_url = f"{settings.APP.FRONTEND_BASE_URL}/api/revalidate-profile"
+        revalidate_url = "http://192.168.219.116:3000/api/revalidate-profile"
+        
+        async with httpx.AsyncClient() as client:
+            await client.post(revalidate_url, json={
+                "username": username_to_revalidate,
+                "token": settings.APP.REVALIDATE_TOKEN # .env에 정의된 비밀 토큰
+            })
+        logger.info(f"Sent revalidation request for /profile/{username_to_revalidate}")
+    except Exception as e:
+        # 캐시 무효화에 실패해도, 메인 요청(프로필 수정)이 실패해선 안 됩니다.
+        # 따라서 에러를 로깅만 합니다.
+        logger.error(f"Failed to send revalidation request for {updated_user.username}: {e}", exc_info=True)
+
     return updated_user
 
 @router.put("/me/password", status_code=status.HTTP_200_OK, summary="Update current user's password")

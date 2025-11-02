@@ -526,7 +526,12 @@
       "saveError": "프로필 업데이트에 실패했습니다.",
       "unsavedChanges": "저장되지 않은 변경사항이 있습니다.",
       "cancel": "취소",
-      "saveChanges": "변경사항 저장"
+      "saveChanges": "변경사항 저장",
+      "validation": {
+        "usernameMinLength": "사용자 이름은 3자 이상이어야 합니다.",
+        "bioMaxLength": "자기소개는 200자를 초과할 수 없습니다.",
+        "websiteUrl": "유효한 URL 형식을 입력해주세요."
+      }
     },
     "settings": {
       "password": {

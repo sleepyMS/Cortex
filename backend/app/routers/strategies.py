@@ -1,7 +1,7 @@
 # file: backend/app/routers/strategies.py
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
@@ -78,7 +78,7 @@ async def get_strategies(
 
 @router.get(
     "/{strategy_id}/summary",
-    response_model=schemas.StrategyInList, # 응답 모델을 '요약' 스키마로 지정
+    response_model=schemas.StrategyInList, # 응답 모델은 '요약' 스키마로 동일
     summary="Get public summary of a strategy"
 )
 async def get_strategy_summary(
@@ -87,28 +87,85 @@ async def get_strategy_summary(
 ):
     """
     인증 없이 전략의 공개 가능한 요약 정보만 조회합니다.
-    전략 규칙(longEntryRules 등)은 절대 반환하지 않습니다.
+    (수정됨: strategy_service.get_strategies와 동일한 로직으로 summary/listing을 조합)
     """
-    # 서비스 계층에 이와 같은 요약 정보만 조회하는 함수를 만드는 것이 좋습니다.
-    # 예: strategy_service.get_strategy_summary_by_id(db, strategy_id)
-    # 여기서는 간단하게 상세 조회 후, 스키마에 의해 필터링되는 것을 보여줍니다.
-    
-    result = await db.execute(
-        select(models.Strategy)
-        .options(
-            # 목록 페이지와 같이 필요한 최소한의 관계만 로드합니다.
-            joinedload(models.Strategy.latest_backtest_summary),
-            joinedload(models.Strategy.marketplace_listing)
-        )
-        .filter(models.Strategy.id == strategy_id)
-    )
-    strategy = result.scalar_one_or_none()
 
-    if not strategy:
+    # --- [수정] strategy_service.get_strategies()의 서브쿼리 로직을 복사 ---
+    latest_backtest_subquery = (
+        select(
+            models.Backtest.strategy_id,
+            models.BacktestResult.total_return_pct, models.BacktestResult.win_rate_pct,
+            models.BacktestResult.mdd_pct, models.BacktestResult.sharpe_ratio,
+            models.BacktestResult.profit_factor, models.BacktestResult.sortino_ratio,
+            func.row_number().over(
+                partition_by=models.Backtest.strategy_id,
+                order_by=models.Backtest.created_at.desc()
+            ).label("row_num")
+        )
+        .join(models.BacktestResult, models.Backtest.id == models.BacktestResult.backtest_id)
+        .filter(models.Backtest.status == 'completed')
+        .subquery('latest_backtest')
+    )
+    
+    marketplace_info_subquery = (
+        select(
+            models.MarketplaceProduct.id.label("product_id"),
+            models.MarketplaceProduct.linked_resource_id.label("strategy_id"),
+            models.MarketplaceProduct.price,
+            models.MarketplaceProduct.product_metadata.op('->>')('category').label("category"),
+            models.MarketplaceProduct.product_metadata.op('->>')('positionType').label("position_type"),
+            models.MarketplaceProduct.representative_backtest_id
+        )
+        .where(
+            models.MarketplaceProduct.product_type == models.ProductType.STRATEGY,
+            models.MarketplaceProduct.is_active == True
+        )
+        .subquery('marketplace_info')
+    )
+
+    # --- [수정] 기본 쿼리 수정 ---
+    query = select(
+        models.Strategy,
+        latest_backtest_subquery.c.total_return_pct,
+        latest_backtest_subquery.c.win_rate_pct,
+        latest_backtest_subquery.c.mdd_pct,
+        latest_backtest_subquery.c.sharpe_ratio,
+        latest_backtest_subquery.c.profit_factor,
+        latest_backtest_subquery.c.sortino_ratio,
+        marketplace_info_subquery.c.product_id,
+        marketplace_info_subquery.c.price,
+        marketplace_info_subquery.c.category,
+        marketplace_info_subquery.c.position_type,
+        marketplace_info_subquery.c.representative_backtest_id
+    ).outerjoin(
+        latest_backtest_subquery,
+        (models.Strategy.id == latest_backtest_subquery.c.strategy_id) & (latest_backtest_subquery.c.row_num == 1)
+    ).outerjoin(
+        marketplace_info_subquery,
+        models.Strategy.id == marketplace_info_subquery.c.strategy_id
+    ).filter(
+        models.Strategy.id == strategy_id # 👈 ID로 필터링
+    )
+    
+    result = await db.execute(query)
+    row = result.one_or_none() # 👈 단일 항목 조회
+
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="전략을 찾을 수 없습니다."
         )
+
+    # --- [수정] strategy_service.get_strategies()와 동일하게 객체 조립 ---
+    strategy = row.Strategy
+    strategy.latest_backtest_summary = None
+    if row.total_return_pct is not None:
+        # row._asdict()를 사용하여 쿼리 결과를 딕셔너리로 변환
+        strategy.latest_backtest_summary = schemas.BacktestResultSummaryForCard.model_validate(row._asdict())
+    
+    strategy.marketplace_listing = None
+    if row.product_id:
+        strategy.marketplace_listing = schemas.MarketplaceListing.model_validate(row._asdict())
         
     # response_model=schemas.StrategyInList 덕분에,
     # strategy 객체에 longEntryRules 등이 있더라도 자동으로 필터링되어 반환됩니다.

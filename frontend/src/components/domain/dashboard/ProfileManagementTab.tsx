@@ -52,7 +52,7 @@ import {
   Globe,
   X,
 } from "lucide-react";
-import { PlanAvatar } from "@/components/ui/PlanAvatar"; // PlanAvatar 경로 수정 가정
+import { PlanAvatar } from "@/components/ui/PlanAvatar";
 
 // 타입 정의
 interface UserProfile {
@@ -65,23 +65,23 @@ interface UserProfile {
     website?: string;
   };
   featuredStrategyId?: string;
-  featuredPostId?: string;
+  featuredPostId?: string; // 👈 비록 지금은 사용하지 않지만, 원본 파일에 있으므로 유지합니다.
 }
 
 // --- 애니메이션 효과를 정의 ---
 const barVariants = {
   hidden: {
-    y: 50, // 아래쪽 50px 위치에서 시작
+    y: 50,
     opacity: 0,
   },
   visible: {
-    y: 0, // 최종 위치로 이동
+    y: 0,
     opacity: 1,
     transition: {
       type: "spring",
       stiffness: 100,
       damping: 15,
-      staggerChildren: 0.2, // 자식 요소들을 0.2초 간격으로 애니메이션
+      staggerChildren: 0.2,
     },
   },
   exit: {
@@ -95,7 +95,7 @@ const itemVariants = {
   visible: { y: 0, opacity: 1 },
 } as const;
 
-// Zod 스키마
+// Zod 스키마 (파일 최상단에서 t를 인자로 받도록 수정)
 const createProfileSchema = (t: any) =>
   z.object({
     username: z.string().min(3, t("validation.usernameMinLength")),
@@ -111,15 +111,11 @@ const createProfileSchema = (t: any) =>
           .optional(),
       })
       .optional(),
-
-    // featuredStrategyId와 featuredPostId에 transform을 추가하여,
-    // 빈 문자열이나 null이 제출될 경우 undefined로 변환합니다.
     featuredStrategyId: z
       .string()
       .nullable()
       .optional()
       .transform((val) => val || undefined),
-
     featuredPostId: z
       .string()
       .nullable()
@@ -127,57 +123,52 @@ const createProfileSchema = (t: any) =>
       .transform((val) => val || undefined),
   });
 
-export function ProfileManagementTab() {
+// --- 1. 폼 로직을 별도 자식 컴포넌트로 분리 ---
+function ProfileForm({ profileData }: { profileData: UserProfile }) {
   const t = useTranslations("Dashboard.profile");
   const { user } = useUserStore();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const formSchema = createProfileSchema(t);
 
-  // 데이터 로딩: 현재 사용자 프로필, 판매 전략, 커뮤니티 게시물
-  const { data: profileData, isLoading: isLoadingProfile } =
-    useQuery<UserProfile>({
-      queryKey: ["userProfile", user?.id],
-      queryFn: async () => (await apiClient.get(`/users/me/profile`)).data,
-      enabled: !!user,
-    });
-
+  // 'myStrategies' 쿼리는 폼 내부(자식)에서 호출
   const { data: myStrategies, isLoading: isLoadingStrategies } = useQuery<
     StrategyInList[]
   >({
     queryKey: ["myStrategiesForProfile", user?.id],
-    queryFn: async () => (await apiClient.get("/strategies")).data, // 현재 유저의 전략 목록 API
+    queryFn: async () => (await apiClient.get("/strategies")).data,
     enabled: !!user,
   });
 
+  // 'useForm'이 profileData를 props로 받아 *동기적으로* defaultValues를 설정
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: profileData.username || "",
+      bio: profileData.bio || "",
+      socialLinks: {
+        twitter: profileData.socialLinks?.twitter || "",
+        github: profileData.socialLinks?.github || "",
+        website: profileData.socialLinks?.website || "",
+      },
+      featuredStrategyId: profileData.featuredStrategyId || undefined,
+      featuredPostId: profileData.featuredPostId || undefined,
+    },
   });
 
   const { isDirty } = form.formState;
 
-  useEffect(() => {
-    if (profileData) {
-      form.reset({
-        username: profileData.username || "",
-        bio: profileData.bio || "",
-        socialLinks: {
-          twitter: profileData.socialLinks?.twitter || "",
-          github: profileData.socialLinks?.github || "",
-          website: profileData.socialLinks?.website || "",
-        },
-        featuredStrategyId: profileData.featuredStrategyId || undefined,
-        featuredPostId: profileData.featuredPostId || undefined,
-      });
-    }
-  }, [profileData, form.reset]);
+  // 'useEffect' + 'form.reset'은 더 이상 필요 없음
 
   const updateProfileMutation = useMutation({
     mutationFn: (data: z.infer<typeof formSchema>) =>
       apiClient.put("/users/me/profile", data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success(t("saveSuccess"));
+      // 쿼리 무효화 (서버 상태 동기화)
       queryClient.invalidateQueries({ queryKey: ["userProfile", user?.id] });
+      // 폼 제출 성공 후, 현재 값(제출한 값)을 새로운 '기본값'으로 설정
+      // 이렇게 해야 isDirty가 false가 되어 플로팅 바가 사라집니다.
+      form.reset(form.getValues());
     },
     onError: (error: any) => {
       toast.error(
@@ -190,36 +181,23 @@ export function ProfileManagementTab() {
     updateProfileMutation.mutate(values);
   };
 
-  if (isLoadingProfile) {
-    return <Skeleton className="w-full h-96" />;
-  }
-
   return (
     <Form {...form}>
-      {/* --- 👇 [2. 핵심 수정] onSumbit을 form 태그가 아닌, 플로팅 바의 '저장' 버튼에서 처리합니다. --- */}
-      <div className="space-y-8">
+      {/* 폼이 여러 카드를 감싸는 것이 아니라, 
+         플로팅 바와 폼 데이터를 공유하기 위한 래퍼 역할만 합니다. */}
+
+      {/* 폼 태그는 개별 카드 그룹을 감싸도록 수정 (여기서는 모든 카드를 감싸도 무방) */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* 기본 정보 카드 */}
         <Card>
           <CardHeader>
-            {/* --- 👇 [3. 핵심 수정] 버튼을 form 바깥으로 빼내고, type="button"을 명시합니다. --- */}
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>{t("basicInfo.title")}</CardTitle>
-                <CardDescription>{t("basicInfo.description")}</CardDescription>
-              </div>
-              <Button
-                type="button" // 폼 제출 방지
-                variant="outline"
-                onClick={() => router.push(`/profile/${user?.username}`)}
-              >
-                <LinkIcon className="mr-2 h-4 w-4" />
-                {t("viewPublicProfile")}
-              </Button>
-            </div>
+            <CardTitle>{t("basicInfo.title")}</CardTitle>
+            <CardDescription>{t("basicInfo.description")}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-1 flex flex-col items-center gap-4 pt-4">
-              <PlanAvatar username={profileData?.username} />
+              {/* PlanAvatar는 props로 받은 profileData를 사용 */}
+              <PlanAvatar username={profileData.username} />
             </div>
             <div className="md:col-span-2 space-y-6">
               <FormField
@@ -256,160 +234,156 @@ export function ProfileManagementTab() {
           </CardContent>
         </Card>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* 소셜 링크 카드 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("socialLinks.title")}</CardTitle>
-              <CardDescription>{t("socialLinks.description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="socialLinks.twitter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center">
-                      <Twitter className="h-4 w-4 mr-2" />{" "}
-                      {t("socialLinks.twitterLabel")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://twitter.com/username"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="socialLinks.github"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center">
-                      <Github className="h-4 w-4 mr-2" />{" "}
-                      {t("socialLinks.githubLabel")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://github.com/username"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="socialLinks.website"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center">
-                      <Globe className="h-4 w-4 mr-2" />{" "}
-                      {t("socialLinks.websiteLabel")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder={t("socialLinks.websitePlaceholder")}
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+        {/* 소셜 링크 카드 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("socialLinks.title")}</CardTitle>
+            <CardDescription>{t("socialLinks.description")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="socialLinks.twitter"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center">
+                    <Twitter className="h-4 w-4 mr-2" />{" "}
+                    {t("socialLinks.twitterLabel")}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://twitter.com/username"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="socialLinks.github"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center">
+                    <Github className="h-4 w-4 mr-2" />{" "}
+                    {t("socialLinks.githubLabel")}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://github.com/username"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="socialLinks.website"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center">
+                    <Globe className="h-4 w-4 mr-2" />{" "}
+                    {t("socialLinks.websiteLabel")}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t("socialLinks.websitePlaceholder")}
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
-          {/* 대표 콘텐츠 카드 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("featuredContent.title")}</CardTitle>
-              <CardDescription>
-                {t("featuredContent.description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="featuredStrategyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center">
-                      <Bot className="h-4 w-4 mr-2" />
-                      {t("featuredContent.strategyLabel")}
-                    </FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        // "none"을 선택하면 form의 상태를 null로 설정
-                        field.onChange(value === "none" ? null : value);
-                      }}
-                      value={field.value || "none"} // form 상태가 null 또는 undefined일 때 "none"을 표시
-                    >
-                      <FormControl>
-                        <SelectTrigger disabled={isLoadingStrategies}>
-                          <SelectValue
-                            placeholder={
-                              isLoadingStrategies
-                                ? t("featuredContent.loading")
-                                : t("featuredContent.selectPlaceholder")
-                            }
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">
-                          {t("featuredContent.none")}
+        {/* 대표 콘텐츠 카드 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("featuredContent.title")}</CardTitle>
+            <CardDescription>
+              {t("featuredContent.description")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="featuredStrategyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center">
+                    <Bot className="h-4 w-4 mr-2" />
+                    {t("featuredContent.strategyLabel")}
+                  </FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value === "none" ? null : value);
+                    }}
+                    value={field.value || "none"}
+                    // 폼이 초기화될 때 field.value(예: "저장된ID")가
+                    // 이미 설정되어 있으므로, Select는 올바른 값을 표시합니다.
+                  >
+                    <FormControl>
+                      <SelectTrigger disabled={isLoadingStrategies}>
+                        <SelectValue
+                          placeholder={
+                            isLoadingStrategies
+                              ? t("featuredContent.loading")
+                              : t("featuredContent.selectPlaceholder")
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        {t("featuredContent.none")}
+                      </SelectItem>
+                      {/* isLoadingStrategies가 true일 때는 Select가 비활성화되므로,
+                        myStrategies가 undefined일 때 map을 돌려도 안전합니다.
+                      */}
+                      {myStrategies?.map((strategy) => (
+                        <SelectItem key={strategy.id} value={strategy.id}>
+                          {strategy.name}
                         </SelectItem>
-                        {myStrategies &&
-                          myStrategies.map((strategy) => (
-                            <SelectItem key={strategy.id} value={strategy.id}>
-                              {strategy.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {t("featuredContent.strategyDescription")}
-                    </FormDescription>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-        </form>
-      </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t("featuredContent.strategyDescription")}
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+      </form>
 
       <div className="p-2" />
 
-      {/* --- isDirty가 true일 때만 보이는 플로팅 저장 바 --- */}
+      {/* 플로팅 저장 바 */}
       <AnimatePresence>
         {isDirty && (
           <motion.div
-            // ✅ [수정] 모바일 화면 좌우 여백 추가
             className="sticky bottom-4 inset-x-0 flex justify-center z-10 px-4"
             variants={barVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
-            {/* ✅ [수정] max-w 체인 단순화 및 justify-between 제거 */}
             <div className="w-full max-w-4xl p-3 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center">
-              {/* ✅ [수정] 안내 문구는 sm 사이즈 이상에서만 보이도록 처리 */}
               <motion.span
                 className="text-sm font-semibold text-foreground hidden sm:inline"
                 variants={itemVariants}
               >
                 {t("unsavedChanges")}
               </motion.span>
-
-              {/* ✅ [수정] ml-auto를 사용하여 버튼 그룹을 항상 오른쪽으로 밀어냄 */}
               <motion.div
                 className="flex items-center gap-2 ml-auto"
                 variants={itemVariants}
@@ -417,14 +391,14 @@ export function ProfileManagementTab() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => form.reset()}
+                  onClick={() => form.reset()} // form.reset()은 defaultValues로 복원
                 >
                   <X className="h-4 w-4 sm:mr-2" />
-                  {/* ✅ [수정] 버튼 텍스트도 sm 사이즈 이상에서만 표시 */}
                   <span className="hidden sm:inline">{t("cancel")}</span>
                 </Button>
                 <Button
                   type="button"
+                  // 폼 제출은 폼 내부의 submit이 아닌, 여기서 트리거
                   onClick={form.handleSubmit(onSubmit)}
                   disabled={updateProfileMutation.isPending}
                 >
@@ -441,5 +415,47 @@ export function ProfileManagementTab() {
         )}
       </AnimatePresence>
     </Form>
+  );
+}
+
+// --- 2. 부모 컴포넌트: 데이터 로딩 및 스켈레톤 담당 ---
+export function ProfileManagementTab() {
+  const t = useTranslations("Dashboard.profile");
+  const { user } = useUserStore();
+  const router = useRouter();
+
+  // 부모는 오직 'userProfile' 쿼리만 담당
+  const { data: profileData, isLoading: isLoadingProfile } =
+    useQuery<UserProfile>({
+      queryKey: ["userProfile", user?.id],
+      queryFn: async () => (await apiClient.get(`/users/me/profile`)).data,
+      enabled: !!user,
+      // 폼의 기본값을 설정하는 데 사용되므로,
+      // 캐시된 데이터(stale)를 사용하지 않고 항상 최신 데이터를 가져옵니다.
+      staleTime: 0,
+    });
+
+  // 프로필 로딩 중이거나, 로드에 실패했거나, 데이터가 없으면 스켈레톤 표시
+  if (isLoadingProfile || !profileData) {
+    return <Skeleton className="w-full h-96" />;
+  }
+
+  // '내 공개 프로필 보기' 버튼은 폼과 관련 없으므로 부모에 배치
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push(`/profile/${profileData.username}`)}
+        >
+          <LinkIcon className="mr-2 h-4 w-4" />
+          {t("viewPublicProfile")}
+        </Button>
+      </div>
+
+      {/* 로드된 profileData를 props로 전달하며 실제 폼(자식)을 렌더링 */}
+      <ProfileForm profileData={profileData} />
+    </div>
   );
 }

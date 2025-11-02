@@ -511,7 +511,7 @@
       },
       "basicInfo": {
         "title": "Basic information",
-        "Description": "Information that is fundamental to the profile."
+        "description": "Information that is fundamental to the profile."
       },
       "featuredContent": {
         "title": "Featured Content",
@@ -526,7 +526,12 @@
       "saveError": "Failed to update profile.",
       "unsavedChanges": "You have unsaved changes.",
       "cancel": "Cancel",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "validation": {
+        "usernameMinLength": "Username must be at least 3 characters.",
+        "bioMaxLength": "Bio cannot exceed 200 characters.",
+        "websiteUrl": "Please enter a valid URL."
+      }
     },
     "settings": {
       "password": {

@@ -14,7 +14,7 @@ async function getUserProfile(username: string) {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/users/${username}/profile`,
       {
-        next: { revalidate: 60 }, // 60초마다 데이터 갱신 (캐싱)
+        next: { revalidate: false }, // 한 번 캐싱하고, 데이터 갱신 없음
       }
     );
     if (!response.ok) return null;
