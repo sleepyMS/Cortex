@@ -112,7 +112,7 @@ export default function BacktesterPage() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length > 0 ? allPages.length : undefined,
     initialPageParam: 0,
-    // ▼▼▼ [핵심 기능] 실시간 상태 업데이트를 위한 폴링 로직 ▼▼▼
+    // 실시간 상태 업데이트를 위한 폴링 로직 ▼▼▼
     refetchInterval: (query) => {
       const data = query.state.data;
       const hasActiveJob = data?.pages
