@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { IndicatorMetadata } from "@/types/indicator";
+import { BackButton } from "@/components/ui/BackButton";
 
 // --- 애니메이션 효과를 정의 ---
 const barVariants = {
@@ -567,15 +568,9 @@ export default function StrategyEditorPage({
           >
             <div className="space-y-8">
               <div className="flex items-center justify-center relative">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-0"
-                  onClick={() => router.back()}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
+                <div className="absolute left-0">
+                  <BackButton />
+                </div>
                 <div className="text-center">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                     {isEditMode ? t("editTitle") : t("title")}

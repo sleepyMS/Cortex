@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { UserProfileDisplay } from "@/components/domain/profile/UserProfileDisplay";
 import { FeaturedStrategyCard } from "@/components/domain/profile/FeaturedStrategyCard";
-import apiClient from "@/lib/apiClient"; // 서버에서도 사용 가능하도록 설정 필요
-import type { UserProfile } from "@/types/user"; // 타입 정의 필요
+import { BackButton } from "@/components/ui/BackButton";
+import apiClient from "@/lib/apiClient";
+import type { UserProfile } from "@/types/user";
 import type { StrategyInList } from "@/types/strategy";
 
 // 서버에서 데이터를 미리 가져오는 함수
@@ -71,10 +72,14 @@ export default async function ProfilePage({
 
   return (
     <div className="container mx-auto max-w-4xl py-12 px-4 space-y-8">
-      {/* 1. 사용자 프로필 정보 표시 컴포넌트 */}
+      <div className="flex justify-start">
+        <BackButton />
+      </div>
+
+      {/* 사용자 프로필 정보 표시 컴포넌트 */}
       <UserProfileDisplay profile={profileData} />
 
-      {/* 2. 대표 전략 표시 컴포넌트 */}
+      {/* 대표 전략 표시 컴포넌트 */}
       <div>
         <h2 className="text-2xl font-bold mb-4">
           {t("featuredStrategyTitle")}
