@@ -1,4 +1,4 @@
-// file: frontend/src/app/[locale]/backtester/page.tsx
+// file: frontend/src/app/[locale]/optimization/page.tsx
 
 "use client";
 
@@ -16,6 +16,7 @@ import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
 
 import apiClient from "@/lib/apiClient";
+import { AuthGuard } from "@/components/auth/AuthGuard"; // 인증 가드
 import { Button } from "@/components/ui/Button";
 import {
   Select,
@@ -25,26 +26,37 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import {
-  Backtest,
-  BacktestCard,
-} from "@/components/domain/backtesting/BacktestCard";
-import { PlusCircle, BarChartHorizontal } from "lucide-react";
+  OptimizationJob,
+  OptimizationJobCard,
+} from "@/components/domain/optimization/OptimizationJobCard"; // OptimizationJobCard 임포트
+import { PlusCircle, BarChartHorizontal, Zap } from "lucide-react"; // Zap 아이콘 추가
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Strategy } from "@/types/strategy"; // 기존 Strategy 타입을 재사용
 
 // --- Helper Components ---
 
+/**
+ * 데이터 로딩 중 표시될 스켈레톤 UI
+ */
 const LoadingSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
     {Array.from({ length: 8 }).map((_, i) => (
-      <div key={i} className="space-y-3 p-4 border rounded-lg">
+      <div key={i} className="space-y-3 p-4 border rounded-lg h-64">
         <div className="flex justify-between items-start">
           <Skeleton className="h-5 w-3/4" />
-          <Skeleton className="h-5 w-1/5" />
+          <div className="flex flex-col items-end gap-1.5">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-12" />
+          </div>
         </div>
-        <Skeleton className="h-4 w-5/6" />
-        <div className="flex justify-between items-center pt-4">
-          <Skeleton className="h-5 w-1/4" />
+        <div className="flex justify-around items-center pt-8">
+          <Skeleton className="h-8 w-1/4" />
+          <Skeleton className="h-8 w-1/4" />
+          <Skeleton className="h-8 w-1/4" />
+        </div>
+        <Skeleton className="h-4 w-full pt-4" />
+        <div className="flex justify-between items-center pt-10">
+          <Skeleton className="h-5 w-1/3" />
           <Skeleton className="h-8 w-8 rounded-full" />
         </div>
       </div>
@@ -52,16 +64,19 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+/**
+ * 데이터가 없을 때 표시될 빈 상태 UI
+ */
 const EmptyState = () => {
-  const t = useTranslations("BacktesterPage");
+  const t = useTranslations("OptimizationPage");
   return (
     <div className="text-center py-16 border border-dashed rounded-lg">
-      <BarChartHorizontal className="mx-auto h-12 w-12 text-muted-foreground" />
+      <Zap className="mx-auto h-12 w-12 text-muted-foreground" />
       <h2 className="mt-4 text-xl font-semibold">{t("empty.title")}</h2>
       <p className="text-muted-foreground mt-2 mb-6">
         {t("empty.description")}
       </p>
-      <Link href="/backtester/new">
+      <Link href="/optimization/new">
         <Button>{t("empty.createButton")}</Button>
       </Link>
     </div>
@@ -70,22 +85,24 @@ const EmptyState = () => {
 
 // --- Main Page Component ---
 
-export default function BacktesterPage() {
-  const t = useTranslations("BacktesterPage");
+export default function OptimizationPage() {
+  const t = useTranslations("OptimizationPage");
   const queryClient = useQueryClient();
   const { ref, inView } = useInView();
 
   // --- State for Filters ---
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [strategyFilter, setStrategyFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all"); // 최적화 타입 필터 추가
 
   // --- Query to fetch strategies for the filter dropdown ---
   const { data: strategiesData } = useQuery<Strategy[]>({
     queryKey: ["userStrategiesForFilter"],
     queryFn: async () => (await apiClient.get("/strategies?limit=1000")).data,
+    staleTime: 1000 * 60 * 5, // 5분간 캐시
   });
 
-  // --- Main Infinite Query for Backtests ---
+  // --- Main Infinite Query for Optimization Jobs ---
   const {
     data,
     isLoading,
@@ -94,7 +111,7 @@ export default function BacktesterPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["backtests", statusFilter, strategyFilter],
+    queryKey: ["optimizations", statusFilter, strategyFilter, typeFilter],
     queryFn: async ({ pageParam = 0 }) => {
       const limit = 12;
       const params = new URLSearchParams({
@@ -104,19 +121,20 @@ export default function BacktesterPage() {
       if (statusFilter !== "all") params.set("status_filter", statusFilter);
       if (strategyFilter !== "all")
         params.set("strategy_id_filter", strategyFilter);
+      if (typeFilter !== "all") params.set("type_filter", typeFilter); // API 요청에 타입 필터 추가
 
-      const res = await apiClient.get(`/backtests?${params.toString()}`);
-      return res.data as Backtest[];
+      const res = await apiClient.get(`/optimizations?${params.toString()}`);
+      return res.data as OptimizationJob[];
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length > 0 ? allPages.length : undefined,
     initialPageParam: 0,
-    // 실시간 상태 업데이트를 위한 폴링 로직 ▼▼▼
+    // 실시간 상태 업데이트를 위한 폴링 로직 (BacktesterPage와 동일)
     refetchInterval: (query) => {
       const data = query.state.data;
       const hasActiveJob = data?.pages
         .flat()
-        .some((bt) => bt.status === "running" || bt.status === "pending");
+        .some((job) => job.status === "running" || job.status === "pending");
       return hasActiveJob ? 5000 : false; // 활성 작업이 있을 때만 5초마다 폴링
     },
   });
@@ -129,11 +147,11 @@ export default function BacktesterPage() {
 
   // --- Mutations for Actions ---
   const cancelMutation = useMutation({
-    mutationFn: (backtestId: string) =>
-      apiClient.post(`/backtests/${backtestId}/cancel`),
+    mutationFn: (jobId: string) =>
+      apiClient.post(`/optimizations/${jobId}/cancel`), // API 엔드포인트 변경
     onSuccess: () => {
       toast.success(t("cancelSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["backtests"] });
+      queryClient.invalidateQueries({ queryKey: ["optimizations"] }); // queryKey 변경
     },
     onError: (error: any) =>
       toast.error(
@@ -144,11 +162,10 @@ export default function BacktesterPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (backtestId: string) =>
-      apiClient.delete(`/backtests/${backtestId}`),
+    mutationFn: (jobId: string) => apiClient.delete(`/optimizations/${jobId}`), // API 엔드포인트 변경
     onSuccess: () => {
       toast.success(t("deleteSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["backtests"] });
+      queryClient.invalidateQueries({ queryKey: ["optimizations"] }); // queryKey 변경
     },
     onError: (error: any) =>
       toast.error(
@@ -158,7 +175,7 @@ export default function BacktesterPage() {
       ),
   });
 
-  const backtests = data?.pages.flat() ?? [];
+  const optimizationJobs = data?.pages.flat() ?? [];
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton />;
@@ -166,23 +183,21 @@ export default function BacktesterPage() {
       return (
         <div className="text-center text-destructive">{t("fetchError")}</div>
       );
-    if (backtests.length === 0) return <EmptyState />;
+    if (optimizationJobs.length === 0) return <EmptyState />;
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {backtests.map((backtest: Backtest) => (
-          <BacktestCard
-            key={backtest.id}
-            backtest={backtest}
+        {optimizationJobs.map((job: OptimizationJob) => (
+          <OptimizationJobCard
+            key={job.id}
+            job={job}
             onCancel={cancelMutation.mutate}
             onDelete={deleteMutation.mutate}
             isCanceling={
-              cancelMutation.isPending &&
-              cancelMutation.variables === backtest.id
+              cancelMutation.isPending && cancelMutation.variables === job.id
             }
             isDeleting={
-              deleteMutation.isPending &&
-              deleteMutation.variables === backtest.id
+              deleteMutation.isPending && deleteMutation.variables === job.id
             }
           />
         ))}
@@ -194,15 +209,17 @@ export default function BacktesterPage() {
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
         <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
-        <Link href="/backtester/new">
+        <Link href="/optimization/new">
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
-            {t("createNewBacktest")}
+            {t("createNewOptimization")}
           </Button>
         </Link>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* --- 3개의 필터 --- */}
+      <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* 1. 상태 필터 */}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger>
             <SelectValue placeholder={t("filterStatusPlaceholder")} />
@@ -221,6 +238,7 @@ export default function BacktesterPage() {
           </SelectContent>
         </Select>
 
+        {/* 2. 전략 필터 */}
         <Select value={strategyFilter} onValueChange={setStrategyFilter}>
           <SelectTrigger>
             <SelectValue placeholder={t("filterStrategyPlaceholder")} />
@@ -234,15 +252,29 @@ export default function BacktesterPage() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* 3. 최적화 타입 필터 */}
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder={t("filterTypePlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterTypeAll")}</SelectItem>
+            <SelectItem value="general">{t("filterTypeGeneral")}</SelectItem>
+            <SelectItem value="wfo">{t("filterTypeWFO")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
+      {/* --- 메인 콘텐츠 --- */}
       {renderContent()}
 
+      {/* --- 무한 스크롤 트리거 --- */}
       <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
         {isFetchingNextPage && (
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         )}
-        {!hasNextPage && backtests.length > 0 && (
+        {!hasNextPage && optimizationJobs.length > 0 && (
           <p className="text-sm text-muted-foreground">{t("noMoreResults")}</p>
         )}
       </div>

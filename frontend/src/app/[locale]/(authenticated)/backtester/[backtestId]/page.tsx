@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 import apiClient from "@/lib/apiClient";
-import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Backtest } from "@/types/backtest";
 import { TradeLog } from "@/types/tradelog";
 

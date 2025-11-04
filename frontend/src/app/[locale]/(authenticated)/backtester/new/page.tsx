@@ -3,7 +3,6 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { AuthGuard } from "@/components/auth/AuthGuard";
 import { BacktestSetupForm } from "@/components/domain/backtesting/BacktestSetupForm";
 
 export default function NewBacktestPage() {
