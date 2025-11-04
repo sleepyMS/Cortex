@@ -1,15 +1,16 @@
-// file: src/app/api/revalidate-profile/route.ts
+// file: frontend/src/app/api/revalidate-profile/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+// 👇 1. revalidatePath 대신 revalidateTag를 임포트
+import { revalidateTag } from "next/cache";
 
-// 이 API는 백엔드(FastAPI) 서버로부터 호출됩니다.
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { username, token } = body;
 
-  // 1. 보안: .env 파일에 저장된 비밀 토큰을 확인합니다.
-  if (token !== process.env.NEXT_PUBLIC_REVALIDATION_TOKEN) {
+  // 2. 보안 토큰 검사
+  if (token !== process.env.REVALIDATE_TOKEN) {
+    console.warn("Invalid revalidation token received.");
     return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
@@ -21,11 +22,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 2. '/profile/[username]' 경로의 캐시를 즉시 무효화합니다.
-    revalidatePath(`/profile/${username}`, "page");
+    // 3. 'page.tsx'의 fetch에 설정한 '태그'를 무효화
+    const tag = `profile-${username}`;
+    revalidateTag(tag);
+
+    // 4. 대표 전략이 변경되었을 수 있으므로,
+    //    이전 대표 전략의 캐시도 함께 지워주는 것이 좋습니다.
+    //    (지금은 프로필만 지워도 연쇄적으로 갱신되니 일단 보류)
+
+    console.log(`Revalidated tag successfully: ${tag}`);
 
     return NextResponse.json({ revalidated: true, now: Date.now() });
   } catch (err) {
+    console.error("Error revalidating tag:", err);
     return NextResponse.json(
       { message: "Error revalidating" },
       { status: 500 }

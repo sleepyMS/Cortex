@@ -74,23 +74,40 @@ async def update_users_me_profile(
     
     logger.info(f"User {current_user.email} successfully updated their profile.")
 
+    # 3. (수정) 프론트엔드 캐시 무효화 (Blocking)
+    #    onSuccess의 router.refresh()가 stale 데이터를 가져오는 것을 막기 위해,
+    #    API 응답을 반환하기 *전에* Next.js revalidation이 완료되기를 기다립니다.
     try:
         username_to_revalidate = updated_user.username
-        # Next.js의 재검증 API 엔드포인트
         # revalidate_url = f"{settings.APP.FRONTEND_BASE_URL}/api/revalidate-profile"
-        revalidate_url = "http://192.168.219.116:3000/api/revalidate-profile"
+        revalidate_url = "http://172.30.38.218:3000/api/revalidate-profile" #
         
-        async with httpx.AsyncClient() as client:
-            await client.post(revalidate_url, json={
+        # 타임아웃을 설정한 AsyncClient 사용 (e.g., 10초)
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(revalidate_url, json={
                 "username": username_to_revalidate,
-                "token": settings.APP.REVALIDATE_TOKEN # .env에 정의된 비밀 토큰
+                "token": settings.APP.REVALIDATE_TOKEN #
             })
-        logger.info(f"Sent revalidation request for /profile/{username_to_revalidate}")
+            
+            # 응답 상태를 확인합니다.
+            if response.status_code == 200:
+                logger.info(f"Successfully revalidated tag for /profile/{username_to_revalidate}")
+            else:
+                # revalidation이 실패해도 메인 요청을 실패시키지는 않되,
+                # 심각한 에러로 로깅합니다.
+                logger.error(
+                    f"Failed to revalidate tag for {username_to_revalidate}. "
+                    f"Status: {response.status_code}, Body: {response.text}"
+                )
+                
+    except httpx.RequestError as e:
+        # 네트워크 오류 또는 타임아웃
+        logger.error(f"HTTP request failed during revalidation for {updated_user.username}: {e}", exc_info=True)
     except Exception as e:
-        # 캐시 무효화에 실패해도, 메인 요청(프로필 수정)이 실패해선 안 됩니다.
-        # 따라서 에러를 로깅만 합니다.
+        # 기타 예외
         logger.error(f"Failed to send revalidation request for {updated_user.username}: {e}", exc_info=True)
 
+    # 4. 모든 작업이(revalidation 포함) 완료된 후 사용자에게 응답 반환
     return updated_user
 
 @router.put("/me/password", status_code=status.HTTP_200_OK, summary="Update current user's password")
