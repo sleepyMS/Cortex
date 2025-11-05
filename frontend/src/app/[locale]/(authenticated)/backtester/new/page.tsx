@@ -1,4 +1,4 @@
-// file: frontend/src/app/[locale]/backtester/new/page.tsx
+// file: frontend/src/app/[locale]/(authenticated)/backtester/new/page.tsx
 
 "use client";
 
