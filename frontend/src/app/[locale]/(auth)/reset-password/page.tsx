@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import ResetPasswordForm from "@/components/domain/ResetPasswordForm";
+import ResetPasswordForm from "@/components/domain/auth/ResetPasswordForm";
 import AuthLayout from "@/components/layout/AuthLayout";
 import { Spinner } from "@/components/ui/Spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
