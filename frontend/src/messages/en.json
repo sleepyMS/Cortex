@@ -1146,7 +1146,34 @@
       "shortEntry": "Short Entry Rules",
       "shortExit": "Short Exit Rules",
       "overriddenTooltip": "This value was overridden from the original strategy.",
-      "noRules": "No rules set"
+      "noRules": "No rules set",
+      "orOperator": "OR",
+      "andOperator": "AND",
+      "noIndicatorParams": "(No parameters)",
+      "ruleParseError": "Rule parsing error",
+      "unknownRuleType": "Unknown rule type.",
+      "ruleTitles": {
+        "comparison": "{operandA} {operator} {operandB}",
+        "crossover": "{mainLine} {crossDirection} {signalLine}",
+        "state": "{indicator} between {lowerBound} and {upperBound}",
+        "default": "{type} rule"
+      },
+      "operandTitles": {
+        "baseA": "Base (A)",
+        "mainLine": "Main Line",
+        "compareToB": "Compare (B)",
+        "signalLine": "Signal Line",
+        "indicator": "Indicator",
+        "min": "Min",
+        "max": "Max"
+      },
+      "paramLabels": {
+        "takeProfitPct": "Take Profit (%)",
+        "stopLossPct": "Stop Loss (%)",
+        "atrPeriod": "ATR Period",
+        "atrStopLossMultiplier": "ATR Stop Loss Multiplier",
+        "atrTakeProfitMultiplier": "ATR Take Profit Multiplier"
+      }
     },
     "Tabs": {
       "summary": "Summary",

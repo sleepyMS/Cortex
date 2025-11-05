@@ -4,7 +4,7 @@
 import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Backtest } from "@/types/backtest";
-import { LogicBlock } from "@/types/strategy";
+import { LogicBlock, IndicatorValue } from "@/types/strategy";
 import { IndicatorMetadata } from "@/types/indicator";
 import { useIndicatorStore } from "@/store/indicatorStore";
 import {
@@ -15,13 +15,16 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Zap } from "lucide-react";
+import { Zap, MoveUp, MoveDown } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
+
+// next-intl에서 타입 임포트
+type TFunction = ReturnType<typeof useTranslations>;
 
 // --- Props 타입 정의 ---
 interface BacktestParametersProps {
@@ -33,6 +36,8 @@ interface RuleDisplayProps {
   definitions: Record<string, IndicatorMetadata>;
   overriddenPaths: Set<string>;
   pathPrefix: string;
+  t: TFunction;
+  tRule: TFunction;
 }
 
 // --- 헬퍼 함수 ---
@@ -49,30 +54,44 @@ const formatOperand = (
   return "?";
 };
 
+// [수정] i18n을 사용하도록 formatRuleTitle 변경
 const formatRuleTitle = (
   block: LogicBlock,
-  definitions: Record<string, IndicatorMetadata>
+  definitions: Record<string, IndicatorMetadata>,
+  t: TFunction,
+  tRule: TFunction
 ): string => {
   try {
+    const format = (op: any) => formatOperand(op, definitions);
+
     switch (block.type) {
       case "comparison":
-        return `${formatOperand(block.operandA, definitions)} ${
-          block.operator
-        } ${formatOperand(block.operandB, definitions)}`;
+        return t("ruleTitles.comparison", {
+          operandA: format(block.operandA),
+          operator: block.operator,
+          operandB: format(block.operandB),
+        });
       case "crossover":
-        return `${formatOperand(block.mainLine, definitions)}가 ${formatOperand(
-          block.signalLine,
-          definitions
-        )}를 ${block.crossDirection === "above" ? "상향 돌파" : "하향 돌파"}`;
+        const crossDirectionText =
+          block.crossDirection === "above"
+            ? tRule("crossesAbove")
+            : tRule("crossesBelow");
+        return t("ruleTitles.crossover", {
+          mainLine: format(block.mainLine),
+          signalLine: format(block.signalLine),
+          crossDirection: crossDirectionText,
+        });
       case "state":
-        return `${formatOperand(block.indicator, definitions)}가 ${
-          block.lowerBound
-        }과(와) ${block.upperBound} 사이`;
+        return t("ruleTitles.state", {
+          indicator: format(block.indicator),
+          lowerBound: format(block.lowerBound),
+          upperBound: format(block.upperBound),
+        });
       default:
-        return `${block.type} 규칙`;
+        return t("ruleTitles.default", { type: block.type });
     }
   } catch (e) {
-    return "규칙 해석 오류";
+    return t("ruleParseError");
   }
 };
 
@@ -80,106 +99,304 @@ const getOriginalValueByformPath = (
   originalStrategy: any,
   formPath: string
 ): any => {
-  // "children.blocks.0" -> "children.0" 과 같이 변환
+  // (함수 내용 동일)
   const dataPath = formPath.replace(/\.children\.blocks/g, ".children");
-
   return dataPath.split(".").reduce((acc, part) => {
     if (acc === undefined || acc === null) return undefined;
-
-    // 'blocks' 같은 문자열 키는 데이터 객체에 없으므로 건너뜁니다.
-    if (Array.isArray(acc) && isNaN(Number(part))) {
-      return acc;
-    }
-
+    if (Array.isArray(acc) && isNaN(Number(part))) return acc;
     const index = !isNaN(Number(part)) ? Number(part) : part;
     return acc[index];
   }, originalStrategy);
 };
 
-/**
- * 재귀적으로 규칙을 표시하는 내부 컴포넌트
- */
-const RuleDisplay = React.memo(
-  ({ block, definitions, overriddenPaths, pathPrefix }: RuleDisplayProps) => {
-    const renderValue = (label: string, value: any, path: string) => {
-      const isOverridden = overriddenPaths.has(path);
+// [신규] 기존 renderValue를 재사용 가능한 컴포넌트로 분리
+const ParameterLineItem = React.memo(
+  ({
+    label,
+    value,
+    path,
+    overriddenPaths,
+    t,
+  }: {
+    label: string;
+    value: any;
+    path: string;
+    overriddenPaths: Set<string>;
+    t: TFunction;
+  }) => {
+    const isOverridden = overriddenPaths.has(path);
+    return (
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 font-mono">
+                {isOverridden && (
+                  <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                )}
+                <Badge variant={isOverridden ? "default" : "secondary"}>
+                  {String(value)}
+                </Badge>
+              </div>
+            </TooltipTrigger>
+            {isOverridden && (
+              <TooltipContent>
+                <p>{t("overriddenTooltip")}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  }
+);
+ParameterLineItem.displayName = "ParameterLineItem";
+
+// [신규] ParameterTreeView의 OperandParameterGroup에 대응하는 읽기 전용 컴포넌트
+const OperandDisplayGroup = React.memo(
+  ({
+    operand,
+    operandKey, // "operandA", "lowerBound" 등
+    title, // "operandTitles.baseA" 등 i18n 키
+    currentBlockPath,
+    overriddenPaths,
+    definitions,
+    t,
+  }: {
+    operand: IndicatorValue | number | null;
+    operandKey: string;
+    title: string;
+    currentBlockPath: string;
+    overriddenPaths: Set<string>;
+    definitions: Record<string, IndicatorMetadata>;
+    t: TFunction;
+  }) => {
+    const operandPathPrefix = `${currentBlockPath}.${operandKey}`;
+
+    // 1. 피연산자 자체가 '단순 값'인 경우 (e.g., operandB: 70)
+    if (typeof operand !== "object" || operand === null) {
       return (
-        <div className="flex justify-between items-center text-xs">
-          <span className="text-muted-foreground">{label}</span>
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 font-mono">
-                  {isOverridden && (
-                    <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                  )}
-                  <Badge variant={isOverridden ? "default" : "secondary"}>
-                    {String(value)}
-                  </Badge>
-                </div>
-              </TooltipTrigger>
-              {isOverridden && (
-                <TooltipContent>
-                  <p>이 값은 오버라이드 되었습니다.</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+        <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+          <ParameterLineItem
+            label={t(title)}
+            value={operand}
+            path={operandPathPrefix}
+            overriddenPaths={overriddenPaths}
+            t={t}
+          />
         </div>
       );
+    }
+
+    // 2. 피연산자가 '지표'인 경우 (e.g., operandA: { indicatorKey: 'RSI', ... })
+    const operandTitle = formatOperand(operand, definitions);
+    const displayTitle = `${t(title)} - ${operandTitle}`;
+
+    // 2.1. 지표의 내부 파라미터 (e.g., { "period": 14 })
+    const indicatorParamPaths = Object.keys(operand.values || {}).map(
+      (paramKey) => ({
+        key: paramKey,
+        path: `${operandPathPrefix}.values.${paramKey}`,
+        value: (operand.values as any)[paramKey],
+      })
+    );
+
+    return (
+      <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col">
+        <h5 className="text-xs font-semibold text-muted-foreground truncate">
+          {displayTitle}
+        </h5>
+        <div className="flex-grow pt-2 space-y-1.5">
+          {indicatorParamPaths.length > 0 ? (
+            indicatorParamPaths.map((param) => {
+              // 'indicator.ts'의 label을 가져오려고 시도
+              const def = definitions[operand.indicatorKey];
+              const paramDef = def?.parameters[param.key];
+              const label = paramDef?.label || param.key;
+
+              return (
+                <ParameterLineItem
+                  key={param.path}
+                  label={label}
+                  value={param.value}
+                  path={param.path}
+                  overriddenPaths={overriddenPaths}
+                  t={t}
+                />
+              );
+            })
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-xs text-muted-foreground text-center pt-4">
+                {t("noIndicatorParams")}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+OperandDisplayGroup.displayName = "OperandDisplayGroup";
+
+/**
+ * [수정] 재귀적으로 규칙을 표시하는 핵심 컴포넌트
+ */
+const RuleDisplay = React.memo(
+  ({
+    block,
+    definitions,
+    overriddenPaths,
+    pathPrefix,
+    t,
+    tRule,
+  }: RuleDisplayProps) => {
+    const currentBlockPath = pathPrefix; // pathPrefix 자체가 현재 블록의 경로임
+
+    /**
+     * [신규] 규칙 타입별로 다른 UI를 렌더링
+     */
+    const renderRuleBody = () => {
+      switch (block.type) {
+        // A vs B (좌/우 분리)
+        case "comparison":
+        case "crossover": {
+          const isComparison = block.type === "comparison";
+          const leftKey = isComparison ? "operandA" : "mainLine";
+          const rightKey = isComparison ? "operandB" : "signalLine";
+          const leftTitle = isComparison
+            ? "operandTitles.baseA"
+            : "operandTitles.mainLine";
+          const rightTitle = isComparison
+            ? "operandTitles.compareToB"
+            : "operandTitles.signalLine";
+          const operator = isComparison ? (
+            block.operator
+          ) : block.crossDirection === "above" ? (
+            <MoveUp className="h-5 w-5 text-green-500" />
+          ) : (
+            <MoveDown className="h-5 w-5 text-red-500" />
+          );
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-stretch gap-4">
+              <OperandDisplayGroup
+                operand={(block as any)[leftKey]}
+                operandKey={leftKey}
+                title={leftTitle}
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+              <div className="flex items-center justify-center pt-8">
+                <span className="font-bold text-lg text-primary">
+                  {operator}
+                </span>
+              </div>
+              <OperandDisplayGroup
+                operand={(block as any)[rightKey]}
+                operandKey={rightKey}
+                title={rightTitle}
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+            </div>
+          );
+        }
+
+        // 지표 + 값 + 값 (3단 분리)
+        case "state": {
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-4">
+              <OperandDisplayGroup
+                operand={block.indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+              <OperandDisplayGroup
+                operand={block.lowerBound}
+                operandKey="lowerBound"
+                title="operandTitles.min"
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+              <OperandDisplayGroup
+                operand={block.upperBound}
+                operandKey="upperBound"
+                title="operandTitles.max"
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+            </div>
+          );
+        }
+
+        // (기타 케이스들은 필요에 따라 추가)
+
+        default:
+          // 기본값: 기존처럼 파라미터 나열 (단, OperandDisplayGroup 사용)
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
+              <OperandDisplayGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+              <div className="p-3 rounded-lg h-full flex items-center justify-center bg-muted/50">
+                <p className="text-xs text-muted-foreground text-center">
+                  {t("unknownRuleType")}
+                </p>
+              </div>
+            </div>
+          );
+      }
     };
 
     return (
-      <div className="p-3 rounded-md border bg-muted/50">
-        <p className="text-sm font-medium mb-2">
-          {formatRuleTitle(block, definitions)}
+      <div className="p-3 rounded-md border bg-card">
+        <p className="text-sm font-semibold text-primary mb-3">
+          {formatRuleTitle(block, definitions, t, tRule)}
         </p>
-        <div className="space-y-1.5 pl-2">
-          {Object.entries(block).map(([key, value]) => {
-            const path = `${pathPrefix}.${key}`;
 
-            if (typeof value === "number") {
-              return (
-                <React.Fragment key={path}>
-                  {renderValue(key, value, path)}
-                </React.Fragment>
-              );
-            }
-            if (value && typeof value === "object" && "values" in value) {
-              // 여러 파라미터를 가진 지표 렌더링
-              return Object.entries(value.values).map(
-                ([paramKey, paramValue]) => {
-                  const path = `${pathPrefix}.${key}.values.${paramKey}`;
-                  return (
-                    <React.Fragment key={path}>
-                      {renderValue(
-                        `${value.indicatorKey} - ${paramKey}`,
-                        paramValue,
-                        path
-                      )}
-                    </React.Fragment>
-                  );
-                }
-              );
-            }
-            return null;
-          })}
-        </div>
+        {/* [수정] 규칙 타입별 본문 렌더링 */}
+        {renderRuleBody()}
+
+        {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 */}
         {block.children && block.children.length > 0 && (
-          <div className="mt-3 pl-4 border-l-2 border-amber-500/50 relative">
-            <span className="absolute -left-px top-2 -translate-x-1/2 bg-muted/50 text-xs font-semibold text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/50">
-              AND
+          <div className="mt-4 pl-4 border-l-2 border-amber-500/50 relative">
+            <span className="absolute -left-px top-2 -translate-x-1/2 bg-card text-xs font-semibold text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/50">
+              {t("andOperator")}
             </span>
-            <div className="pt-4 space-y-2">
-              {block.children.map((child: LogicBlock, index: number) => (
-                <RuleDisplay
-                  key={child.id}
-                  block={child}
-                  definitions={definitions}
-                  overriddenPaths={overriddenPaths}
-                  pathPrefix={`${pathPrefix}.children.blocks.${index}`}
-                />
-              ))}
+            <div className="pt-4 space-y-3">
+              {block.children.map(
+                (childBlock: LogicBlock, childIndex: number) => (
+                  <RuleDisplay
+                    key={childBlock.id}
+                    block={childBlock}
+                    definitions={definitions}
+                    overriddenPaths={overriddenPaths}
+                    pathPrefix={`${currentBlockPath}.children.blocks.${childIndex}`}
+                    t={t}
+                    tRule={tRule}
+                  />
+                )
+              )}
             </div>
           </div>
         )}
@@ -198,13 +415,23 @@ const RuleSection = ({
   definitions,
   overriddenPaths,
   pathPrefix,
-}: any) => {
+  t, // t, tRule 받기
+  tRule,
+}: {
+  title: string;
+  rules: { blocks: LogicBlock[] } | null | undefined;
+  definitions: Record<string, IndicatorMetadata>;
+  overriddenPaths: Set<string>;
+  pathPrefix: string;
+  t: TFunction;
+  tRule: TFunction;
+}) => {
   if (!rules || rules.blocks.length === 0) {
     return (
       <div className="space-y-3">
         <h4 className="text-base font-semibold mb-3">{title}</h4>
         <div className="p-4 text-center border rounded-lg bg-muted/50">
-          <p className="text-sm text-muted-foreground">설정된 규칙 없음</p>
+          <p className="text-sm text-muted-foreground">{t("noRules")}</p>
         </div>
       </div>
     );
@@ -220,12 +447,14 @@ const RuleSection = ({
             definitions={definitions}
             overriddenPaths={overriddenPaths}
             pathPrefix={`${pathPrefix}.blocks.${index}`}
+            t={t} // t, tRule 전달
+            tRule={tRule}
           />
           {index < rules.blocks.length - 1 && (
             <div className="flex items-center gap-2">
               <div className="flex-grow border-t border-dashed"></div>
               <span className="text-xs font-semibold text-muted-foreground">
-                OR
+                {t("orOperator")}
               </span>
               <div className="flex-grow border-t border-dashed"></div>
             </div>
@@ -239,15 +468,22 @@ const RuleSection = ({
 /**
  * 파라미터 값 하나를 표시하는 재사용 가능한 내부 컴포넌트
  */
-const ParameterDisplay = ({
+const ExecutionParameterDisplay = ({
   label,
   value,
   unit = "",
   path,
   overriddenPaths,
-}: any) => {
-  // overriddenPaths가 undefined일 경우를 대비해 기본값을 빈 Set으로 설정
-  const isOverridden = overriddenPaths?.has(path) || false;
+  t, // t 함수 받기
+}: {
+  label: string;
+  value: any;
+  unit?: string;
+  path: string;
+  overriddenPaths: Set<string>;
+  t: TFunction;
+}) => {
+  const isOverridden = overriddenPaths.has(path);
   return (
     <div className="space-y-1">
       <p className="text-sm text-muted-foreground">{label}</p>
@@ -259,7 +495,7 @@ const ParameterDisplay = ({
                 <Zap className="h-4 w-4 text-yellow-500" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>이 값은 오버라이드 되었습니다.</p>
+                <p>{t("overriddenTooltip")}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -278,6 +514,7 @@ const ParameterDisplay = ({
  */
 export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   const t = useTranslations("BacktestDetailPage.Parameters");
+  const tRule = useTranslations("RuleBlock"); // RuleBlock의 crossDirection 등을 위함
   const { metadata } = useIndicatorStore();
 
   const indicatorDefinitions = useMemo(
@@ -290,23 +527,17 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   );
 
   const overriddenPaths = useMemo(() => {
-    const originalStrategy = backtest.strategy; // 비교 기준이 될 원본 전략
+    // (함수 내용 동일)
+    const originalStrategy = backtest.strategy;
     const overrides = backtest.parameters.parameters.overrides || [];
     const changedPaths = new Set<string>();
 
-    // "파라미터 오버라이드" 영역에 있는 모든 항목에 대해
     for (const override of overrides) {
-      // 1. 새로운 헬퍼 함수로 원본 전략에서 '기본값'을 찾습니다.
       const originalValue = getOriginalValueByformPath(
         originalStrategy,
         override.path
       );
-
-      // 2. 현재 form의 값(스냅샷에 저장된 값)은 override.value 입니다.
       const currentValue = override.value;
-
-      // 3. 기본값과 현재 값이 '다를' 경우에만 오버라이드된 것으로 판별합니다.
-      // (주의: null과 undefined를 동일하게 취급하지 않기 위해 엄격한 비교 사용)
       if (originalValue !== currentValue) {
         changedPaths.add(override.path);
       }
@@ -318,7 +549,7 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   if (!snapshot) return null;
 
   const execParams = backtest.parameters.parameters;
-  const tpslSnapshot = snapshot.tpslLogic || {}; // 스냅샷의 TP/SL 로직
+  const tpslSnapshot = snapshot.tpslLogic || {};
   const hasTpslRules =
     tpslSnapshot &&
     Object.values(tpslSnapshot).some((v) => typeof v === "number");
@@ -336,28 +567,31 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
             {t("executionParams")}
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 border rounded-lg bg-muted/50">
-            <ParameterDisplay
+            <ExecutionParameterDisplay
               label={t("leverage")}
               value={execParams.leverage}
               unit="x"
               path="parameters.leverage"
               overriddenPaths={overriddenPaths}
+              t={t}
             />
-            <ParameterDisplay
+            <ExecutionParameterDisplay
               label={t("fee")}
               value={execParams.fee}
               unit="%"
               path="parameters.fee"
               overriddenPaths={overriddenPaths}
+              t={t}
             />
-            <ParameterDisplay
+            <ExecutionParameterDisplay
               label={t("slippage")}
               value={execParams.slippage}
               unit="%"
               path="parameters.slippage"
               overriddenPaths={overriddenPaths}
+              t={t}
             />
-            <ParameterDisplay
+            <ExecutionParameterDisplay
               label={t("trailingStop")}
               value={
                 execParams.tpslLogic?.trailingStopEnabled
@@ -366,6 +600,7 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
               }
               path="parameters.tpslLogic.trailingStopEnabled"
               overriddenPaths={overriddenPaths}
+              t={t}
             />
           </div>
         </div>
@@ -378,14 +613,16 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
               {Object.entries(tpslSnapshot).map(([key, value]) => {
                 if (typeof value !== "number") return null;
                 const path = `tpslLogic.${key}`;
+                const label = t(`paramLabels.${key}`);
                 return (
-                  <ParameterDisplay
+                  <ExecutionParameterDisplay
                     key={path}
-                    label={t(key, { defaultMessage: key })} // 번역 키를 동적으로 사용
+                    label={label}
                     value={value}
                     unit={key.toLowerCase().includes("pct") ? "%" : ""}
                     path={path}
                     overriddenPaths={overriddenPaths}
+                    t={t}
                   />
                 );
               })}
@@ -403,6 +640,8 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
             definitions={indicatorDefinitions}
             overriddenPaths={overriddenPaths}
             pathPrefix="longEntryRules"
+            t={t}
+            tRule={tRule}
           />
           <RuleSection
             title={t("longExit")}
@@ -410,6 +649,8 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
             definitions={indicatorDefinitions}
             overriddenPaths={overriddenPaths}
             pathPrefix="longExitRules"
+            t={t}
+            tRule={tRule}
           />
           <RuleSection
             title={t("shortEntry")}
@@ -417,6 +658,8 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
             definitions={indicatorDefinitions}
             overriddenPaths={overriddenPaths}
             pathPrefix="shortEntryRules"
+            t={t}
+            tRule={tRule}
           />
           <RuleSection
             title={t("shortExit")}
@@ -424,6 +667,8 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
             definitions={indicatorDefinitions}
             overriddenPaths={overriddenPaths}
             pathPrefix="shortExitRules"
+            t={t}
+            tRule={tRule}
           />
         </div>
       </CardContent>

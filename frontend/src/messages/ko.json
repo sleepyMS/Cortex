@@ -1191,7 +1191,34 @@
       "shortEntry": "숏 진입 규칙",
       "shortExit": "숏 청산 규칙",
       "overriddenTooltip": "이 값은 원본 전략에서 오버라이드 되었습니다.",
-      "noRules": "설정된 규칙 없음"
+      "noRules": "설정된 규칙 없음",
+      "orOperator": "OR",
+      "andOperator": "AND",
+      "noIndicatorParams": "(파라미터 없음)",
+      "ruleParseError": "규칙 해석 오류",
+      "unknownRuleType": "알 수 없는 규칙 타입입니다.",
+      "ruleTitles": {
+        "comparison": "{operandA} {operator} {operandB}",
+        "crossover": "{mainLine}가 {signalLine}를 {crossDirection}",
+        "state": "{indicator}가 {lowerBound}과(와) {upperBound} 사이",
+        "default": "{type} 규칙"
+      },
+      "operandTitles": {
+        "baseA": "기준 (A)",
+        "mainLine": "메인 라인",
+        "compareToB": "비교 (B)",
+        "signalLine": "신호 라인",
+        "indicator": "지표",
+        "min": "최소값",
+        "max": "최대값"
+      },
+      "paramLabels": {
+        "takeProfitPct": "Take Profit (%)",
+        "stopLossPct": "Stop Loss (%)",
+        "atrPeriod": "ATR 기간",
+        "atrStopLossMultiplier": "ATR 손절 배수",
+        "atrTakeProfitMultiplier": "ATR 익절 배수"
+      }
     },
     "Tabs": {
       "summary": "성과 요약",

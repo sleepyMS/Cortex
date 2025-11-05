@@ -28,11 +28,11 @@ import { TradeLog } from "@/types/tradelog";
 // --- 최종 분석 컴포넌트 임포트 ---
 import { BacktestResultSummary } from "@/components/domain/backtesting/BacktestResultSummary";
 import { DetailedMetrics } from "@/components/domain/backtesting/DetailedMetrics";
+import { BacktestParameters } from "@/components/domain/backtesting/BacktestParameters";
 import { DynamicEquityChart } from "@/components/domain/backtesting/DynamicEquityChart";
 import { DynamicDrawdownChart } from "@/components/domain/backtesting/DynamicDrawdownChart";
 import { MonthlyPerformance } from "@/components/domain/backtesting/MonthlyPerformance";
 import { TradeLogTable } from "@/components/domain/backtesting/TradeLogTable";
-import { BacktestParameters } from "@/components/domain/backtesting/BacktestParameters";
 
 // --- UI 컴포넌트 ---
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
