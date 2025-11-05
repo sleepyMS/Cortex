@@ -638,6 +638,7 @@
   "Navigation": {
     "strategies": "전략",
     "backtester": "백테스트",
+    "optimization": "전략 최적화",
     "marketplace": "마켓플레이스",
     "community": "커뮤니티"
   },
@@ -1066,14 +1067,46 @@
   },
   "ParameterTreeView": {
     "title": "파라미터 오버라이드",
-    "description": "규칙의 구조를 유지한 채 파라미터 값만 간편하게 수정하여 테스트합니다.",
-    "orOperator": "또는 (OR)",
-    "andOperator": "그리고 (AND)",
+    "description": "전략의 구조를 보면서 파라미터 값만 간편하게 수정하여 테스트합니다.",
+    "orOperator": "OR",
+    "andOperator": "AND",
     "sections": {
       "longEntry": "롱 진입 규칙",
       "longExit": "롱 청산 규칙",
       "shortEntry": "숏 진입 규칙",
       "shortExit": "숏 청산 규칙"
+    },
+    "noParams": "선택된 전략에 수정 가능한 파라미터가 없습니다.",
+    "noParamsForRule": "이 규칙 타입({type})은 수정 가능한 파라미터가 없습니다.",
+    "noIndicatorParams": "(파라미터 없음)",
+    "noOverrideTarget": "(선택 항목은 오버라이드 대상이 아님)",
+    "ruleParseError": "규칙 해석 오류",
+    "unknownRuleType": "알 수 없는 규칙 타입입니다.",
+    "tpslTitle": "TP / SL 규칙",
+    "ruleTitles": {
+      "comparison": "{operandA} {operator} {operandB}",
+      "crossover": "{mainLine}가 {signalLine}를 {crossDirection}",
+      "state": "{indicator}가 {lowerBound}과(와) {upperBound} 사이",
+      "default": "{type} 규칙"
+    },
+    "operandTitles": {
+      "baseA": "기준 (A)",
+      "mainLine": "메인 라인",
+      "compareToB": "비교 (B)",
+      "signalLine": "신호 라인",
+      "indicator": "지표",
+      "min": "최소값",
+      "max": "최대값"
+    },
+    "paramLabels": {
+      "lowerBound": "최소값",
+      "upperBound": "최대값",
+      "operandB": "비교값",
+      "takeProfitPct": "Take Profit (%)",
+      "stopLossPct": "Stop Loss (%)",
+      "atrPeriod": "ATR 기간",
+      "atrStopLossMultiplier": "ATR 손절 배수",
+      "atrTakeProfitMultiplier": "ATR 익절 배수"
     }
   },
   "BacktestDetailPage": {

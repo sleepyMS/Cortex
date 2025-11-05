@@ -1,11 +1,12 @@
-// file: frontend/src/components/domain/backtesting/ParameterTreeView.tsx (수정본)
+// file: frontend/src/components/domain/backtesting/ParameterTreeView.tsx
 
 "use client";
 
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { LogicBlock, Strategy, IndicatorValue } from "@/types/strategy"; // IndicatorValue 타입 추가
+import { LogicBlock, Strategy, IndicatorValue } from "@/types/strategy";
 import { IndicatorMetadata } from "@/types/indicator";
+import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -29,7 +30,9 @@ import {
   ArrowRight,
   MoveUp,
   MoveDown,
-} from "lucide-react"; // 아이콘 추가
+} from "lucide-react";
+
+type TFunction = ReturnType<typeof useTranslations>;
 
 // --- Props 타입 정의 ---
 
@@ -47,6 +50,8 @@ interface RuleBlockProps {
   indicatorDefinitions: Record<string, IndicatorMetadata>;
   control: any;
   fields: any[];
+  t: TFunction;
+  tRule: TFunction;
 }
 
 // --- 헬퍼 컴포넌트 및 함수 ---
@@ -72,7 +77,6 @@ const ParameterInput = React.memo(
         name={fieldPath}
         render={({ field, fieldState: { error } }) => (
           <div>
-            {/* [수정] grid -> flex justify-between으로 변경 */}
             <div className="flex justify-between items-center gap-4">
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
@@ -100,7 +104,7 @@ const ParameterInput = React.memo(
                   )
                 }
                 className={cn(
-                  "h-8 w-24 text-right", // 고정 너비 Input
+                  "h-8 w-24 text-right",
                   error && "border-destructive"
                 )}
               />
@@ -143,59 +147,57 @@ const formatOperand = (
  */
 const formatRuleTitle = (
   block: LogicBlock,
-  definitions: Record<string, IndicatorMetadata>
+  definitions: Record<string, IndicatorMetadata>,
+  t: (key: string, values?: any) => string,
+  tRule: (key: string, values?: any) => string
 ): string => {
   try {
+    const format = (op: any) => formatOperand(op, definitions);
+
     switch (block.type) {
       case "comparison":
-        return `${formatOperand(block.operandA, definitions)} ${
-          block.operator
-        } ${formatOperand(block.operandB, definitions)}`;
+        return t("ruleTitles.comparison", {
+          operandA: format(block.operandA),
+          operator: block.operator,
+          operandB: format(block.operandB),
+        });
       case "crossover":
         const crossDirectionText =
-          block.crossDirection === "above" ? "상향 돌파" : "하향 돌파";
-        return `${formatOperand(block.mainLine, definitions)}가 ${formatOperand(
-          block.signalLine,
-          definitions
-        )}를 ${crossDirectionText}`;
+          block.crossDirection === "above"
+            ? tRule("crossesAbove")
+            : tRule("crossesBelow");
+        return t("ruleTitles.crossover", {
+          mainLine: format(block.mainLine),
+          signalLine: format(block.signalLine),
+          crossDirection: crossDirectionText,
+        });
       case "state":
-        return `${formatOperand(block.indicator, definitions)}가 ${
-          formatOperand(block.lowerBound, definitions) // [수정] formatOperand 적용
-        }과(와) ${
-          formatOperand(block.upperBound, definitions) // [수정] formatOperand 적용
-        } 사이`;
+        return t("ruleTitles.state", {
+          indicator: format(block.indicator),
+          lowerBound: format(block.lowerBound),
+          upperBound: format(block.upperBound),
+        });
       default:
-        return `${block.type} 규칙`;
+        return t("ruleTitles.default", { type: block.type });
     }
   } catch (e) {
-    return "규칙 해석 오류";
+    return t("ruleParseError");
   }
 };
 
-// --- 간단한 한글 레이블 맵 ---
-const directParamLabels: Record<string, string> = {
-  lowerBound: "최소값",
-  upperBound: "최대값",
-  operandB: "비교값",
-  takeProfitPct: "Take Profit (%)",
-  stopLossPct: "Stop Loss (%)",
-  atrPeriod: "ATR 기간",
-  atrStopLossMultiplier: "ATR 손절 배수",
-  atrTakeProfitMultiplier: "ATR 익절 배수",
-};
-
 /**
- * [신규] 단일 피연산자(Operand)와 그 파라미터들을 렌더링하는 컴포넌트
+ * 단일 피연산자(Operand)와 그 파라미터들을 렌더링하는 컴포넌트
  */
 const OperandParameterGroup = React.memo(
   ({
     operand,
     operandKey,
-    title, // e.g., "지표", "최소값"
+    title, // e.g., "operandTitles.min"
     currentBlockPath,
     fields,
     control,
     indicatorDefinitions,
+    t,
   }: {
     operand: IndicatorValue | number | null;
     operandKey: string;
@@ -204,60 +206,48 @@ const OperandParameterGroup = React.memo(
     fields: any[];
     control: any;
     indicatorDefinitions: Record<string, IndicatorMetadata>;
+    t: TFunction;
   }) => {
     const operandPathPrefix = `${currentBlockPath}.${operandKey}`;
 
-    // 1. 지표 내부 파라미터 (e.g., { path: "...values.period" })
     const indicatorParamFields = fields.filter(
       (f) => f.path.startsWith(operandPathPrefix) && f.path.includes(".values.")
     );
 
-    // 2. 피연산자 직접 값 파라미터 (e.g., { path: "...lowerBound" })
     const directValueField = fields.find((f) => f.path === operandPathPrefix);
 
-    // [수정] "단순 값"인 경우, 제목(<h5>)을 렌더링하지 않고 바로 ParameterInput을 반환
     if (directValueField) {
       return (
         <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
-          {/* 제목(<h5>) 없이, ParameterInput의 라벨을 'title'("최소값")로 사용.
-           */}
           <ParameterInput
             key={directValueField.id}
             control={control}
             fieldPath={`overrides.${fields.indexOf(directValueField)}.value`}
-            label={title} // "최소값" 또는 "최대값" 라벨 사용
+            label={t(title)}
             tooltip={`경로: ${directValueField.path}`}
           />
         </div>
       );
     }
 
-    // [수정] "지표"인 경우 (directValueField가 없는 경우)
-    // 3. 표시될 지표/값 이름 (e.g., "RSI(14)")
     const operandTitle = formatOperand(operand, indicatorDefinitions);
-    // '지표 - RSI(14)' 처럼 표시될 제목 생성
-    const displayTitle = `${title} - ${operandTitle}`;
+    const displayTitle = `${t(title)} - ${operandTitle}`;
 
     return (
       <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col">
-        {/* 1. 그룹 역할과 지표 이름을 통합하여 표시 */}
         <h5 className="text-xs font-semibold text-muted-foreground truncate">
           {displayTitle}
         </h5>
-
-        {/* 2. 지표의 파라미터(e.g., "기간: [14]")를 렌더링 */}
         <div className="flex-grow pt-2 space-y-3">
           {indicatorParamFields.length > 0 ? (
             indicatorParamFields.map((field) => {
               const pathParts = field.path.split(".");
-              const paramKey = pathParts[pathParts.length - 1]; // "period"
+              const paramKey = pathParts[pathParts.length - 1];
               const fieldPath = `overrides.${fields.indexOf(field)}.value`;
 
-              const indicatorKey = (operand as IndicatorValue)?.indicatorKey; // "RSI"
+              const indicatorKey = (operand as IndicatorValue)?.indicatorKey;
               const definition = indicatorDefinitions[indicatorKey];
               const paramDefinition = definition?.parameters[paramKey];
-
-              // 'indicator.ts'에서 "기간" 라벨을 가져옴
               const label = paramDefinition?.label || paramKey;
 
               return (
@@ -265,16 +255,15 @@ const OperandParameterGroup = React.memo(
                   key={field.id}
                   control={control}
                   fieldPath={fieldPath}
-                  label={label} // "기간"이 여기 표시됩니다.
+                  label={label}
                   tooltip={`경로: ${field.path}`}
                 />
               );
             })
           ) : (
-            /* 3. 파라미터가 없는 고정 지표/값 (e.g., 'Close') */
             <div className="flex items-center justify-center h-full">
               <p className="text-xs text-muted-foreground text-center pt-4">
-                (파라미터 없음)
+                {t("noIndicatorParams")}
               </p>
             </div>
           )}
@@ -284,43 +273,6 @@ const OperandParameterGroup = React.memo(
   }
 );
 OperandParameterGroup.displayName = "OperandParameterGroup";
-
-/**
- * [신규] 지표가 아닌, 블록의 직접 파라미터(e.g., lowerBound) 렌더링 컴포넌트
- */
-const DirectParameterInput = React.memo(
-  ({
-    paramKey,
-    currentBlockPath,
-    fields,
-    control,
-  }: {
-    paramKey: string;
-    currentBlockPath: string;
-    fields: any[];
-    control: any;
-  }) => {
-    const field = fields.find(
-      (f) => f.path === `${currentBlockPath}.${paramKey}`
-    );
-    if (!field) return null;
-
-    const fieldPath = `overrides.${fields.indexOf(field)}.value`;
-    const label = directParamLabels[paramKey] || paramKey;
-
-    return (
-      <div className="p-3 bg-muted/50 rounded-lg h-full">
-        <ParameterInput
-          control={control}
-          fieldPath={fieldPath}
-          label={label}
-          tooltip={`경로: ${field.path}`}
-        />
-      </div>
-    );
-  }
-);
-DirectParameterInput.displayName = "DirectParameterInput";
 
 /**
  * 단일 규칙 블록을 재귀적으로 렌더링하는 핵심 컴포넌트
@@ -333,22 +285,24 @@ const RuleBlock = React.memo(
     indicatorDefinitions,
     control,
     fields,
+    t,
+    tRule,
   }: RuleBlockProps) => {
     const currentBlockPath = `${pathPrefix}.${blockIndex}`;
 
-    /**
-     * [신규] 규칙 타입별로 다른 UI를 렌더링
-     */
     const renderRuleBody = () => {
       switch (block.type) {
-        // A vs B (좌/우 분리)
         case "comparison":
         case "crossover": {
           const isComparison = block.type === "comparison";
           const leftKey = isComparison ? "operandA" : "mainLine";
           const rightKey = isComparison ? "operandB" : "signalLine";
-          const leftTitle = isComparison ? "기준 (A)" : "메인 라인";
-          const rightTitle = isComparison ? "비교 (B)" : "신호 라인";
+          const leftTitle = isComparison
+            ? "operandTitles.baseA"
+            : "operandTitles.mainLine";
+          const rightTitle = isComparison
+            ? "operandTitles.compareToB"
+            : "operandTitles.signalLine";
           const operator = isComparison ? (
             block.operator
           ) : block.crossDirection === "above" ? (
@@ -367,6 +321,7 @@ const RuleBlock = React.memo(
                 fields={fields}
                 control={control}
                 indicatorDefinitions={indicatorDefinitions}
+                t={t}
               />
               <div className="flex items-center justify-center pt-8">
                 <span className="font-bold text-lg text-primary">
@@ -381,53 +336,85 @@ const RuleBlock = React.memo(
                 fields={fields}
                 control={control}
                 indicatorDefinitions={indicatorDefinitions}
+                t={t}
               />
             </div>
           );
         }
 
-        // 지표 + 값 + 값 (3단 분리)
         case "state": {
           return (
             <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-4">
               <OperandParameterGroup
                 operand={block.indicator}
                 operandKey="indicator"
-                title="지표"
+                title="operandTitles.indicator"
                 currentBlockPath={currentBlockPath}
                 fields={fields}
                 control={control}
                 indicatorDefinitions={indicatorDefinitions}
+                t={t}
               />
-              {/* [수정] DirectParameterInput 대신 OperandParameterGroup 사용 */}
               <OperandParameterGroup
                 operand={block.lowerBound}
                 operandKey="lowerBound"
-                title="최소값"
+                title="operandTitles.min"
                 currentBlockPath={currentBlockPath}
                 fields={fields}
                 control={control}
                 indicatorDefinitions={indicatorDefinitions}
+                t={t}
               />
-              {/* [수정] DirectParameterInput 대신 OperandParameterGroup 사용 */}
               <OperandParameterGroup
                 operand={block.upperBound}
                 operandKey="upperBound"
-                title="최대값"
+                title="operandTitles.max"
                 currentBlockPath={currentBlockPath}
                 fields={fields}
                 control={control}
                 indicatorDefinitions={indicatorDefinitions}
+                t={t}
               />
             </div>
           );
         }
 
-        // 기타 규칙 (단순 텍스트)
+        case "trend_signal":
+        case "channel":
+        case "divergence": {
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
+              <OperandParameterGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                fields={fields}
+                control={control}
+                indicatorDefinitions={indicatorDefinitions}
+                t={t}
+              />
+              <div className="p-3 rounded-lg h-full flex items-center justify-center bg-muted/50">
+                <p className="text-xs text-muted-foreground text-center">
+                  {t("noOverrideTarget")}
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        case "pattern": {
+          return (
+            <p className="text-sm text-muted-foreground p-4 text-center">
+              {t("noParamsForRule", { type: block.type })}{" "}
+            </p>
+          );
+        }
+
         default:
           return (
             <p className="text-sm text-muted-foreground p-4 text-center">
-              이 규칙 타입({block.type})은 파라미터 수정을 지원하지 않습니다.
+              {t("unknownRuleType")}
             </p>
           );
       }
@@ -436,17 +423,15 @@ const RuleBlock = React.memo(
     return (
       <div className="p-3 rounded-md border bg-card">
         <p className="text-sm font-semibold text-primary mb-3">
-          {formatRuleTitle(block, indicatorDefinitions)}
+          {formatRuleTitle(block, indicatorDefinitions, t, tRule)}{" "}
         </p>
 
-        {/* [수정] 규칙 타입별 본문 렌더링 */}
         {renderRuleBody()}
 
-        {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 */}
         {block.children && block.children.length > 0 && (
           <div className="mt-4 pl-4 border-l-2 border-amber-500/50 relative">
             <span className="absolute -left-px top-2 -translate-x-1/2 bg-card text-xs font-semibold text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/50">
-              AND
+              {t("andOperator")}
             </span>
             <div className="pt-4 space-y-3">
               {block.children.map((childBlock, childIndex) => (
@@ -458,6 +443,8 @@ const RuleBlock = React.memo(
                   indicatorDefinitions={indicatorDefinitions}
                   control={control}
                   fields={fields}
+                  t={t}
+                  tRule={tRule}
                 />
               ))}
             </div>
@@ -472,18 +459,24 @@ RuleBlock.displayName = "RuleBlock";
 /**
  * TP/SL 설정 섹션 컴포넌트
  */
-const TpslSection = ({ control, fields }: { control: any; fields: any[] }) => {
-  // `overrides` 배열에서 "tpslLogic"으로 시작하는 모든 필드를 필터링
+const TpslSection = ({
+  control,
+  fields,
+  t,
+}: {
+  control: any;
+  fields: any[];
+  t: TFunction;
+}) => {
   const tpslFields = fields.filter((f) => f.path.startsWith("tpslLogic"));
 
-  // 표시할 TP/SL 파라미터가 없으면 아무것도 렌더링하지 않음
   if (tpslFields.length === 0) return null;
 
   return (
     <div>
       <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
         <SlidersHorizontal className="h-4 w-4 text-primary" />
-        TP / SL 규칙
+        {t("tpslTitle")}
       </h4>
       <div className="p-3 rounded-md border bg-card grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
         {tpslFields.map((field) => {
@@ -491,12 +484,14 @@ const TpslSection = ({ control, fields }: { control: any; fields: any[] }) => {
           const paramKey = pathParts[pathParts.length - 1];
           const fieldPath = `overrides.${fields.indexOf(field)}.value`;
 
+          const label = t(`paramLabels.${paramKey}`, undefined, paramKey);
+
           return (
             <ParameterInput
               key={field.id}
               control={control}
               fieldPath={fieldPath}
-              label={directParamLabels[paramKey] || paramKey}
+              label={label}
               tooltip={`경로: ${field.path}`}
             />
           );
@@ -515,24 +510,27 @@ export const ParameterTreeView = ({
   control,
   fields,
 }: ParameterTreeViewProps) => {
+  const t = useTranslations("ParameterTreeView");
+  const tRule = useTranslations("RuleBlock"); // RuleBlock의 "crossesAbove" 등을 위함
+
   const sections = [
     {
-      title: "롱 진입 규칙",
+      titleKey: "sections.longEntry",
       rules: strategy.longEntryRules,
       type: "longEntryRules",
     },
     {
-      title: "롱 청산 규칙",
+      titleKey: "sections.longExit",
       rules: strategy.longExitRules,
       type: "longExitRules",
     },
     {
-      title: "숏 진입 규칙",
+      titleKey: "sections.shortEntry",
       rules: strategy.shortEntryRules,
       type: "shortEntryRules",
     },
     {
-      title: "숏 청산 규칙",
+      titleKey: "sections.shortExit",
       rules: strategy.shortExitRules,
       type: "shortExitRules",
     },
@@ -542,11 +540,11 @@ export const ParameterTreeView = ({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>파라미터 오버라이드</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
-            선택된 전략에 수정 가능한 파라미터가 없습니다.
+            {t("noParams")}
           </p>
         </CardContent>
       </Card>
@@ -556,13 +554,11 @@ export const ParameterTreeView = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>파라미터 오버라이드</CardTitle>
-        <CardDescription>
-          전략의 구조를 보면서 파라미터 값만 간편하게 수정하여 테스트합니다.
-        </CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <TpslSection control={control} fields={fields} />
+        <TpslSection control={control} fields={fields} t={t} />
 
         {sections.map((sec, secIndex) => {
           const sectionFields = fields.filter((f: any) =>
@@ -577,7 +573,7 @@ export const ParameterTreeView = ({
 
           return (
             <div key={sec.type}>
-              <h4 className="text-sm font-semibold mb-2">{sec.title}</h4>
+              <h4 className="text-sm font-semibold mb-2">{t(sec.titleKey)}</h4>
               <div className="space-y-3">
                 {sec.rules.blocks.map((block, blockIndex) => (
                   <React.Fragment key={block.id}>
@@ -588,12 +584,14 @@ export const ParameterTreeView = ({
                       indicatorDefinitions={indicatorDefinitions}
                       control={control}
                       fields={fields}
+                      t={t}
+                      tRule={tRule}
                     />
                     {sec.rules && blockIndex < sec.rules.blocks.length - 1 && (
                       <div className="flex items-center gap-2">
                         <div className="flex-grow border-t border-dashed"></div>
                         <span className="text-xs font-semibold text-muted-foreground">
-                          OR
+                          {t("orOperator")}
                         </span>
                         <div className="flex-grow border-t border-dashed"></div>
                       </div>

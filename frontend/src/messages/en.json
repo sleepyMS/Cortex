@@ -594,6 +594,7 @@
   "Navigation": {
     "strategies": "Strategies",
     "backtester": "Backtest",
+    "optimization": "Optimization",
     "marketplace": "Marketplace",
     "community": "Community"
   },
@@ -1013,7 +1014,7 @@
         "title": "cost details",
         "originalCost": "Original Cost",
         "planDiscount": "({discountRate}%) off the {planName} plan",
-        "FinalCost": "Final Need Credit",
+        "finalCost": "Final Need Credit",
         "yourBalance": "My Credit Balance",
         "noEstimation": "Choosing a strategy and duration will calculate the cost."
       },
@@ -1030,6 +1031,38 @@
       "longExit": "Long Exit Rules",
       "shortEntry": "Short Entry Rules",
       "shortExit": "Short Exit Rules"
+    },
+    "noParams": "No editable parameters found for the selected strategy.",
+    "noParamsForRule": "This rule type ({type}) has no editable parameters.",
+    "noIndicatorParams": "(No parameters)",
+    "noOverrideTarget": "(Selection items are not override targets)",
+    "ruleParseError": "Rule parsing error",
+    "unknownRuleType": "Unknown rule type.",
+    "tpslTitle": "TP / SL Rules",
+    "ruleTitles": {
+      "comparison": "{operandA} {operator} {operandB}",
+      "crossover": "{mainLine} {crossDirection} {signalLine}",
+      "state": "{indicator} between {lowerBound} and {upperBound}",
+      "default": "{type} rule"
+    },
+    "operandTitles": {
+      "baseA": "Base (A)",
+      "mainLine": "Main Line",
+      "compareToB": "Compare (B)",
+      "signalLine": "Signal Line",
+      "indicator": "Indicator",
+      "min": "Min",
+      "max": "Max"
+    },
+    "paramLabels": {
+      "lowerBound": "Min Value",
+      "upperBound": "Max Value",
+      "operandB": "Compare Value",
+      "takeProfitPct": "Take Profit (%)",
+      "stopLossPct": "Stop Loss (%)",
+      "atrPeriod": "ATR Period",
+      "atrStopLossMultiplier": "ATR Stop Loss Multiplier",
+      "atrTakeProfitMultiplier": "ATR Take Profit Multiplier"
     }
   },
   "BacktestDetailPage": {
