@@ -72,13 +72,14 @@ const ParameterInput = React.memo(
         name={fieldPath}
         render={({ field, fieldState: { error } }) => (
           <div>
-            <div className="grid grid-cols-[1fr_auto] items-center gap-4">
+            {/* [수정] grid -> flex justify-between으로 변경 */}
+            <div className="flex justify-between items-center gap-4">
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Label
                       htmlFor={fieldPath}
-                      className="text-xs text-muted-foreground cursor-help truncate"
+                      className="text-xs text-muted-foreground cursor-help whitespace-nowrap"
                     >
                       {label}
                     </Label>
@@ -99,7 +100,7 @@ const ParameterInput = React.memo(
                   )
                 }
                 className={cn(
-                  "h-8 w-24 text-right",
+                  "h-8 w-24 text-right", // 고정 너비 Input
                   error && "border-destructive"
                 )}
               />
@@ -190,7 +191,7 @@ const OperandParameterGroup = React.memo(
   ({
     operand,
     operandKey,
-    title,
+    title, // e.g., "지표", "최소값"
     currentBlockPath,
     fields,
     control,
@@ -206,35 +207,57 @@ const OperandParameterGroup = React.memo(
   }) => {
     const operandPathPrefix = `${currentBlockPath}.${operandKey}`;
 
-    // 1. 이 피연산자가 참조하는 지표의 내부 파라미터들 (e.g., EMA의 'period')
+    // 1. 지표 내부 파라미터 (e.g., { path: "...values.period" })
     const indicatorParamFields = fields.filter(
       (f) => f.path.startsWith(operandPathPrefix) && f.path.includes(".values.")
     );
 
-    // 2. 이 피연산자 자체가 값인 경우의 파라미터 (e.g., operandB가 0인 경우)
+    // 2. 피연산자 직접 값 파라미터 (e.g., { path: "...lowerBound" })
     const directValueField = fields.find((f) => f.path === operandPathPrefix);
 
-    const hasParams = indicatorParamFields.length > 0 || !!directValueField;
+    // [수정] "단순 값"인 경우, 제목(<h5>)을 렌더링하지 않고 바로 ParameterInput을 반환
+    if (directValueField) {
+      return (
+        <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+          {/* 제목(<h5>) 없이, ParameterInput의 라벨을 'title'("최소값")로 사용.
+           */}
+          <ParameterInput
+            key={directValueField.id}
+            control={control}
+            fieldPath={`overrides.${fields.indexOf(directValueField)}.value`}
+            label={title} // "최소값" 또는 "최대값" 라벨 사용
+            tooltip={`경로: ${directValueField.path}`}
+          />
+        </div>
+      );
+    }
+
+    // [수정] "지표"인 경우 (directValueField가 없는 경우)
+    // 3. 표시될 지표/값 이름 (e.g., "RSI(14)")
     const operandTitle = formatOperand(operand, indicatorDefinitions);
+    // '지표 - RSI(14)' 처럼 표시될 제목 생성
+    const displayTitle = `${title} - ${operandTitle}`;
 
     return (
-      <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full">
-        <h5 className="text-xs font-semibold text-muted-foreground">{title}</h5>
-        {!hasParams ? (
-          <p className="text-sm text-center py-4 text-muted-foreground">
-            {operandTitle}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {/* 1. 지표 내부 파라미터 렌더링 */}
-            {indicatorParamFields.map((field) => {
+      <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col">
+        {/* 1. 그룹 역할과 지표 이름을 통합하여 표시 */}
+        <h5 className="text-xs font-semibold text-muted-foreground truncate">
+          {displayTitle}
+        </h5>
+
+        {/* 2. 지표의 파라미터(e.g., "기간: [14]")를 렌더링 */}
+        <div className="flex-grow pt-2 space-y-3">
+          {indicatorParamFields.length > 0 ? (
+            indicatorParamFields.map((field) => {
               const pathParts = field.path.split(".");
-              const paramKey = pathParts[pathParts.length - 1];
+              const paramKey = pathParts[pathParts.length - 1]; // "period"
               const fieldPath = `overrides.${fields.indexOf(field)}.value`;
 
-              const indicatorKey = (operand as IndicatorValue)?.indicatorKey;
+              const indicatorKey = (operand as IndicatorValue)?.indicatorKey; // "RSI"
               const definition = indicatorDefinitions[indicatorKey];
               const paramDefinition = definition?.parameters[paramKey];
+
+              // 'indicator.ts'에서 "기간" 라벨을 가져옴
               const label = paramDefinition?.label || paramKey;
 
               return (
@@ -242,26 +265,20 @@ const OperandParameterGroup = React.memo(
                   key={field.id}
                   control={control}
                   fieldPath={fieldPath}
-                  label={label}
+                  label={label} // "기간"이 여기 표시됩니다.
                   tooltip={`경로: ${field.path}`}
                 />
               );
-            })}
-
-            {/* 2. 피연산자 직접 값 렌더링 */}
-            {directValueField && (
-              <ParameterInput
-                key={directValueField.id}
-                control={control}
-                fieldPath={`overrides.${fields.indexOf(
-                  directValueField
-                )}.value`}
-                label={operandTitle}
-                tooltip={`경로: ${directValueField.path}`}
-              />
-            )}
-          </div>
-        )}
+            })
+          ) : (
+            /* 3. 파라미터가 없는 고정 지표/값 (e.g., 'Close') */
+            <div className="flex items-center justify-center h-full">
+              <p className="text-xs text-muted-foreground text-center pt-4">
+                (파라미터 없음)
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
