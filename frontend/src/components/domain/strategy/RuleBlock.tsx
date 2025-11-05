@@ -67,7 +67,7 @@ const LOGIC_TYPE_METADATA: {
 
 // 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출 (안정성 개선)
 const getCurrentIndicator = (block: LogicBlock): IndicatorValue | null => {
-  const possibleIndicatorKeys = ["indicator", "operand_a", "main_line"];
+  const possibleIndicatorKeys = ["indicator", "operandA", "mainLine"];
   for (const key of possibleIndicatorKeys) {
     const value = (block as any)[key];
     if (value && typeof value === "object" && "indicatorKey" in value) {
