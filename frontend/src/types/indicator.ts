@@ -1,4 +1,4 @@
-// file: frontend/src/types/indicator.ts (최종 완성 버전)
+// file: frontend/src/types/indicator.ts
 
 /**
  * 단일 지표 파라미터의 속성을 정의합니다.
@@ -23,13 +23,6 @@ export interface OutputDefinition {
   max?: number;
 }
 
-export interface IndicatorOutput {
-  key: string;
-  label: string;
-  min?: number;
-  max?: number;
-}
-
 /**
  * 백엔드 /indicators/metadata API로부터 받는 단일 지표의 전체 메타데이터 구조입니다.
  */
@@ -42,7 +35,7 @@ export interface IndicatorMetadata {
   paneType: "overlay" | "pane";
   // 'parameters'는 객체(Record) 형태가 맞습니다.
   parameters: Record<string, ParameterDefinition>;
-  outputs: IndicatorOutput[];
+  outputs: OutputDefinition[];
   constraints?: string[];
   supportedTimeframes: string[];
   supportedLogics: string[];

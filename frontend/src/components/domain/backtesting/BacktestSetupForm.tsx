@@ -132,7 +132,7 @@ export function BacktestSetupForm() {
   const indicatorDefinitions = useMemo(() => {
     if (!isLoaded) return {};
     return indicatorMetadataArray.reduce((acc, meta) => {
-      acc[meta.indicatorKey] = meta;
+      acc[meta.key] = meta;
       return acc;
     }, {} as Record<string, IndicatorMetadata>);
   }, [indicatorMetadataArray, isLoaded]);
@@ -232,6 +232,12 @@ export function BacktestSetupForm() {
     replaceRef.current = replace;
   });
 
+  type RuleKey =
+    | "longEntryRules"
+    | "longExitRules"
+    | "shortEntryRules"
+    | "shortExitRules";
+
   useEffect(() => {
     // 이 useEffect는 오직 selectedStrategy 데이터의 변경에만 반응합니다.
     // 내부에서는 ref를 통해 항상 최신의 replace 함수를 사용합니다.
@@ -284,7 +290,7 @@ export function BacktestSetupForm() {
     };
 
     let allParams: { path: string; value: any }[] = [];
-    const ruleKeys: (keyof Strategy)[] = [
+    const ruleKeys: RuleKey[] = [
       "longEntryRules",
       "longExitRules",
       "shortEntryRules",
@@ -308,7 +314,7 @@ export function BacktestSetupForm() {
     }
 
     currentReplace(allParams);
-  }, [selectedStrategy]); // 의존성 배열에서 `replace`를 완전히 제거하여 무한 루프의 원인을 차단
+  }, [selectedStrategy]);
 
   const getTpslLogicText = (tpslLogic: any) => {
     if (
@@ -329,7 +335,7 @@ export function BacktestSetupForm() {
 
   const createBacktestMutation = useMutation({
     mutationFn: (data: FormValues) => {
-      // [개선] 최종 overrides 배열을 여기서 완성합니다.
+      // 최종 overrides 배열을 여기서 완성합니다.
       const finalOverrides = [...(data.overrides || [])];
 
       // trailingStop 관련 값들을 overrides 배열에 추가합니다.
@@ -357,10 +363,8 @@ export function BacktestSetupForm() {
           leverage: data.leverage,
           fee: data.feePct,
           slippage: data.slippagePct,
-          // [핵심] 이제 overrides 배열이 모든 파라미터 변경사항을 담는 유일한 진실의 원천입니다.
+          // 이제 overrides 배열이 모든 파라미터 변경사항을 담는 유일한 진실의 원천입니다.
           overrides: finalOverrides,
-          // [제거] 수동으로 만들던 tpslLogic 객체를 완전히 제거합니다.
-          // tpslLogic: { ... }
         },
       };
       return apiClient.post("/backtests", payload);
