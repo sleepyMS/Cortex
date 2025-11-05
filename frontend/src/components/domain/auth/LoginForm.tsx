@@ -20,7 +20,7 @@ import EmailVerificationDialog from "./EmailVerificationDialog";
 export default function LoginForm() {
   const t = useTranslations("Auth");
   const router = useRouter();
-  const searchParams = useSearchParams(); // 👈 2. 훅 사용
+  const searchParams = useSearchParams();
   const loginAndUpdateUser = useUserStore((state) => state.loginAndUpdateUser);
   const [isVerificationDialogOpen, setIsVerificationDialogOpen] =
     useState(false);
@@ -61,7 +61,7 @@ export default function LoginForm() {
           refreshToken: tokens.refreshToken,
         });
 
-        // --- 👇 [수정] 3. 로그인 성공 후 리디렉션 로직 ---
+        // --- 3. 로그인 성공 후 리디렉션 로직 ---
         const redirectUrl = searchParams.get("redirect");
 
         // 4. 보안 검사: Open Redirect 취약점을 막기 위해
@@ -71,7 +71,6 @@ export default function LoginForm() {
         } else {
           router.push("/dashboard"); // 기본값 대시보드로 이동
         }
-        // --- [수정] 로직 끝 ---
       }
     } catch (error: any) {
       const detail = error.response?.data?.detail;
