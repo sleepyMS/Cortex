@@ -820,7 +820,7 @@ export function BacktestSetupForm() {
                   disabled={
                     createBacktestMutation.isPending ||
                     !methods.formState.isValid ||
-                    (estimation && !estimation.isSufficient) // 잔액 부족 시 비활성화
+                    !!(estimation && !estimation.isSufficient) // 잔액 부족 시 비활성화
                   }
                 >
                   {createBacktestMutation.isPending ? (
