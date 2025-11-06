@@ -8,6 +8,7 @@ import { LogicBlock, Strategy, IndicatorValue } from "@/types/strategy";
 import { IndicatorMetadata } from "@/types/indicator";
 import { useTranslations } from "next-intl";
 
+import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import {
@@ -274,6 +275,21 @@ const OperandParameterGroup = React.memo(
 );
 OperandParameterGroup.displayName = "OperandParameterGroup";
 
+// 읽기 전용 로직 값 표시를 위한 헬퍼 컴포넌트
+const ReadOnlyLogicDisplay = React.memo(
+  ({ label, value }: { label: string; value: string }) => {
+    return (
+      <div className="flex justify-between items-center text-xs px-1 py-0.5">
+        <span className="text-muted-foreground">{label}</span>
+        <Badge variant="secondary" className="text-xs">
+          {value}
+        </Badge>
+      </div>
+    );
+  }
+);
+ReadOnlyLogicDisplay.displayName = "ReadOnlyLogicDisplay";
+
 /**
  * 단일 규칙 블록을 재귀적으로 렌더링하는 핵심 컴포넌트
  */
@@ -379,9 +395,20 @@ const RuleBlock = React.memo(
           );
         }
 
-        case "trend_signal":
-        case "channel":
-        case "divergence": {
+        case "channel": {
+          // tRule에서 번역 키에 매핑
+          const channelZoneMap: Record<string, string> = {
+            upper: "upperChannel",
+            middle: "middleChannel",
+            lower: "lowerChannel",
+            kumo: "kumoCloud",
+          };
+          const actionMap: Record<string, string> = {
+            enter: "enterChannel",
+            exit: "exitChannel",
+            within: "withinChannel",
+          };
+
           return (
             <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
               <OperandParameterGroup
@@ -394,20 +421,98 @@ const RuleBlock = React.memo(
                 indicatorDefinitions={indicatorDefinitions}
                 t={t}
               />
-              <div className="p-3 rounded-lg h-full flex items-center justify-center bg-muted/50">
-                <p className="text-xs text-muted-foreground text-center">
-                  {t("noOverrideTarget")}
-                </p>
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("channelZoneLabel")}
+                  value={tRule(
+                    channelZoneMap[block.channelZone] || block.channelZone
+                  )}
+                />
+                <ReadOnlyLogicDisplay
+                  label={tRule("actionLabel")}
+                  value={tRule(actionMap[block.action] || block.action)}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        case "trend_signal": {
+          const signalMap: Record<string, string> = {
+            buy: "buySignal",
+            sell: "sellSignal",
+            none: "noneSignal",
+          };
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
+              <OperandParameterGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                fields={fields}
+                control={control}
+                indicatorDefinitions={indicatorDefinitions}
+                t={t}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("signalLabel")}
+                  value={tRule(signalMap[block.signal] || block.signal)}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        case "divergence": {
+          const divTypeMap: Record<string, string> = {
+            bullish: "bullishDivergence",
+            bearish: "bearishDivergence",
+            hidden_bullish: "hiddenBullish",
+            hidden_bearish: "hiddenBearish",
+          };
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
+              <OperandParameterGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                fields={fields}
+                control={control}
+                indicatorDefinitions={indicatorDefinitions}
+                t={t}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("divergenceTypeLabel")}
+                  value={tRule(
+                    divTypeMap[block.divergenceType] || block.divergenceType
+                  )}
+                />
               </div>
             </div>
           );
         }
 
         case "pattern": {
+          const dirMap: Record<string, string> = {
+            bullish: "bullish",
+            bearish: "bearish",
+            any: "any",
+          };
           return (
-            <p className="text-sm text-muted-foreground p-4 text-center">
-              {t("noParamsForRule", { type: block.type })}{" "}
-            </p>
+            <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+              <ReadOnlyLogicDisplay
+                label={tRule("patternKeyLabel")}
+                value={block.patternKey} // 패턴 키는 번역하지 않고 그대로 표시
+              />
+              <ReadOnlyLogicDisplay
+                label={tRule("directionLabel")}
+                value={tRule(dirMap[block.direction] || block.direction)}
+              />
+            </div>
           );
         }
 
@@ -511,7 +616,7 @@ export const ParameterTreeView = ({
   fields,
 }: ParameterTreeViewProps) => {
   const t = useTranslations("ParameterTreeView");
-  const tRule = useTranslations("RuleBlock"); // RuleBlock의 "crossesAbove" 등을 위함
+  const tRule = useTranslations("RuleBlock");
 
   const sections = [
     {

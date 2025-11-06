@@ -1,4 +1,5 @@
 // file: frontend/src/components/domain/backtesting/BacktestParameters.tsx
+
 "use client";
 
 import React, { useMemo } from "react";
@@ -54,7 +55,6 @@ const formatOperand = (
   return "?";
 };
 
-// [수정] i18n을 사용하도록 formatRuleTitle 변경
 const formatRuleTitle = (
   block: LogicBlock,
   definitions: Record<string, IndicatorMetadata>,
@@ -109,7 +109,7 @@ const getOriginalValueByformPath = (
   }, originalStrategy);
 };
 
-// [신규] 기존 renderValue를 재사용 가능한 컴포넌트로 분리
+// 기존 renderValue를 재사용 가능한 컴포넌트로 분리
 const ParameterLineItem = React.memo(
   ({
     label,
@@ -131,7 +131,7 @@ const ParameterLineItem = React.memo(
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5 font-mono">
+              <div className="flex items-center gap-1.5">
                 {isOverridden && (
                   <Zap className="h-3.5 w-3.5 text-yellow-500" />
                 )}
@@ -153,7 +153,21 @@ const ParameterLineItem = React.memo(
 );
 ParameterLineItem.displayName = "ParameterLineItem";
 
-// [신규] ParameterTreeView의 OperandParameterGroup에 대응하는 읽기 전용 컴포넌트
+const ReadOnlyLogicDisplay = React.memo(
+  ({ label, value }: { label: string; value: string }) => {
+    return (
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <Badge variant="secondary" className="text-xs">
+          {value}
+        </Badge>
+      </div>
+    );
+  }
+);
+ReadOnlyLogicDisplay.displayName = "ReadOnlyLogicDisplay";
+
+// ParameterTreeView의 OperandParameterGroup에 대응하는 읽기 전용 컴포넌트
 const OperandDisplayGroup = React.memo(
   ({
     operand,
@@ -241,7 +255,7 @@ const OperandDisplayGroup = React.memo(
 OperandDisplayGroup.displayName = "OperandDisplayGroup";
 
 /**
- * [수정] 재귀적으로 규칙을 표시하는 핵심 컴포넌트
+ * 재귀적으로 규칙을 표시하는 핵심 컴포넌트
  */
 const RuleDisplay = React.memo(
   ({
@@ -255,7 +269,7 @@ const RuleDisplay = React.memo(
     const currentBlockPath = pathPrefix; // pathPrefix 자체가 현재 블록의 경로임
 
     /**
-     * [신규] 규칙 타입별로 다른 UI를 렌더링
+     * 규칙 타입별로 다른 UI를 렌더링
      */
     const renderRuleBody = () => {
       switch (block.type) {
@@ -343,10 +357,19 @@ const RuleDisplay = React.memo(
           );
         }
 
-        // (기타 케이스들은 필요에 따라 추가)
+        case "channel": {
+          const channelZoneMap: Record<string, string> = {
+            upper: "upperChannel",
+            middle: "middleChannel",
+            lower: "lowerChannel",
+            kumo: "kumoCloud",
+          };
+          const actionMap: Record<string, string> = {
+            enter: "enterChannel",
+            exit: "exitChannel",
+            within: "withinChannel",
+          };
 
-        default:
-          // 기본값: 기존처럼 파라미터 나열 (단, OperandDisplayGroup 사용)
           return (
             <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
               <OperandDisplayGroup
@@ -358,12 +381,107 @@ const RuleDisplay = React.memo(
                 definitions={definitions}
                 t={t}
               />
-              <div className="p-3 rounded-lg h-full flex items-center justify-center bg-muted/50">
-                <p className="text-xs text-muted-foreground text-center">
-                  {t("unknownRuleType")}
-                </p>
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("channelZoneLabel")}
+                  value={tRule(
+                    channelZoneMap[block.channelZone] || block.channelZone
+                  )}
+                />
+                <ReadOnlyLogicDisplay
+                  label={tRule("actionLabel")}
+                  value={tRule(actionMap[block.action] || block.action)}
+                />
               </div>
             </div>
+          );
+        }
+
+        // 지표 + 읽기 전용 로직
+        case "trend_signal": {
+          const signalMap: Record<string, string> = {
+            buy: "buySignal",
+            sell: "sellSignal",
+            none: "noneSignal",
+          };
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
+              <OperandDisplayGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("signalLabel")}
+                  value={tRule(signalMap[block.signal] || block.signal)}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        // 지표 + 읽기 전용 로직
+        case "divergence": {
+          const divTypeMap: Record<string, string> = {
+            bullish: "bullishDivergence",
+            bearish: "bearishDivergence",
+            hidden_bullish: "hiddenBullish",
+            hidden_bearish: "hiddenBearish",
+          };
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
+              <OperandDisplayGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                currentBlockPath={currentBlockPath}
+                overriddenPaths={overriddenPaths}
+                definitions={definitions}
+                t={t}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("divergenceTypeLabel")}
+                  value={tRule(
+                    divTypeMap[block.divergenceType] || block.divergenceType
+                  )}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        // 읽기 전용 로직 (지표 없음)
+        case "pattern": {
+          const dirMap: Record<string, string> = {
+            bullish: "bullish",
+            bearish: "bearish",
+            any: "any",
+          };
+          return (
+            <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+              <ReadOnlyLogicDisplay
+                label={tRule("patternKeyLabel")}
+                value={block.patternKey} // 패턴 키는 번역하지 않고 그대로 표시
+              />
+              <ReadOnlyLogicDisplay
+                label={tRule("directionLabel")}
+                value={tRule(dirMap[block.direction] || block.direction)}
+              />
+            </div>
+          );
+        }
+
+        default:
+          return (
+            <p className="text-sm text-muted-foreground p-4 text-center">
+              {t("unknownRuleType")}
+            </p>
           );
       }
     };
@@ -374,7 +492,7 @@ const RuleDisplay = React.memo(
           {formatRuleTitle(block, definitions, t, tRule)}
         </p>
 
-        {/* [수정] 규칙 타입별 본문 렌더링 */}
+        {/* 규칙 타입별 본문 렌더링 */}
         {renderRuleBody()}
 
         {/* 자식 규칙(AND 조건)이 있는 경우 재귀 호출 */}

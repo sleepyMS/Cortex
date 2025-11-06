@@ -65,7 +65,7 @@ const LOGIC_TYPE_METADATA: {
   pattern: { icon: CandlestickChart, labelKey: "pattern" },
 };
 
-// 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출 (안정성 개선)
+// 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출
 const getCurrentIndicator = (block: LogicBlock): IndicatorValue | null => {
   const possibleIndicatorKeys = ["indicator", "operandA", "mainLine"];
   for (const key of possibleIndicatorKeys) {
@@ -197,7 +197,6 @@ export function RuleBlock({
 
   // --- 각 로직 타입별 렌더링 함수 ---
   const renderComparisonLogic = (logic: ComparisonLogic) => (
-    // 👇 [수정] 자식 요소들의 수직 정렬을 위해 items-center 유지
     <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
         value={logic.operandA}
@@ -207,13 +206,11 @@ export function RuleBlock({
         onValueChange={(val) => handleUpdateField("operandA", val)}
       />
 
-      {/* 👇 [수정] 항상 보이도록 hidden 클래스 제거 및 UX 개선 */}
       <div className="flex justify-center">
         <Select
           value={logic.operator}
           onValueChange={(val) => handleUpdateField("operator", val)}
         >
-          {/* 👇 [수정] 모바일에선 꽉 차게, 데스크탑에선 작게 표시 */}
           <SelectTrigger className="h-10 w-full md:w-20">
             <SelectValue />
           </SelectTrigger>
@@ -225,8 +222,6 @@ export function RuleBlock({
           </SelectContent>
         </Select>
       </div>
-
-      {/* 👇 [수정] 불필요한 ArrowDown 아이콘은 모두 제거 */}
 
       <OperandSlot
         value={logic.operandB}
@@ -271,7 +266,6 @@ export function RuleBlock({
 
   const renderStateLogic = (logic: StateLogic) => (
     <div className="flex flex-col gap-3">
-      {/* 지표 선택 슬롯은 그대로 유지 */}
       <OperandSlot
         value={logic.indicator}
         onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
@@ -279,9 +273,7 @@ export function RuleBlock({
         onConvertToIndicator={() => {}}
         onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
       />
-      {/* 🔽 핵심 수정 영역: flex-wrap을 사용한 유연한 컨테이너 */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {/* '범위' 그룹: 이 그룹은 한 단위로 움직입니다. */}
         <div className="flex flex-grow items-center gap-2 min-w-[200px]">
           <Label className="text-xs text-muted-foreground whitespace-nowrap">
             {t("range")}
@@ -313,7 +305,6 @@ export function RuleBlock({
           />
         </div>
 
-        {/* '동작' 그룹: 이 그룹도 공간이 부족하면 아래로 내려갑니다. */}
         <div className="flex flex-grow items-center gap-2 min-w-[150px]">
           <Label className="text-xs text-muted-foreground whitespace-nowrap">
             {t("action")}

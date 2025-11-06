@@ -800,7 +800,13 @@
     "bearish": "Bearish",
     "selectSignal": "Select Signal",
     "any": "Any",
-    "unknownLogicType": "Unknown Logic Type"
+    "unknownLogicType": "Unknown Logic Type",
+    "channelZoneLabel": "Channel Zone",
+    "actionLabel": "Action",
+    "signalLabel": "Signal",
+    "divergenceTypeLabel": "Divergence Type",
+    "patternKeyLabel": "Pattern",
+    "directionLabel": "Direction"
   },
   "ParameterPopover": {
     "title": "Settings",
