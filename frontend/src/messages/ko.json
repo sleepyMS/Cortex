@@ -1074,6 +1074,7 @@
   "ParameterTreeView": {
     "title": "파라미터 오버라이드",
     "description": "전략의 구조를 보면서 파라미터 값만 간편하게 수정하여 테스트합니다.",
+    "descriptionOptimize": "최적화할 각 파라미터의 최소(Min), 최대(Max), 단계(Step)를 설정하세요.",
     "orOperator": "OR",
     "andOperator": "AND",
     "sections": {
@@ -1285,6 +1286,150 @@
         "lastPage": "마지막 페이지로 이동"
       }
     }
+  },
+  "OptimizationPage": {
+    "title": "나의 최적화",
+    "description": "전략 최적화 작업 내역을 검토하고 관리합니다.",
+    "createNewOptimization": "새 최적화 생성",
+    "filterStatusPlaceholder": "상태로 필터링",
+    "filterStrategyPlaceholder": "전략으로 필터링",
+    "filterTypePlaceholder": "타입으로 필터링",
+    "filterTypeAll": "모든 타입",
+    "filterTypeGeneral": "일반 최적화",
+    "filterTypeWFO": "워크포워드(WFO)",
+    "filterStatusAll": "모든 상태",
+    "filterStatusRunning": "실행중",
+    "filterStatusPending": "대기중",
+    "filterStatusCompleted": "완료",
+    "filterStatusFailed": "실패",
+    "filterStatusCanceled": "취소됨",
+    "filterStrategyAll": "모든 전략",
+    "fetchError": "최적화 내역을 불러오는 데 실패했습니다.",
+    "cancelSuccess": "최적화 작업이 취소되었습니다.",
+    "cancelError": "작업 취소 실패: {error}",
+    "deleteSuccess": "최적화 기록이 삭제되었습니다.",
+    "deleteError": "기록 삭제 실패: {error}",
+    "noMoreResults": "더 이상 불러올 결과가 없습니다.",
+    "empty": {
+      "title": "아직 실행된 최적화가 없습니다",
+      "description": "첫 최적화를 생성하여 당신의 전략을 위한 최상의 파라미터를 찾아보세요.",
+      "createButton": "첫 최적화 생성하기"
+    }
+  },
+  "OptimizationJobCard": {
+    "status": {
+      "completed": "완료",
+      "running": "실행중",
+      "pending": "대기중",
+      "failed": "실패",
+      "canceled": "취소됨"
+    },
+    "type": {
+      "general": "일반",
+      "wfo": "WFO"
+    },
+    "bestScore": "최고 점수",
+    "bestScoreTooltip": "이번 최적화에서 발견된 가장 높은 Cortex 종합 점수입니다.",
+    "bestReturn": "최고 수익률",
+    "bestReturnTooltip": "이번 최적화에서 발견된 가장 높은 총 수익률입니다.",
+    "bestMdd": "최고 MDD",
+    "bestMddTooltip": "최고 성과에 해당하는 MDD 값입니다.",
+    "optimizing": "최적화 진행 중...",
+    "optimizingStatus": "{current} / {total}회 실행 중",
+    "runAt": "{date}에 실행",
+    "actions": {
+      "cancel": "작업 취소",
+      "delete": "기록 삭제"
+    }
+  },
+  "NewOptimizationPage": {
+    "title": "새 최적화 생성",
+    "description": "수천 개의 조합을 테스트하여 당신의 전략에 맞는 최적의 파라미터를 찾아보세요."
+  },
+  "OptimizationSetupForm": {
+    "commonSettings": {
+      "title": "공통 설정",
+      "description": "모든 최적화 타입에 공통으로 적용될 전략과 기간, 기본 설정입니다.",
+      "strategyLabel": "전략",
+      "strategyLoading": "전략 목록 로딩 중...",
+      "strategyPlaceholder": "최적화할 전략을 선택하세요",
+      "noStrategiesFound": "생성된 전략이 없습니다.",
+      "goToCreateStrategy": "전략 생성하러 가기",
+      "dateRangeLabel": "기간",
+      "initialCapitalLabel": "초기 자본금",
+      "leverageLabel": "레버리지",
+      "feePctLabel": "거래 수수료 (%)",
+      "slippagePctLabel": "거래 슬리피지 (%)"
+    },
+    "tabs": {
+      "general": "일반 최적화",
+      "wfo": "워크포워드(WFO)"
+    },
+    "general": {
+      "title": "일반 최적화 설정",
+      "description": "선택한 전체 기간 내(In-Sample)에서 최상의 파라미터를 찾습니다.",
+      "trialsLabel": "총 시도 횟수",
+      "trialsDescription": "테스트할 총 파라미터 조합의 수입니다."
+    },
+    "wfo": {
+      "title": "워크포워드(WFO) 설정",
+      "description": "주기적으로 재최적화를 수행(확장창)하여 전략의 견고함을 검증합니다.",
+      "foldsLabel": "구간(Folds) 수",
+      "foldsDescription": "전체 기간을 나눌 총 구간(IS + OOS)의 수입니다.",
+      "trialsPerFoldLabel": "구간당 시도 횟수",
+      "trialsPerFoldDescription": "*각* 최적화 구간마다 실행할 시도 횟수입니다."
+    },
+    "trainingPeriod": {
+      "title": "계산된 훈련 기간",
+      "general": "총 훈련 기간: {days}일",
+      "wfo": "첫 훈련(IS) 기간: {days}일"
+    },
+    "objectives": {
+      "title": "최적화 목표",
+      "description": "최적화를 위한 1순위 목표와 2순위 제약 조건을 설정합니다.",
+      "primaryLabel": "1순위 목표 (Goal)",
+      "shortPeriodWarning": "훈련 기간 1년 미만은 연율화 지표(CAGR, 점수 등)를 사용할 수 없습니다.",
+      "constraintsLabel": "2순위 제약 조건 (Safety Net)",
+      "constraintsDescription": "이 조건을 통과하지 못하는 시도는 조기 중단(Pruning)됩니다. (최대 3개)",
+      "addConstraint": "제약 조건 추가",
+      "cortexScore": "Cortex 종합 점수 (권장)",
+      "totalReturnPct": "총 수익률 (%)",
+      "CAGR": "연평균 수익률 (CAGR)",
+      "sortino": "소르티노 지수 (연율화)",
+      "calmar": "칼마 지수 (연율화)",
+      "profit_factor": "수익비",
+      "win_rate": "승률"
+    },
+    "constraints": {
+      "mdd": "최대 낙폭",
+      "min_trades": "최소 총 거래",
+      "win_rate": "최소 승률",
+      "profit_factor": "최소 수익비"
+    },
+    "summary": {
+      "title": "최적화 요약",
+      "selectStrategyPrompt": "좌측에서 최적화할 전략을 선택해주세요.",
+      "noDescription": "설명이 없습니다.",
+      "preflightCheck": {
+        "title": "사전 점검",
+        "strategy": "전략 선택 완료",
+        "objective": "목표 설정 완료",
+        "trials": "총 {count}회 시도"
+      },
+      "costDetails": {
+        "title": "비용 상세정보",
+        "originalCost": "정가 (Basic 기준)",
+        "planDiscount": "{planName} 플랜 할인 ({discountRate}%)",
+        "finalCost": "최종 필요 크레딧",
+        "yourBalance": "내 크레딧 잔액",
+        "noEstimation": "전략과 설정을 선택하면 비용이 계산됩니다."
+      },
+      "insufficientCredits": "크레딧 잔액이 부족합니다."
+    },
+    "submitButton": "최적화 실행",
+    "submitButtonLoading": "요청 처리 중...",
+    "submitSuccess": "최적화 작업이 성공적으로 접수되었습니다.",
+    "submitError": "최적화 요청 실패: {error}"
   },
   "Marketplace": {
     "paymentModalTitle": "마켓플레이스",

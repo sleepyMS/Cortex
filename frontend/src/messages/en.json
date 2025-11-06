@@ -1030,6 +1030,7 @@
   "ParameterTreeView": {
     "title": "Parameter Overrides",
     "description": "Easily modify parameter values for testing while keeping the rule structure intact.",
+    "descriptionOptimize": "Set the Min, Max, and Step for each parameter to optimize.",
     "orOperator": "OR",
     "andOperator": "AND",
     "sections": {
@@ -1240,6 +1241,150 @@
         "lastPage": "Go to last page"
       }
     }
+  },
+  "OptimizationPage": {
+    "title": "My Optimizations",
+    "description": "Review and manage your optimization jobs.",
+    "createNewOptimization": "New Optimization",
+    "filterStatusPlaceholder": "Filter by status",
+    "filterStrategyPlaceholder": "Filter by strategy",
+    "filterTypePlaceholder": "Filter by type",
+    "filterTypeAll": "All Types",
+    "filterTypeGeneral": "General",
+    "filterTypeWFO": "Walk-Forward (WFO)",
+    "filterStatusAll": "All Statuses",
+    "filterStatusRunning": "Running",
+    "filterStatusPending": "Pending",
+    "filterStatusCompleted": "Completed",
+    "filterStatusFailed": "Failed",
+    "filterStatusCanceled": "Canceled",
+    "filterStrategyAll": "All Strategies",
+    "fetchError": "Failed to load optimization history.",
+    "cancelSuccess": "Optimization job canceled.",
+    "cancelError": "Failed to cancel job: {error}",
+    "deleteSuccess": "Optimization record deleted.",
+    "deleteError": "Failed to delete record: {error}",
+    "noMoreResults": "No more results to load.",
+    "empty": {
+      "title": "No Optimizations Run Yet",
+      "description": "Create your first optimization to find the best parameters for your strategy.",
+      "createButton": "Create First Optimization"
+    }
+  },
+  "OptimizationJobCard": {
+    "status": {
+      "completed": "Completed",
+      "running": "Running",
+      "pending": "Pending",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "type": {
+      "general": "General",
+      "wfo": "WFO"
+    },
+    "bestScore": "Best Score",
+    "bestScoreTooltip": "The best Cortex Score found in this optimization.",
+    "bestReturn": "Best Return",
+    "bestReturnTooltip": "The best total return found in this optimization.",
+    "bestMdd": "Best MDD",
+    "bestMddTooltip": "The MDD associated with the best result.",
+    "optimizing": "Optimizing...",
+    "optimizingStatus": "{current} / {total} trials",
+    "runAt": "Run at {date}",
+    "actions": {
+      "cancel": "Cancel Job",
+      "delete": "Delete Record"
+    }
+  },
+  "NewOptimizationPage": {
+    "title": "Create New Optimization",
+    "description": "Find the best parameters for your strategy by testing thousands of combinations."
+  },
+  "OptimizationSetupForm": {
+    "commonSettings": {
+      "title": "Common Settings",
+      "description": "Strategy and period to apply to all optimization types.",
+      "strategyLabel": "Strategy",
+      "strategyLoading": "Loading strategies...",
+      "strategyPlaceholder": "Select a strategy to optimize",
+      "noStrategiesFound": "No strategies have been created.",
+      "goToCreateStrategy": "Create a Strategy",
+      "dateRangeLabel": "Period",
+      "initialCapitalLabel": "Initial Capital",
+      "leverageLabel": "Leverage",
+      "feePctLabel": "Trading Fee (%)",
+      "slippagePctLabel": "Trading Slippage (%)"
+    },
+    "tabs": {
+      "general": "General Optimization",
+      "wfo": "Walk-Forward (WFO)"
+    },
+    "general": {
+      "title": "General Optimization Setup",
+      "description": "Find the best parameters within the entire selected period (In-Sample).",
+      "trialsLabel": "Total Trials",
+      "trialsDescription": "The total number of parameter combinations to test."
+    },
+    "wfo": {
+      "title": "Walk-Forward Optimization Setup",
+      "description": "Validate strategy robustness by periodically re-optimizing (Expanding Window).",
+      "foldsLabel": "Number of Folds",
+      "foldsDescription": "The total number of periods to divide into (IS + OOS).",
+      "trialsPerFoldLabel": "Trials per Fold",
+      "trialsPerFoldDescription": "Number of trials to run for *each* optimization fold."
+    },
+    "trainingPeriod": {
+      "title": "Calculated Training Period",
+      "general": "Total training period: {days} days.",
+      "wfo": "1st IS Training Period: {days} days."
+    },
+    "objectives": {
+      "title": "Optimization Objectives",
+      "description": "Set the primary goal and secondary constraints for the optimization.",
+      "primaryLabel": "Primary Objective (Goal)",
+      "shortPeriodWarning": "Annualized metrics (CAGR, Score, etc.) are disabled for training periods under 1 year.",
+      "constraintsLabel": "Secondary Constraints (Safety Net)",
+      "constraintsDescription": "Trials that fail these conditions will be pruned (stopped) early. (Max 3)",
+      "addConstraint": "Add Constraint",
+      "cortexScore": "Cortex Score (Recommended)",
+      "totalReturnPct": "Total Return (%)",
+      "CAGR": "CAGR (Annualized)",
+      "sortino": "Sortino Ratio (Annualized)",
+      "calmar": "Calmar Ratio (Annualized)",
+      "profit_factor": "Profit Factor",
+      "win_rate": "Win Rate"
+    },
+    "constraints": {
+      "mdd": "Max Drawdown",
+      "min_trades": "Min Total Trades",
+      "win_rate": "Min Win Rate",
+      "profit_factor": "Min Profit Factor"
+    },
+    "summary": {
+      "title": "Optimization Summary",
+      "selectStrategyPrompt": "Please select a strategy to optimize from the left.",
+      "noDescription": "No description provided.",
+      "preflightCheck": {
+        "title": "Pre-flight Check",
+        "strategy": "Strategy selected",
+        "objective": "Objective set",
+        "trials": "{count} total trials"
+      },
+      "costDetails": {
+        "title": "Cost Details",
+        "originalCost": "Base Cost (Basic)",
+        "planDiscount": "{planName} Plan Discount ({discountRate}%)",
+        "finalCost": "Final Credit Cost",
+        "yourBalance": "My Credit Balance",
+        "noEstimation": "Select strategy and settings to calculate cost."
+      },
+      "insufficientCredits": "Insufficient credit balance."
+    },
+    "submitButton": "Run Optimization",
+    "submitButtonLoading": "Submitting...",
+    "submitSuccess": "Optimization job submitted successfully.",
+    "submitError": "Failed to submit optimization: {error}"
   },
   "Marketplace": {
     "paymentModalTitle": "Marketplace",
