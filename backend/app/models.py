@@ -270,6 +270,11 @@ class TradeLog(Base):
     backtest = relationship("Backtest", back_populates="trade_logs")
     live_bot = relationship("LiveBot", back_populates="trade_logs")
 
+
+class OptimizationType(str, enum.Enum):
+    GENERAL = "general"
+    WFO = "wfo"
+
 class OptimizationStatus(str, enum.Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -285,10 +290,13 @@ class OptimizationJob(Base):
     strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
     
     status = Column(Enum(OptimizationStatus), default=OptimizationStatus.PENDING, nullable=False)
-    type = Column(String(20), nullable=False) # 'general' or 'wfo'
+    type = Column(Enum(OptimizationType), nullable=False)
     
     # 실행 설정 스냅샷 (목표, 제약조건, 파라미터 범위 등)
     config = Column(JSONB, nullable=False)
+
+    # 실행 중인 Celery 태스크를 추적하고 취소하기 위한 ID 저장 컬럼
+    celery_task_id = Column(String, nullable=True)
     
     # 진행률 정보 (current_step, total_steps)
     progress = Column(JSONB, default={"current_step": 0, "total_steps": 0})

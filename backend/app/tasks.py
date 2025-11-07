@@ -19,22 +19,32 @@ Cortex 프로젝트의 모든 Celery 백그라운드 작업을 정의합니다.
 import asyncio
 import time
 import uuid
-from datetime import datetime, timezone
+import json
+import math
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Any, List, Tuple
 
 import ccxt
 import ccxt.async_support as ccxt_async
+import optuna
+import pandas as pd
+import numpy as np
 from celery.utils.log import get_task_logger
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import joinedload
+from sqlalchemy.dialects.postgresql import insert
 
-# --- 1. 필요한 모듈 및 서비스 임포트 ---
+# --- 모듈 임포트 ---
 from .celery_app import celery_app
 from .database import AsyncSessionLocal, SyncSessionLocal
-from .models import BacktestStatus
-
+# [수정] 최적화 관련 모델 임포트 추가
+from .models import (
+    BacktestStatus, OptimizationStatus, OptimizationJob, OptimizationTrial,
+    OptimizationType, LiveBot, Backtest, BacktestResult, TradeLog
+)
 from . import models, schemas
 from .engine.backtesting_engine import BacktestingEngine
-from .utils.communication import WebSocketManager, EventPublisher
+from .utils.communication import WebSocketManager
 from .event_bus import publish_event
 from .services.market_data_service import market_data_service
 from .services.signal_service import signal_service
@@ -43,12 +53,343 @@ from .services.notification_service import notification_service
 from .services.subscription_service import subscription_service
 from .services.verification_service import verification_service
 
-
 logger = get_task_logger(__name__)
+
+# ==============================================================================
+# Helper Functions (CPU-Bound)
+# ==============================================================================
+
+def _apply_params_to_strategy(strategy_snapshot: schemas.StrategyCreate, params: Dict[str, Any]) -> schemas.StrategyCreate:
+    """
+    Optuna가 제안한 평탄화된 파라미터(예: "long_entry_rules.0.rsi.period": 14)를
+    실제 전략 객체의 중첩된 구조에 동적으로 반영하여 새로운 전략 객체를 반환합니다.
+    """
+    strategy_dict = strategy_snapshot.model_dump()
+    for param_path, value in params.items():
+        parts = param_path.split('.')
+        current = strategy_dict
+        for part in parts[:-1]:
+            if part.isdigit(): part = int(part)
+            if isinstance(current, dict): current = current.get(part)
+            elif isinstance(current, list) and isinstance(part, int) and 0 <= part < len(current): current = current[part]
+            else: current = None; break
+            if current is None: break
+        if current is not None:
+            last = parts[-1]
+            if last.isdigit() and isinstance(current, list): current[int(last)] = value
+            elif isinstance(current, dict): current[last] = value
+    return schemas.StrategyCreate(**strategy_dict)
+
+def _split_data_expanding_window(df: pd.DataFrame, folds: int) -> List[Dict[str, pd.DataFrame]]:
+    """
+    [WFO 헬퍼] 데이터를 확장창(Expanding Window) 방식으로 분할합니다.
+    """
+    n = len(df)
+    chunk_size = n // (folds + 1)
+    splits = []
+    for i in range(folds):
+        train_end = (i + 1) * chunk_size
+        test_end = (i + 2) * chunk_size if i < folds - 1 else n 
+        splits.append({
+            'train': df.iloc[0:train_end].copy(),
+            'test': df.iloc[train_end:test_end].copy(),
+            'fold_index': i
+        })
+    return splits
+
+# ==============================================================================
+# Part 1: CPU-Bound Tasks (최적화, 백테스팅)
+# ==============================================================================
+
+@celery_app.task(bind=True, name="run_optimization", queue="cpu_bound_queue", acks_late=True)
+def run_optimization(self, job_id: str):
+    """
+    전략 최적화 메인 태스크. General 및 WFO 모드를 모두 지원합니다.
+    """
+    logger.info(f"Starting optimization job: {job_id}")
+    job_uuid = uuid.UUID(job_id)
+    session = SyncSessionLocal()
+    
+    try:
+        # 1. 초기화 및 설정 로드
+        job = session.query(OptimizationJob).filter(OptimizationJob.id == job_uuid).one_or_none()
+        if not job: raise ValueError(f"Optimization Job {job_id} not found.")
+        
+        job.status = OptimizationStatus.RUNNING
+        session.commit()
+        
+        config = schemas.OptimizationConfig.model_validate(job.config)
+        # strategy_snapshot 컬럼이 있다고 가정
+        strategy_data = job.strategy_snapshot if job.strategy_snapshot else {}
+        strategy_snapshot = schemas.StrategyCreate.model_validate(strategy_data)
+
+        WebSocketManager.send_status_update(job_id, "running", "데이터 로딩 중...", 5)
+
+        # 2. 데이터 로딩 (단 1회 전체 로딩)
+        target_coin = strategy_snapshot.target_coins[0].ticker if strategy_snapshot.target_coins else "BTCUSDT"
+        base_ohlcv_df = market_data_service.get_historical_data_sync(
+            ticker=target_coin,
+            timeframe='1h', # 최적화 기본 타임프레임
+            start_date=config.start_date,
+            end_date=config.end_date
+        )
+        if base_ohlcv_df.empty:
+             raise ValueError("최적화를 위한 시세 데이터가 충분하지 않습니다.")
+
+        logger.info(f"Loaded {len(base_ohlcv_df)} rows for optimization.")
+
+        # --- 공통 Optuna Objective 함수 Factory ---
+        def create_objective(target_df: pd.DataFrame, current_capital: float, trial_offset: int = 0):
+            def objective(trial: optuna.Trial):
+                # a. 파라미터 샘플링
+                suggested_params = {}
+                for r in config.parameter_ranges:
+                    if isinstance(r.step, int) and isinstance(r.min, int):
+                         suggested_params[r.path] = trial.suggest_int(r.path, int(r.min), int(r.max), step=int(r.step))
+                    else:
+                        suggested_params[r.path] = trial.suggest_float(r.path, r.min, r.max, step=r.step)
+
+                # b. 시그널 재계산 (인메모리)
+                current_strategy = _apply_params_to_strategy(strategy_snapshot, suggested_params)
+                signals_df = signal_service.generate_signals_from_dataframe(
+                    target_df, current_strategy, timeframe='1h'
+                )
+
+                # c. 백테스트 실행
+                engine = BacktestingEngine(
+                    ohlcv_df=target_df,
+                    signals_df=signals_df,
+                    initial_capital=current_capital,
+                    execution_params=config.common_parameters,
+                    strategy_params=current_strategy
+                )
+                result, _ = engine.run()
+
+                # d. 제약 조건 검사 (Pruning)
+                for c in config.constraints:
+                    val = result.get(f"{c.type}_pct" if c.type in ['mdd', 'win_rate'] else c.type, 0)
+                    if c.type == 'min_trades': val = result.get('total_trades', 0)
+                    
+                    if (c.operator == ">=" and val < c.value) or (c.operator == "<=" and val > c.value):
+                        raise optuna.TrialPruned()
+
+                # e. 진행률 업데이트
+                # (실제 구현 시에는 너무 잦은 업데이트를 방지하기 위해 throttle 필요)
+                # if trial.number % 10 == 0: ... 
+                
+                # 결과 기록
+                trial.set_user_attr("metrics", result)
+                # 목표값이 없으면(예: cortex_score 계산 실패) 매우 낮은 값을 반환하여 선택되지 않게 함
+                return result.get(config.objective, -9999) 
+
+            return objective
+
+        # --- 모드별 실행 로직 ---
+        
+        # === CASE 1: 일반 최적화 (General) ===
+        if config.general_settings:
+            WebSocketManager.send_status_update(job_id, "running", "최적화 시작...", 10)
+            
+            n_trials = config.general_settings.trials
+            sampler = optuna.samplers.TPESampler(seed=42)
+            pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
+            study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+            
+            study.optimize(create_objective(base_ohlcv_df, config.initial_capital), n_trials=n_trials, n_jobs=1)
+
+            # 결과 저장 (Trial 요약)
+            logger.info("Saving General optimization trials...")
+            trial_objects = []
+            for t in study.trials:
+                state = "COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL"
+                trial_objects.append({
+                    "job_id": job_uuid, "trial_number": t.number, "params": t.params,
+                    "metrics": t.user_attrs.get("metrics"), "state": state
+                })
+            session.bulk_insert_mappings(OptimizationTrial, trial_objects)
+            
+            # 최종 결과 업데이트
+            best = study.best_trial
+            job.result_summary = {
+                "best_trial_id": best.number,
+                "best_params": best.params,
+                "best_metrics": best.user_attrs.get("metrics"),
+                "score": best.value
+            }
+
+        # === CASE 2: 워크포워드 최적화 (WFO) ===
+        elif config.wfo_settings:
+            folds = config.wfo_settings.folds
+            trials_per_fold = config.wfo_settings.trials_per_fold
+            splits = _split_data_expanding_window(base_ohlcv_df, folds)
+            
+            wfo_fold_results = []
+            stitched_equity_curve = []
+            current_balance = config.initial_capital
+            global_trial_counter = 0
+
+            for i, split in enumerate(splits):
+                fold_idx = i + 1
+                logger.info(f"Starting WFO Fold {fold_idx}/{folds}...")
+                WebSocketManager.send_status_update(job_id, "running", f"WFO 구간 {fold_idx}/{folds} 진행 중...", 10 + int((i / folds) * 80))
+
+                # 1. IS 최적화
+                sampler = optuna.samplers.TPESampler(seed=42 + i)
+                pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
+                study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+                
+                study.optimize(
+                    create_objective(split['train'], config.initial_capital),
+                    n_trials=trials_per_fold, n_jobs=1
+                )
+                
+                # Trial 결과 저장
+                trial_objects = []
+                for t in study.trials:
+                    global_trial_counter += 1
+                    state = "COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL"
+                    trial_objects.append({
+                        "job_id": job_uuid, "trial_number": global_trial_counter,
+                        "params": t.params, "metrics": t.user_attrs.get("metrics"), "state": state,
+                    })
+                session.bulk_insert_mappings(OptimizationTrial, trial_objects)
+                session.commit()
+
+                # 2. OOS 테스트
+                best_params = study.best_trial.params
+                best_strategy = _apply_params_to_strategy(strategy_snapshot, best_params)
+                oos_signals = signal_service.generate_signals_from_dataframe(split['test'], best_strategy, timeframe='1h')
+                oos_engine = BacktestingEngine(
+                    ohlcv_df=split['test'], signals_df=oos_signals,
+                    initial_capital=current_balance,
+                    execution_params=config.common_parameters, strategy_params=best_strategy
+                )
+                oos_result, _ = oos_engine.run()
+                
+                # 3. 결과 기록
+                current_balance = oos_result['final_equity']
+                wfo_fold_results.append({
+                    "fold_index": i,
+                    "is_start": split['train'].index[0].isoformat(),
+                    "is_end": split['train'].index[-1].isoformat(),
+                    "oos_start": split['test'].index[0].isoformat(),
+                    "oos_end": split['test'].index[-1].isoformat(),
+                    "best_params": best_params,
+                    "in_sample_metrics": study.best_trial.user_attrs.get("metrics"),
+                    "out_of_sample_metrics": oos_result
+                })
+                stitched_equity_curve.extend(oos_result.get('pnl_curve_json', []))
+
+            # WFO 최종 결과 저장
+            job.wfo_result = {
+                "folds": wfo_fold_results,
+                "oos_curve": stitched_equity_curve,
+                "final_equity": current_balance,
+                "total_return_pct": ((current_balance - config.initial_capital) / config.initial_capital) * 100
+            }
+            job.result_summary = {"wfo_completed": True, "final_return": job.wfo_result['total_return_pct']}
+
+        # --- 공통 완료 처리 ---
+        job.status = OptimizationStatus.COMPLETED
+        job.completed_at = datetime.now(timezone.utc)
+        session.commit()
+
+        WebSocketManager.send_status_update(job_id, "completed", "최적화가 완료되었습니다.", 100)
+        logger.info(f"Optimization job {job_id} completed successfully.")
+
+    except Exception as exc:
+        logger.error(f"Optimization job {job_id} failed: {exc}", exc_info=True)
+        try:
+            job.status = OptimizationStatus.FAILED
+            session.commit()
+        except: pass
+        WebSocketManager.send_status_update(job_id, "failed", f"실패: {str(exc)}", 0)
+        # 치명적 오류는 재시도하지 않음
+
+    finally:
+        session.close()
+
+@celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue", acks_late=True)
+def run_backtest(self, backtest_id: str):
+    """
+    [최종 안정화 버전] 단일 백테스팅 실행 태스크.
+    """
+    logger.info(f"Starting backtest: {backtest_id}")
+    backtest_uuid = uuid.UUID(backtest_id)
+    session = SyncSessionLocal()
+    backtest = None 
+
+    try:
+        # --- 단계 1: 경쟁 상태 해결을 위한 DB 조회 및 대기 루프 ---
+        for attempt in range(5):
+            backtest = session.query(Backtest).filter(Backtest.id == backtest_uuid).one_or_none()
+            if backtest: break
+            time.sleep(1)
+        
+        if not backtest:
+            raise ValueError(f"Backtest ID {backtest_id} not found.")
+        
+        WebSocketManager.send_status_update(backtest_id, "running", "백테스트 초기화 중...", 5)
+        
+        if backtest.status != BacktestStatus.PENDING:
+             return f"Aborted: Status is {backtest.status}"
+            
+        backtest.status = BacktestStatus.RUNNING
+        session.commit()
+        
+        params_from_db = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
+        snapshot_as_strategy = schemas.StrategyForSnapshot.model_validate(backtest.strategy_snapshot)
+
+        # --- 단계 2~6: 기존 로직과 동일 ---
+        WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 중...", 25)
+        signals_df, calculation_base_tf = asyncio.run(signal_service.generate_signals(request=snapshot_as_strategy))
+
+        WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터 로딩 중...", 50)
+        ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTCUSDT"
+        ohlcv_df = market_data_service.get_historical_data_sync(
+            ticker=ticker, timeframe=calculation_base_tf,
+            start_date=params_from_db.start_date, end_date=params_from_db.end_date   
+        )
+        if ohlcv_df.empty: raise ValueError("시세 데이터 부족")
+
+        WebSocketManager.send_status_update(backtest_id, "running", "시뮬레이션 실행 중...", 75)
+        engine = BacktestingEngine(
+            ohlcv_df=ohlcv_df, signals_df=signals_df, initial_capital=params_from_db.initial_capital,
+            execution_params=params_from_db.parameters,
+            strategy_params=schemas.StrategyCreate.model_validate(snapshot_as_strategy.model_dump())
+        )
+        summary, trade_logs = engine.run()
+
+        WebSocketManager.send_status_update(backtest_id, "running", "결과 저장 중...", 90)
+        session.query(BacktestResult).filter_by(backtest_id=backtest_uuid).delete()
+        session.query(TradeLog).filter_by(backtest_id=backtest_uuid).delete()
+        session.flush()
+
+        new_result = BacktestResult(backtest_id=backtest_uuid, **summary)
+        session.add(new_result)
+        if trade_logs:
+            session.bulk_insert_mappings(TradeLog, [{**log, "backtest_id": backtest_uuid} for log in trade_logs])
+
+        backtest.status = BacktestStatus.COMPLETED
+        backtest.completed_at = datetime.now(timezone.utc)
+        session.commit()
+
+        publish_event("backtest.completed", {"backtest_id": backtest_id, "user_id": str(backtest.user_id)})
+        WebSocketManager.send_status_update(backtest_id, "completed", "완료됨", 100)
+        return f"Backtest {backtest_id} completed."
+
+    except Exception as exc:
+        logger.error(f"Backtest {backtest_id} failed: {exc}", exc_info=True)
+        user_id = str(backtest.user_id) if backtest else "unknown"
+        publish_event("backtest.failed", {"backtest_id": backtest_id, "user_id": user_id, "error": str(exc)})
+        WebSocketManager.send_status_update(backtest_id, "failed", f"오류: {str(exc)}", 0)
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
+    finally:
+        session.close()
 
 
 # ==============================================================================
-# Part 1: I/O-Bound Tasks (자동매매, 데이터 수집 등)
+# Part 2: I/O-Bound Tasks (자동매매, 데이터 수집 등)
 # ==============================================================================
 
 async def _run_single_bot_cycle_async(bot: models.LiveBot) -> dict:
@@ -312,6 +653,271 @@ def run_backtest(self, backtest_id: str):
     finally:
         if session:
             session.close()
+
+# ==============================================================================
+# Helper Functions
+# ==============================================================================
+
+def _apply_params_to_strategy(strategy_snapshot: schemas.StrategyCreate, params: Dict[str, Any]) -> schemas.StrategyCreate:
+    """
+    Optuna가 제안한 평탄화된 파라미터(예: "long_entry_rules.0.rsi.period": 14)를
+    실제 전략 객체의 중첩된 구조에 동적으로 반영하여 새로운 전략 객체를 반환합니다.
+    """
+    strategy_dict = strategy_snapshot.model_dump()
+    for param_path, value in params.items():
+        parts = param_path.split('.')
+        current = strategy_dict
+        for part in parts[:-1]:
+            if part.isdigit(): part = int(part)
+            if isinstance(current, dict): current = current.get(part)
+            elif isinstance(current, list) and isinstance(part, int) and 0 <= part < len(current): current = current[part]
+            else: current = None; break
+            if current is None: break
+        if current is not None:
+            last = parts[-1]
+            if last.isdigit() and isinstance(current, list): current[int(last)] = value
+            elif isinstance(current, dict): current[last] = value
+    return schemas.StrategyCreate(**strategy_dict)
+
+def _split_data_expanding_window(df: pd.DataFrame, folds: int) -> List[Dict[str, pd.DataFrame]]:
+    """
+    [WFO 헬퍼] 데이터를 확장창(Expanding Window) 방식으로 분할합니다.
+    - 전체 데이터를 (folds + 1)개의 균일한 청크로 나눕니다.
+    - Fold N:
+      - Train(IS): 청크 0 ~ N
+      - Test(OOS): 청크 N+1
+    """
+    n = len(df)
+    chunk_size = n // (folds + 1)
+    splits = []
+    for i in range(folds):
+        train_end = (i + 1) * chunk_size
+        test_end = (i + 2) * chunk_size if i < folds - 1 else n # 마지막 구간은 끝까지 포함
+        
+        splits.append({
+            'train': df.iloc[0:train_end].copy(),
+            'test': df.iloc[train_end:test_end].copy(),
+            'fold_index': i
+        })
+    return splits
+
+
+@celery_app.task(bind=True, name="run_optimization", queue="cpu_bound_queue", acks_late=True)
+def run_optimization(self, job_id: str):
+    """
+    전략 최적화 메인 태스크. General 및 WFO 모드를 모두 지원합니다.
+    """
+    logger.info(f"Starting optimization job: {job_id}")
+    job_uuid = uuid.UUID(job_id)
+    session = SyncSessionLocal()
+    
+    try:
+        # 1. 초기화 및 설정 로드
+        job = session.query(OptimizationJob).filter(OptimizationJob.id == job_uuid).one_or_none()
+        if not job: raise ValueError(f"Optimization Job {job_id} not found.")
+        
+        job.status = OptimizationStatus.RUNNING
+        session.commit()
+        
+        config = schemas.OptimizationConfig.model_validate(job.config)
+        # strategy_snapshot 컬럼이 있다고 가정 (실제 모델에 추가 필요)
+        # 없다면 job.strategy를 사용하여 스냅샷 생성
+        strategy_data = job.strategy_snapshot if hasattr(job, 'strategy_snapshot') and job.strategy_snapshot else schemas.Strategy.model_validate(job.strategy).model_dump()
+        strategy_snapshot = schemas.StrategyCreate.model_validate(strategy_data)
+
+        WebSocketManager.send_status_update(job_id, "running", "데이터 로딩 중...", 5)
+
+        # 2. 데이터 로딩 (단 1회 전체 로딩)
+        target_coin = strategy_snapshot.target_coins[0].ticker if strategy_snapshot.target_coins else "BTCUSDT"
+        base_ohlcv_df = market_data_service.get_historical_data_sync(
+            ticker=target_coin,
+            timeframe='1h', # 최적화는 기본 1시간봉으로 진행 (추후 config에서 설정 가능하도록 확장)
+            start_date=config.start_date,
+            end_date=config.end_date
+        )
+        if base_ohlcv_df.empty:
+             raise ValueError("최적화를 위한 시세 데이터가 충분하지 않습니다.")
+
+        logger.info(f"Loaded {len(base_ohlcv_df)} rows for optimization.")
+
+        # ----------------------------------------------------------------------
+        # 공통 Optuna Objective 함수 Factory
+        # ----------------------------------------------------------------------
+        def create_objective(target_df: pd.DataFrame, current_capital: float, trial_offset: int = 0):
+            def objective(trial: optuna.Trial):
+                # a. 파라미터 샘플링
+                suggested_params = {}
+                for r in config.parameter_ranges:
+                    if isinstance(r.step, int) and isinstance(r.min, int):
+                         suggested_params[r.path] = trial.suggest_int(r.path, int(r.min), int(r.max), step=int(r.step))
+                    else:
+                        suggested_params[r.path] = trial.suggest_float(r.path, r.min, r.max, step=r.step)
+
+                # b. 시그널 재계산 (인메모리)
+                current_strategy = _apply_params_to_strategy(strategy_snapshot, suggested_params)
+                signals_df = signal_service.generate_signals_from_dataframe(
+                    target_df, current_strategy, timeframe='1h'
+                )
+
+                # c. 백테스트 실행
+                engine = BacktestingEngine(
+                    ohlcv_df=target_df,
+                    signals_df=signals_df,
+                    initial_capital=current_capital,
+                    execution_params=config.common_parameters,
+                    strategy_params=current_strategy
+                )
+                result, _ = engine.run()
+
+                # d. 제약 조건 검사 (Pruning)
+                for c in config.constraints:
+                    val = result.get(f"{c.type}_pct" if c.type in ['mdd', 'win_rate'] else c.type, 0)
+                    if c.type == 'min_trades': val = result.get('total_trades', 0)
+                    
+                    if (c.operator == ">=" and val < c.value) or (c.operator == "<=" and val > c.value):
+                        raise optuna.TrialPruned()
+
+                # e. 진행률 업데이트 (옵션)
+                # WFO의 경우 복잡해지므로 단순화된 메시지 전송
+                # WebSocketManager.send_status_update(...) 
+                
+                # 결과 기록
+                trial.set_user_attr("metrics", result)
+                return result.get(config.objective, -9999) # 목표값 반환 (없으면 매우 낮은 값)
+            return objective
+
+        # ----------------------------------------------------------------------
+        # 모드별 실행 로직
+        # ----------------------------------------------------------------------
+        
+        # === CASE 1: 일반 최적화 (General) ===
+        if config.general_settings:
+            WebSocketManager.send_status_update(job_id, "running", "최적화 시작...", 10)
+            
+            n_trials = config.general_settings.trials
+            sampler = optuna.samplers.TPESampler(seed=42)
+            pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
+            study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+            
+            # 전체 데이터에 대해 최적화 실행
+            study.optimize(create_objective(base_ohlcv_df, config.initial_capital), n_trials=n_trials, n_jobs=1)
+
+            # 결과 저장 (Trial 요약)
+            logger.info("Saving General optimization trials...")
+            trial_objects = []
+            for t in study.trials:
+                state = "COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL"
+                trial_objects.append({
+                    "job_id": job_uuid, "trial_number": t.number, "params": t.params,
+                    "metrics": t.user_attrs.get("metrics"), "state": state
+                })
+            session.bulk_insert_mappings(OptimizationTrial, trial_objects)
+            
+            # 최종 결과 업데이트
+            best = study.best_trial
+            job.result_summary = {
+                "best_trial_id": best.number,
+                "best_params": best.params,
+                "best_metrics": best.user_attrs.get("metrics"),
+                "score": best.value
+            }
+
+        # === CASE 2: 워크포워드 최적화 (WFO) ===
+        elif config.wfo_settings:
+            folds = config.wfo_settings.folds
+            trials_per_fold = config.wfo_settings.trials_per_fold
+            splits = _split_data_expanding_window(base_ohlcv_df, folds)
+            
+            wfo_fold_results = []
+            stitched_equity_curve = []
+            current_balance = config.initial_capital
+            
+            global_trial_counter = 0 # 전체 Trial ID 고유성을 위한 카운터
+
+            for i, split in enumerate(splits):
+                fold_idx = i + 1
+                logger.info(f"Starting WFO Fold {fold_idx}/{folds}...")
+                WebSocketManager.send_status_update(job_id, "running", f"WFO 구간 {fold_idx}/{folds} 진행 중...", 10 + int((i / folds) * 80))
+
+                # 1. IS(In-Sample) 최적화
+                sampler = optuna.samplers.TPESampler(seed=42 + i) # 각 폴드마다 다른 시드 사용
+                pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
+                study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+                
+                study.optimize(
+                    create_objective(split['train'], config.initial_capital), # IS는 항상 초기 자본금 기준
+                    n_trials=trials_per_fold, n_jobs=1
+                )
+                
+                # 각 Fold의 Trial 결과 저장 (선택 사항: DB 용량이 걱정되면 생략 가능)
+                trial_objects = []
+                for t in study.trials:
+                    global_trial_counter += 1
+                    state = "COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL"
+                    trial_objects.append({
+                        "job_id": job_uuid, "trial_number": global_trial_counter,
+                        "params": t.params, "metrics": t.user_attrs.get("metrics"), "state": state,
+                        # "fold_index": i  # 모델에 fold_index 컬럼이 있다면 추가
+                    })
+                session.bulk_insert_mappings(OptimizationTrial, trial_objects)
+                session.commit() # 각 폴드 끝날 때마다 커밋
+
+                # 2. OOS(Out-of-Sample) 테스트
+                best_params = study.best_trial.params
+                best_strategy = _apply_params_to_strategy(strategy_snapshot, best_params)
+                
+                oos_signals = signal_service.generate_signals_from_dataframe(split['test'], best_strategy, timeframe='1h')
+                oos_engine = BacktestingEngine(
+                    ohlcv_df=split['test'], signals_df=oos_signals,
+                    initial_capital=current_balance, # [중요] 이전 구간의 최종 잔액을 이어서 사용
+                    execution_params=config.common_parameters, strategy_params=best_strategy
+                )
+                oos_result, _ = oos_engine.run()
+                
+                # 3. 결과 기록
+                current_balance = oos_result['final_equity'] # 잔액 업데이트
+                
+                wfo_fold_results.append({
+                    "fold_index": i,
+                    "is_start": split['train'].index[0].isoformat(),
+                    "is_end": split['train'].index[-1].isoformat(),
+                    "oos_start": split['test'].index[0].isoformat(),
+                    "oos_end": split['test'].index[-1].isoformat(),
+                    "best_params": best_params,
+                    "in_sample_metrics": study.best_trial.user_attrs.get("metrics"),
+                    "out_of_sample_metrics": oos_result
+                })
+                stitched_equity_curve.extend(oos_result.get('pnl_curve_json', []))
+
+            # WFO 최종 결과 저장
+            job.wfo_result = {
+                "folds": wfo_fold_results,
+                "oos_curve": stitched_equity_curve,
+                "final_equity": current_balance,
+                "total_return_pct": ((current_balance - config.initial_capital) / config.initial_capital) * 100
+            }
+            # WFO에서는 '최고의 단일 결과'가 큰 의미가 없을 수 있지만, 형식상 마지막 폴드의 베스트를 넣거나 비워둘 수 있음
+            job.result_summary = {"wfo_completed": True, "final_return": job.wfo_result['total_return_pct']}
+
+        # --- 공통 완료 처리 ---
+        job.status = OptimizationStatus.COMPLETED
+        job.completed_at = datetime.now(timezone.utc)
+        session.commit()
+
+        WebSocketManager.send_status_update(job_id, "completed", "최적화가 완료되었습니다.", 100)
+        logger.info(f"Optimization job {job_id} completed successfully.")
+
+    except Exception as exc:
+        logger.error(f"Optimization job {job_id} failed: {exc}", exc_info=True)
+        try:
+            job.status = OptimizationStatus.FAILED
+            session.commit()
+        except: pass
+        WebSocketManager.send_status_update(job_id, "failed", f"실패: {str(exc)}", 0)
+        # 치명적 오류는 재시도하지 않음 (Optuna 내부 오류 등은 재시도해도 같을 확률이 높음)
+
+    finally:
+        session.close()
 
 # ==============================================================================
 # Part 3: Event-Driven Tasks

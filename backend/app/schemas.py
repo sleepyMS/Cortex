@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
-from .models import PlanType, BacktestStatus
+from .models import PlanType, BacktestStatus, ProductType, InventoryType, OrderStatus, OptimizationStatus, OptimizationType
 import uuid
 import enum
 
@@ -750,9 +750,6 @@ class SignalCalculationResponse(CamelCaseModel):
 # 5. 마켓플레이스 및 인벤토리 관련 스키마
 # ==============================================================================
 
-# models.py에 정의한 Enum들을 import 합니다.
-from .models import ProductType, InventoryType, OrderStatus
-
 # --- API 요청(Request) 스키마 ---
 
 class ProductFilters(CamelCaseModel):
@@ -901,17 +898,6 @@ class BillingKeyRegistrationRequest(CamelCaseModel):
 # 8. 최적화(Optimization) 관련 스키마
 # ==============================================================================
 
-class OptimizationType(str, enum.Enum):
-    GENERAL = "general"
-    WFO = "wfo"
-
-class OptimizationStatus(str, enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELED = "canceled"
-
 class ParameterRange(CamelCaseModel):
     """최적화할 파라미터의 탐색 범위"""
     path: str = Field(..., description="파라미터의 JSON 경로 (e.g., long_entry_rules.0.rsi.period)")
@@ -962,6 +948,18 @@ class OptimizationConfig(CamelCaseModel):
         # optimization_type이 'wfo'일 때 필수 체크 로직 등을 추가할 수 있습니다.
         return v
 
+class OptimizationCostEstimationRequest(CamelCaseModel):
+    """
+    최적화 비용 견적 요청을 위한 스키마.
+    프론트엔드에서 실시간으로 예상 크레딧을 계산하기 위해 보냅니다.
+    """
+    strategy_id: uuid.UUID
+    start_date: datetime
+    end_date: datetime
+    # 총 시도 횟수는 프론트엔드에서 이미 계산해서 보내줍니다.
+    # (일반: general_trials, WFO: wfo_folds * wfo_trials_per_fold)
+    trials: int = Field(..., ge=1, description="총 시도 횟수")
+    
 class OptimizationCreate(CamelCaseModel):
     """
     POST /optimizations 요청 바디 스키마
