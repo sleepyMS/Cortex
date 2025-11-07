@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Float, JSON,
-    ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text, Date
+    ForeignKey, UniqueConstraint, CheckConstraint, Enum, Text, Date, BigInteger
 )
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -145,7 +145,7 @@ class Subscription(Base):
 
 
 # ==============================================================================
-# 2. 전략, 백테스팅, 자동매매 관련 모델
+# 2. 전략, 백테스팅, 최적화, 자동매매 관련 모델
 # ==============================================================================
 
 class Strategy(Base):
@@ -269,6 +269,61 @@ class TradeLog(Base):
 
     backtest = relationship("Backtest", back_populates="trade_logs")
     live_bot = relationship("LiveBot", back_populates="trade_logs")
+
+class OptimizationStatus(str, enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELED = "canceled"
+
+class OptimizationJob(Base):
+    __tablename__ = "optimization_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
+    
+    status = Column(Enum(OptimizationStatus), default=OptimizationStatus.PENDING, nullable=False)
+    type = Column(String(20), nullable=False) # 'general' or 'wfo'
+    
+    # 실행 설정 스냅샷 (목표, 제약조건, 파라미터 범위 등)
+    config = Column(JSONB, nullable=False)
+    
+    # 진행률 정보 (current_step, total_steps)
+    progress = Column(JSONB, default={"current_step": 0, "total_steps": 0})
+    
+    # 최종 결과 요약 (Best Trial ID, 주요 성과 지표)
+    result_summary = Column(JSONB, nullable=True)
+    
+    # WFO 전용 결과 (OOS 커브 데이터 등)
+    wfo_result = Column(JSONB, nullable=True)
+
+    start_date = Column(DateTime(timezone=True), nullable=False)
+    end_date = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # 관계 정의
+    user = relationship("User")
+    strategy = relationship("Strategy")
+    trials = relationship("OptimizationTrial", back_populates="job", cascade="all, delete-orphan")
+
+class OptimizationTrial(Base):
+    """개별 시도(Trial)의 요약 정보를 저장하는 경량 테이블"""
+    __tablename__ = "optimization_trials"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True) # 많은 양이 쌓일 수 있으므로 BigInt 사용 고려
+    job_id = Column(UUID(as_uuid=True), ForeignKey("optimization_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    trial_number = Column(Integer, nullable=False)
+    
+    params = Column(JSONB, nullable=False) # 사용된 파라미터 조합
+    metrics = Column(JSONB, nullable=True) # 수익률, MDD, 점수 등 핵심 지표만
+    state = Column(String(20), nullable=False) # COMPLETE, PRUNED, FAIL
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    job = relationship("OptimizationJob", back_populates="trials")
 
 class ApiKey(Base):
     """사용자의 거래소 API 키 모델 (암호화 저장 필수)"""

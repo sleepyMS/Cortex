@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
 from .models import PlanType, BacktestStatus
 import uuid
+import enum
 
 from .sanitizers import sanitize_html
 
@@ -896,3 +897,143 @@ class BillingKeyRegistrationRequest(CamelCaseModel):
     auth_key: str = Field(..., description="Toss Payments 프론트엔드 SDK로부터 받은 임시 인증 키")
 
 
+# ==============================================================================
+# 8. 최적화(Optimization) 관련 스키마
+# ==============================================================================
+
+class OptimizationType(str, enum.Enum):
+    GENERAL = "general"
+    WFO = "wfo"
+
+class OptimizationStatus(str, enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELED = "canceled"
+
+class ParameterRange(CamelCaseModel):
+    """최적화할 파라미터의 탐색 범위"""
+    path: str = Field(..., description="파라미터의 JSON 경로 (e.g., long_entry_rules.0.rsi.period)")
+    min: float
+    max: float
+    step: float
+
+class OptimizationConstraint(CamelCaseModel):
+    """최적화 제약 조건 (Pruning 기준)"""
+    type: Literal["mdd", "min_trades", "win_rate", "profit_factor"]
+    operator: Literal[">=", "<="]
+    value: float
+
+class WFOSettings(CamelCaseModel):
+    """워크포워드 최적화 전용 설정"""
+    folds: int = Field(..., ge=2, description="전체 기간을 나눌 구간 수")
+    trials_per_fold: int = Field(..., ge=1, description="각 구간별 시도 횟수")
+    window_type: Literal["expanding", "sliding"] = Field("expanding", description="윈도우 방식")
+
+class GeneralSettings(CamelCaseModel):
+    """일반 최적화 전용 설정"""
+    trials: int = Field(..., ge=1, description="총 시도 횟수")
+
+class OptimizationConfig(CamelCaseModel):
+    """
+    최적화 실행 설정 스냅샷.
+    DB의 'OptimizationJob.config' JSONB 컬럼에 이 구조 그대로 저장됩니다.
+    """
+    objective: str = Field(..., description="1순위 최적화 목표 (e.g., 'cortex_score')")
+    start_date: datetime
+    end_date: datetime
+    initial_capital: float
+    
+    # 실행 공통 파라미터 (레버리지, 수수료 등)
+    common_parameters: BacktestExecutionParameters 
+    
+    # 탐색 공간 및 제약 조건
+    parameter_ranges: List[ParameterRange]
+    constraints: List[OptimizationConstraint] = Field(default_factory=list)
+    
+    # 타입별 세부 설정 (둘 중 하나는 반드시 존재해야 함)
+    general_settings: Optional[GeneralSettings] = None
+    wfo_settings: Optional[WFOSettings] = None
+
+    @field_validator('wfo_settings')
+    @classmethod
+    def validate_wfo_settings(cls, v, values):
+        # optimization_type이 'wfo'일 때 필수 체크 로직 등을 추가할 수 있습니다.
+        return v
+
+class OptimizationCreate(CamelCaseModel):
+    """
+    POST /optimizations 요청 바디 스키마
+    """
+    strategy_id: uuid.UUID
+    optimization_type: OptimizationType
+    
+    # 설정 정보 평탄화(Flatten) 수신 후 내부적으로 Config 객체 조립
+    start_date: datetime
+    end_date: datetime
+    objective: str
+    constraints: List[OptimizationConstraint] = []
+    parameter_ranges: List[ParameterRange]
+    common_parameters: BacktestExecutionParameters
+    
+    # 탭에 따라 선택적으로 전달되는 설정들
+    general_settings: Optional[GeneralSettings] = None
+    wfo_settings: Optional[WFOSettings] = None
+
+class TrialMetric(CamelCaseModel):
+    """단일 시도의 핵심 성과 지표 (가벼운 버전)"""
+    total_return_pct: float
+    mdd_pct: float
+    win_rate_pct: float
+    backtest_score: float
+    # 필요에 따라 추가 (sharpe_ratio 등)
+
+class TrialData(CamelCaseModel):
+    """
+    단일 최적화 시도(Trial)의 상세 정보.
+    DB의 'OptimizationTrial' 테이블과 매핑됩니다.
+    """
+    trial_id: int
+    job_id: uuid.UUID
+    params: Dict[str, Any] # 사용된 파라미터 조합
+    metrics: Optional[TrialMetric] = None # Pruned/Failed 시 없을 수 있음
+    state: Literal["COMPLETE", "PRUNED", "FAIL"]
+    created_at: datetime
+
+class OptimizationProgress(CamelCaseModel):
+    current_step: int = 0
+    total_steps: int = 0
+    message: Optional[str] = None
+
+class OptimizationJobSummary(CamelCaseModel):
+    """목록 조회용 가벼운 최적화 작업 정보"""
+    id: uuid.UUID
+    status: OptimizationStatus
+    type: OptimizationType
+    strategy: StrategySummary # 기존 StrategySummary 재사용
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    best_result_summary: Optional[TrialMetric] = None # 목록에서 보여줄 간단한 최고 성과
+
+class OptimizationJobDetail(OptimizationJobSummary):
+    """
+    상세 조회용 완전한 최적화 작업 정보.
+    프론트엔드의 'OptimizationJobDetail' 타입과 일치합니다.
+    """
+    config: OptimizationConfig
+    progress: Optional[OptimizationProgress] = None
+    
+    # 최적 결과 (전체 시도 중 1위)
+    best_trial: Optional[TrialData] = None
+    
+    # WFO 전용 결과 데이터 (JSONB 내용을 그대로 전달)
+    wfo_result: Optional[Dict[str, Any]] = None 
+    
+    # Tier 2 분석 데이터
+    parameter_importance: Optional[List[Dict[str, Any]]] = None
+    
+    # 모든 시도 데이터 (대용량 주의, 필요시 페이지네이션 적용)
+    trials: List[TrialData] = Field(default_factory=list)
+    
+    used_credits: Optional[int] = None
