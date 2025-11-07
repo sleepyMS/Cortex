@@ -70,9 +70,15 @@ import {
 
 interface TrialsTableProps {
   trials: TrialData[];
+  hoveredTrialId?: number | null;
+  onHoverTrial?: (id: number | null) => void;
 }
 
-export const TrialsTable = ({ trials }: TrialsTableProps) => {
+export const TrialsTable = ({
+  trials,
+  hoveredTrialId,
+  onHoverTrial,
+}: TrialsTableProps) => {
   const t = useTranslations("OptimizationDetailPage.TrialsTable");
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "score", desc: true }, // 기본값: 점수 내림차순 정렬
@@ -326,10 +332,13 @@ export const TrialsTable = ({ trials }: TrialsTableProps) => {
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
                     className={cn(
-                      // PRUNED나 FAIL된 행은 약간 흐리게 표시
+                      "cursor-pointer transition-colors",
+                      hoveredTrialId === row.original.trialId && "bg-muted/50",
                       row.original.state !== "COMPLETE" &&
                         "opacity-60 bg-muted/20"
                     )}
+                    onMouseEnter={() => onHoverTrial?.(row.original.trialId)}
+                    onMouseLeave={() => onHoverTrial?.(null)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className="py-2">

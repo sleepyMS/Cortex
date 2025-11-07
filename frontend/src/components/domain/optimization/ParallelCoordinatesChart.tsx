@@ -27,6 +27,8 @@ interface ParallelCoordinatesChartProps {
    * 색상 기준이 될 메트릭 키 (기본값: backtestScore)
    */
   colorMetric?: keyof TrialData["metrics"];
+  hoveredTrialId?: number | null;
+  onHoverTrial?: (id: number | null) => void;
 }
 
 // --- 내부 상수 및 헬퍼 ---
@@ -59,10 +61,11 @@ const getLineOpacity = (score: number, maxScore: number) => {
 export const ParallelCoordinatesChart = ({
   trials,
   colorMetric = "backtestScore",
+  hoveredTrialId,
+  onHoverTrial,
 }: ParallelCoordinatesChartProps) => {
   const { resolvedTheme } = useTheme();
   const t = useTranslations("OptimizationDetailPage.DetailedAnalysis");
-  const [hoveredTrialId, setHoveredTrialId] = useState<number | null>(null);
 
   const isDark = resolvedTheme === "dark";
 
@@ -214,8 +217,8 @@ export const ParallelCoordinatesChart = ({
                     strokeWidth={isHovered ? 3 : 1.5}
                     strokeOpacity={opacity}
                     className="transition-all duration-200 ease-in-out cursor-pointer"
-                    onMouseEnter={() => setHoveredTrialId(trial.trialId)}
-                    onMouseLeave={() => setHoveredTrialId(null)}
+                    onMouseEnter={() => onHoverTrial?.(trial.trialId)}
+                    onMouseLeave={() => onHoverTrial?.(null)}
                   >
                     <title>
                       {`Trial #${trial.trialId}: Score ${score.toFixed(1)}`}

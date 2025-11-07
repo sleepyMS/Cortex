@@ -109,7 +109,7 @@ const formatRuleTitle = (
       case "pattern":
         return t("ruleTitles.default", { type: tRule("pattern") });
       default:
-        return t("ruleTitles.default", { type: block.type });
+        return t("ruleTitles.default", { type: (block as any).type });
     }
   } catch (e) {
     return t("ruleParseError");

@@ -25,7 +25,7 @@ export interface TrialData {
   trialId: number;
   /**
    * 이 시도에 사용된 파라미터 조합 (Key-Value)
-   * 예: { "longEntryRules.0.rsiPeriod": 14, "tpslLogic.stopLossPct": 2.5 }
+   * 예: { "longEntryRules.0.rsi.period": 14, "tpslLogic.stopLossPct": 2.5 }
    */
   params: Record<string, number | string | boolean>;
   /**
@@ -33,7 +33,7 @@ export interface TrialData {
    */
   metrics: BacktestResult;
   /**
-   * 시도의 최종 상태 (Pruned는 조기 중단됨을 의미)
+   * 시도의 최종 상태 (PRUNED는 조기 중단됨을 의미)
    */
   state: "COMPLETE" | "PRUNED" | "FAIL";
   createdAt: string;
@@ -89,10 +89,16 @@ export interface OptimizationConfig {
     fee: number;
     slippage: number;
   };
-  // WFO 전용 설정 (일반 최적화일 경우 null 또는 무시)
+  // 2순위 제약 조건
+  constraints?: Array<{
+    type: string;
+    operator: ">=" | "<=";
+    value: number;
+  }>;
+  // WFO 전용 설정 (일반 최적화일 경우 optional)
   wfoSettings?: {
     folds: number;
-    windowType: "expanding" | "sliding";
+    windowType?: "expanding" | "sliding"; // 확장창 또는 고정창
   };
 }
 
@@ -110,7 +116,7 @@ export interface OptimizationJobDetail {
   strategy: Strategy;
 
   /**
-   * 최적화 실행 당시의 설정 정보
+   * 최적화 실행 당시의 설정 정보 스냅샷
    */
   config: OptimizationConfig;
 
@@ -125,18 +131,17 @@ export interface OptimizationJobDetail {
 
   /**
    * 전체 시도 중 가장 뛰어난 단일 결과 (일반/WFO 공통)
-   * 일반 최적화: 전체 기간에 대한 최고 결과
-   * WFO: 전체 OOS 기간을 통틀어 가장 좋았던 단일 시도(개념적으로 WFO에선 덜 중요할 수 있음)
    */
   bestTrial?: TrialData;
 
   /**
-   * WFO 전용 결과 데이터
+   * WFO 전용 결과 데이터 (일반 최적화에서는 없음)
    */
   wfoResult?: {
     /**
      * OOS 수익 곡선 차트 데이터 (lightweight-charts 형식 호환)
-     * 예: [{ time: '2023-01-01', value: 10000 }, ...]
+     * 예: [{ time: 1672531200, value: 10000 }, ...]
+     * UTCTimestamp 타입을 사용하려면 사용하는 곳에서 타입 단언 필요
      */
     oosCurveJson: Array<{ time: string | number; value: number }>;
     /**
@@ -150,8 +155,14 @@ export interface OptimizationJobDetail {
    */
   parameterImportance?: Array<{
     param: string;
-    importance: number; // 0.0 ~ 1.0
+    importance: number; // 0.0 ~ 1.0 사이의 값
   }>;
+
+  /**
+   * (Tier 2 분석용) 전체 시도 데이터 목록
+   * 대용량일 수 있으므로 필요에 따라 페이지네이션 처리될 수 있음
+   */
+  trials?: TrialData[];
 
   createdAt: string;
   completedAt?: string;
@@ -160,21 +171,4 @@ export interface OptimizationJobDetail {
    * 이 작업에 소모된 실제 크레딧
    */
   usedCredits?: number;
-}
-
-export interface OptimizationJob {
-  id: string;
-  status: "completed" | "running" | "pending" | "failed" | "canceled";
-  type: "general" | "wfo"; // [중요] 일반/WFO 구분
-  strategy: Strategy;
-  progress: {
-    current_step: number; // e.g., 700 (trials) or 7 (folds)
-    total_steps: number; // e.g., 1000 (trials) or 10 (folds)
-  } | null;
-  bestResult: {
-    cortexScore: number | null;
-    totalReturnPct: number | null;
-    mddPct: number | null;
-  } | null;
-  createdAt: string;
 }
