@@ -98,8 +98,7 @@ class OptimizationService:
             .filter_by(id=job_id, user_id=user_id)
             .options(
                 selectinload(models.OptimizationJob.strategy), # 전략 정보 Eager Loading
-                # 트라이얼 목록도 필요하다면 함께 로드 (대용량 주의: 필요한 경우 별도 API로 분리)
-                # selectinload(models.OptimizationJob.trials) 
+                selectinload(models.OptimizationJob.trials) 
             )
         )
         result = await db.execute(query)

@@ -743,7 +743,7 @@ def run_optimization(self, job_id: str):
         # ----------------------------------------------------------------------
         # 공통 Optuna Objective 함수 Factory
         # ----------------------------------------------------------------------
-        def create_objective(target_df: pd.DataFrame, current_capital: float, trial_offset: int = 0):
+        def create_objective(target_df: pd.DataFrame, current_capital: float, total_trials_for_progress: int, start_trial_num: int = 0):
             def objective(trial: optuna.Trial):
                 # a. 파라미터 샘플링
                 suggested_params = {}
@@ -773,13 +773,20 @@ def run_optimization(self, job_id: str):
                 for c in config.constraints:
                     val = result.get(f"{c.type}_pct" if c.type in ['mdd', 'win_rate'] else c.type, 0)
                     if c.type == 'min_trades': val = result.get('total_trades', 0)
+                    elif c.type == 'profit_factor': val = result.get('profit_factor', 0)
                     
                     if (c.operator == ">=" and val < c.value) or (c.operator == "<=" and val > c.value):
                         raise optuna.TrialPruned()
 
-                # e. 진행률 업데이트 (옵션)
-                # WFO의 경우 복잡해지므로 단순화된 메시지 전송
-                # WebSocketManager.send_status_update(...) 
+                # e. 진행률 업데이트 (매 10번째 시도마다)
+                current_trial_num = start_trial_num + trial.number
+                if current_trial_num % 10 == 0:
+                    progress_pct = int((current_trial_num / total_trials_for_progress) * 100)
+                    WebSocketManager.send_status_update(
+                        job_id, "running", 
+                        f"진행 중... ({current_trial_num}/{total_trials_for_progress})", 
+                        max(10, min(99, progress_pct))
+                    )
                 
                 # 결과 기록
                 trial.set_user_attr("metrics", result)
@@ -790,6 +797,9 @@ def run_optimization(self, job_id: str):
         # 모드별 실행 로직
         # ----------------------------------------------------------------------
         
+        # 메인 Study 변수 (나중에 파라미터 중요도 계산에 사용)
+        main_study = None 
+
         # === CASE 1: 일반 최적화 (General) ===
         if config.general_settings:
             WebSocketManager.send_status_update(job_id, "running", "최적화 시작...", 10)
@@ -797,24 +807,28 @@ def run_optimization(self, job_id: str):
             n_trials = config.general_settings.trials
             sampler = optuna.samplers.TPESampler(seed=42)
             pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
-            study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+            main_study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
             
             # 전체 데이터에 대해 최적화 실행
-            study.optimize(create_objective(base_ohlcv_df, config.initial_capital), n_trials=n_trials, n_jobs=1)
+            main_study.optimize(
+                create_objective(base_ohlcv_df, config.initial_capital, n_trials), 
+                n_trials=n_trials, n_jobs=1
+            )
 
             # 결과 저장 (Trial 요약)
             logger.info("Saving General optimization trials...")
             trial_objects = []
-            for t in study.trials:
+            for t in main_study.trials:
                 state = "COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL"
                 trial_objects.append({
                     "job_id": job_uuid, "trial_number": t.number, "params": t.params,
                     "metrics": t.user_attrs.get("metrics"), "state": state
                 })
+            # 대량 데이터 삽입
             session.bulk_insert_mappings(OptimizationTrial, trial_objects)
             
             # 최종 결과 업데이트
-            best = study.best_trial
+            best = main_study.best_trial
             job.result_summary = {
                 "best_trial_id": best.number,
                 "best_params": best.params,
@@ -826,6 +840,8 @@ def run_optimization(self, job_id: str):
         elif config.wfo_settings:
             folds = config.wfo_settings.folds
             trials_per_fold = config.wfo_settings.trials_per_fold
+            total_wfo_trials = folds * trials_per_fold
+
             splits = _split_data_expanding_window(base_ohlcv_df, folds)
             
             wfo_fold_results = []
@@ -837,45 +853,52 @@ def run_optimization(self, job_id: str):
             for i, split in enumerate(splits):
                 fold_idx = i + 1
                 logger.info(f"Starting WFO Fold {fold_idx}/{folds}...")
-                WebSocketManager.send_status_update(job_id, "running", f"WFO 구간 {fold_idx}/{folds} 진행 중...", 10 + int((i / folds) * 80))
+                # 각 폴드 시작 시 진행률 업데이트 (전체 진행률 기준)
+                start_progress = 10 + int((i / folds) * 80)
+                WebSocketManager.send_status_update(job_id, "running", f"WFO 구간 {fold_idx}/{folds} 진행 중...", start_progress)
 
                 # 1. IS(In-Sample) 최적화
-                sampler = optuna.samplers.TPESampler(seed=42 + i) # 각 폴드마다 다른 시드 사용
+                # 각 폴드마다 새로운 Study를 생성하여 이전 학습 내용에 영향을 받지 않도록 함
+                sampler = optuna.samplers.TPESampler(seed=42 + i) 
                 pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
-                study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+                current_study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
                 
-                study.optimize(
-                    create_objective(split['train'], config.initial_capital), # IS는 항상 초기 자본금 기준
+                # 마지막 폴드의 study를 main_study로 지정하여 파라미터 중요도 계산에 사용 (선택 사항)
+                if i == folds - 1:
+                    main_study = current_study
+
+                current_study.optimize(
+                    create_objective(split['train'], config.initial_capital, total_wfo_trials, global_trial_counter),
                     n_trials=trials_per_fold, n_jobs=1
                 )
                 
-                # 각 Fold의 Trial 결과 저장 (선택 사항: DB 용량이 걱정되면 생략 가능)
+                # 각 Fold의 Trial 결과 저장
                 trial_objects = []
-                for t in study.trials:
+                for t in current_study.trials:
                     global_trial_counter += 1
                     state = "COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL"
                     trial_objects.append({
                         "job_id": job_uuid, "trial_number": global_trial_counter,
                         "params": t.params, "metrics": t.user_attrs.get("metrics"), "state": state,
-                        # "fold_index": i  # 모델에 fold_index 컬럼이 있다면 추가
+                        # "fold_index": i  # 모델에 fold_index 컬럼이 있다면 추가 권장
                     })
                 session.bulk_insert_mappings(OptimizationTrial, trial_objects)
-                session.commit() # 각 폴드 끝날 때마다 커밋
+                session.commit() # 각 폴드 끝날 때마다 커밋하여 데이터 손실 방지
 
                 # 2. OOS(Out-of-Sample) 테스트
-                best_params = study.best_trial.params
+                best_params = current_study.best_trial.params
                 best_strategy = _apply_params_to_strategy(strategy_snapshot, best_params)
                 
                 oos_signals = signal_service.generate_signals_from_dataframe(split['test'], best_strategy, timeframe='1h')
                 oos_engine = BacktestingEngine(
                     ohlcv_df=split['test'], signals_df=oos_signals,
-                    initial_capital=current_balance, # [중요] 이전 구간의 최종 잔액을 이어서 사용
+                    initial_capital=current_balance, # [핵심] 이전 구간의 최종 잔액을 이어서 사용
                     execution_params=config.common_parameters, strategy_params=best_strategy
                 )
                 oos_result, _ = oos_engine.run()
                 
                 # 3. 결과 기록
-                current_balance = oos_result['final_equity'] # 잔액 업데이트
+                current_balance = oos_result['final_equity'] # 다음 구간 시작 잔액 업데이트
                 
                 wfo_fold_results.append({
                     "fold_index": i,
@@ -884,9 +907,10 @@ def run_optimization(self, job_id: str):
                     "oos_start": split['test'].index[0].isoformat(),
                     "oos_end": split['test'].index[-1].isoformat(),
                     "best_params": best_params,
-                    "in_sample_metrics": study.best_trial.user_attrs.get("metrics"),
+                    "in_sample_metrics": current_study.best_trial.user_attrs.get("metrics"),
                     "out_of_sample_metrics": oos_result
                 })
+                # 자산 곡선 이어붙이기 (시간순 정렬 보장 필요)
                 stitched_equity_curve.extend(oos_result.get('pnl_curve_json', []))
 
             # WFO 최종 결과 저장
@@ -896,8 +920,29 @@ def run_optimization(self, job_id: str):
                 "final_equity": current_balance,
                 "total_return_pct": ((current_balance - config.initial_capital) / config.initial_capital) * 100
             }
-            # WFO에서는 '최고의 단일 결과'가 큰 의미가 없을 수 있지만, 형식상 마지막 폴드의 베스트를 넣거나 비워둘 수 있음
-            job.result_summary = {"wfo_completed": True, "final_return": job.wfo_result['total_return_pct']}
+            # WFO에서는 '최고의 단일 결과'가 애매하므로 최종 수익률 등으로 대체
+            job.result_summary = {
+                "wfo_completed": True, 
+                "final_return_pct": job.wfo_result['total_return_pct'],
+                "final_equity": current_balance
+            }
+
+        # --- 파라미터 중요도 계산 (공통) ---
+        # main_study가 존재하는 경우에만 계산 (WFO의 경우 마지막 폴드 기준 또는 전체 통합 데이터 기준 가능)
+        if main_study:
+            try:
+                importance_dict = optuna.importance.get_param_importances(main_study)
+                parameter_importance = [
+                    {"param": key, "importance": value} 
+                    for key, value in importance_dict.items()
+                ]
+                # 기존 result_summary에 중요도 정보 추가
+                if job.result_summary:
+                    job.result_summary["parameter_importance"] = parameter_importance
+                else:
+                    job.result_summary = {"parameter_importance": parameter_importance}
+            except Exception as e:
+                logger.warning(f"Could not calculate parameter importance: {e}")
 
         # --- 공통 완료 처리 ---
         job.status = OptimizationStatus.COMPLETED
