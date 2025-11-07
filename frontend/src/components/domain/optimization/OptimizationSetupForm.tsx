@@ -20,20 +20,19 @@ import Link from "next/link";
 import {
   PlusCircle,
   Loader2,
-  Lock,
   Zap,
   BarChartHorizontal,
-  SlidersHorizontal,
   X,
   Receipt,
   Tag,
   Percent,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import debounce from "lodash.debounce";
 
 import apiClient from "@/lib/apiClient";
-import { Strategy, LogicBlock, IndicatorValue } from "@/types/strategy";
+import { Strategy, LogicBlock } from "@/types/strategy";
 import { IndicatorMetadata } from "@/types/indicator";
 import { cn } from "@/lib/utils";
 import { useIndicatorStore } from "@/store/indicatorStore";
@@ -67,18 +66,17 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
-import { Badge } from "@/components/ui/Badge";
 import { Separator } from "@/components/ui/Separator";
 import { DateRangePickerCustom } from "@/components/ui/DateRangePickerCustom";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
-import { OptimizationParameterTreeView } from "./OptimizationParameterTreeView"; // 신규 컴포넌트
+import { OptimizationParameterTreeView } from "./OptimizationParameterTreeView";
 
 // --- Zod 폼 유효성 검사 스키마 ---
 
@@ -89,8 +87,10 @@ const constraintSchema = z.object({
   value: z.coerce.number(),
 });
 
+// 파라미터 범위 스키마 (선택 여부 포함)
 const parameterRangeSchema = z.object({
   path: z.string(),
+  isSelected: z.boolean().default(false), // 최적화 대상 여부
   min: z.coerce.number(),
   max: z.coerce.number(),
   step: z.coerce.number().min(0.000001, "스텝은 0보다 커야 합니다."),
@@ -141,18 +141,24 @@ const formSchema = z
   })
   .refine(
     (data) => {
-      // WFO 탭일 때 훈련 기간이 OOS 기간보다 짧은 경우 방지
-      if (data.currentTab === "wfo") {
+      // WFO 탭일 때 훈련 기간이 너무 짧아지는 경우 방지
+      if (
+        data.currentTab === "wfo" &&
+        data.dateRange.from &&
+        data.dateRange.to
+      ) {
         const totalDays =
           (data.dateRange.to.getTime() - data.dateRange.from.getTime()) /
           (1000 * 3600 * 24);
+        // 확장창 기준: 첫 훈련 기간은 총 기간 / 구간 수
         const firstISDays = totalDays / data.wfo_folds;
-        return firstISDays > 1; // 최소 1일 이상은 되도록
+        return firstISDays >= 7; // 최소 1주일은 되도록 강제
       }
       return true;
     },
     {
-      message: "총 기간에 비해 구간(Folds) 수가 너무 많습니다.",
+      message:
+        "총 기간에 비해 구간(Folds) 수가 너무 많아 훈련 기간이 너무 짧습니다.",
       path: ["wfo_folds"],
     }
   );
@@ -171,12 +177,11 @@ interface CostEstimationResponse {
 // --- 메인 컴포넌트 ---
 export function OptimizationSetupForm() {
   const t = useTranslations("OptimizationSetupForm");
-  const tCommon = useTranslations("Common");
   const router = useRouter();
   const queryClient = useQueryClient();
   const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
 
-  // 지표 메타데이터 로드 (BacktestSetupForm과 동일)
+  // 지표 메타데이터 로드
   const { metadata: indicatorMetadataArray, isLoaded } = useIndicatorStore();
   const indicatorDefinitions = useMemo(() => {
     if (!isLoaded) return {};
@@ -209,7 +214,7 @@ export function OptimizationSetupForm() {
     },
   });
 
-  const { control, watch, setValue } = methods;
+  const { control, watch, setValue, formState } = methods;
 
   // 제약 조건 필드 배열
   const {
@@ -233,6 +238,7 @@ export function OptimizationSetupForm() {
     wfo_folds,
     general_trials,
     wfo_trialsPerFold,
+    parameterRanges,
   } = watchedValues;
 
   // --- 동적 1회 훈련 기간 계산 (핵심 로직) ---
@@ -242,13 +248,15 @@ export function OptimizationSetupForm() {
     const totalDays =
       (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24);
 
+    if (totalDays <= 0) return { months: 0, text: "N/A" };
+
     if (currentTab === "general") {
       return {
         months: totalDays / 30.44,
         text: t("trainingPeriod.general", { days: totalDays.toFixed(0) }),
       };
     } else {
-      if (!wfo_folds || wfo_folds < 2) return { months: 0, text: "N/A" };
+      if (!wfo_folds || wfo_folds < 1) return { months: 0, text: "N/A" };
       // 확장창 기준: 첫 훈련(IS)은 총 기간의 1/N
       const firstISDays = totalDays / wfo_folds;
       return {
@@ -260,7 +268,17 @@ export function OptimizationSetupForm() {
 
   const isShortTrainPeriod = trainingPeriodInfo.months < 12;
 
-  // --- 총 시도 횟수 계산 ---
+  // 훈련 기간이 짧아지면 연율화 목표가 선택되어 있을 경우 기본값으로 강제 변경
+  useEffect(() => {
+    const currentObjective = methods.getValues("objective");
+    const annualizedObjectives = ["cortexScore", "CAGR", "sortino", "calmar"];
+    if (isShortTrainPeriod && annualizedObjectives.includes(currentObjective)) {
+      setValue("objective", "totalReturnPct");
+      toast.info(t("objectives.autoChangedToTotalReturn"));
+    }
+  }, [isShortTrainPeriod, setValue, methods, t]);
+
+  // --- 총 시도 횟수 및 선택된 파라미터 수 계산 ---
   const totalEstimatedTrials = useMemo(() => {
     if (currentTab === "general") {
       return general_trials || 0;
@@ -269,7 +287,11 @@ export function OptimizationSetupForm() {
     }
   }, [currentTab, general_trials, wfo_folds, wfo_trialsPerFold]);
 
-  // --- 데이터 쿼리 (BacktestSetupForm과 동일) ---
+  const selectedParamsCount = useMemo(() => {
+    return parameterRanges?.filter((r) => r.isSelected)?.length || 0;
+  }, [parameterRanges]);
+
+  // --- 데이터 쿼리 ---
   const { data: strategies, isLoading: isLoadingStrategies } = useQuery<
     Strategy[]
   >({
@@ -285,7 +307,8 @@ export function OptimizationSetupForm() {
       enabled: !!strategyId,
     });
 
-  // --- 파라미터 범위 필드 동적 교체 (BacktestSetupForm 로직 수정) ---
+  // --- 파라미터 범위 필드 초기화 ---
+  // 전략이 변경되면 모든 숫자형 파라미터를 추출하여 초기화합니다.
   const replaceRangesRef = useRef(replaceRanges);
   useEffect(() => {
     replaceRangesRef.current = replaceRanges;
@@ -301,21 +324,26 @@ export function OptimizationSetupForm() {
     const extractParamsRecursive = (
       blocks: LogicBlock[],
       pathPrefix: string
-    ): Omit<z.infer<typeof parameterRangeSchema>, "id">[] => {
-      let params: Omit<z.infer<typeof parameterRangeSchema>, "id">[] = [];
+    ): z.infer<typeof parameterRangeSchema>[] => {
+      let params: z.infer<typeof parameterRangeSchema>[] = [];
       blocks.forEach((block, index) => {
         const currentPath = `${pathPrefix}.${index}`;
         for (const key in block) {
           if (key === "children" || key === "id" || key === "type") continue;
           const value = (block as any)[key];
 
+          // 파라미터 추가 헬퍼 함수
           const addParam = (val: number, path: string) => {
-            const step = Math.max(0.0001, Math.abs(val * 0.1));
+            // 초기값: 선택 안됨(false), Min/Max는 현재값, Step은 10% 또는 0.0001
             params.push({
               path: path,
+              isSelected: false,
               min: val,
               max: val,
-              step: step,
+              step: Math.max(
+                0.0001,
+                Number((Math.abs(val) * 0.1).toPrecision(2))
+              ),
             });
           };
 
@@ -350,7 +378,7 @@ export function OptimizationSetupForm() {
       return params;
     };
 
-    let allParams: Omit<z.infer<typeof parameterRangeSchema>, "id">[] = [];
+    let allParams: z.infer<typeof parameterRangeSchema>[] = [];
     const ruleKeys: (keyof Strategy)[] = [
       "longEntryRules",
       "longExitRules",
@@ -371,9 +399,13 @@ export function OptimizationSetupForm() {
         if (typeof value === "number") {
           allParams.push({
             path: `tpslLogic.${key}`,
+            isSelected: false,
             min: value,
             max: value,
-            step: Math.max(0.0001, Math.abs(value * 0.1)),
+            step: Math.max(
+              0.0001,
+              Number((Math.abs(value) * 0.1).toPrecision(2))
+            ),
           });
         }
       }
@@ -381,22 +413,21 @@ export function OptimizationSetupForm() {
     currentReplace(allParams);
   }, [selectedStrategy]);
 
-  // --- 비용 예측 로직 (BacktestSetupForm 로직 수정) ---
+  // --- 비용 예측 로직 ---
   const [estimation, setEstimation] = useState<CostEstimationResponse | null>(
     null
   );
   const { mutate: estimateCost, isPending: isEstimatingCost } = useMutation({
-    mutationFn: async (variables: FormValues & { trials: number }) => {
+    mutationFn: async (variables: { trials: number }) => {
+      // 필요한 최소 정보만 전송하여 비용 계산
       const payload = {
-        strategyId: variables.strategyId,
-        startDate: variables.dateRange.from.toISOString(),
-        endDate: variables.dateRange.to.toISOString(),
-        // 백엔드 API가 이 값들을 기반으로 비용 계산 (cost_calculator.py 참고)
+        strategyId: watchedValues.strategyId,
+        startDate: watchedValues.dateRange.from.toISOString(),
+        endDate: watchedValues.dateRange.to.toISOString(),
         trials: variables.trials,
-        // TODO: min_timeframe_minutes도 전략에서 추출하여 전송해야 함
       };
       const { data } = await apiClient.post(
-        "/optimizations/estimate-cost", // API 엔드포인트 변경
+        "/optimizations/estimate-cost",
         payload
       );
       return data as CostEstimationResponse;
@@ -406,37 +437,43 @@ export function OptimizationSetupForm() {
   });
 
   const debouncedEstimateCost = useCallback(
-    debounce((values: FormValues, trials: number) => {
+    debounce((trials: number) => {
       if (
-        !values.strategyId ||
-        !values.dateRange?.from ||
-        !values.dateRange?.to ||
+        !watchedValues.strategyId ||
+        !watchedValues.dateRange?.from ||
+        !watchedValues.dateRange?.to ||
         trials <= 0
       ) {
         setEstimation(null);
         return;
       }
-      estimateCost({ ...values, trials });
+      estimateCost({ trials });
     }, 500),
-    [estimateCost]
+    [estimateCost, watchedValues.strategyId, watchedValues.dateRange]
   );
 
   useEffect(() => {
-    debouncedEstimateCost(watchedValues, totalEstimatedTrials);
-  }, [watchedValues, totalEstimatedTrials, debouncedEstimateCost]);
+    debouncedEstimateCost(totalEstimatedTrials);
+  }, [totalEstimatedTrials, debouncedEstimateCost]);
 
   // --- 제출 로직 ---
   const createOptimizationMutation = useMutation({
     mutationFn: (data: FormValues) => {
+      // 실제 최적화할 파라미터만 필터링
+      const selectedRanges = data.parameterRanges.filter((r) => r.isSelected);
+
+      if (selectedRanges.length === 0) {
+        throw new Error(t("errors.noParametersSelected"));
+      }
+
       const payload = {
-        ...data,
+        strategyId: data.strategyId,
         startDate: data.dateRange.from.toISOString(),
         endDate: data.dateRange.to.toISOString(),
-        // 폼 데이터를 API 명세에 맞게 재구성
         optimizationType: data.currentTab,
         settings: {
           [data.currentTab]: {
-            trials: data.general_trials, // API가 알아서 구분하거나, 분리해서 전송
+            trials: data.general_trials,
             folds: data.wfo_folds,
             trialsPerFold: data.wfo_trialsPerFold,
           },
@@ -447,7 +484,8 @@ export function OptimizationSetupForm() {
           operator: c.operator,
           value: c.value,
         })),
-        parameterRanges: data.parameterRanges.map((r) => ({
+        // 선택된 범위만 전송
+        parameterRanges: selectedRanges.map((r) => ({
           path: r.path,
           min: r.min,
           max: r.max,
@@ -460,27 +498,23 @@ export function OptimizationSetupForm() {
           slippage: data.slippagePct,
         },
       };
-      // 불필요한 키 제거
-      delete (payload as any).dateRange;
-      delete (payload as any).currentTab;
-      delete (payload as any).general_trials;
-      delete (payload as any).wfo_folds;
-      delete (payload as any).wfo_trialsPerFold;
 
       return apiClient.post("/optimizations", payload);
     },
     onSuccess: (response) => {
       toast.success(t("submitSuccess"));
-      syncCreditBalance(); // 크레딧 동기화
+      syncCreditBalance();
       queryClient.invalidateQueries({ queryKey: ["optimizations"] });
       router.push(`/optimization/${response.data.id}`);
     },
-    onError: (error: any) =>
-      toast.error(
-        t("submitError", {
-          error: error?.response?.data?.detail || error.message,
-        })
-      ),
+    onError: (error: any) => {
+      // 커스텀 에러 메시지 처리 (예: 파라미터 미선택)
+      const message =
+        error.message === t("errors.noParametersSelected")
+          ? error.message
+          : error?.response?.data?.detail || error.message;
+      toast.error(t("submitError", { error: message }));
+    },
   });
 
   const onSubmit = (values: FormValues) =>
@@ -512,6 +546,7 @@ export function OptimizationSetupForm() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* --- 왼쪽 폼 영역 --- */}
           <div className="lg:col-span-2 space-y-6">
+            {/* 1. 공통 설정 카드 */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("commonSettings.title")}</CardTitle>
@@ -600,6 +635,7 @@ export function OptimizationSetupForm() {
                         <FormControl>
                           <Input type="number" placeholder="10000" {...field} />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -614,6 +650,7 @@ export function OptimizationSetupForm() {
                         <FormControl>
                           <Input type="number" placeholder="1" {...field} />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -631,6 +668,7 @@ export function OptimizationSetupForm() {
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -650,6 +688,7 @@ export function OptimizationSetupForm() {
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -657,6 +696,7 @@ export function OptimizationSetupForm() {
               </CardContent>
             </Card>
 
+            {/* 2. 최적화 타입 탭 */}
             <Tabs
               value={currentTab}
               onValueChange={(value) =>
@@ -674,7 +714,7 @@ export function OptimizationSetupForm() {
                   {t("tabs.wfo")}
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="general" className="pt-6">
+              <TabsContent value="general" className="pt-6 mt-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t("general.title")}</CardTitle>
@@ -682,7 +722,7 @@ export function OptimizationSetupForm() {
                       {t("general.description")}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
                     <FormField
                       control={control}
                       name="general_trials"
@@ -704,10 +744,16 @@ export function OptimizationSetupForm() {
                         </FormItem>
                       )}
                     />
+                    <Alert>
+                      <AlertTitle>{t("trainingPeriod.title")}</AlertTitle>
+                      <AlertDescription>
+                        {trainingPeriodInfo.text}
+                      </AlertDescription>
+                    </Alert>
                   </CardContent>
                 </Card>
               </TabsContent>
-              <TabsContent value="wfo" className="pt-6">
+              <TabsContent value="wfo" className="pt-6 mt-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t("wfo.title")}</CardTitle>
@@ -761,6 +807,9 @@ export function OptimizationSetupForm() {
                     <Alert
                       variant={isShortTrainPeriod ? "destructive" : "default"}
                     >
+                      {isShortTrainPeriod && (
+                        <AlertTriangle className="h-4 w-4" />
+                      )}
                       <AlertTitle>{t("trainingPeriod.title")}</AlertTitle>
                       <AlertDescription>
                         {trainingPeriodInfo.text}
@@ -771,6 +820,7 @@ export function OptimizationSetupForm() {
               </TabsContent>
             </Tabs>
 
+            {/* 3. 목표 및 제약 조건 */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("objectives.title")}</CardTitle>
@@ -785,7 +835,7 @@ export function OptimizationSetupForm() {
                       <FormLabel>{t("objectives.primaryLabel")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -793,14 +843,12 @@ export function OptimizationSetupForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          {/* 연율화 지표는 훈련 기간이 짧으면 비활성화 */}
                           <SelectItem
                             value="cortexScore"
                             disabled={isShortTrainPeriod}
                           >
                             {t("objectives.cortexScore")}
-                          </SelectItem>
-                          <SelectItem value="totalReturnPct">
-                            {t("objectives.totalReturnPct")}
                           </SelectItem>
                           <SelectItem
                             value="CAGR"
@@ -820,6 +868,9 @@ export function OptimizationSetupForm() {
                           >
                             {t("objectives.calmar")}
                           </SelectItem>
+                          <SelectItem value="totalReturnPct">
+                            {t("objectives.totalReturnPct")}
+                          </SelectItem>
                           <SelectItem value="profit_factor">
                             {t("objectives.profit_factor")}
                           </SelectItem>
@@ -829,7 +880,7 @@ export function OptimizationSetupForm() {
                         </SelectContent>
                       </Select>
                       {isShortTrainPeriod && (
-                        <FormDescription className="text-destructive">
+                        <FormDescription className="text-destructive text-xs">
                           {t("objectives.shortPeriodWarning")}
                         </FormDescription>
                       )}
@@ -839,13 +890,18 @@ export function OptimizationSetupForm() {
                 />
                 <Separator />
                 <div>
-                  <FormLabel>{t("objectives.constraintsLabel")}</FormLabel>
+                  <FormLabel className="block mb-1.5">
+                    {t("objectives.constraintsLabel")}
+                  </FormLabel>
                   <FormDescription className="mb-4">
                     {t("objectives.constraintsDescription")}
                   </FormDescription>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {constraintFields.map((field, index) => (
-                      <div key={field.id} className="flex items-start gap-2">
+                      <div
+                        key={field.id}
+                        className="flex items-start gap-2 p-3 bg-muted/30 rounded-md border"
+                      >
                         <Controller
                           control={control}
                           name={`constraints.${index}.type`}
@@ -855,7 +911,7 @@ export function OptimizationSetupForm() {
                               value={typeField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger className="w-[160px] h-9">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -878,7 +934,7 @@ export function OptimizationSetupForm() {
                               value={opField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[80px]">
+                                <SelectTrigger className="w-[70px] h-9 font-mono">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -895,9 +951,9 @@ export function OptimizationSetupForm() {
                           render={({ field: valField }) => (
                             <Input
                               type="number"
-                              step="0.1"
-                              className="flex-1"
-                              placeholder="20"
+                              step="any"
+                              className="flex-1 h-9"
+                              placeholder="Value"
                               {...valField}
                             />
                           )}
@@ -906,33 +962,37 @@ export function OptimizationSetupForm() {
                           type="button"
                           variant="ghost"
                           size="icon"
+                          className="h-9 w-9 shrink-0 hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => removeConstraint(index)}
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        appendConstraint({
-                          type: "mdd",
-                          operator: "<=",
-                          value: 20,
-                        })
-                      }
-                      disabled={constraintFields.length >= 3}
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      {t("objectives.addConstraint")}
-                    </Button>
+                    {constraintFields.length < 3 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-dashed"
+                        onClick={() =>
+                          appendConstraint({
+                            type: "mdd",
+                            operator: "<=",
+                            value: 20,
+                          })
+                        }
+                      >
+                        <PlusCircle className="mr-2 h-3.5 w-3.5" />
+                        {t("objectives.addConstraint")}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
+            {/* 4. 파라미터 범위 설정 트리 뷰 */}
             {!isLoadingStrategyDetails && selectedStrategy && (
               <OptimizationParameterTreeView
                 strategy={selectedStrategy}
@@ -944,127 +1004,142 @@ export function OptimizationSetupForm() {
             )}
           </div>
 
-          {/* --- 오른쪽 요약 및 제출 카드 --- */}
+          {/* --- 오른쪽 요약 및 제출 카드 (Sticky) --- */}
           <div className="lg:col-span-1 sticky top-24">
-            <Card>
-              <CardHeader>
+            <Card className="border-l-4 border-l-primary shadow-md">
+              <CardHeader className="pb-3">
                 <CardTitle>{t("summary.title")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 min-h-[180px]">
                 {isLoadingStrategyDetails && strategyId ? (
-                  <div className="space-y-2 pt-4">
+                  <div className="space-y-2 pt-2">
                     <Skeleton className="h-5 w-3/4" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-2/3" />
                   </div>
                 ) : !selectedStrategy ? (
-                  <div className="text-center text-muted-foreground pt-12">
+                  <div className="text-center text-muted-foreground pt-12 pb-8 bg-muted/20 rounded-lg border border-dashed">
                     <p>{t("summary.selectStrategyPrompt")}</p>
                   </div>
                 ) : (
                   <div className="space-y-3 text-sm">
-                    <h3 className="font-semibold text-base text-primary break-all">
-                      {selectedStrategy.name}
-                    </h3>
-                    <p className="text-muted-foreground line-clamp-3 text-xs">
-                      {selectedStrategy.description ||
-                        t("summary.noDescription")}
-                    </p>
+                    <div className="p-3 bg-muted/30 rounded-md border">
+                      <h3 className="font-semibold text-base text-primary break-all">
+                        {selectedStrategy.name}
+                      </h3>
+                      <p className="text-muted-foreground line-clamp-2 text-xs mt-1">
+                        {selectedStrategy.description ||
+                          t("summary.noDescription")}
+                      </p>
+                    </div>
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="flex-col items-start gap-4 bg-muted/50 p-4">
+              <CardFooter className="flex-col items-stretch gap-4 bg-muted/50 p-5 border-t">
                 <h4 className="font-semibold text-sm">
                   {t("summary.preflightCheck.title")}
                 </h4>
-                <ul className="space-y-2.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        methods.getFieldState("strategyId").isDirty &&
-                          !methods.getFieldState("strategyId").invalid
-                          ? "text-green-500"
-                          : "text-gray-400"
-                      )}
-                    />
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center justify-between">
                     <span>{t("summary.preflightCheck.strategy")}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
                     <CheckCircle
                       className={cn(
                         "h-4 w-4 transition-colors",
-                        methods.getFieldState("objective").isDirty &&
-                          !methods.getFieldState("objective").invalid
-                          ? "text-green-500"
-                          : "text-gray-400"
+                        formState.dirtyFields.strategyId &&
+                          !formState.errors.strategyId
+                          ? "text-emerald-500"
+                          : "text-muted-foreground/30"
                       )}
                     />
+                  </li>
+                  <li className="flex items-center justify-between">
                     <span>{t("summary.preflightCheck.objective")}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
                     <CheckCircle
                       className={cn(
                         "h-4 w-4 transition-colors",
-                        totalEstimatedTrials > 0
-                          ? "text-green-500"
-                          : "text-gray-400"
+                        !formState.errors.objective && watchedValues.objective
+                          ? "text-emerald-500"
+                          : "text-muted-foreground/30"
                       )}
                     />
+                  </li>
+                  <li className="flex items-center justify-between">
                     <span>
                       {t("summary.preflightCheck.trials", {
                         count: totalEstimatedTrials,
                       })}
                     </span>
+                    <CheckCircle
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        totalEstimatedTrials > 0
+                          ? "text-emerald-500"
+                          : "text-muted-foreground/30"
+                      )}
+                    />
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>
+                      {t("summary.preflightCheck.paramsSelected", {
+                        count: selectedParamsCount,
+                      })}
+                    </span>
+                    <CheckCircle
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        selectedParamsCount > 0
+                          ? "text-emerald-500"
+                          : "text-muted-foreground/30"
+                      )}
+                    />
                   </li>
                 </ul>
 
-                {/* 비용 예측 결과 표시 (BacktestSetupForm과 동일) */}
-                <div className="w-full pt-2">
-                  <Separator className="mb-4" />
-                  <h4 className="font-semibold text-sm mb-3">
+                {/* 비용 예측 결과 표시 */}
+                <div className="w-full pt-3 mt-2 border-t">
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-1.5">
+                    <Receipt className="h-4 w-4 text-muted-foreground" />
                     {t("summary.costDetails.title")}
                   </h4>
                   {isEstimatingCost ? (
-                    <div className="flex justify-center items-center h-24">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <div className="flex justify-center items-center h-20">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : estimation ? (
-                    <div className="space-y-2.5 text-sm">
+                    <div className="space-y-2 text-sm">
                       <div className="flex justify-between items-center">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
-                          <Tag className="h-4 w-4" />
+                          <Tag className="h-3.5 w-3.5" />
                           {t("summary.costDetails.originalCost")}
                         </span>
                         <span className="font-mono">
                           {estimation.originalCost.toLocaleString()} CC
                         </span>
                       </div>
-                      <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
-                        <span className="flex items-center gap-1.5">
-                          <Percent className="h-4 w-4" />
-                          {t("summary.costDetails.planDiscount", {
-                            planName: "Pro", // TODO: 실제 사용자 플랜
-                            discountRate: (
-                              estimation.discountPct * 100
-                            ).toFixed(0),
-                          })}
-                        </span>
-                        <span className="font-mono">
-                          -
-                          {(
-                            estimation.originalCost - estimation.finalCost
-                          ).toLocaleString()}{" "}
-                          CC
-                        </span>
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="flex justify-between items-center font-bold text-base">
-                        <span className="flex items-center gap-1.5">
-                          <Receipt className="h-4 w-4 text-primary" />
-                          {t("summary.costDetails.finalCost")}
-                        </span>
-                        <span className="font-mono text-primary">
+                      {estimation.originalCost !== estimation.finalCost && (
+                        <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
+                          <span className="flex items-center gap-1.5">
+                            <Percent className="h-3.5 w-3.5" />
+                            {t("summary.costDetails.planDiscount", {
+                              planName: "Pro", // TODO: 실제 사용자 플랜
+                              discountRate: (
+                                estimation.discountPct * 100
+                              ).toFixed(0),
+                            })}
+                          </span>
+                          <span className="font-mono">
+                            -
+                            {(
+                              estimation.originalCost - estimation.finalCost
+                            ).toLocaleString()}{" "}
+                            CC
+                          </span>
+                        </div>
+                      )}
+                      <Separator className="my-2 opacity-50" />
+                      <div className="flex justify-between items-center font-bold">
+                        <span>{t("summary.costDetails.finalCost")}</span>
+                        <span className="font-mono text-lg text-primary">
                           {estimation.finalCost.toLocaleString()} CC
                         </span>
                       </div>
@@ -1073,16 +1148,17 @@ export function OptimizationSetupForm() {
                           {t("summary.costDetails.yourBalance")}
                         </span>
                         <span
-                          className={`font-mono ${
-                            !estimation.isSufficient ? "text-destructive" : ""
-                          }`}
+                          className={cn(
+                            "font-mono font-medium",
+                            !estimation.isSufficient && "text-destructive"
+                          )}
                         >
                           {estimation.userBalance.toLocaleString()} CC
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-muted-foreground text-xs py-8">
+                    <div className="text-center text-muted-foreground text-xs py-6 bg-muted/20 rounded border border-dashed">
                       {t("summary.costDetails.noEstimation")}
                     </div>
                   )}
@@ -1091,11 +1167,12 @@ export function OptimizationSetupForm() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full mt-2"
+                  className="w-full mt-2 font-semibold"
                   disabled={
                     createOptimizationMutation.isPending ||
-                    !methods.formState.isValid ||
-                    !!(estimation && !estimation.isSufficient) // 잔액 부족 시 비활성화
+                    !formState.isValid ||
+                    selectedParamsCount === 0 ||
+                    !!(estimation && !estimation.isSufficient)
                   }
                 >
                   {createOptimizationMutation.isPending ? (
@@ -1109,7 +1186,7 @@ export function OptimizationSetupForm() {
                 </Button>
 
                 {estimation && !estimation.isSufficient && (
-                  <p className="text-center text-xs text-destructive w-full">
+                  <p className="text-center text-xs font-medium text-destructive w-full bg-destructive/10 py-1.5 rounded">
                     {t("summary.insufficientCredits")}
                   </p>
                 )}

@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/Table";
-import { BacktestResult } from "@/types/backtest";
+import { BacktestResultSummary } from "@/types/backtest";
 import {
   Tooltip,
   TooltipContent,
@@ -21,7 +21,7 @@ import {
 import { HelpCircle } from "lucide-react";
 
 interface DetailedMetricsProps {
-  result: BacktestResult;
+  result: BacktestResultSummary;
 }
 
 const getScoreColor = (score?: number) => {

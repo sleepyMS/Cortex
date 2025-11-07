@@ -20,6 +20,7 @@ import {
   Share2,
   BarChartHorizontal,
 } from "lucide-react";
+import { UTCTimestamp } from "lightweight-charts";
 
 import apiClient from "@/lib/apiClient";
 import { Backtest } from "@/types/backtest";
@@ -53,6 +54,14 @@ const PageHeader = ({
   const router = useRouter();
 
   const handleRerun = () => {
+    if (!backtest.strategy) {
+      toast.error(t("errorNoStrategyInfo"));
+      console.error(
+        "Rerun failed: Strategy information is missing in backtest data."
+      );
+      return;
+    }
+
     const params = new URLSearchParams({
       strategyId: backtest.strategy.id.toString(),
       startDate: backtest.parameters.startDate,
@@ -80,12 +89,20 @@ const PageHeader = ({
           <div>
             <p className="text-sm font-medium text-primary">{t("strategy")}</p>
             <CardTitle className="text-2xl font-bold text-foreground">
-              <Link
-                href={`/strategies/${backtest.strategy.id}`}
-                className="hover:underline"
-              >
-                {backtest.strategy.name}
-              </Link>
+              {backtest.strategy ? (
+                // 전략 정보가 있을 때: 전략 상세 페이지로 이동하는 링크 렌더링
+                <Link
+                  href={`/strategies/${backtest.strategy.id}`}
+                  className="hover:underline"
+                >
+                  {backtest.strategy.name}
+                </Link>
+              ) : (
+                // 전략 정보가 없을 때: 대체 텍스트 렌더링 (예: '삭제된 전략' 또는 '알 수 없음')
+                <span className="text-muted-foreground">
+                  {t("unknownStrategy")}
+                </span>
+              )}
             </CardTitle>
           </div>
           <div className="flex items-center gap-2">
@@ -297,15 +314,34 @@ export default function BacktestDetailPage({
             <BacktestParameters backtest={backtest} />
 
             {/* 4. 자산 곡선 차트 */}
-            <DynamicEquityChart pnlData={backtest.result.pnlCurveJson || []} />
+            <DynamicEquityChart
+              pnlData={
+                (backtest.result.pnlCurveJson as unknown as {
+                  time: UTCTimestamp;
+                  value: number;
+                }[]) || []
+              }
+            />
 
             {/* 5. 드로우다운 곡선 차트 */}
             <DynamicDrawdownChart
-              drawdownData={backtest.result.drawdownCurveJson || []}
+              drawdownData={
+                (backtest.result.drawdownCurveJson as unknown as {
+                  time: UTCTimestamp;
+                  value: number;
+                }[]) || []
+              }
             />
 
             {/* 6. 월별 수익률 표 */}
-            <MonthlyPerformance pnlData={backtest.result.pnlCurveJson || []} />
+            <MonthlyPerformance
+              pnlData={
+                (backtest.result.pnlCurveJson as unknown as {
+                  time: UTCTimestamp;
+                  value: number;
+                }[]) || []
+              }
+            />
 
             {/* 7. 상세 거래 기록 */}
             <TradeLogTable tradeLogs={tradeLogs} />

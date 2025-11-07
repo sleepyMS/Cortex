@@ -74,6 +74,18 @@ export interface BacktestResultSummaryForCard
   backtestId?: string | null;
 }
 
+// API 응답 데이터의 타입을 명확히 정의
+export interface BacktestResult {
+  totalReturnPct: number | null;
+  mddPct: number | null;
+  winRatePct: number | null;
+  sharpeRatio?: number | null; // Optional properties
+  sortinoRatio?: number | null;
+  profitFactor?: number | null;
+  totalTrades?: number | null;
+  backtestScore?: number | null;
+}
+
 /**
  * [개선] 모든 백테스트 타입의 기반이 되는 '완전한' 형태의 타입.
  * 이 타입을 기준으로 다른 타입들이 파생됩니다.

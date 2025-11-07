@@ -10,17 +10,7 @@ import {
   Percent,
   BarChartHorizontal,
 } from "lucide-react";
-
-// API 응답 데이터의 타입을 명확히 정의 (DB 스키마 참조)
-interface BacktestResult {
-  totalReturnPct: number | null;
-  mddPct: number | null;
-  winRatePct: number | null;
-  sharpeRatio?: number | null; // Optional properties
-  sortinoRatio?: number | null;
-  profitFactor?: number | null;
-  totalTrades?: number | null;
-}
+import { BacktestResult } from "@/types/backtest";
 
 interface BacktestResultSummaryProps {
   result: BacktestResult;
