@@ -32,8 +32,6 @@ import { FormItem, FormControl } from "@/components/ui/Form";
 
 type TFunction = ReturnType<typeof useTranslations>;
 
-// --- Props 타입 정의 ---
-
 interface OptimizationParameterTreeViewProps {
   strategy: Strategy;
   indicatorDefinitions: Record<string, IndicatorMetadata>;
@@ -54,7 +52,6 @@ interface RuleBlockProps {
   tRule: TFunction;
 }
 
-// --- 헬퍼 함수 ---
 const formatOperand = (
   operand: IndicatorValue | number | null,
   definitions: Record<string, IndicatorMetadata>
@@ -103,6 +100,14 @@ const formatRuleTitle = (
           lowerBound: format(block.lowerBound),
           upperBound: format(block.upperBound),
         });
+      case "channel": // channel 타이틀 포맷 추가
+        return t("ruleTitles.default", { type: tRule("channel") }); // 임시: 구체적인 타이틀 키가 필요할 수 있음
+      case "trend_signal":
+        return t("ruleTitles.default", { type: tRule("trend_signal") });
+      case "divergence":
+        return t("ruleTitles.default", { type: tRule("divergence") });
+      case "pattern":
+        return t("ruleTitles.default", { type: tRule("pattern") });
       default:
         return t("ruleTitles.default", { type: block.type });
     }
@@ -111,7 +116,17 @@ const formatRuleTitle = (
   }
 };
 
-// --- 핵심 컴포넌트: 범위 입력 그룹 ---
+const ReadOnlyLogicDisplay = React.memo(
+  ({ label, value }: { label: string; value: string }) => (
+    <div className="flex justify-between items-center text-xs px-1 py-0.5">
+      <span className="text-muted-foreground">{label}</span>
+      <Badge variant="secondary" className="text-xs">
+        {value}
+      </Badge>
+    </div>
+  )
+);
+ReadOnlyLogicDisplay.displayName = "ReadOnlyLogicDisplay";
 
 const ParameterRangeInputGroup = React.memo(
   ({
@@ -135,7 +150,6 @@ const ParameterRangeInputGroup = React.memo(
     const stepPath = `${fieldPathPrefix}.step`;
 
     const isSelected = useWatch({ control, name: isSelectedPath });
-    // copy 버튼 제거로 currentMin watch도 불필요해져 제거함
 
     const handleSmartInit = () => {
       if (paramMetadata?.optimization_range) {
@@ -212,7 +226,6 @@ const ParameterRangeInputGroup = React.memo(
 
         {isSelected ? (
           <div className="flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-            {/* Min Input */}
             <Controller
               control={control}
               name={minPath}
@@ -240,7 +253,6 @@ const ParameterRangeInputGroup = React.memo(
                 </FormItem>
               )}
             />
-            {/* Max Input */}
             <Controller
               control={control}
               name={maxPath}
@@ -268,7 +280,6 @@ const ParameterRangeInputGroup = React.memo(
                 </FormItem>
               )}
             />
-            {/* Step Input */}
             <Controller
               control={control}
               name={stepPath}
@@ -315,9 +326,6 @@ const ParameterRangeInputGroup = React.memo(
   }
 );
 ParameterRangeInputGroup.displayName = "ParameterRangeInputGroup";
-
-// --- (이하 OperandParameterGroup, RuleBlock, OptimizationParameterTreeView는 이전과 동일) ---
-// 이전 코드에서 변경된 부분만 위에 반영했습니다. 아래는 전체 코드를 유지하기 위한 반복입니다.
 
 const OperandParameterGroup = React.memo(
   ({
@@ -505,11 +513,115 @@ const RuleBlock = React.memo(
             </div>
           );
         }
+        case "channel": {
+          const channelZoneMap: Record<string, string> = {
+            upper: "upperChannel",
+            middle: "middleChannel",
+            lower: "lowerChannel",
+            kumo: "kumoCloud",
+          };
+          const actionMap: Record<string, string> = {
+            enter: "enterChannel",
+            exit: "exitChannel",
+            within: "withinChannel",
+          };
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-3">
+              <OperandParameterGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                {...commonProps}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("channelZoneLabel")}
+                  value={tRule(
+                    channelZoneMap[block.channelZone] || block.channelZone
+                  )}
+                />
+                <ReadOnlyLogicDisplay
+                  label={tRule("actionLabel")}
+                  value={tRule(actionMap[block.action] || block.action)}
+                />
+              </div>
+            </div>
+          );
+        }
+        case "trend_signal": {
+          const signalMap: Record<string, string> = {
+            buy: "buySignal",
+            sell: "sellSignal",
+            none: "noneSignal",
+          };
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-3">
+              <OperandParameterGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                {...commonProps}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("signalLabel")}
+                  value={tRule(signalMap[block.signal] || block.signal)}
+                />
+              </div>
+            </div>
+          );
+        }
+        case "divergence": {
+          const divTypeMap: Record<string, string> = {
+            bullish: "bullishDivergence",
+            bearish: "bearishDivergence",
+            hidden_bullish: "hiddenBullish",
+            hidden_bearish: "hiddenBearish",
+          };
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-3">
+              <OperandParameterGroup
+                operand={(block as any).indicator}
+                operandKey="indicator"
+                title="operandTitles.indicator"
+                {...commonProps}
+              />
+              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                <ReadOnlyLogicDisplay
+                  label={tRule("divergenceTypeLabel")}
+                  value={tRule(
+                    divTypeMap[block.divergenceType] || block.divergenceType
+                  )}
+                />
+              </div>
+            </div>
+          );
+        }
+        case "pattern": {
+          const dirMap: Record<string, string> = {
+            bullish: "bullish",
+            bearish: "bearish",
+            any: "any",
+          };
+          // 패턴은 파라미터가 없으므로 ReadOnlyLogicDisplay만 표시
+          return (
+            <div className="space-y-2 p-3 bg-muted/50 rounded-lg flex flex-col justify-center">
+              <ReadOnlyLogicDisplay
+                label={tRule("patternKeyLabel")}
+                value={block.patternKey}
+              />
+              <ReadOnlyLogicDisplay
+                label={tRule("directionLabel")}
+                value={tRule(dirMap[block.direction] || block.direction)}
+              />
+            </div>
+          );
+        }
         default:
           return (
             <div className="p-4 text-center bg-muted/20 rounded">
               <p className="text-sm text-muted-foreground">
-                {t("noParamsForRule", { type: block.type })}
+                {t("noParamsForRule", { type: (block as any).type })}
               </p>
             </div>
           );
