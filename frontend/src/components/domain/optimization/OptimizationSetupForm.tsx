@@ -911,7 +911,7 @@ export function OptimizationSetupForm() {
                               value={typeField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[160px] h-9">
+                                <SelectTrigger className="w-[120px] h-9">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -934,7 +934,7 @@ export function OptimizationSetupForm() {
                               value={opField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[70px] h-9 font-mono">
+                                <SelectTrigger className="w-[60px] h-9 font-mono">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
