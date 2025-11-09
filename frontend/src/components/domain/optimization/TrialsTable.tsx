@@ -6,14 +6,14 @@ import * as React from "react";
 import {
   ColumnDef,
   SortingState,
+  PaginationState,
   flexRender,
   getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowUpDown,
   ChevronLeft,
@@ -27,6 +27,7 @@ import {
   Scissors,
 } from "lucide-react";
 
+import apiClient from "@/lib/apiClient";
 import { TrialData } from "@/types/optimization";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +40,6 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/Card";
 import {
   Select,
   SelectContent,
@@ -61,38 +55,77 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/Tooltip";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface TrialsTableProps {
-  trials: TrialData[];
+  jobId: string;
   hoveredTrialId?: number | null;
   onHoverTrial?: (id: number | null) => void;
+  minScore?: number;
 }
 
 export const TrialsTable = ({
-  trials,
+  jobId,
   hoveredTrialId,
   onHoverTrial,
+  minScore = 0,
 }: TrialsTableProps) => {
   const t = useTranslations("OptimizationDetailPage.TrialsTable");
+
+  // --- 테이블 상태 관리 ---
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "score", desc: true }, // 기본값: 점수 내림차순 정렬
+    { id: "backtestScore", desc: true }, // 기본 정렬: 점수 내림차순
   ]);
 
+  // --- 서버 데이터 페칭 ---
+  const dataQuery = useQuery({
+    queryKey: ["trials", jobId, pagination, sorting, minScore],
+    queryFn: async () => {
+      const { pageIndex, pageSize } = pagination;
+
+      // [중요] 프론트엔드(camelCase) -> 백엔드(snake_case) 정렬 필드 매핑
+      let sortField = sorting[0]?.id;
+      if (sortField === "trialId") sortField = "trial_number";
+      if (sortField === "backtestScore") sortField = "score";
+      if (sortField === "totalReturnPct") sortField = "total_return";
+
+      const sortDesc = sorting[0]?.desc ?? false;
+
+      const params = new URLSearchParams({
+        page: (pageIndex + 1).toString(),
+        limit: pageSize.toString(),
+        sort_by: sortField || "trial_number",
+        sort_desc: sortDesc.toString(),
+      });
+
+      if (minScore > 0) {
+        params.append("min_score", minScore.toString());
+      }
+
+      const response = await apiClient.get(
+        `/optimizations/${jobId}/trials?${params.toString()}`
+      );
+      return response.data;
+    },
+    placeholderData: (prev) => prev,
+  });
+
+  const defaultData = React.useMemo(() => [], []);
+
+  // --- 컬럼 정의 ---
   const columns: ColumnDef<TrialData>[] = React.useMemo(
     () => [
       {
-        accessorKey: "trialId",
+        accessorKey: "trialId", // [수정] camelCase 사용
         header: ({ column }) => (
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-xs"
+            className="text-xs font-medium"
           >
             Trial ID
             <ArrowUpDown className="ml-2 h-3 w-3" />
@@ -100,7 +133,7 @@ export const TrialsTable = ({
         ),
         cell: ({ row }) => (
           <div className="font-mono text-xs pl-4">
-            #{row.getValue("trialId")}
+            #{row.original.trialId} {/* [수정] camelCase 사용 */}
           </div>
         ),
       },
@@ -108,9 +141,9 @@ export const TrialsTable = ({
         accessorKey: "state",
         header: t("headers.status"),
         cell: ({ row }) => {
-          const state = row.getValue("state") as string;
+          const state = row.original.state;
           let badgeConfig = {
-            label: state,
+            label: state as string,
             icon: XCircle,
             className: "bg-gray-500/20 text-gray-500 border-gray-500/30",
           };
@@ -157,8 +190,9 @@ export const TrialsTable = ({
         },
       },
       {
-        id: "score",
-        accessorFn: (row) => row.metrics.backtestScore,
+        // [수정] id와 accessorFn 모두 camelCase로 변경
+        id: "backtestScore",
+        accessorFn: (row) => row.metrics?.backtestScore,
         header: ({ column }) => (
           <div className="text-right">
             <Button
@@ -166,7 +200,7 @@ export const TrialsTable = ({
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
               }
-              className="text-xs"
+              className="text-xs font-medium"
             >
               {t("headers.score")}
               <ArrowUpDown className="ml-2 h-3 w-3" />
@@ -174,9 +208,10 @@ export const TrialsTable = ({
           </div>
         ),
         cell: ({ row }) => {
-          const score = row.original.metrics.backtestScore;
+          // [수정] camelCase로 접근
+          const score = row.original.metrics?.backtestScore;
           let colorClass = "text-muted-foreground";
-          if (score !== null && score !== undefined) {
+          if (score != null) {
             if (score >= 80) colorClass = "text-emerald-500 font-bold";
             else if (score >= 60) colorClass = "text-amber-500 font-semibold";
             else if (score < 30) colorClass = "text-rose-500";
@@ -190,8 +225,9 @@ export const TrialsTable = ({
         },
       },
       {
-        id: "totalReturn",
-        accessorFn: (row) => row.metrics.totalReturnPct,
+        // [수정] camelCase로 변경
+        id: "totalReturnPct",
+        accessorFn: (row) => row.metrics?.totalReturnPct,
         header: ({ column }) => (
           <div className="text-right">
             <Button
@@ -199,7 +235,7 @@ export const TrialsTable = ({
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
               }
-              className="text-xs"
+              className="text-xs font-medium"
             >
               {t("headers.totalReturn")}
               <ArrowUpDown className="ml-2 h-3 w-3" />
@@ -207,7 +243,8 @@ export const TrialsTable = ({
           </div>
         ),
         cell: ({ row }) => {
-          const val = row.original.metrics.totalReturnPct;
+          // [수정] camelCase로 접근
+          const val = row.original.metrics?.totalReturnPct;
           return (
             <div
               className={cn(
@@ -216,34 +253,27 @@ export const TrialsTable = ({
                   ? "text-emerald-500"
                   : val && val < 0
                   ? "text-rose-500"
-                  : ""
+                  : "text-muted-foreground"
               )}
             >
-              {val?.toFixed(2) ?? "-"}%
+              {val != null ? `${val.toFixed(2)}%` : "-"}
             </div>
           );
         },
       },
       {
-        id: "mdd",
-        accessorFn: (row) => row.metrics.mddPct,
+        // [수정] camelCase로 변경
+        id: "mddPct",
+        accessorFn: (row) => row.metrics?.mddPct,
         header: ({ column }) => (
-          <div className="text-right">
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-              className="text-xs"
-            >
-              MDD
-              <ArrowUpDown className="ml-2 h-3 w-3" />
-            </Button>
-          </div>
+          <div className="text-right text-xs font-medium px-4 py-2">MDD</div>
         ),
         cell: ({ row }) => (
           <div className="text-right font-mono text-rose-500 pr-4">
-            {row.original.metrics.mddPct?.toFixed(2) ?? "-"}%
+            {/* [수정] camelCase로 접근 */}
+            {row.original.metrics?.mddPct != null
+              ? `${row.original.metrics.mddPct.toFixed(2)}%`
+              : "-"}
           </div>
         ),
       },
@@ -251,6 +281,8 @@ export const TrialsTable = ({
         id: "actions",
         cell: ({ row }) => {
           const trial = row.original;
+          const canViewDetails = trial.metrics != null;
+
           return (
             <div className="text-right">
               <DropdownMenu>
@@ -262,17 +294,30 @@ export const TrialsTable = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{t("actions.label")}</DropdownMenuLabel>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`/backtester/${trial.trialId}`}
-                      target="_blank"
-                      className="flex items-center cursor-pointer"
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      {t("actions.viewDetails")}
-                    </Link>
+                  <DropdownMenuItem
+                    asChild
+                    disabled={!canViewDetails}
+                    className={cn(
+                      !canViewDetails && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {canViewDetails ? (
+                      // [수정] trialId (camelCase) 사용
+                      <Link
+                        href={`/backtester/trial_${jobId}_${trial.trialId}`}
+                        target="_blank"
+                        className="flex items-center cursor-pointer"
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        {t("actions.viewDetails")}
+                      </Link>
+                    ) : (
+                      <span className="flex items-center">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        {t("actions.viewDetails")}
+                      </span>
+                    )}
                   </DropdownMenuItem>
-                  {/* 필요한 경우 추가 액션 (e.g. 파라미터 복사) */}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -280,167 +325,169 @@ export const TrialsTable = ({
         },
       },
     ],
-    [t]
+    [t, jobId]
   );
 
   const table = useReactTable({
-    data: trials,
+    data: dataQuery.data?.items ?? defaultData,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
+    pageCount: dataQuery.data?.pages ? Math.max(1, dataQuery.data.pages) : -1,
     state: {
+      pagination,
       sorting,
     },
-    initialState: {
-      pagination: {
-        pageSize: 20, // 기본 페이지 사이즈
-      },
-    },
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    manualPagination: true,
+    manualSorting: true,
+    getCoreRowModel: getCoreRowModel(),
   });
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("description")}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-grow flex flex-col min-h-0">
-        <div className="rounded-md border flex-grow overflow-auto">
-          <Table>
-            <TableHeader className="bg-muted/50 sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="h-10">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-auto">
+        <Table>
+          <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-md">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="h-10">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {dataQuery.isLoading ? (
+              Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={i}>
+                  {columns.map((col, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-6 w-full" />
+                    </TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className={cn(
-                      "cursor-pointer transition-colors",
-                      hoveredTrialId === row.original.trialId && "bg-muted/50",
-                      row.original.state !== "COMPLETE" &&
-                        "opacity-60 bg-muted/20"
-                    )}
-                    onMouseEnter={() => onHoverTrial?.(row.original.trialId)}
-                    onMouseLeave={() => onHoverTrial?.(null)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-2">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {t("noResults")}
-                  </TableCell>
+              ))
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={cn(
+                    "cursor-pointer transition-colors",
+                    // [수정] trialId (camelCase) 사용
+                    hoveredTrialId === row.original.trialId &&
+                      "bg-primary/10 hover:bg-primary/15",
+                    row.original.state !== "COMPLETE" &&
+                      "opacity-60 bg-muted/20"
+                  )}
+                  // [수정] trialId (camelCase) 사용
+                  onMouseEnter={() => onHoverTrial?.(row.original.trialId)}
+                  onMouseLeave={() => onHoverTrial?.(null)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="py-2.5">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-32 text-center text-muted-foreground"
+                >
+                  {t("noResults")}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-        {/* 페이지네이션 컨트롤 (TradeLogTable과 동일한 스타일) */}
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="flex-1 text-sm text-muted-foreground">
-            {t("pagination.total", {
-              count: table.getFilteredRowModel().rows.length,
+      <div className="flex items-center justify-between px-4 py-4 border-t bg-card">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {t("pagination.total", {
+            count: dataQuery.data?.total ?? 0,
+          })}
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">{t("pagination.rowsPerPage")}</p>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => table.setPageSize(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue
+                  placeholder={table.getState().pagination.pageSize}
+                />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 50, 100].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+            {t("pagination.pageInfo", {
+              current: table.getState().pagination.pageIndex + 1,
+              total: Math.max(1, table.getPageCount()),
             })}
           </div>
-          <div className="flex items-center space-x-6 lg:space-x-8">
-            <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">
-                {t("pagination.rowsPerPage")}
-              </p>
-              <Select
-                value={`${table.getState().pagination.pageSize}`}
-                onValueChange={(value) => table.setPageSize(Number(value))}
-              >
-                <SelectTrigger className="h-8 w-[70px]">
-                  <SelectValue
-                    placeholder={table.getState().pagination.pageSize}
-                  />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 50, 100].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-              {t("pagination.pageInfo", {
-                current: table.getState().pagination.pageIndex + 1,
-                total: table.getPageCount(),
-              })}
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to first page</span>
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to previous page</span>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to next page</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to last page</span>
-                <ChevronsRight className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <span className="sr-only">Go to first page</span>
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <span className="sr-only">Go to previous page</span>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <span className="sr-only">Go to next page</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+            >
+              <span className="sr-only">Go to last page</span>
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

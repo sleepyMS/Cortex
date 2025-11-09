@@ -384,6 +384,12 @@ class StrategyCreate(StrategyBase):
     tpsl_logic: Optional[TpslLogic] = None
     target_coins: List[TargetCoin] = Field(default_factory=list)
 
+class StrategyCloneWithOptimization(CamelCaseModel):
+    """최적화 결과를 기반으로 전략 복제 요청 시 사용하는 스키마"""
+    optimization_id: uuid.UUID
+    trial_id: int
+    new_name: Optional[str] = Field(None, min_length=3, max_length=100)
+
 class StrategyForSnapshot(CamelCaseModel):
     id: uuid.UUID
     author_id: uuid.UUID
@@ -999,6 +1005,14 @@ class TrialData(CamelCaseModel):
     state: Literal["COMPLETE", "PRUNED", "FAIL"]
     created_at: datetime
 
+class PaginatedTrialsResponse(CamelCaseModel):
+    """페이지네이션된 Trial 목록 응답"""
+    items: List[TrialData]
+    total: int         # 전체 Trial 개수
+    page: int          # 현재 페이지
+    size: int          # 페이지 당 개수
+    pages: int         # 전체 페이지 수
+    
 class OptimizationProgress(CamelCaseModel):
     current_step: int = 0
     total_steps: int = 0

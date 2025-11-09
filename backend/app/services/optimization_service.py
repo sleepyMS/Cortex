@@ -2,8 +2,9 @@
 
 import uuid
 import logging
-from typing import List, Optional
-from sqlalchemy import select, desc, delete
+import math
+from typing import List, Optional, Dict, Any
+from sqlalchemy import select, desc, delete, asc, func, cast, Float
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -138,6 +139,20 @@ class OptimizationService:
         result = await db.execute(query)
         return result.scalars().all()
     
+    async def get_trial(
+        self, db: AsyncSession, job_id: uuid.UUID, trial_number: int
+    ) -> Optional[models.OptimizationTrial]:
+        """
+        특정 최적화 작업 내의 단일 시도(Trial) 정보를 조회합니다.
+        전략 복제 시 파라미터 정보를 가져오기 위해 사용됩니다.
+        """
+        query = select(models.OptimizationTrial).filter_by(
+            job_id=job_id, 
+            trial_number=trial_number
+        )
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+    
     async def cancel_job(
         self, db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID
     ) -> bool:
@@ -184,5 +199,53 @@ class OptimizationService:
             logger.info(f"Optimization job {job_id} deleted by user {user_id}.")
             return True
         return False
+    
+    async def get_trials_paginated(
+        self,
+        db: AsyncSession,
+        job_id: uuid.UUID,
+        page: int = 1,
+        limit: int = 20,
+        sort_by: str = "trial_number",
+        sort_desc: bool = False,
+        min_score: Optional[float] = None  # [추가] 필터링 파라미터
+    ) -> Dict[str, Any]:
+        """
+        특정 Job의 Trial 목록을 조건에 따라 페이지네이션하여 조회합니다.
+        """
+        # 기본 쿼리 생성
+        query = select(models.OptimizationTrial).filter_by(job_id=job_id)
+
+        # 최소 점수 필터링 적용 (JSONB 내부 필드 접근)
+        if min_score is not None and min_score > 0:
+            # metrics->>'backtest_score' 값을 float로 형변환하여 비교
+            query = query.filter(
+                models.OptimizationTrial.metrics['backtest_score'].astext.cast(Float) >= min_score
+            )
+
+        # 전체 개수 조회 (필터링 적용된 상태에서 카운트)
+        count_query = select(func.count()).select_from(query.subquery())
+        total = (await db.execute(count_query)).scalar_one()
+
+        # 정렬 적용
+        if sort_by == "trial_number":
+            order = desc(models.OptimizationTrial.trial_number) if sort_desc else asc(models.OptimizationTrial.trial_number)
+            query = query.order_by(order)
+        elif sort_by == "score": # 점수 기준 정렬 기능 추가
+             score_col = models.OptimizationTrial.metrics['backtest_score'].astext.cast(Float)
+             order = desc(score_col) if sort_desc else asc(score_col)
+             query = query.order_by(order)
+
+        # 페이지네이션 적용
+        query = query.offset((page - 1) * limit).limit(limit)
+        items = (await db.execute(query)).scalars().all()
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "size": limit,
+            "pages": math.ceil(total / limit) if limit > 0 else 0
+        }
 
 optimization_service = OptimizationService()

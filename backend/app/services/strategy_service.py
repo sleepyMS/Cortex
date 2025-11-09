@@ -288,4 +288,53 @@ class StrategyService:
         await db.delete(strategy_to_delete)
         await db.flush()
 
+    def _apply_params_to_strategy_dict(self, strategy_dict: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+        import copy
+        new_strategy = copy.deepcopy(strategy_dict)
+        for param_path, value in params.items():
+            parts = param_path.split('.')
+            current = new_strategy
+            for i, part in enumerate(parts[:-1]):
+                if part.isdigit(): part = int(part)
+                if isinstance(current, dict): current = current.get(part)
+                elif isinstance(current, list) and isinstance(part, int) and 0 <= part < len(current): current = current[part]
+                else: current = None; break
+                if current is None: break
+            if current is not None:
+                last = parts[-1]
+                if last.isdigit() and isinstance(current, list): current[int(last)] = value
+                elif isinstance(current, dict): current[last] = value
+        return new_strategy
+
+    async def clone_strategy_from_optimization(
+        self, db: AsyncSession, user: models.User, original_strategy_id: uuid.UUID, payload: schemas.StrategyCloneWithOptimization
+    ) -> models.Strategy:
+        """
+        최적화된 파라미터를 적용하여 새로운 전략으로 복제합니다.
+        """
+        # 1. 원본 전략 조회
+        original_strategy = await self.get_strategy(db, original_strategy_id)
+        if not original_strategy: raise ValueError("Original strategy not found.")
+        if original_strategy.author_id != user.id: raise ValueError("Permission denied.")
+
+        # 2. 최적화 Trial 데이터 조회 (OptimizationService를 통해)
+        # (순환 참조 방지를 위해 함수 내 import 고려)
+        from .optimization_service import optimization_service
+        trial = await optimization_service.get_trial(db, payload.optimization_id, payload.trial_id)
+        if not trial: raise ValueError("Optimization trial not found.")
+
+        # 3. 원본 전략을 Pydantic 모델로 변환 후 딕셔너리화
+        strategy_data = schemas.StrategyCreate.model_validate(original_strategy).model_dump()
+
+        # 4. 파라미터 적용
+        optimized_data = self._apply_params_to_strategy_dict(strategy_data, trial.params)
+        
+        # 5. 새 전략 이름 및 설명 설정
+        new_name = payload.new_name or f"{original_strategy.name} (Optimized #{trial.trial_number})"
+        optimized_data['name'] = new_name
+        optimized_data['description'] = (original_strategy.description or "") + f"\n\nBased on optimization {payload.optimization_id}, Trial #{trial.trial_number}."
+
+        # 6. 새 전략 생성 (기존 create_strategy 재활용)
+        return await self.create_strategy(db, user, schemas.StrategyCreate(**optimized_data))
+
 strategy_service = StrategyService()

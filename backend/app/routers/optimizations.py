@@ -1,8 +1,8 @@
 # file: backend/app/routers/optimizations.py
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 import uuid
 
 from .. import schemas, models
@@ -128,6 +128,24 @@ async def read_optimization_detail(
     
     return await optimization_service.get_job(db, job.id, job.user_id)
 
+@router.get("/{job_id}/trials", response_model=schemas.PaginatedTrialsResponse)
+async def read_optimization_trials(
+    job_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=10000), # 내보내기를 위해 최대 limit을 늘릴 수도 있음
+    sort_by: str = Query("trial_number"),
+    sort_desc: bool = Query(False),
+    min_score: Optional[float] = Query(None, ge=0, le=100), # [추가]
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """특정 최적화 작업의 Trial 목록을 조회합니다."""
+    job = await optimization_service.get_job(db, job_id, current_user.id)
+    if not job: raise HTTPException(status_code=404, detail="Job not found")
+        
+    return await optimization_service.get_trials_paginated(
+        db, job_id, page, limit, sort_by, sort_desc, min_score
+    )
 
 @router.post("/{optimization_job_id}/cancel", status_code=status.HTTP_200_OK)
 async def cancel_optimization(
@@ -142,7 +160,6 @@ async def cancel_optimization(
          raise HTTPException(status_code=400, detail="Job cannot be canceled (already finished or not found).")
     
     return {"message": "Optimization job canceled successfully."}
-
 
 @router.delete("/{optimization_job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_optimization(

@@ -278,3 +278,20 @@ async def calculate_realtime_signals(
     except Exception as e:
         logger.error(f"Error calculating signals for user {current_user.email}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="신호 계산 중 오류가 발생했습니다.")
+
+@router.post("/{strategy_id}/clone-with-optimization", response_model=schemas.Strategy, status_code=status.HTTP_201_CREATED)
+async def clone_strategy_with_optimization(
+    payload: schemas.StrategyCloneWithOptimization,
+    strategy: models.Strategy = Depends(get_verified_strategy),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """최적화 결과를 적용하여 새 전략으로 복제 생성합니다."""
+    try:
+        new_strategy = await strategy_service.clone_strategy_from_optimization(
+            db, current_user, strategy.id, payload
+        )
+        await db.commit() # 서비스 내에서 커밋하지 않았다면 여기서 커밋
+        return new_strategy
+    except ValueError as e:
+         raise HTTPException(status_code=400, detail=str(e))
