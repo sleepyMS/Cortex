@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: c26cf15d588c
+Revision ID: f47f51ec82a7
 Revises: 
-Create Date: 2025-11-10 04:00:58.048070
+Create Date: 2025-11-10 05:28:26.161501
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'c26cf15d588c'
+revision: str = 'f47f51ec82a7'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -303,18 +303,19 @@ def upgrade() -> None:
     sa.Column('status', sa.Enum('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELED', name='optimizationstatus'), nullable=False),
     sa.Column('type', sa.Enum('GENERAL', 'WFO', name='optimizationtype'), nullable=False),
     sa.Column('config', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('celery_task_id', sa.String(), nullable=True),
-    sa.Column('progress', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('strategy_snapshot', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('progress', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('result_summary', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('wfo_result', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('start_date', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('end_date', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('used_credits', sa.Integer(), nullable=False),
+    sa.Column('celery_task_id', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_optimization_jobs_status'), 'optimization_jobs', ['status'], unique=False)
     op.create_index(op.f('ix_optimization_jobs_user_id'), 'optimization_jobs', ['user_id'], unique=False)
     op.create_table('backtest_results',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -492,6 +493,7 @@ def downgrade() -> None:
     op.drop_table('community_posts')
     op.drop_table('backtest_results')
     op.drop_index(op.f('ix_optimization_jobs_user_id'), table_name='optimization_jobs')
+    op.drop_index(op.f('ix_optimization_jobs_status'), table_name='optimization_jobs')
     op.drop_table('optimization_jobs')
     op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
     op.drop_table('live_bots')

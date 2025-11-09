@@ -87,7 +87,12 @@ async def create_optimization(
 
     # 3. 작업 생성 (서비스 내부에서 '전략 소유권' 확인 수행됨)
     try:
-        job = await optimization_service.create_job(db, current_user.id, job_in)
+        job = await optimization_service.create_job(
+            db, 
+            current_user.id, 
+            job_in, 
+            estimated_cost=cost_info.final_cost
+        )
         return job
     except ValueError as e:
         # 전략을 찾을 수 없거나 권한이 없는 경우

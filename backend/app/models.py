@@ -283,32 +283,39 @@ class OptimizationStatus(str, enum.Enum):
     CANCELED = "canceled"
 
 class OptimizationJob(Base):
+    """
+    최적화 작업의 메타 데이터와 최종 결과를 저장하는 메인 테이블
+    """
     __tablename__ = "optimization_jobs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
-    
-    status = Column(Enum(OptimizationStatus), default=OptimizationStatus.PENDING, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
+
+    status = Column(Enum(OptimizationStatus), default=OptimizationStatus.PENDING, nullable=False, index=True)
     type = Column(Enum(OptimizationType), nullable=False)
-    
-    # 실행 설정 스냅샷 (목표, 제약조건, 파라미터 범위 등)
+
+    # 실행 설정 스냅샷 (기간, 자본금, 목표, 파라미터 범위 등 모든 설정 저장)
     config = Column(JSONB, nullable=False)
 
-    # 실행 중인 Celery 태스크를 추적하고 취소하기 위한 ID 저장 컬럼
-    celery_task_id = Column(String, nullable=True)
-    
-    # 진행률 정보 (current_step, total_steps)
-    progress = Column(JSONB, default={"current_step": 0, "total_steps": 0})
-    
-    # 최종 결과 요약 (Best Trial ID, 주요 성과 지표)
+    # 최적화 실행 시점의 전략 원본 스냅샷 (전략이 수정되어도 최적화 기록은 유지됨)
+    strategy_snapshot = Column(JSONB, nullable=False)
+
+    # 진행률 정보 (현재 스텝 / 총 스텝)
+    progress = Column(JSONB, default={"current_step": 0, "total_steps": 0}, nullable=False)
+
+    # 최종 결과 요약 (Best Trial ID, 파라미터, 주요 지표, 파라미터 중요도 등)
     result_summary = Column(JSONB, nullable=True)
-    
-    # WFO 전용 결과 (OOS 커브 데이터 등)
+
+    # WFO 전용 결과 데이터 (OOS 수익 곡선, 구간별 상세 정보 등 대용량 JSON)
     wfo_result = Column(JSONB, nullable=True)
 
-    start_date = Column(DateTime(timezone=True), nullable=False)
-    end_date = Column(DateTime(timezone=True), nullable=False)
+    # 이 작업에 실제로 소모된 크레딧
+    used_credits = Column(Integer, nullable=False, default=0)
+
+    # 실행 중인 Celery 태스크 ID (취소 기능을 위해 필요)
+    celery_task_id = Column(String, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 

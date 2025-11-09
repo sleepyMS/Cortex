@@ -12,6 +12,8 @@ from .. import models, schemas
 from ..tasks import run_optimization
 from ..celery_app import celery_app
 
+from .credit_service import credit_service
+
 logger = logging.getLogger(__name__)
 
 class OptimizationService:
@@ -43,6 +45,12 @@ class OptimizationService:
         # Pydantic 모델을 이용해 깔끔하게 스냅샷 딕셔너리 생성
         strategy_snapshot = schemas.StrategyForSnapshot.model_validate(strategy).model_dump(mode='json')
 
+        # [신규] 1.5. 크레딧 차감 실행 (가장 중요)
+        # 유저의 지갑에서 estimated_cost만큼 즉시 차감합니다. 잔액 부족 시 여기서 에러가 발생하여 중단됩니다.
+        await credit_service.deduct_credits(
+            db, user_id, estimated_cost, "OPTIMIZATION_JOB", f"Optimization for strategy {strategy.name}"
+        )
+
         # 2. 설정(Config) 객체 조립
         # 프론트엔드에서 받은 평탄화된 데이터를 구조화된 OptimizationConfig로 변환
         config = schemas.OptimizationConfig(
@@ -63,11 +71,9 @@ class OptimizationService:
             strategy_id=job_in.strategy_id,
             type=job_in.optimization_type,
             status=models.OptimizationStatus.PENDING,
-            # Pydantic v2의 model_dump(mode='json')을 사용하여 JSON 직렬화 가능한 형태로 변환
             config=config.model_dump(mode='json'),
             strategy_snapshot=strategy_snapshot,
-            # estimated_cost는 추후 과금을 위해 저장 (모델에 컬럼이 있다고 가정)
-            # used_credits=estimated_cost 
+            used_credits=estimated_cost 
         )
         db.add(db_job)
         

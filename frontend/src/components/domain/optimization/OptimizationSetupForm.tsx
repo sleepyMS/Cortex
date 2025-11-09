@@ -442,13 +442,21 @@ export function OptimizationSetupForm() {
         startDate: data.dateRange.from.toISOString(),
         endDate: data.dateRange.to.toISOString(),
         optimizationType: data.currentTab,
-        settings: {
-          [data.currentTab]: {
-            trials: data.general_trials,
-            folds: data.wfo_folds,
-            trialsPerFold: data.wfo_trialsPerFold,
-          },
-        },
+
+        // [변경] settings 래퍼 제거하고 직접 할당
+        generalSettings:
+          data.currentTab === "general"
+            ? { trials: data.general_trials }
+            : undefined,
+        wfoSettings:
+          data.currentTab === "wfo"
+            ? {
+                folds: data.wfo_folds,
+                trialsPerFold: data.wfo_trialsPerFold,
+                windowType: "expanding", // 기본값 명시
+              }
+            : undefined,
+
         objective: data.objective,
         constraints: data.constraints.map((c) => ({
           type: c.type,
@@ -478,14 +486,17 @@ export function OptimizationSetupForm() {
       router.push(`/optimization/${response.data.id}`);
     },
     onError: (error: any) => {
-      // 에러 메시지가 번역 키인 경우 그대로 사용, 아니면 서버 에러 메시지 사용
-      const message = error.message.startsWith("OptimizationSetupForm.")
-        ? t(error.message.split(".").pop())
-        : error?.response?.data?.detail || error.message;
+      let errorMessage = error.message;
 
-      toast.error(t("submitError"), {
-        description: message,
-      });
+      // axios 에러인 경우 서버 응답 메시지 우선 사용
+      if (error?.response?.data?.detail) {
+        errorMessage =
+          typeof error.response.data.detail === "string"
+            ? error.response.data.detail
+            : JSON.stringify(error.response.data.detail);
+      }
+
+      toast.error(t("submitError", { error: errorMessage }));
     },
   });
 
