@@ -330,7 +330,7 @@ class OptimizationTrial(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True) # 많은 양이 쌓일 수 있으므로 BigInt 사용 고려
     job_id = Column(UUID(as_uuid=True), ForeignKey("optimization_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
-    trial_number = Column(Integer, nullable=False)
+    trial_id = Column(Integer, nullable=False)
     
     params = Column(JSONB, nullable=False) # 사용된 파라미터 조합
     metrics = Column(JSONB, nullable=True) # 수익률, MDD, 점수 등 핵심 지표만

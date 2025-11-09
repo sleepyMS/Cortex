@@ -441,6 +441,7 @@ export function OptimizationSetupForm() {
         strategyId: data.strategyId,
         startDate: data.dateRange.from.toISOString(),
         endDate: data.dateRange.to.toISOString(),
+        initialCapital: data.initialCapital,
         optimizationType: data.currentTab,
 
         // [변경] settings 래퍼 제거하고 직접 할당
@@ -470,7 +471,6 @@ export function OptimizationSetupForm() {
           step: r.step,
         })),
         commonParameters: {
-          initialCapital: data.initialCapital,
           leverage: data.leverage,
           fee: data.feePct,
           slippage: data.slippagePct,

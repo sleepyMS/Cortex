@@ -26,70 +26,93 @@ class OptimizationService:
         db: AsyncSession,
         user_id: uuid.UUID,
         job_in: schemas.OptimizationCreate,
-        estimated_cost: int
+        estimated_cost: int,
+        discount_pct: float
     ) -> models.OptimizationJob:
-        """
-        1. 최적화 요청 데이터를 기반으로 DB에 Job 레코드를 'PENDING' 상태로 생성합니다.
-        2. 전략 스냅샷을 생성하여 저장합니다.
-        3. Celery에 비동기 작업을 등록합니다.
-        """
-        # 1. 전략 존재 여부 확인 및 스냅샷 생성을 위한 조회
-        # 최적화 실행 시점의 전략 상태를 완벽하게 보존하기 위해 스냅샷을 뜹니다.
+        logger.warning(f"[OPT-SERVICE] create_job called for user {user_id}, strategy {job_in.strategy_id}")
+        
+        # 1. 전략 조회
         result = await db.execute(
             select(models.Strategy).filter_by(id=job_in.strategy_id, author_id=user_id)
         )
         strategy = result.scalar_one_or_none()
         if not strategy:
+            logger.error(f"[OPT-SERVICE] Strategy not found: {job_in.strategy_id}")
             raise ValueError("Strategy not found or permission denied.")
+        logger.warning(f"[OPT-SERVICE] Strategy found: {strategy.name}")
 
-        # Pydantic 모델을 이용해 깔끔하게 스냅샷 딕셔너리 생성
-        strategy_snapshot = schemas.StrategyForSnapshot.model_validate(strategy).model_dump(mode='json')
+        # 2. 스냅샷 생성
+        try:
+            strategy_snapshot = schemas.StrategyForSnapshot.model_validate(strategy).model_dump(mode='json')
+            logger.warning("[OPT-SERVICE] Strategy snapshot created successfully")
+        except Exception as e:
+             logger.error(f"[OPT-SERVICE] Failed to create strategy snapshot: {e}", exc_info=True)
+             raise e
 
-        # [신규] 1.5. 크레딧 차감 실행 (가장 중요)
-        # 유저의 지갑에서 estimated_cost만큼 즉시 차감합니다. 잔액 부족 시 여기서 에러가 발생하여 중단됩니다.
-        await credit_service.deduct_credits(
-            db, user_id, estimated_cost, "OPTIMIZATION_JOB", f"Optimization for strategy {strategy.name}"
-        )
+        # 3. 크레딧 차감
+        try:
+            logger.warning(f"[OPT-SERVICE] Deducting {estimated_cost} credits...")
+            # credit_service가 올바르게 import 되었는지 확인 필요
+            from .credit_service import credit_service
+            await credit_service.deduct_credits(
+                db=db,
+                user_id=user_id,
+                amount_to_deduct=estimated_cost,
+                discount_pct=discount_pct, 
+                related_entity_type="OPTIMIZATION_JOB",
+                related_entity_id=None 
+            )
+            logger.warning("[OPT-SERVICE] Credits deducted successfully")
+        except Exception as e:
+            logger.error(f"[OPT-SERVICE] Credit deduction failed: {e}", exc_info=True)
+            raise e
 
-        # 2. 설정(Config) 객체 조립
-        # 프론트엔드에서 받은 평탄화된 데이터를 구조화된 OptimizationConfig로 변환
-        config = schemas.OptimizationConfig(
-            objective=job_in.objective,
-            start_date=job_in.start_date,
-            end_date=job_in.end_date,
-            initial_capital=job_in.common_parameters.initial_capital,
-            common_parameters=job_in.common_parameters,
-            parameter_ranges=job_in.parameter_ranges,
-            constraints=job_in.constraints,
-            general_settings=job_in.general_settings,
-            wfo_settings=job_in.wfo_settings
-        )
+        # 4. Config 조립 및 DB 레코드 생성
+        try:
+            config = schemas.OptimizationConfig(
+                objective=job_in.objective,
+                start_date=job_in.start_date,
+                end_date=job_in.end_date,
+                initial_capital=job_in.initial_capital, 
+                common_parameters=job_in.common_parameters,
+                parameter_ranges=job_in.parameter_ranges,
+                constraints=job_in.constraints,
+                general_settings=job_in.general_settings,
+                wfo_settings=job_in.wfo_settings
+            )
+            
+            db_job = models.OptimizationJob(
+                user_id=user_id,
+                strategy_id=job_in.strategy_id,
+                type=job_in.optimization_type,
+                status=models.OptimizationStatus.PENDING,
+                config=config.model_dump(mode='json'),
+                strategy_snapshot=strategy_snapshot,
+                used_credits=estimated_cost
+            )
+            db.add(db_job)
+            await db.flush()
+            await db.refresh(db_job)
+            logger.warning(f"[OPT-SERVICE] Job record created in DB with ID: {db_job.id}")
+        except Exception as e:
+            logger.error(f"[OPT-SERVICE] DB insert failed: {e}", exc_info=True)
+            await db.rollback()
+            raise e
 
-        # 3. DB 레코드 생성
-        db_job = models.OptimizationJob(
-            user_id=user_id,
-            strategy_id=job_in.strategy_id,
-            type=job_in.optimization_type,
-            status=models.OptimizationStatus.PENDING,
-            config=config.model_dump(mode='json'),
-            strategy_snapshot=strategy_snapshot,
-            used_credits=estimated_cost 
-        )
-        db.add(db_job)
+        # 5. Celery 태스크 실행
+        try:
+            task = run_optimization.delay(str(db_job.id))
+            db_job.celery_task_id = task.id
+            await db.flush()
+            logger.warning(f"[OPT-SERVICE] Celery task dispatched: {task.id}")
+        except Exception as e:
+            logger.error(f"[OPT-SERVICE] Celery dispatch failed: {e}", exc_info=True)
+            # 태스크 실행 실패 시 Job 상태를 FAILED로 변경하는 것이 좋음
+            db_job.status = models.OptimizationStatus.FAILED
+            await db.flush()
+            raise e
         
-        # Job ID 생성을 위해 flush 또는 commit 필요
-        await db.commit()
-        await db.refresh(db_job)
-
-        # 4. Celery 태스크 실행 (비동기)
-        # DB에 저장된 job_id를 전달하여 워커가 데이터를 읽을 수 있게 함
-        task = run_optimization.delay(str(db_job.id))
-
-        # 태스크 ID를 DB에 업데이트합니다.
-        db_job.celery_task_id = task.id
-        await db.commit() # 변경 사항 저장
-        
-        logger.info(f"Optimization job {db_job.id} created and task {task.id} dispatched.")
+        await db.refresh(db_job, attribute_names=["strategy"])
 
         return db_job
 

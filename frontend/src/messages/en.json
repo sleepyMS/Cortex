@@ -1535,5 +1535,114 @@
     "winRateTooltip": "The percentage of winning trades out of all trades.",
     "keyIndicators": "Key Indicators Used",
     "viewStrategy": "View Strategy Details"
+  },
+  "OptimizationDetailPage": {
+    "Header": {
+      "unknownStrategy": "Unknown Strategy",
+      "typeGeneral": "General",
+      "typeWfo": "WFO",
+      "statusRunning": "Running",
+      "statusPending": "Pending",
+      "statusCompleted": "Completed",
+      "statusFailed": "Failed",
+      "statusCanceled": "Canceled",
+      "rerun": "Rerun",
+      "rerunTooltip": "Start a new optimization with the same settings.",
+      "saveAsNewStrategy": "Save as New Strategy",
+      "applyDisabledTooltip": "Available only when optimization is successfully completed.",
+      "applyEnabledTooltip": "Create a new strategy based on the best result found.",
+      "errorNoBestTrial": "No best trial result found.",
+      "cloneSuccess": "New strategy created successfully.",
+      "viewStrategy": "View Strategy",
+      "applyError": "Failed to save strategy.",
+      "dialog": {
+        "title": "Save as New Strategy",
+        "description": "Create a new strategy based on the optimized parameters. Enter a name for the new strategy.",
+        "nameLabel": "Strategy Name",
+        "cancel": "Cancel",
+        "save": "Save"
+      }
+    },
+    "ConfigSummary": {
+      "title": "Configuration Summary",
+      "objective": "Objective",
+      "period": "Period",
+      "initialCapital": "Initial Capital",
+      "wfoFolds": "WFO Folds",
+      "foldsUnit": "folds",
+      "constraints": "Constraints"
+    },
+    "BestResult": {
+      "title": "Best Result",
+      "description": "The single best trial found during this optimization.",
+      "noResultYet": "No results yet",
+      "noResultYetDescription": "The best result will appear here once the optimization starts.",
+      "totalReturn": "Total Return",
+      "mdd": "MDD",
+      "winRate": "Win Rate",
+      "foundParameters": "Optimized Parameters",
+      "viewDetails": "View Full Report"
+    },
+    "WfoAnalysis": {
+      "sectionTitle": "Walk-Forward Analysis (WFO)",
+      "oosPerformanceTitle": "Out-of-Sample (OOS) Equity Curve",
+      "oosPerformanceTooltip": "The actual cumulative return curve achieved by trading only in the untested (OOS) periods. This is the true validation of the strategy's robustness.",
+      "parameterStabilityTitle": "Parameter Stability",
+      "parameterStabilityTooltip": "Shows how the optimal parameter values changed across different WFO periods. Less variation (flatter lines) indicates a more robust strategy.",
+      "noChartData": "No chart data available."
+    },
+    "DetailedAnalysis": {
+      "sectionTitle": "Detailed Analysis",
+      "minScoreFilter": "Min Score",
+      "exportStarted": "Preparing data for export...",
+      "noDataToExport": "No data available to export matching the current filter.",
+      "exportSuccess": "Successfully exported {count} trials to CSV.",
+      "exportFailed": "Failed to export data.",
+      "tabs": {
+        "charts": "Analysis Charts",
+        "trials": "All Trials Data"
+      },
+      "importanceTitle": "Parameter Importance",
+      "importanceTooltip": "Shows which parameters had the greatest impact on the optimization objective. Focus on the top parameters for further tuning.",
+      "importanceLabel": "Importance",
+      "parallelCoordinatesTitle": "Parallel Coordinates Plot",
+      "parallelCoordinatesTooltip": "Visualizes the relationship between multiple parameters and performance. Each line represents one trial. Green lines indicate better performance.",
+      "trialsTableTitle": "All Trials"
+    },
+    "TrialsTable": {
+      "title": "Trials History",
+      "description": "A list of all simulation trials performed during this optimization.",
+      "noResults": "No trials found matching the filter.",
+      "headers": {
+        "status": "Status",
+        "score": "Score",
+        "totalReturn": "Total Return",
+        "pnl": "PnL",
+        "mdd": "MDD",
+        "winRate": "Win Rate"
+      },
+      "status": {
+        "complete": "Complete",
+        "pruned": "Pruned",
+        "failed": "Failed"
+      },
+      "actions": {
+        "label": "Actions",
+        "viewDetails": "View Details"
+      },
+      "pagination": {
+        "total": "Total {count} trials",
+        "rowsPerPage": "Rows per page",
+        "pageInfo": "Page {current} of {total}",
+        "firstPage": "First Page",
+        "previousPage": "Previous",
+        "nextPage": "Next",
+        "lastPage": "Last Page"
+      }
+    },
+    "errorTitle": "Failed to load optimization",
+    "errorMessage": "An error occurred while loading the optimization job details.",
+    "processingTitle": "Optimization in progress...",
+    "trialsCompleted": "trials completed"
   }
 }

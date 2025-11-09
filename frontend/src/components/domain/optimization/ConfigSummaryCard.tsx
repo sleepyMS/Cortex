@@ -14,22 +14,14 @@ import {
   Layers,
 } from "lucide-react";
 
-import { OptimizationConfig } from "@/types/optimization";
+import { OptimizationConfig, OptimizationType } from "@/types/optimization";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/Separator";
 import { Badge } from "@/components/ui/Badge";
 
 interface ConfigSummaryCardProps {
-  config: OptimizationConfig & {
-    // OptimizationConfig 타입에 제약 조건이 포함되어 있다고 가정합니다.
-    // (백엔드가 이 정보를 config 객체 안에 포함시켜 반환해야 합니다.)
-    constraints?: Array<{
-      type: string;
-      operator: string;
-      value: number;
-    }>;
-  };
-  type: "general" | "wfo";
+  config: OptimizationConfig;
+  type: OptimizationType;
 }
 
 export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
@@ -38,13 +30,16 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
   const tObj = useTranslations("OptimizationSetupForm.objectives"); // 목표 번역 재사용
 
   // 날짜 포맷팅 헬퍼
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "-";
     try {
-      return format(new Date(dateStr), "yyyy.MM.dd");
+      return format(new Date(dateStr), "yy.MM.dd");
     } catch (e) {
       return dateStr;
     }
   };
+
+  if (!config) return null;
 
   return (
     <Card className="h-full">
@@ -63,7 +58,6 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
               {t("objective")}
             </span>
             <span className="font-medium text-primary">
-              {/* 목표 키(e.g. 'CAGR')를 번역된 텍스트로 변환 시도 */}
               {tObj.has(config.objective)
                 ? tObj(config.objective)
                 : config.objective}
@@ -75,8 +69,8 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
               {t("period")}
             </span>
             <span className="font-mono text-xs">
-              {formatDate(config.dateRange.from)} ~{" "}
-              {formatDate(config.dateRange.to)}
+              {/* [수정] config.startDate, config.endDate 사용 */}
+              {formatDate(config.startDate)} ~ {formatDate(config.endDate)}
             </span>
           </div>
           <div className="flex justify-between items-center">
@@ -85,7 +79,7 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
               {t("initialCapital")}
             </span>
             <span className="font-mono">
-              ${config.initialCapital.toLocaleString()}
+              ${config.initialCapital?.toLocaleString() ?? "-"}
             </span>
           </div>
         </div>
@@ -104,7 +98,6 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
                   {config.wfoSettings.folds} {t("foldsUnit")}
                 </span>
               </div>
-              {/* 필요한 경우 WFO 윈도우 타입 등 추가 정보 표시 */}
             </div>
           </>
         )}

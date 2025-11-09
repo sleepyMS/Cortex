@@ -976,6 +976,8 @@ class OptimizationCreate(CamelCaseModel):
     # 설정 정보 평탄화(Flatten) 수신 후 내부적으로 Config 객체 조립
     start_date: datetime
     end_date: datetime
+    initial_capital: float
+    
     objective: str
     constraints: List[OptimizationConstraint] = []
     parameter_ranges: List[ParameterRange]

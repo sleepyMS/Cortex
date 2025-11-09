@@ -1580,5 +1580,114 @@
     "winRateTooltip": "전체 거래 중 수익을 낸 거래의 비율입니다.",
     "keyIndicators": "주요 사용 지표",
     "viewStrategy": "전략 상세보기"
+  },
+  "OptimizationDetailPage": {
+    "Header": {
+      "unknownStrategy": "알 수 없는 전략",
+      "typeGeneral": "일반",
+      "typeWfo": "WFO",
+      "statusRunning": "실행중",
+      "statusPending": "대기중",
+      "statusCompleted": "완료됨",
+      "statusFailed": "실패",
+      "statusCanceled": "취소됨",
+      "rerun": "재실행",
+      "rerunTooltip": "동일한 설정으로 새로운 최적화 작업을 시작합니다.",
+      "saveAsNewStrategy": "새 전략으로 저장",
+      "applyDisabledTooltip": "최적화가 성공적으로 완료된 후에만 가능합니다.",
+      "applyEnabledTooltip": "발견된 최적 파라미터를 기반으로 새 전략을 생성합니다.",
+      "errorNoBestTrial": "최고의 결과(Best Trial)가 없습니다.",
+      "cloneSuccess": "새 전략이 성공적으로 생성되었습니다.",
+      "viewStrategy": "전략 보기",
+      "applyError": "전략 저장에 실패했습니다.",
+      "dialog": {
+        "title": "새 전략으로 저장",
+        "description": "최적화된 파라미터를 기반으로 새로운 전략을 생성합니다. 새 전략의 이름을 입력해주세요.",
+        "nameLabel": "전략 이름",
+        "cancel": "취소",
+        "save": "저장"
+      }
+    },
+    "ConfigSummary": {
+      "title": "설정 요약",
+      "objective": "최적화 목표",
+      "period": "기간",
+      "initialCapital": "초기 자본금",
+      "wfoFolds": "WFO 구간 수",
+      "foldsUnit": "개 구간",
+      "constraints": "제약 조건"
+    },
+    "BestResult": {
+      "title": "최고의 결과",
+      "description": "이번 최적화에서 발견된 가장 뛰어난 단일 시도 결과입니다.",
+      "noResultYet": "아직 결과 없음",
+      "noResultYetDescription": "최적화가 시작되면 이곳에 최고의 결과가 표시됩니다.",
+      "totalReturn": "총 수익률",
+      "mdd": "최대 낙폭 (MDD)",
+      "winRate": "승률",
+      "foundParameters": "최적 파라미터",
+      "viewDetails": "상세 리포트 보기"
+    },
+    "WfoAnalysis": {
+      "sectionTitle": "워크포워드 분석 (WFO)",
+      "oosPerformanceTitle": "OOS(전진 분석) 실전 수익 곡선",
+      "oosPerformanceTooltip": "최적화에 사용되지 않은 미래 데이터(OOS) 구간들만 이어 붙였을 때의 실제 누적 수익 곡선입니다. 전략의 실전성을 검증하는 가장 중요한 지표입니다.",
+      "parameterStabilityTitle": "파라미터 안정성 추이",
+      "parameterStabilityTooltip": "WFO의 각 구간별로 최적 파라미터 값이 어떻게 변했는지 보여줍니다. 그래프가 평탄할수록 시장 변화에 둔감한 견고한 전략임을 의미합니다.",
+      "noChartData": "차트 데이터가 없습니다."
+    },
+    "DetailedAnalysis": {
+      "sectionTitle": "상세 분석",
+      "minScoreFilter": "최소 점수",
+      "exportStarted": "데이터 내보내기를 준비 중입니다...",
+      "noDataToExport": "현재 필터 조건에 맞는 데이터가 없습니다.",
+      "exportSuccess": "{count}개의 시도 데이터를 CSV로 내보냈습니다.",
+      "exportFailed": "데이터 내보내기에 실패했습니다.",
+      "tabs": {
+        "charts": "분석 차트",
+        "trials": "전체 시도 데이터"
+      },
+      "importanceTitle": "파라미터 중요도",
+      "importanceTooltip": "어떤 파라미터가 최적화 목표(수익률 등)에 가장 큰 영향을 미쳤는지 보여줍니다. 상위 파라미터 위주로 집중하여 전략을 개선하세요.",
+      "importanceLabel": "중요도",
+      "parallelCoordinatesTitle": "평행 좌표 플롯",
+      "parallelCoordinatesTooltip": "여러 파라미터와 성과 간의 관계를 시각화합니다. 각 선은 하나의 시도(Trial)를 나타내며, 초록색 선일수록 성과가 좋습니다.",
+      "trialsTableTitle": "모든 시도 목록"
+    },
+    "TrialsTable": {
+      "title": "시도 기록",
+      "description": "최적화 과정에서 수행된 모든 시뮬레이션 목록입니다.",
+      "noResults": "필터 조건에 맞는 시도 기록이 없습니다.",
+      "headers": {
+        "status": "상태",
+        "score": "점수",
+        "totalReturn": "총 수익률",
+        "pnl": "손익",
+        "mdd": "MDD",
+        "winRate": "승률"
+      },
+      "status": {
+        "complete": "완료",
+        "pruned": "중단됨(Pruned)",
+        "failed": "실패"
+      },
+      "actions": {
+        "label": "작업",
+        "viewDetails": "상세 보기"
+      },
+      "pagination": {
+        "total": "총 {count}회 시도",
+        "rowsPerPage": "페이지 당 행",
+        "pageInfo": "{total} 중 {current} 페이지",
+        "firstPage": "첫 페이지",
+        "previousPage": "이전",
+        "nextPage": "다음",
+        "lastPage": "마지막 페이지"
+      }
+    },
+    "errorTitle": "최적화 정보 로딩 실패",
+    "errorMessage": "최적화 작업 상세 정보를 불러오는 중 오류가 발생했습니다.",
+    "processingTitle": "최적화 진행 중...",
+    "trialsCompleted": "회 시도 완료"
   }
 }

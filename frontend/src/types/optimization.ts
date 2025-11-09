@@ -78,10 +78,9 @@ export interface OptimizationConfig {
    * 1순위 최적화 목표 (예: 'CAGR', 'cortexScore')
    */
   objective: string;
-  dateRange: {
-    from: string;
-    to: string;
-  };
+  startDate: string;
+  endDate: string;
+
   initialCapital: number;
   // 기타 실행 파라미터 (레버리지, 수수료 등)
   commonParameters: {
@@ -100,6 +99,15 @@ export interface OptimizationConfig {
     folds: number;
     windowType?: "expanding" | "sliding"; // 확장창 또는 고정창
   };
+  generalSettings?: {
+    trials: number;
+  };
+  parameterRanges?: Array<{
+    path: string;
+    min: number;
+    max: number;
+    step: number;
+  }>;
 }
 
 /**

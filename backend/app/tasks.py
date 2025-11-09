@@ -114,8 +114,14 @@ def run_optimization(self, job_id: str):
     
     try:
         # 1. 초기화 및 설정 로드
-        job = session.query(OptimizationJob).filter(OptimizationJob.id == job_uuid).one_or_none()
-        if not job: raise ValueError(f"Optimization Job {job_id} not found.")
+        job = None
+        for attempt in range(5):
+            job = session.query(OptimizationJob).filter(OptimizationJob.id == job_uuid).one_or_none()
+            if job: break
+            logger.warning(f"Optimization Job {job_id} not found on attempt {attempt + 1}. Retrying...")
+            time.sleep(1) # 1초 대기 후 재시도
+
+        if not job: raise ValueError(f"Optimization Job {job_id} not found after retries.")
         
         job.status = OptimizationStatus.RUNNING
         session.commit()
