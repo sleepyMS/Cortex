@@ -78,7 +78,8 @@ export const ParallelCoordinatesChart = ({
     // 1.1. 렌더링할 데이터 샘플링 (너무 많으면 브라우저가 느려짐)
     // 상위 150개 + 하위 50개 + 랜덤 100개 등으로 구성하면 좋으나, 여기선 단순화하여 상위 N개만 사용
     const sortedTrials = [...trials].sort(
-      (a, b) => (b.metrics[colorMetric] ?? 0) - (a.metrics[colorMetric] ?? 0)
+      (a, b) =>
+        (b.metrics?.[colorMetric] ?? 0) - (a.metrics?.[colorMetric] ?? 0)
     );
     const sampledTrials = sortedTrials.slice(0, MAX_DISPLAY_TRIALS);
 
@@ -111,7 +112,7 @@ export const ParallelCoordinatesChart = ({
 
     // 1.3. 최고 점수 계산 (색상 정규화용)
     const maxS = Math.max(
-      ...trials.map((t) => t.metrics[colorMetric] ?? 0),
+      ...trials.map((t) => t.metrics?.[colorMetric] ?? 0),
       1 // 0으로 나누기 방지
     );
 
@@ -199,7 +200,7 @@ export const ParallelCoordinatesChart = ({
             <g className="trials">
               {/* 성능을 위해 점수가 낮은 순서대로 먼저 그림 (높은 점수가 위에 오도록) */}
               {[...processedTrials].reverse().map((trial) => {
-                const score = trial.metrics[colorMetric] ?? 0;
+                const score = trial.metrics?.[colorMetric] ?? 0;
                 const isHovered = hoveredTrialId === trial.trialId;
                 // 호버 시 다른 라인은 흐리게 처리
                 const opacity = hoveredTrialId

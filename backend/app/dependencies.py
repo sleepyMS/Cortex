@@ -130,7 +130,8 @@ ModelType = TypeVar("ModelType", bound=Base)
 
 def create_owner_verifier(
     model: Type[ModelType],
-    owner_field: str = "user_id"
+    owner_field: str = "user_id",
+    path_param_name: Optional[str] = None
 ):
     """
     지정된 모델의 소유권을 검증하는 FastAPI 의존성을 동적으로 생성하는 팩토리 함수.
@@ -141,8 +142,12 @@ def create_owner_verifier(
         db: Annotated[AsyncSession, Depends(get_async_db)],
         current_user: Annotated[models.User, Depends(get_current_active_user)],
     ) -> ModelType:
-        model_name = model.__name__.lower()
-        id_field_name = f"{model_name}_id"
+        if path_param_name:
+            id_field_name = path_param_name
+        else:
+            model_name = model.__name__.lower()
+            id_field_name = f"{model_name}_id"
+
         model_id_str = request.path_params.get(id_field_name)
 
         if not model_id_str:

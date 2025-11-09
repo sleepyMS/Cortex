@@ -330,9 +330,9 @@ class StrategyService:
         optimized_data = self._apply_params_to_strategy_dict(strategy_data, trial.params)
         
         # 5. 새 전략 이름 및 설명 설정
-        new_name = payload.new_name or f"{original_strategy.name} (Optimized #{trial.trial_number})"
+        new_name = payload.new_name or f"{original_strategy.name} (Optimized #{trial.trial_id})"
         optimized_data['name'] = new_name
-        optimized_data['description'] = (original_strategy.description or "") + f"\n\nBased on optimization {payload.optimization_id}, Trial #{trial.trial_number}."
+        optimized_data['description'] = (original_strategy.description or "") + f"\n\nBased on optimization {payload.optimization_id}, Trial #{trial.trial_id}."
 
         # 6. 새 전략 생성 (기존 create_strategy 재활용)
         return await self.create_strategy(db, user, schemas.StrategyCreate(**optimized_data))

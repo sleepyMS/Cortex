@@ -169,7 +169,7 @@ class OptimizationService:
         return result.scalars().all()
     
     async def get_trial(
-        self, db: AsyncSession, job_id: uuid.UUID, trial_number: int
+        self, db: AsyncSession, job_id: uuid.UUID, trial_id: int
     ) -> Optional[models.OptimizationTrial]:
         """
         특정 최적화 작업 내의 단일 시도(Trial) 정보를 조회합니다.
@@ -177,7 +177,7 @@ class OptimizationService:
         """
         query = select(models.OptimizationTrial).filter_by(
             job_id=job_id, 
-            trial_number=trial_number
+            trial_id=trial_id
         )
         result = await db.execute(query)
         return result.scalar_one_or_none()
@@ -235,7 +235,7 @@ class OptimizationService:
         job_id: uuid.UUID,
         page: int = 1,
         limit: int = 20,
-        sort_by: str = "trial_number",
+        sort_by: str = "trial_id",
         sort_desc: bool = False,
         min_score: Optional[float] = None  # [추가] 필터링 파라미터
     ) -> Dict[str, Any]:
@@ -257,8 +257,8 @@ class OptimizationService:
         total = (await db.execute(count_query)).scalar_one()
 
         # 정렬 적용
-        if sort_by == "trial_number":
-            order = desc(models.OptimizationTrial.trial_number) if sort_desc else asc(models.OptimizationTrial.trial_number)
+        if sort_by == "trial_id":
+            order = desc(models.OptimizationTrial.trial_id) if sort_desc else asc(models.OptimizationTrial.trial_id)
             query = query.order_by(order)
         elif sort_by == "score": # 점수 기준 정렬 기능 추가
              score_col = models.OptimizationTrial.metrics['backtest_score'].astext.cast(Float)

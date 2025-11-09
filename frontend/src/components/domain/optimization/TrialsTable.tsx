@@ -89,7 +89,7 @@ export const TrialsTable = ({
 
       // [중요] 프론트엔드(camelCase) -> 백엔드(snake_case) 정렬 필드 매핑
       let sortField = sorting[0]?.id;
-      if (sortField === "trialId") sortField = "trial_number";
+      if (sortField === "trialId") sortField = "trial_id";
       if (sortField === "backtestScore") sortField = "score";
       if (sortField === "totalReturnPct") sortField = "total_return";
 
@@ -98,7 +98,7 @@ export const TrialsTable = ({
       const params = new URLSearchParams({
         page: (pageIndex + 1).toString(),
         limit: pageSize.toString(),
-        sort_by: sortField || "trial_number",
+        sort_by: sortField || "trial_id",
         sort_desc: sortDesc.toString(),
       });
 

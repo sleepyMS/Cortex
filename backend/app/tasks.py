@@ -246,7 +246,7 @@ def run_optimization(self, job_id: str):
             for t in main_study.trials:
                 state = "FAIL" if t.user_attrs.get("error") else ("COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL")
                 trial_objects.append({
-                    "job_id": job_uuid, "trial_number": t.number, "params": t.params,
+                    "job_id": job_uuid, "trial_id": t.number, "params": t.params,
                     "metrics": t.user_attrs.get("metrics"), "state": state
                 })
             session.bulk_insert_mappings(OptimizationTrial, trial_objects)
@@ -294,7 +294,7 @@ def run_optimization(self, job_id: str):
                     global_trial_counter += 1
                     state = "FAIL" if t.user_attrs.get("error") else ("COMPLETE" if t.state == optuna.trial.TrialState.COMPLETE else "PRUNED" if t.state == optuna.trial.TrialState.PRUNED else "FAIL")
                     trial_objects.append({
-                        "job_id": job_uuid, "trial_number": global_trial_counter,
+                        "job_id": job_uuid, "trial_id": global_trial_counter,
                         "params": t.params, "metrics": t.user_attrs.get("metrics"), "state": state,
                     })
                 session.bulk_insert_mappings(OptimizationTrial, trial_objects)

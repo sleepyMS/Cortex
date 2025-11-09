@@ -119,7 +119,7 @@ export default function OptimizationDetailPage({
   const filteredTrials = useMemo(() => {
     if (minScore[0] === 0) return allTrials;
     return allTrials.filter(
-      (trial) => (trial.metrics.backtestScore ?? 0) >= minScore[0]
+      (trial) => (trial.metrics?.backtestScore ?? 0) >= minScore[0]
     );
   }, [allTrials, minScore]);
 
