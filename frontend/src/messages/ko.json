@@ -1398,7 +1398,8 @@
       "sortino": "소르티노 지수 (연율화)",
       "calmar": "칼마 지수 (연율화)",
       "profit_factor": "수익비",
-      "win_rate": "승률"
+      "win_rate": "승률",
+      "autoChangedToTotalReturn": "훈련 기간이 1년 미만입니다. 최적화 목표가 '총 수익률'로 자동 변경되었습니다."
     },
     "constraints": {
       "mdd": "최대 낙폭",
@@ -1414,7 +1415,8 @@
         "title": "사전 점검",
         "strategy": "전략 선택 완료",
         "objective": "목표 설정 완료",
-        "trials": "총 {count}회 시도"
+        "trials": "총 {count}회 시도",
+        "paramsSelected": "{count}개 파라미터 선택됨"
       },
       "costDetails": {
         "title": "비용 상세정보",

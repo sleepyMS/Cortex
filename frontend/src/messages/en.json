@@ -1353,7 +1353,8 @@
       "sortino": "Sortino Ratio (Annualized)",
       "calmar": "Calmar Ratio (Annualized)",
       "profit_factor": "Profit Factor",
-      "win_rate": "Win Rate"
+      "win_rate": "Win Rate",
+      "autoChangedToTotalReturn": "Training period is less than 1 year. Objective automatically switched to 'Total Return'."
     },
     "constraints": {
       "mdd": "Max Drawdown",
@@ -1369,7 +1370,8 @@
         "title": "Pre-flight Check",
         "strategy": "Strategy selected",
         "objective": "Objective set",
-        "trials": "{count} total trials"
+        "trials": "{count} total trials",
+        "paramsSelected": "{count} parameters selected"
       },
       "costDetails": {
         "title": "Cost Details",

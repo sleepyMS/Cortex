@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 391a0ef890fe
+Revision ID: c26cf15d588c
 Revises: 
-Create Date: 2025-10-30 00:13:52.497957
+Create Date: 2025-11-10 04:00:58.048070
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '391a0ef890fe'
+revision: str = 'c26cf15d588c'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -296,6 +296,26 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_live_bots_celery_task_id'), 'live_bots', ['celery_task_id'], unique=False)
+    op.create_table('optimization_jobs',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('strategy_id', sa.UUID(), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELED', name='optimizationstatus'), nullable=False),
+    sa.Column('type', sa.Enum('GENERAL', 'WFO', name='optimizationtype'), nullable=False),
+    sa.Column('config', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('celery_task_id', sa.String(), nullable=True),
+    sa.Column('progress', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('result_summary', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('wfo_result', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('start_date', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('end_date', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['strategy_id'], ['strategies.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_optimization_jobs_user_id'), 'optimization_jobs', ['user_id'], unique=False)
     op.create_table('backtest_results',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('backtest_id', sa.UUID(), nullable=False),
@@ -359,6 +379,18 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_marketplace_products_linked_resource_id'), 'marketplace_products', ['linked_resource_id'], unique=False)
     op.create_index(op.f('ix_marketplace_products_product_type'), 'marketplace_products', ['product_type'], unique=False)
+    op.create_table('optimization_trials',
+    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
+    sa.Column('job_id', sa.UUID(), nullable=False),
+    sa.Column('trial_number', sa.Integer(), nullable=False),
+    sa.Column('params', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('metrics', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('state', sa.String(length=20), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.ForeignKeyConstraint(['job_id'], ['optimization_jobs.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_optimization_trials_job_id'), 'optimization_trials', ['job_id'], unique=False)
     op.create_table('trade_logs',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('backtest_id', sa.UUID(), nullable=True),
@@ -451,12 +483,16 @@ def downgrade() -> None:
     op.drop_table('comments')
     op.drop_index(op.f('ix_trade_logs_timestamp'), table_name='trade_logs')
     op.drop_table('trade_logs')
+    op.drop_index(op.f('ix_optimization_trials_job_id'), table_name='optimization_trials')
+    op.drop_table('optimization_trials')
     op.drop_index(op.f('ix_marketplace_products_product_type'), table_name='marketplace_products')
     op.drop_index(op.f('ix_marketplace_products_linked_resource_id'), table_name='marketplace_products')
     op.drop_table('marketplace_products')
     op.drop_index(op.f('ix_community_posts_created_at'), table_name='community_posts')
     op.drop_table('community_posts')
     op.drop_table('backtest_results')
+    op.drop_index(op.f('ix_optimization_jobs_user_id'), table_name='optimization_jobs')
+    op.drop_table('optimization_jobs')
     op.drop_index(op.f('ix_live_bots_celery_task_id'), table_name='live_bots')
     op.drop_table('live_bots')
     op.drop_table('credits_transaction_details')
