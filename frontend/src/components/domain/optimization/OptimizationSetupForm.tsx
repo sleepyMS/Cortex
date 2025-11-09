@@ -9,6 +9,7 @@ import {
   FormProvider,
   useFieldArray,
   Controller,
+  useWatch, // [수정] useWatch 추가 임포트
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -70,12 +71,6 @@ import { Separator } from "@/components/ui/Separator";
 import { DateRangePickerCustom } from "@/components/ui/DateRangePickerCustom";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/Tooltip";
 import { OptimizationParameterTreeView } from "./OptimizationParameterTreeView";
 
 // --- Zod 폼 유효성 검사 스키마 ---
@@ -87,10 +82,9 @@ const constraintSchema = z.object({
   value: z.coerce.number(),
 });
 
-// 파라미터 범위 스키마 (선택 여부 포함)
 const parameterRangeSchema = z.object({
   path: z.string(),
-  isSelected: z.boolean().default(false), // 최적화 대상 여부
+  isSelected: z.boolean().default(false),
   min: z.coerce.number(),
   max: z.coerce.number(),
   step: z.coerce.number().min(0.000001, "스텝은 0보다 커야 합니다."),
@@ -98,7 +92,6 @@ const parameterRangeSchema = z.object({
 
 const formSchema = z
   .object({
-    // 1. 공통 설정
     strategyId: z.string().uuid({ message: "전략을 선택해주세요." }),
     dateRange: z
       .object({
@@ -115,33 +108,22 @@ const formSchema = z
     leverage: z.coerce.number().min(1).max(125),
     feePct: z.coerce.number().min(0).max(1),
     slippagePct: z.coerce.number().min(0).max(1),
-
-    // 2. 탭 선택
     currentTab: z.enum(["general", "wfo"]).default("general"),
-
-    // 3. 최적화 목표
     objective: z.string().min(1, "최적화 목표를 선택해주세요."),
     constraints: z
       .array(constraintSchema)
       .max(3, "제약 조건은 최대 3개까지 설정할 수 있습니다."),
-
-    // 4. 일반 최적화 설정
     general_trials: z.coerce
       .number()
       .min(10, "최소 10회 이상 시도해야 합니다."),
-
-    // 5. WFO 설정
     wfo_folds: z.coerce.number().min(2, "최소 2개 이상의 구간이 필요합니다."),
     wfo_trialsPerFold: z.coerce
       .number()
       .min(10, "구간당 최소 10회 이상 시도해야 합니다."),
-
-    // 6. 파라미터 범위
     parameterRanges: z.array(parameterRangeSchema),
   })
   .refine(
     (data) => {
-      // WFO 탭일 때 훈련 기간이 너무 짧아지는 경우 방지
       if (
         data.currentTab === "wfo" &&
         data.dateRange.from &&
@@ -150,9 +132,8 @@ const formSchema = z
         const totalDays =
           (data.dateRange.to.getTime() - data.dateRange.from.getTime()) /
           (1000 * 3600 * 24);
-        // 확장창 기준: 첫 훈련 기간은 총 기간 / 구간 수
         const firstISDays = totalDays / data.wfo_folds;
-        return firstISDays >= 7; // 최소 1주일은 되도록 강제
+        return firstISDays >= 7;
       }
       return true;
     },
@@ -165,7 +146,6 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-// 비용 예측 API 응답 타입
 interface CostEstimationResponse {
   originalCost: number;
   discountPct: number;
@@ -174,14 +154,12 @@ interface CostEstimationResponse {
   isSufficient: boolean;
 }
 
-// --- 메인 컴포넌트 ---
 export function OptimizationSetupForm() {
   const t = useTranslations("OptimizationSetupForm");
   const router = useRouter();
   const queryClient = useQueryClient();
   const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
 
-  // 지표 메타데이터 로드
   const { metadata: indicatorMetadataArray, isLoaded } = useIndicatorStore();
   const indicatorDefinitions = useMemo(() => {
     if (!isLoaded) return {};
@@ -191,7 +169,6 @@ export function OptimizationSetupForm() {
     }, {} as Record<string, IndicatorMetadata>);
   }, [indicatorMetadataArray, isLoaded]);
 
-  // Form 설정
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
@@ -205,7 +182,7 @@ export function OptimizationSetupForm() {
         to: startOfDay(new Date()),
       },
       currentTab: "general",
-      objective: "cortexScore", // 기본값
+      objective: "cortexScore",
       constraints: [],
       general_trials: 100,
       wfo_folds: 5,
@@ -214,34 +191,30 @@ export function OptimizationSetupForm() {
     },
   });
 
-  const { control, watch, setValue, formState } = methods;
+  const { control, setValue, formState, getValues } = methods;
 
-  // 제약 조건 필드 배열
   const {
     fields: constraintFields,
     append: appendConstraint,
     remove: removeConstraint,
   } = useFieldArray({ control, name: "constraints" });
 
-  // 파라미터 범위 필드 배열
   const { fields: rangeFields, replace: replaceRanges } = useFieldArray({
     control,
     name: "parameterRanges",
   });
 
-  // UI 변경 및 동적 계산을 위한 값 구독
-  const watchedValues = watch();
-  const {
-    strategyId,
-    dateRange,
-    currentTab,
-    wfo_folds,
-    general_trials,
-    wfo_trialsPerFold,
-    parameterRanges,
-  } = watchedValues;
+  // --- [핵심 수정] useWatch를 사용하여 상태 변화를 확실하게 구독 ---
+  const parameterRanges = useWatch({ control, name: "parameterRanges" });
+  const strategyId = useWatch({ control, name: "strategyId" });
+  const dateRange = useWatch({ control, name: "dateRange" });
+  const currentTab = useWatch({ control, name: "currentTab" });
+  const wfo_folds = useWatch({ control, name: "wfo_folds" });
+  const general_trials = useWatch({ control, name: "general_trials" });
+  const wfo_trialsPerFold = useWatch({ control, name: "wfo_trialsPerFold" });
+  const objective = useWatch({ control, name: "objective" }); // 요약 카드 체크 표시용
 
-  // --- 동적 1회 훈련 기간 계산 (핵심 로직) ---
+  // --- 동적 1회 훈련 기간 계산 ---
   const trainingPeriodInfo = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) return { months: 0, text: "N/A" };
 
@@ -257,7 +230,6 @@ export function OptimizationSetupForm() {
       };
     } else {
       if (!wfo_folds || wfo_folds < 1) return { months: 0, text: "N/A" };
-      // 확장창 기준: 첫 훈련(IS)은 총 기간의 1/N
       const firstISDays = totalDays / wfo_folds;
       return {
         months: firstISDays / 30.44,
@@ -268,17 +240,16 @@ export function OptimizationSetupForm() {
 
   const isShortTrainPeriod = trainingPeriodInfo.months < 12;
 
-  // 훈련 기간이 짧아지면 연율화 목표가 선택되어 있을 경우 기본값으로 강제 변경
   useEffect(() => {
-    const currentObjective = methods.getValues("objective");
+    const currentObjective = getValues("objective");
     const annualizedObjectives = ["cortexScore", "CAGR", "sortino", "calmar"];
     if (isShortTrainPeriod && annualizedObjectives.includes(currentObjective)) {
       setValue("objective", "totalReturnPct");
       toast.info(t("objectives.autoChangedToTotalReturn"));
     }
-  }, [isShortTrainPeriod, setValue, methods, t]);
+  }, [isShortTrainPeriod, setValue, getValues, t]);
 
-  // --- 총 시도 횟수 및 선택된 파라미터 수 계산 ---
+  // --- [핵심 수정] 선택된 파라미터 수 계산 (이제 정상 작동할 것입니다) ---
   const totalEstimatedTrials = useMemo(() => {
     if (currentTab === "general") {
       return general_trials || 0;
@@ -288,6 +259,7 @@ export function OptimizationSetupForm() {
   }, [currentTab, general_trials, wfo_folds, wfo_trialsPerFold]);
 
   const selectedParamsCount = useMemo(() => {
+    // useWatch로 가져온 parameterRanges를 사용합니다.
     return parameterRanges?.filter((r) => r.isSelected)?.length || 0;
   }, [parameterRanges]);
 
@@ -308,7 +280,6 @@ export function OptimizationSetupForm() {
     });
 
   // --- 파라미터 범위 필드 초기화 ---
-  // 전략이 변경되면 모든 숫자형 파라미터를 추출하여 초기화합니다.
   const replaceRangesRef = useRef(replaceRanges);
   useEffect(() => {
     replaceRangesRef.current = replaceRanges;
@@ -332,9 +303,7 @@ export function OptimizationSetupForm() {
           if (key === "children" || key === "id" || key === "type") continue;
           const value = (block as any)[key];
 
-          // 파라미터 추가 헬퍼 함수
           const addParam = (val: number, path: string) => {
-            // 초기값: 선택 안됨(false), Min/Max는 현재값, Step은 10% 또는 0.0001
             params.push({
               path: path,
               isSelected: false,
@@ -419,11 +388,10 @@ export function OptimizationSetupForm() {
   );
   const { mutate: estimateCost, isPending: isEstimatingCost } = useMutation({
     mutationFn: async (variables: { trials: number }) => {
-      // 필요한 최소 정보만 전송하여 비용 계산
       const payload = {
-        strategyId: watchedValues.strategyId,
-        startDate: watchedValues.dateRange.from.toISOString(),
-        endDate: watchedValues.dateRange.to.toISOString(),
+        strategyId: strategyId,
+        startDate: dateRange.from.toISOString(),
+        endDate: dateRange.to.toISOString(),
         trials: variables.trials,
       };
       const { data } = await apiClient.post(
@@ -437,33 +405,36 @@ export function OptimizationSetupForm() {
   });
 
   const debouncedEstimateCost = useCallback(
-    debounce((trials: number) => {
-      if (
-        !watchedValues.strategyId ||
-        !watchedValues.dateRange?.from ||
-        !watchedValues.dateRange?.to ||
-        trials <= 0
-      ) {
-        setEstimation(null);
-        return;
-      }
-      estimateCost({ trials });
-    }, 500),
-    [estimateCost, watchedValues.strategyId, watchedValues.dateRange]
+    debounce(
+      (trials: number, currentStrategyId: string, currentDateRange: any) => {
+        if (
+          !currentStrategyId ||
+          !currentDateRange?.from ||
+          !currentDateRange?.to ||
+          trials <= 0
+        ) {
+          setEstimation(null);
+          return;
+        }
+        estimateCost({ trials });
+      },
+      500
+    ),
+    [estimateCost]
   );
 
   useEffect(() => {
-    debouncedEstimateCost(totalEstimatedTrials);
-  }, [totalEstimatedTrials, debouncedEstimateCost]);
+    // useWatch로 가져온 최신 값들을 디바운스 함수에 전달
+    debouncedEstimateCost(totalEstimatedTrials, strategyId, dateRange);
+  }, [totalEstimatedTrials, strategyId, dateRange, debouncedEstimateCost]);
 
   // --- 제출 로직 ---
   const createOptimizationMutation = useMutation({
     mutationFn: (data: FormValues) => {
-      // 실제 최적화할 파라미터만 필터링
       const selectedRanges = data.parameterRanges.filter((r) => r.isSelected);
 
       if (selectedRanges.length === 0) {
-        throw new Error(t("errors.noParametersSelected"));
+        throw new Error(t("errors.noParametersSelected")); // ko.json에 해당 키 추가 필요
       }
 
       const payload = {
@@ -484,7 +455,6 @@ export function OptimizationSetupForm() {
           operator: c.operator,
           value: c.value,
         })),
-        // 선택된 범위만 전송
         parameterRanges: selectedRanges.map((r) => ({
           path: r.path,
           min: r.min,
@@ -508,12 +478,14 @@ export function OptimizationSetupForm() {
       router.push(`/optimization/${response.data.id}`);
     },
     onError: (error: any) => {
-      // 커스텀 에러 메시지 처리 (예: 파라미터 미선택)
-      const message =
-        error.message === t("errors.noParametersSelected")
-          ? error.message
-          : error?.response?.data?.detail || error.message;
-      toast.error(t("submitError", { error: message }));
+      // 에러 메시지가 번역 키인 경우 그대로 사용, 아니면 서버 에러 메시지 사용
+      const message = error.message.startsWith("OptimizationSetupForm.")
+        ? t(error.message.split(".").pop())
+        : error?.response?.data?.detail || error.message;
+
+      toast.error(t("submitError"), {
+        description: message,
+      });
     },
   });
 
@@ -546,7 +518,6 @@ export function OptimizationSetupForm() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* --- 왼쪽 폼 영역 --- */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 1. 공통 설정 카드 */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("commonSettings.title")}</CardTitle>
@@ -696,7 +667,6 @@ export function OptimizationSetupForm() {
               </CardContent>
             </Card>
 
-            {/* 2. 최적화 타입 탭 */}
             <Tabs
               value={currentTab}
               onValueChange={(value) =>
@@ -820,7 +790,6 @@ export function OptimizationSetupForm() {
               </TabsContent>
             </Tabs>
 
-            {/* 3. 목표 및 제약 조건 */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("objectives.title")}</CardTitle>
@@ -843,7 +812,6 @@ export function OptimizationSetupForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {/* 연율화 지표는 훈련 기간이 짧으면 비활성화 */}
                           <SelectItem
                             value="cortexScore"
                             disabled={isShortTrainPeriod}
@@ -911,7 +879,7 @@ export function OptimizationSetupForm() {
                               value={typeField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[120px] h-9">
+                                <SelectTrigger className="w-[160px] h-9">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -934,7 +902,7 @@ export function OptimizationSetupForm() {
                               value={opField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[60px] h-9 font-mono">
+                                <SelectTrigger className="w-[70px] h-9 font-mono">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -992,7 +960,6 @@ export function OptimizationSetupForm() {
               </CardContent>
             </Card>
 
-            {/* 4. 파라미터 범위 설정 트리 뷰 */}
             {!isLoadingStrategyDetails && selectedStrategy && (
               <OptimizationParameterTreeView
                 strategy={selectedStrategy}
@@ -1057,7 +1024,7 @@ export function OptimizationSetupForm() {
                     <CheckCircle
                       className={cn(
                         "h-4 w-4 transition-colors",
-                        !formState.errors.objective && watchedValues.objective
+                        !formState.errors.objective && objective
                           ? "text-emerald-500"
                           : "text-muted-foreground/30"
                       )}
@@ -1095,7 +1062,6 @@ export function OptimizationSetupForm() {
                   </li>
                 </ul>
 
-                {/* 비용 예측 결과 표시 */}
                 <div className="w-full pt-3 mt-2 border-t">
                   <h4 className="font-semibold text-sm mb-3 flex items-center gap-1.5">
                     <Receipt className="h-4 w-4 text-muted-foreground" />
@@ -1121,7 +1087,7 @@ export function OptimizationSetupForm() {
                           <span className="flex items-center gap-1.5">
                             <Percent className="h-3.5 w-3.5" />
                             {t("summary.costDetails.planDiscount", {
-                              planName: "Pro", // TODO: 실제 사용자 플랜
+                              planName: "Pro",
                               discountRate: (
                                 estimation.discountPct * 100
                               ).toFixed(0),

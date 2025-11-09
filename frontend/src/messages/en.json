@@ -1386,7 +1386,10 @@
     "submitButton": "Run Optimization",
     "submitButtonLoading": "Submitting...",
     "submitSuccess": "Optimization job submitted successfully.",
-    "submitError": "Failed to submit optimization: {error}"
+    "submitError": "Failed to submit optimization",
+    "errors": {
+      "noParametersSelected": "Please select at least one parameter to optimize."
+    }
   },
   "Marketplace": {
     "paymentModalTitle": "Marketplace",

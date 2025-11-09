@@ -1431,7 +1431,10 @@
     "submitButton": "최적화 실행",
     "submitButtonLoading": "요청 처리 중...",
     "submitSuccess": "최적화 작업이 성공적으로 접수되었습니다.",
-    "submitError": "최적화 요청 실패: {error}"
+    "submitError": "최적화 시작 실패",
+    "errors": {
+      "noParametersSelected": "최적화할 파라미터를 최소 하나 이상 선택해주세요."
+    }
   },
   "Marketplace": {
     "paymentModalTitle": "마켓플레이스",
