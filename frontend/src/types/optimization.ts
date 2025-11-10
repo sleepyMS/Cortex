@@ -132,8 +132,8 @@ export interface OptimizationJobDetail {
    * 진행률 정보 (실행 중일 때 유효)
    */
   progress?: {
-    current_step: number;
-    total_steps: number;
+    currentStep: number;
+    totalSteps: number;
     message?: string;
   };
 

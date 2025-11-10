@@ -213,7 +213,7 @@ export default function OptimizationDetailPage({
                     : t("processingTitle")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {job.progress.current_step} / {job.progress.total_steps}{" "}
+                  {job.progress.currentStep} / {job.progress.totalSteps}{" "}
                   {t("trialsCompleted")}
                 </p>
               </div>

@@ -1028,8 +1028,19 @@ class OptimizationJobSummary(CamelCaseModel):
     strategy: StrategySummary # 기존 StrategySummary 재사용
     created_at: datetime
     completed_at: Optional[datetime] = None
-    best_result_summary: Optional[TrialMetric] = None # 목록에서 보여줄 간단한 최고 성과
+    
+    # DB의 'result_summary' 컬럼 값을 이 필드로 가져오겠다고 선언
+    best_result_summary: Optional[TrialMetric] = Field(None, validation_alias="result_summary")
 
+    # 가져온 result_summary(전체 JSON)에서 필요한 best_metrics만 추출
+    @field_validator('best_result_summary', mode='before')
+    @classmethod
+    def extract_best_metrics(cls, v: Any) -> Any:
+        # v는 DB에서 가져온 result_summary 딕셔너리 전체입니다.
+        if isinstance(v, dict):
+            return v.get("best_metrics")
+        return None
+    
 class OptimizationJobDetail(OptimizationJobSummary):
     """
     상세 조회용 완전한 최적화 작업 정보.

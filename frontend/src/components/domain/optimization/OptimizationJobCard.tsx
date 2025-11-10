@@ -59,10 +59,11 @@ export interface OptimizationJob {
     current_step: number; // 현재 진행된 Trial 또는 Fold
     total_steps: number; // 총 Trial 또는 Fold
   } | null;
-  bestResult: {
-    cortexScore: number | null;
+  bestResultSummary: {
+    backtestScore: number | null;
     totalReturnPct: number | null;
     mddPct: number | null;
+    // winRatePct: number | null;
   } | null;
   createdAt: string;
 }
@@ -128,7 +129,7 @@ export const OptimizationJobCard = ({
   };
 
   const currentStatus = statusConfig[job.status] || statusConfig.pending;
-  const { bestResult, strategy, id, status, type } = job;
+  const { bestResultSummary, strategy, id, status, type } = job;
 
   // 프로그레스바 계산
   const progressPct =
@@ -198,14 +199,15 @@ export const OptimizationJobCard = ({
                 <p
                   className={cn(
                     "text-lg font-bold",
-                    bestResult && bestResult.cortexScore !== null
-                      ? bestResult.cortexScore >= 0 // 점수 기준은 0? 아니면 특정 값?
+                    bestResultSummary &&
+                      bestResultSummary.backtestScore !== null
+                      ? bestResultSummary.backtestScore >= 0
                         ? "text-emerald-500"
                         : "text-rose-500"
                       : "text-muted-foreground"
                   )}
                 >
-                  {bestResult?.cortexScore?.toFixed(2) ?? "N/A"}
+                  {bestResultSummary?.backtestScore?.toFixed(2) ?? "N/A"}
                 </p>
               </div>
               <div className="w-1/3">
@@ -221,14 +223,15 @@ export const OptimizationJobCard = ({
                 <p
                   className={cn(
                     "text-lg font-bold",
-                    bestResult && bestResult.totalReturnPct !== null
-                      ? bestResult.totalReturnPct >= 0
+                    bestResultSummary &&
+                      bestResultSummary.totalReturnPct !== null
+                      ? bestResultSummary.totalReturnPct >= 0
                         ? "text-emerald-500"
                         : "text-rose-500"
                       : "text-muted-foreground"
                   )}
                 >
-                  {bestResult?.totalReturnPct?.toFixed(2) ?? "N/A"}%
+                  {bestResultSummary?.totalReturnPct?.toFixed(2) ?? "N/A"}%
                 </p>
               </div>
               <div className="w-1/3">
@@ -242,7 +245,7 @@ export const OptimizationJobCard = ({
                   <TooltipContent>{t("bestMddTooltip")}</TooltipContent>
                 </Tooltip>
                 <p className="text-lg font-bold text-foreground">
-                  {bestResult?.mddPct?.toFixed(2) ?? "N/A"}%
+                  {bestResultSummary?.mddPct?.toFixed(2) ?? "N/A"}%
                 </p>
               </div>
             </div>

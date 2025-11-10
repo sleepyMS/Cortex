@@ -121,18 +121,42 @@ class OptimizationService:
     ) -> Optional[models.OptimizationJob]:
         """
         특정 최적화 작업의 상세 정보를 조회합니다.
-        전략 정보와 트라이얼 목록(요약)을 함께 로드합니다.
         """
         query = (
             select(models.OptimizationJob)
             .filter_by(id=job_id, user_id=user_id)
             .options(
-                selectinload(models.OptimizationJob.strategy), # 전략 정보 Eager Loading
-                selectinload(models.OptimizationJob.trials) 
+                selectinload(models.OptimizationJob.strategy),
+                # trials는 대량 데이터일 수 있으므로 상세 페이지에서는 필요한 경우에만 로드하거나
+                # 페이지네이션을 사용하는 것이 좋지만, 일단 현재 구조 유지를 위해 로드합니다.
+                selectinload(models.OptimizationJob.trials)
             )
         )
         result = await db.execute(query)
-        return result.scalar_one_or_none()
+        job = result.scalar_one_or_none()
+
+        # [핵심 수정] best_trial 수동 주입 로직 추가
+        if job and job.status == models.OptimizationStatus.COMPLETED:
+            # 1. result_summary JSON에서 best_trial_id 추출
+            # (DB 모델에 result_summary 컬럼이 있다고 가정합니다)
+            summary = job.result_summary
+            if isinstance(summary, dict):
+                best_trial_id = summary.get("best_trial_id")
+                
+                if best_trial_id is not None:
+                    # 2. 해당 Trial 데이터 별도 조회
+                    # (이미 로드된 job.trials에서 찾을 수도 있지만, 확실하게 하기 위해 DB 조회)
+                    trial_query = select(models.OptimizationTrial).filter_by(
+                        job_id=job.id, 
+                        trial_id=best_trial_id
+                    )
+                    best_trial = (await db.execute(trial_query)).scalar_one_or_none()
+                    
+                    # 3. Pydantic 스키마가 가져갈 수 있도록 객체에 할당
+                    # (SQLAlchemy 모델에 임시 속성으로 추가)
+                    job.best_trial = best_trial
+
+        return job
 
     async def get_jobs_by_user(
         self,
