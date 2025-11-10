@@ -1633,7 +1633,7 @@
       "oosPerformanceTitle": "OOS(전진 분석) 실전 수익 곡선",
       "oosPerformanceTooltip": "최적화에 사용되지 않은 미래 데이터(OOS) 구간들만 이어 붙였을 때의 실제 누적 수익 곡선입니다. 전략의 실전성을 검증하는 가장 중요한 지표입니다.",
       "parameterStabilityTitle": "파라미터 안정성 추이",
-      "parameterStabilityTooltip": "WFO의 각 구간별로 최적 파라미터 값이 어떻게 변했는지 보여줍니다. 그래프가 평탄할수록 시장 변화에 둔감한 견고한 전략임을 의미합니다.",
+      "parameterStabilityTooltip": "WFO 각 구간별로 최적 파라미터 값이 어떻게 변했는지 보여줍니다. 그래프가 평탄할수록 시장 변화에 둔감한 견고한 전략임을 의미합니다.\n\n• Raw (원본): 실제 파라미터 값을 그대로 표시합니다.\n• Normalized (정규화): 각 파라미터의 변화 범위를 0%(최솟값) ~ 100%(최댓값)로 통일하여 표시합니다. 단위가 서로 다른 파라미터들의 상대적인 변화폭을 비교하기 좋습니다.",
       "noChartData": "차트 데이터가 없습니다."
     },
     "DetailedAnalysis": {

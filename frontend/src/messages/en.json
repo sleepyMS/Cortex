@@ -1588,7 +1588,7 @@
       "oosPerformanceTitle": "Out-of-Sample (OOS) Equity Curve",
       "oosPerformanceTooltip": "The actual cumulative return curve achieved by trading only in the untested (OOS) periods. This is the true validation of the strategy's robustness.",
       "parameterStabilityTitle": "Parameter Stability",
-      "parameterStabilityTooltip": "Shows how the optimal parameter values changed across different WFO periods. Less variation (flatter lines) indicates a more robust strategy.",
+      "parameterStabilityTooltip": "Shows how optimal parameter values changed across WFO periods. Flatter lines indicate a more robust strategy.\n\n• Raw: Displays actual parameter values.\n• Normalized: Scales all values to a 0-100% range (min to max). Best for comparing the relative stability of parameters with different units.",
       "noChartData": "No chart data available."
     },
     "DetailedAnalysis": {

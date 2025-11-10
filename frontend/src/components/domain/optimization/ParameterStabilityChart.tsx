@@ -114,8 +114,8 @@ export const ParameterStabilityChart = ({
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground opacity-70" />
               </TooltipTrigger>
-              <TooltipContent className="max-w-sm">
-                <p>{t("parameterStabilityTooltip")}</p>
+              <TooltipContent className="max-w-sm whitespace-pre-wrap">
+                {t("parameterStabilityTooltip")}
               </TooltipContent>
             </UITooltip>
           </TooltipProvider>

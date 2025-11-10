@@ -153,6 +153,18 @@ class OptimizationService:
                 # (tasks.py에서 저장할 때 사용한 키와 일치해야 합니다.)
                 job.parameter_importance = summary.get("parameter_importance")
 
+            # WFO일 경우, WFO 전체 성과를 best_result_summary로 사용
+            if job.type == models.OptimizationType.WFO and job.wfo_result:
+                wfo_data = job.wfo_result
+                if isinstance(wfo_data, dict):
+                    # WFO 전체 결과를 요약 정보로 활용
+                    job.best_result_summary = {
+                        "total_return_pct": wfo_data.get("total_return_pct"),
+                        # WFO는 단일 MDD 등을 계산하기 어려울 수 있으나, 
+                        # 가능하다면 tasks.py에서 계산하여 wfo_result에 포함시키는 것이 좋습니다.
+                        # 현재는 있는 정보만 매핑합니다.
+                    }
+
         return job
 
     async def get_jobs_by_user(

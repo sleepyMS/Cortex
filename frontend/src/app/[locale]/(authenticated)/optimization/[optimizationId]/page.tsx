@@ -43,6 +43,7 @@ import { ParameterStabilityChart } from "@/components/domain/optimization/Parame
 import { ParameterImportanceChart } from "@/components/domain/optimization/ParameterImportanceChart";
 import { ParallelCoordinatesChart } from "@/components/domain/optimization/ParallelCoordinatesChart";
 import { TrialsTable } from "@/components/domain/optimization/TrialsTable";
+import { WFOPerformanceSummary } from "@/components/domain/optimization/WFOPerformanceSummary";
 
 interface OptimizationDetailPageProps {
   params: { optimizationId: string };
@@ -227,7 +228,13 @@ export default function OptimizationDetailPage({
           <ConfigSummaryCard config={job.config} type={job.type} />
         </div>
         <div className="lg:col-span-2">
-          <BestResultCard bestTrial={job.bestTrial} strategy={job.strategy} />
+          {job.type === "wfo" ? (
+            // WFO일 때는 구간별 요약 표시
+            <WFOPerformanceSummary folds={job.wfoResult?.folds} />
+          ) : (
+            // 일반 최적화일 때는 기존 Best Trial 표시
+            <BestResultCard bestTrial={job.bestTrial} strategy={job.strategy} />
+          )}
         </div>
       </div>
 

@@ -1044,10 +1044,11 @@ class OptimizationJobSummary(CamelCaseModel):
 class WFOFoldResult(CamelCaseModel):
     """WFO 각 폴드별 결과 스키마"""
     fold_index: int
-    is_start_date: str = Field(alias="is_start")
-    is_end_date: str = Field(alias="is_end")
-    oos_start_date: str = Field(alias="oos_start")
-    oos_end_date: str = Field(alias="oos_end")
+    is_start_date: str = Field(validation_alias="is_start", serialization_alias="isStartDate")
+    is_end_date: str = Field(validation_alias="is_end", serialization_alias="isEndDate")
+    oos_start_date: str = Field(validation_alias="oos_start", serialization_alias="oosStartDate")
+    oos_end_date: str = Field(validation_alias="oos_end", serialization_alias="oosEndDate")
+    
     best_params: Dict[str, Any]
     in_sample_metrics: BacktestResultSummary
     out_of_sample_metrics: BacktestResultSummary
@@ -1055,7 +1056,7 @@ class WFOFoldResult(CamelCaseModel):
 class WFOResult(CamelCaseModel):
     """WFO 전체 결과 스키마"""
     folds: List[WFOFoldResult]
-    oos_curve_json: List[Dict[str, Any]] = Field(alias="oos_curve") # oos_curve -> oosCurveJson 매핑
+    oos_curve_json: List[Dict[str, Any]] = Field(validation_alias="oos_curve", serialization_alias="oosCurveJson")
     final_equity: float
     total_return_pct: float
 
