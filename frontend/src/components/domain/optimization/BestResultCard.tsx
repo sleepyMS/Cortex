@@ -5,10 +5,12 @@
 import React from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Target, Trophy, ArrowUpRight, ExternalLink } from "lucide-react";
+import { Target, Trophy, ExternalLink } from "lucide-react";
 
 import { TrialData } from "@/types/optimization";
+import { Strategy } from "@/types/strategy";
 import { cn } from "@/lib/utils";
+import { getReadableParamLabel } from "@/lib/strategy-utils";
 
 import {
   Card,
@@ -24,9 +26,13 @@ import { ScrollArea } from "@/components/ui/ScrollArea";
 
 interface BestResultCardProps {
   bestTrial?: TrialData;
+  strategy?: Strategy;
 }
 
-export const BestResultCard = ({ bestTrial }: BestResultCardProps) => {
+export const BestResultCard = ({
+  bestTrial,
+  strategy,
+}: BestResultCardProps) => {
   const t = useTranslations("OptimizationDetailPage.BestResult");
 
   // 1. 데이터가 없을 때 (아직 실행 중이거나 실패 시)
@@ -139,22 +145,19 @@ export const BestResultCard = ({ bestTrial }: BestResultCardProps) => {
           <ScrollArea className="h-[180px] rounded-md border bg-muted/30 p-3">
             <div className="space-y-2 text-xs">
               {Object.entries(params).map(([key, value]) => {
-                // 키 경로를 보기 좋게 다듬기 (e.g., "longEntryRules.0.rsi.period" -> "...rsi.period")
-                const shortKey =
-                  key.split(".").length > 2
-                    ? `...${key.split(".").slice(-2).join(".")}`
-                    : key;
+                // 읽기 쉬운 라벨로 변환
+                const readableKey = getReadableParamLabel(key, strategy);
 
                 return (
                   <div
                     key={key}
-                    className="flex justify-between items-center py-1 border-b border-dashed last:border-0"
+                    className="flex justify-between items-center py-1.5 border-b border-dashed last:border-0"
                   >
                     <span
-                      className="text-muted-foreground truncate mr-2 max-w-[180px]"
-                      title={key} // 마우스 오버 시 전체 경로 표시
+                      className="text-muted-foreground truncate mr-2 flex-1"
+                      title={readableKey}
                     >
-                      {shortKey}
+                      {readableKey}
                     </span>
                     <Badge variant="secondary" className="font-mono shrink-0">
                       {String(value)}

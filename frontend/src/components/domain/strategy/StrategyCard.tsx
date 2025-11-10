@@ -1,7 +1,6 @@
 // frontend/src/components/domain/strategy/StrategyCard.tsx
 "use client";
 
-// ✨ 1. useState를 import 합니다.
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -77,7 +76,7 @@ export function StrategyCard({
   const togglePublicMutation = useTogglePublicStrategyMutation();
   const unlistStrategyMutation = useUnlistStrategyMutation();
 
-  // ✨ 2. 드롭다운의 열림/닫힘 상태를 관리할 state를 추가합니다.
+  // 2. 드롭다운의 열림/닫힘 상태를 관리할 state를 추가합니다.
   const [isDropdownOpen, setDropdownOpen] = React.useState(false);
 
   // --- 이벤트 핸들러 ---
@@ -97,7 +96,6 @@ export function StrategyCard({
     setDropdownOpen(false);
   };
 
-  // ✨ 3. [핵심] 모달을 여는 핸들러에 드롭다운을 닫는 로직을 명시적으로 추가합니다.
   const handleListOnMarketplace = () => {
     // 1. 부모 컴포넌트에 모달을 열어달라고 요청합니다.
     onOpenListingModal(strategy);
@@ -262,7 +260,6 @@ export function StrategyCard({
               ? format(new Date(displayDateString), "yyyy-MM-dd")
               : t("noDate")}
           </p>
-          {/* ✨ 4. DropdownMenu 컴포넌트에 state와 updater 함수를 연결합니다. */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -340,7 +337,6 @@ export function StrategyCard({
               ? format(new Date(displayDateString), "yyyy-MM-dd")
               : t("noDate")}
           </p>
-          {/* ✨ 4. DropdownMenu 컴포넌트에 state와 updater 함수를 연결합니다. (Grid View) */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">

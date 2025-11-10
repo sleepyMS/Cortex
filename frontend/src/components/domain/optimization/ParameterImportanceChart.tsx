@@ -24,39 +24,33 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
+import { Strategy } from "@/types/strategy";
+import { getReadableParamLabel } from "@/lib/strategy-utils";
 
 interface ParameterImportanceChartProps {
-  /**
-   * 파라미터 중요도 데이터 배열
-   * 예: [{ param: "longEntry.rsi.period", importance: 0.45 }, ...]
-   */
   data?: Array<{ param: string; importance: number }>;
+  strategy?: Strategy;
 }
 
 export const ParameterImportanceChart = ({
   data,
+  strategy,
 }: ParameterImportanceChartProps) => {
   const { resolvedTheme } = useTheme();
   const t = useTranslations("OptimizationDetailPage.DetailedAnalysis");
 
-  // 데이터 전처리: 중요도 내림차순 정렬 및 상위 15개 추출
   const processedData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
     return [...data]
       .sort((a, b) => b.importance - a.importance)
-      .slice(0, 15) // 상위 15개만 표시 (너무 많으면 보기 힘듦)
+      .slice(0, 15)
       .map((item) => ({
         ...item,
-        // 긴 파라미터 경로를 단축 (예: longEntryRules.0.rsi.period -> ...rsi.period)
-        shortName:
-          item.param.split(".").length > 2
-            ? `...${item.param.split(".").slice(-2).join(".")}`
-            : item.param,
-        // 퍼센트 값 미리 계산
+        readableName: getReadableParamLabel(item.param, strategy),
         importancePct: (item.importance * 100).toFixed(1),
       }));
-  }, [data]);
+  }, [data, strategy]);
 
   if (!processedData || processedData.length === 0) {
     return (
@@ -66,12 +60,6 @@ export const ParameterImportanceChart = ({
       </Card>
     );
   }
-
-  const formatYAxisLabel = (param: string) => {
-    return param.split(".").length > 2
-      ? `...${param.split(".").slice(-2).join(".")}`
-      : param;
-  };
 
   return (
     <Card className="h-full flex flex-col">
@@ -92,35 +80,34 @@ export const ParameterImportanceChart = ({
           </TooltipProvider>
         </div>
       </CardHeader>
+
       <CardContent className="flex-grow pt-4 min-h-0">
         <div className="h-full w-full min-h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            {/* layout="vertical"로 설정하여 가로 막대 차트로 변경 */}
             <BarChart
               data={processedData}
               layout="vertical"
-              margin={{ top: 5, right: 30, left: 100, bottom: 5 }} // Y축 라벨 공간(left) 확보
+              margin={{ top: 5, right: 30, left: 140, bottom: 5 }}
             >
               <CartesianGrid
-                horizontal={false} // 가로선 숨김
+                horizontal={false}
                 strokeDasharray="3 3"
                 stroke={resolvedTheme === "dark" ? "#374151" : "#e5e7eb"}
               />
               <XAxis
                 type="number"
-                domain={[0, 1]} // 중요도는 0~1 사이 값
+                domain={[0, 1]}
                 tickFormatter={(val) => `${(val * 100).toFixed(0)}%`}
                 stroke={resolvedTheme === "dark" ? "#9ca3af" : "#6b7280"}
                 tick={{ fontSize: 12 }}
               />
               <YAxis
                 type="category"
-                dataKey="param" // 1. 고유한 전체 경로를 키로 사용합니다.
-                width={120}
+                dataKey="readableName"
+                width={130}
                 stroke={resolvedTheme === "dark" ? "#9ca3af" : "#6b7280"}
                 tick={{ fontSize: 11 }}
                 interval={0}
-                tickFormatter={formatYAxisLabel} // 2. 화면 표시만 단축된 이름으로 변경합니다.
               />
               <Tooltip
                 cursor={{ fill: "transparent" }}
@@ -128,8 +115,11 @@ export const ParameterImportanceChart = ({
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md text-sm">
-                        <p className="font-semibold mb-1">{data.param}</p>
+                      <div className="rounded-lg border bg-background p-3 shadow-md text-sm max-w-[300px]">
+                        <p className="font-semibold mb-2 break-words">
+                          {data.readableName}
+                        </p>
+                        {/* [수정] 원본 경로(data.param) 표시 부분 삭제됨 */}
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-muted-foreground">
                             {t("importanceLabel")}:
@@ -144,13 +134,8 @@ export const ParameterImportanceChart = ({
                   return null;
                 }}
               />
-              <Bar
-                dataKey="importance"
-                radius={[0, 4, 4, 0]} // 오른쪽 끝만 둥글게
-                maxBarSize={40} // 막대 최대 두께 제한
-              >
+              <Bar dataKey="importance" radius={[0, 4, 4, 0]} maxBarSize={40}>
                 {processedData.map((entry, index) => (
-                  // 상위 3개 항목은 강조 색상 사용, 나머지는 기본 색상
                   <Cell
                     key={`cell-${index}`}
                     fill={

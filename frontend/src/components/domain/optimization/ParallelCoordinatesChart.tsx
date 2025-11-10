@@ -2,13 +2,14 @@
 
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
-import { MoreHorizontal, GitCommit, Info } from "lucide-react";
+import { GitCommit, Info } from "lucide-react";
 
 import { TrialData } from "@/types/optimization";
-import { cn } from "@/lib/utils";
+import { Strategy } from "@/types/strategy";
+import { getReadableParamLabel } from "@/lib/strategy-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
   Tooltip as UITooltip,
@@ -29,10 +30,15 @@ interface ParallelCoordinatesChartProps {
   colorMetric?: keyof TrialData["metrics"];
   hoveredTrialId?: number | null;
   onHoverTrial?: (id: number | null) => void;
+  /**
+   * 원본 전략 정보 (파라미터 경로 해석용)
+   */
+  strategy?: Strategy;
 }
 
 // --- 내부 상수 및 헬퍼 ---
-const MARGIN = { top: 40, right: 40, bottom: 40, left: 40 };
+// 레이블 공간 확보를 위해 top 여백을 증가시켰습니다.
+const MARGIN = { top: 60, right: 40, bottom: 40, left: 40 };
 const MAX_DISPLAY_TRIALS = 300; // 성능을 위해 렌더링할 최대 라인 수 (샘플링)
 
 // 값 정규화 함수 (0~1 범위로 변환)
@@ -63,6 +69,7 @@ export const ParallelCoordinatesChart = ({
   colorMetric = "backtestScore",
   hoveredTrialId,
   onHoverTrial,
+  strategy,
 }: ParallelCoordinatesChartProps) => {
   const { resolvedTheme } = useTheme();
   const t = useTranslations("OptimizationDetailPage.DetailedAnalysis");
@@ -75,8 +82,7 @@ export const ParallelCoordinatesChart = ({
       return { processedTrials: [], dimensions: [], maxScore: 0 };
     }
 
-    // 1.1. 렌더링할 데이터 샘플링 (너무 많으면 브라우저가 느려짐)
-    // 상위 150개 + 하위 50개 + 랜덤 100개 등으로 구성하면 좋으나, 여기선 단순화하여 상위 N개만 사용
+    // 1.1. 렌더링할 데이터 샘플링
     const sortedTrials = [...trials].sort(
       (a, b) =>
         (b.metrics?.[colorMetric] ?? 0) - (a.metrics?.[colorMetric] ?? 0)
@@ -85,15 +91,13 @@ export const ParallelCoordinatesChart = ({
 
     // 1.2. 차원(파라미터 축) 추출 및 Min/Max 계산
     const firstParams = trials[0].params;
-    // 파라미터 키 중 숫자형인 것만 추출 (boolean 등은 제외하거나 별도 처리 필요)
     const paramKeys = Object.keys(firstParams).filter(
       (key) => typeof firstParams[key] === "number"
     );
 
-    // 중요도가 높은 순서로 정렬하거나, 알파벳순 정렬 (여기선 단순 알파벳순)
     paramKeys.sort();
 
-    // 최대 6~8개 축만 표시 (너무 많으면 가독성 저하)
+    // 최대 8개 축만 표시
     const displayKeys = paramKeys.slice(0, 8);
 
     const dims = displayKeys.map((key) => {
@@ -102,18 +106,15 @@ export const ParallelCoordinatesChart = ({
         key,
         min: Math.min(...values),
         max: Math.max(...values),
-        // 축 이름 단축 (e.g., longEntry.rsi.period -> ...rsi.period)
-        shortLabel:
-          key.split(".").length > 2
-            ? `...${key.split(".").slice(-2).join(".")}`
-            : key,
+        // [핵심] 공통 유틸리티를 사용하여 읽기 쉬운 라벨 생성
+        readableLabel: getReadableParamLabel(key, strategy),
       };
     });
 
-    // 1.3. 최고 점수 계산 (색상 정규화용)
+    // 1.3. 최고 점수 계산
     const maxS = Math.max(
       ...trials.map((t) => t.metrics?.[colorMetric] ?? 0),
-      1 // 0으로 나누기 방지
+      1
     );
 
     return {
@@ -121,7 +122,7 @@ export const ParallelCoordinatesChart = ({
       dimensions: dims,
       maxScore: maxS,
     };
-  }, [trials, colorMetric]);
+  }, [trials, colorMetric, strategy]);
 
   // 데이터가 없거나 축이 없을 때 빈 상태 표시
   if (!trials || trials.length === 0 || dimensions.length === 0) {
@@ -134,26 +135,21 @@ export const ParallelCoordinatesChart = ({
   }
 
   // --- SVG 렌더링 헬퍼 ---
-  // 100% * 100% 반응형을 위해 viewBox 좌표계 사용 (가상 크기: 1000 x 500)
   const WIDTH = 1000;
   const HEIGHT = 500;
   const innerWidth = WIDTH - MARGIN.left - MARGIN.right;
   const innerHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
 
-  // X 좌표 계산 (축의 위치)
   const getX = (dimIndex: number) => {
     return (dimIndex / (dimensions.length - 1)) * innerWidth + MARGIN.left;
   };
 
-  // Y 좌표 계산 (값의 위치)
   const getY = (value: number, dimIndex: number) => {
     const dim = dimensions[dimIndex];
     const normalizedValue = normalize(value, dim.min, dim.max);
-    // SVG는 Y좌표가 아래로 갈수록 커지므로, (1 - normalized)를 사용해 뒤집음
     return (1 - normalizedValue) * innerHeight + MARGIN.top;
   };
 
-  // 폴리라인(선) 경로 생성
   const getPathD = (trial: TrialData) => {
     return dimensions
       .map((dim, i) => {
@@ -198,11 +194,9 @@ export const ParallelCoordinatesChart = ({
           >
             {/* --- 1. 트라이얼 라인 렌더링 --- */}
             <g className="trials">
-              {/* 성능을 위해 점수가 낮은 순서대로 먼저 그림 (높은 점수가 위에 오도록) */}
               {[...processedTrials].reverse().map((trial) => {
                 const score = trial.metrics?.[colorMetric] ?? 0;
                 const isHovered = hoveredTrialId === trial.trialId;
-                // 호버 시 다른 라인은 흐리게 처리
                 const opacity = hoveredTrialId
                   ? isHovered
                     ? 1
@@ -241,22 +235,28 @@ export const ParallelCoordinatesChart = ({
                       y1={MARGIN.top}
                       x2="0"
                       y2={HEIGHT - MARGIN.bottom}
-                      stroke={isDark ? "#374151" : "#e5e7eb"} // gray-700 / gray-200
+                      stroke={isDark ? "#374151" : "#e5e7eb"}
                       strokeWidth="2"
                     />
-                    {/* 축 레이블 (위쪽) */}
+                    {/* 축 레이블 (위쪽) - 읽기 쉬운 라벨 적용 */}
                     <text
                       x="0"
-                      y={MARGIN.top - 15}
+                      y={MARGIN.top - 25}
                       textAnchor="middle"
-                      className="text-[11px] font-medium fill-muted-foreground"
+                      className="text-[10px] font-medium fill-foreground"
+                      style={{ whiteSpace: "pre" }}
                     >
-                      {dim.shortLabel}
+                      {dim.readableLabel.length > 20
+                        ? dim.readableLabel.substring(0, 18) + "..."
+                        : dim.readableLabel}
                     </text>
+                    {/* 마우스 오버 시 전체 이름 표시용 */}
+                    <title>{dim.readableLabel}</title>
+
                     {/* 최대값 (위쪽) */}
                     <text
                       x="0"
-                      y={MARGIN.top - 4}
+                      y={MARGIN.top - 8}
                       textAnchor="middle"
                       className="text-[10px] fill-muted-foreground opacity-70"
                     >
@@ -265,7 +265,7 @@ export const ParallelCoordinatesChart = ({
                     {/* 최소값 (아래쪽) */}
                     <text
                       x="0"
-                      y={HEIGHT - MARGIN.bottom + 12}
+                      y={HEIGHT - MARGIN.bottom + 15}
                       textAnchor="middle"
                       className="text-[10px] fill-muted-foreground opacity-70"
                     >

@@ -227,7 +227,7 @@ export default function OptimizationDetailPage({
           <ConfigSummaryCard config={job.config} type={job.type} />
         </div>
         <div className="lg:col-span-2">
-          <BestResultCard bestTrial={job.bestTrial} />
+          <BestResultCard bestTrial={job.bestTrial} strategy={job.strategy} />
         </div>
       </div>
 
@@ -332,11 +332,15 @@ export default function OptimizationDetailPage({
                     trials={filteredTrials}
                     hoveredTrialId={hoveredTrialId}
                     onHoverTrial={setHoveredTrialId}
+                    strategy={job.strategy}
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-6">
                   <div className="h-[500px]">
-                    <ParameterImportanceChart data={job.parameterImportance} />
+                    <ParameterImportanceChart
+                      data={job.parameterImportance}
+                      strategy={job.strategy}
+                    />
                   </div>
                 </div>
               </TabsContent>
