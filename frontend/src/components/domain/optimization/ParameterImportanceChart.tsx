@@ -67,6 +67,12 @@ export const ParameterImportanceChart = ({
     );
   }
 
+  const formatYAxisLabel = (param: string) => {
+    return param.split(".").length > 2
+      ? `...${param.split(".").slice(-2).join(".")}`
+      : param;
+  };
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -109,11 +115,12 @@ export const ParameterImportanceChart = ({
               />
               <YAxis
                 type="category"
-                dataKey="shortName"
-                width={120} // Y축 라벨 너비 제한
+                dataKey="param" // 1. 고유한 전체 경로를 키로 사용합니다.
+                width={120}
                 stroke={resolvedTheme === "dark" ? "#9ca3af" : "#6b7280"}
                 tick={{ fontSize: 11 }}
-                interval={0} // 모든 라벨 표시
+                interval={0}
+                tickFormatter={formatYAxisLabel} // 2. 화면 표시만 단축된 이름으로 변경합니다.
               />
               <Tooltip
                 cursor={{ fill: "transparent" }}
