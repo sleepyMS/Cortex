@@ -51,7 +51,7 @@ export const ParameterStabilityChart = ({
 
   // 1. 데이터 전처리: folds 데이터를 차트용 데이터로 변환
   const chartData = useMemo(() => {
-    if (!folds || folds.length === 0) return [];
+    if (!folds || folds.length === 0 || !folds[0]?.bestParams) return [];
 
     // 모든 파라미터 키 추출
     const paramKeys = Object.keys(folds[0].bestParams);
@@ -89,10 +89,12 @@ export const ParameterStabilityChart = ({
 
   // 파라미터 키 목록 (차트 라인 생성용)
   const paramKeys = useMemo(() => {
-    return folds && folds.length > 0 ? Object.keys(folds[0].bestParams) : [];
+    return folds && folds.length > 0 && folds[0]?.bestParams
+      ? Object.keys(folds[0].bestParams)
+      : [];
   }, [folds]);
 
-  if (!folds || folds.length === 0) {
+  if (!folds || folds.length === 0 || !folds[0]?.bestParams) {
     return (
       <Card className="h-full flex items-center justify-center bg-muted/20 border-dashed">
         <p className="text-sm text-muted-foreground">{t("noChartData")}</p>

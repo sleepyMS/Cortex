@@ -1040,7 +1040,25 @@ class OptimizationJobSummary(CamelCaseModel):
         if isinstance(v, dict):
             return v.get("best_metrics")
         return None
-    
+
+class WFOFoldResult(CamelCaseModel):
+    """WFO 각 폴드별 결과 스키마"""
+    fold_index: int
+    is_start_date: str = Field(alias="is_start")
+    is_end_date: str = Field(alias="is_end")
+    oos_start_date: str = Field(alias="oos_start")
+    oos_end_date: str = Field(alias="oos_end")
+    best_params: Dict[str, Any]
+    in_sample_metrics: BacktestResultSummary
+    out_of_sample_metrics: BacktestResultSummary
+
+class WFOResult(CamelCaseModel):
+    """WFO 전체 결과 스키마"""
+    folds: List[WFOFoldResult]
+    oos_curve_json: List[Dict[str, Any]] = Field(alias="oos_curve") # oos_curve -> oosCurveJson 매핑
+    final_equity: float
+    total_return_pct: float
+
 class OptimizationJobDetail(OptimizationJobSummary):
     """
     상세 조회용 완전한 최적화 작업 정보.
@@ -1053,7 +1071,7 @@ class OptimizationJobDetail(OptimizationJobSummary):
     best_trial: Optional[TrialData] = None
     
     # WFO 전용 결과 데이터 (JSONB 내용을 그대로 전달)
-    wfo_result: Optional[Dict[str, Any]] = None 
+    wfo_result: Optional[WFOResult] = None
     
     # Tier 2 분석 데이터
     parameter_importance: Optional[List[Dict[str, Any]]] = None

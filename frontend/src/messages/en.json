@@ -1598,6 +1598,7 @@
       "noDataToExport": "No data available to export matching the current filter.",
       "exportSuccess": "Successfully exported {count} trials to CSV.",
       "exportFailed": "Failed to export data.",
+      "noChartData": "No chart data available.",
       "tabs": {
         "charts": "Analysis Charts",
         "trials": "All Trials Data"
