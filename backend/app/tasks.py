@@ -55,23 +55,45 @@ WARMUP_CANDLES = 1000
 
 def _apply_params_to_strategy(strategy_snapshot: schemas.StrategyCreate, params: Dict[str, Any]) -> schemas.StrategyCreate:
     """
-    Optuna가 제안한 평탄화된 파라미터를 실제 전략 객체의 중첩된 구조에 동적으로 반영합니다.
+    Optuna 파라미터를 전략 객체에 반영합니다. (타입 안전성 강화 버전)
     """
-    strategy_dict = strategy_snapshot.model_dump()
-    for param_path, value in params.items():
+    # 1. Pydantic 모델을 딕셔너리로 변환 (by_alias=True 유지)
+    strategy_dict = strategy_snapshot.model_dump(by_alias=True)
+
+    for param_path, new_value in params.items():
         parts = param_path.split('.')
         current = strategy_dict
-        for part in parts[:-1]:
+        
+        # 경로 탐색
+        for i, part in enumerate(parts[:-1]):
             if part.isdigit(): part = int(part)
-            if isinstance(current, dict): current = current.get(part)
-            elif isinstance(current, list) and isinstance(part, int) and 0 <= part < len(current): current = current[part]
-            else: current = None; break
-            if current is None: break
+            
+            if isinstance(current, dict):
+                current = current.get(part)
+            elif isinstance(current, list) and isinstance(part, int) and 0 <= part < len(current):
+                current = current[part]
+            else:
+                current = None
+                break
+        
+        # 값 업데이트 (타입 캐스팅 추가)
         if current is not None:
             last = parts[-1]
-            if last.isdigit() and isinstance(current, list): current[int(last)] = value
-            elif isinstance(current, dict): current[last] = value
-    return schemas.StrategyCreate(**strategy_dict)
+            target_key = int(last) if last.isdigit() and isinstance(current, list) else last
+            
+            # [핵심 수정] 원래 값의 타입을 확인하여 새로운 값의 타입을 맞춤
+            try:
+                original_value = current[target_key]
+                if isinstance(original_value, int) and not isinstance(original_value, bool):
+                     # 원래 값이 정수였다면, 새 값도 강제로 정수로 변환 (예: 7.0 -> 7)
+                     current[target_key] = int(new_value)
+                else:
+                     current[target_key] = new_value
+            except (IndexError, KeyError, TypeError):
+                 # 혹시 모를 접근 에러 시 그냥 할당
+                 current[target_key] = new_value
+
+    return schemas.StrategyCreate.model_validate(strategy_dict)
 
 def _split_data_expanding_window(df: pd.DataFrame, folds: int, warmup: int = WARMUP_CANDLES) -> List[Dict[str, Any]]:
     """
@@ -150,6 +172,7 @@ def run_optimization(self, job_id: str):
         # ----------------------------------------------------------------------
         def create_objective(target_df: pd.DataFrame, current_capital: float, total_trials_for_progress: int, start_trial_num: int = 0):
             def objective(trial: optuna.Trial):
+                report_step = 0  
                 try:
                     # a. 파라미터 샘플링
                     suggested_params = {}
@@ -161,6 +184,13 @@ def run_optimization(self, job_id: str):
 
                     # b. 시그널 재계산 (인메모리)
                     current_strategy = _apply_params_to_strategy(strategy_snapshot, suggested_params)
+
+                    try:
+                        debug_val = current_strategy.long_entry_rules.blocks[0].main_line.values.get('length')
+                        logger.info(f"[TRIAL {trial.number}] Applied EMA length: {debug_val} | Params: {suggested_params}")
+                    except:
+                        pass
+        
                     signals_df = signal_service.generate_signals_from_dataframe(
                         target_df, current_strategy, timeframe='1h'
                     )
@@ -178,10 +208,10 @@ def run_optimization(self, job_id: str):
                     # [핵심] 단계별 실행 및 중간 보고
                     for intermediate in engine.run_step_by_step():
                         if intermediate.get("is_intermediate"):
-                            # Optuna에게 중간 성과(MDD) 보고. (MDD는 낮을수록 좋으므로 음수 처리)
-                            # 여기서는 MDD를 기준으로 가지치기한다고 가정합니다.
-                            step = int(intermediate["progress"] * 100)
-                            trial.report(-intermediate["mdd_pct"], step=step)
+                            # step을 단순 진행률이 아닌 고유한 카운터 값으로 사용
+                            trial.report(-intermediate["mdd_pct"], step=report_step)
+                            report_step += 1 # 다음 보고를 위해 카운터 증가
+
                             if trial.should_prune():
                                 raise optuna.TrialPruned()
                         else:
@@ -384,7 +414,9 @@ def run_optimization(self, job_id: str):
 @celery_app.task(bind=True, name="run_backtest", queue="cpu_bound_queue", acks_late=True)
 def run_backtest(self, backtest_id: str):
     """
-    [최종 안정화 버전] 단일 백테스팅 실행 태스크.
+    [최종 완성본] 단일 백테스팅 실행 태스크.
+    전체 기간 데이터 선로드 -> 인메모리 신호 생성 -> 엔진 실행 -> 결과 필터링 및 저장
+    의 순서로 실행되어 데이터 누락 없이 정확한 시뮬레이션을 보장합니다.
     """
     logger.info(f"Starting backtest: {backtest_id}")
     backtest_uuid = uuid.UUID(backtest_id)
@@ -392,12 +424,15 @@ def run_backtest(self, backtest_id: str):
     backtest = None 
 
     try:
+        # 1. 초기화: 경쟁 상태 방지를 위한 DB 조회 재시도 로직
         for attempt in range(5):
             backtest = session.query(Backtest).filter(Backtest.id == backtest_uuid).one_or_none()
-            if backtest: break
+            if backtest:
+                break
             time.sleep(1)
         
-        if not backtest: raise ValueError(f"Backtest ID {backtest_id} not found.")
+        if not backtest:
+            raise ValueError(f"Backtest ID {backtest_id} not found.")
         
         WebSocketManager.send_status_update(backtest_id, "running", "백테스트 초기화 중...", 5)
         
@@ -407,57 +442,97 @@ def run_backtest(self, backtest_id: str):
         backtest.status = BacktestStatus.RUNNING
         session.commit()
         
+        # 파라미터 및 전략 스냅샷 로드
         params_from_db = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
         snapshot_as_strategy = schemas.StrategyForSnapshot.model_validate(backtest.strategy_snapshot)
 
-        WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 중...", 25)
-        signals_df, calculation_base_tf = asyncio.run(signal_service.generate_signals(request=snapshot_as_strategy))
-
-        WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터 로딩 중...", 50)
+        # 2. 시세 데이터 로드 (전체 기간 먼저 로드)
+        WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터 로딩 중...", 25)
         ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTCUSDT"
+        # 백테스트는 기본 1시간봉으로 가정 (필요시 전략에서 추출하는 로직 추가 가능)
+        base_timeframe = '1h'
         ohlcv_df = market_data_service.get_historical_data_sync(
-            ticker=ticker, timeframe=calculation_base_tf,
-            start_date=params_from_db.start_date, end_date=params_from_db.end_date   
+            ticker=ticker,
+            timeframe=base_timeframe,
+            start_date=params_from_db.start_date,
+            end_date=params_from_db.end_date
         )
-        if ohlcv_df.empty: raise ValueError("시세 데이터 부족")
+        if ohlcv_df.empty:
+            raise ValueError("백테스트를 위한 시세 데이터가 부족합니다.")
 
+        # 3. 신호 생성 (로드된 전체 데이터를 기반으로 인메모리 계산)
+        WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 중...", 50)
+        # [중요] generate_signals_from_dataframe은 동기 메서드이므로 바로 호출합니다.
+        signals_df = signal_service.generate_signals_from_dataframe(
+            ohlcv_df, snapshot_as_strategy, timeframe=base_timeframe
+        )
+
+        # 4. 엔진 실행
         WebSocketManager.send_status_update(backtest_id, "running", "시뮬레이션 실행 중...", 75)
         engine = BacktestingEngine(
-            ohlcv_df=ohlcv_df, signals_df=signals_df, initial_capital=params_from_db.initial_capital,
+            ohlcv_df=ohlcv_df,
+            signals_df=signals_df,
+            initial_capital=params_from_db.initial_capital,
             execution_params=params_from_db.parameters,
             strategy_params=schemas.StrategyCreate.model_validate(snapshot_as_strategy.model_dump())
         )
         summary, trade_logs = engine.run()
 
+        # [핵심 수정] DB 모델(BacktestResult)에 없는 엔진 내부용 키 삭제하여 에러 방지
         for key in ['final_equity', 'is_intermediate']:
             if key in summary:
                 del summary[key]
 
+        # 5. 결과 저장
         WebSocketManager.send_status_update(backtest_id, "running", "결과 저장 중...", 90)
+        # 기존 결과가 있다면 삭제 (재실행 시 중복 방지)
         session.query(BacktestResult).filter_by(backtest_id=backtest_uuid).delete()
         session.query(TradeLog).filter_by(backtest_id=backtest_uuid).delete()
         session.flush()
 
+        # 새 결과 저장
         new_result = BacktestResult(backtest_id=backtest_uuid, **summary)
         session.add(new_result)
+        
+        # 대량의 거래 기록은 bulk_insert로 효율적으로 저장
         if trade_logs:
-            session.bulk_insert_mappings(TradeLog, [{**log, "backtest_id": backtest_uuid} for log in trade_logs])
+            session.bulk_insert_mappings(
+                TradeLog,
+                [{**log, "backtest_id": backtest_uuid} for log in trade_logs]
+            )
 
+        # 상태 업데이트 및 최종 커밋
         backtest.status = BacktestStatus.COMPLETED
         backtest.completed_at = datetime.now(timezone.utc)
         session.commit()
 
+        # 6. 완료 알림 및 이벤트 발행
         publish_event("backtest.completed", {"backtest_id": backtest_id, "user_id": str(backtest.user_id)})
         WebSocketManager.send_status_update(backtest_id, "completed", "완료됨", 100)
+        logger.info(f"Backtest {backtest_id} completed successfully.")
         return f"Backtest {backtest_id} completed."
 
     except Exception as exc:
         logger.error(f"Backtest {backtest_id} failed: {exc}", exc_info=True)
         user_id = str(backtest.user_id) if backtest else "unknown"
+        
+        # 실패 상태 업데이트 (DB 세션이 유효한 경우에만 시도)
+        try:
+            if backtest:
+                backtest.status = BacktestStatus.FAILED
+                session.commit()
+        except:
+            pass # 이미 커밋 중 에러가 났다면 무시
+
+        # 실패 알림 및 웹소켓 상태 업데이트
         publish_event("backtest.failed", {"backtest_id": backtest_id, "user_id": user_id, "error": str(exc)})
         WebSocketManager.send_status_update(backtest_id, "failed", f"오류: {str(exc)}", 0)
+        
+        # Celery 재시도 메커니즘 (일시적 오류일 경우를 대비)
         raise self.retry(exc=exc, countdown=60, max_retries=3)
+
     finally:
+        # 세션은 반드시 닫아줍니다.
         session.close()
 
 

@@ -167,22 +167,31 @@ class SignalService:
         timeframe: str = '1h'
     ) -> pd.DataFrame:
         """
-        [SYNC/CPU-Bound] 최적화 루프를 위한 새로운 진입점입니다.
-        이미 메모리에 있는 DataFrame(`base_df`)을 사용하여 DB 접근 없이 신호를 빠르게 재계산합니다.
+        [SYNC/CPU-Bound] 최적화 루프용 신규 메서드.
         """
-        # 1. 원본 데이터 보존을 위해 복사 (필수)
+        # 1. 원본 데이터 보존을 위해 복사
         df = base_df.copy()
+
+        # [핵심 수정] DatetimeIndex를 'time' 컬럼(Unix Timestamp)으로 변환
+        # MarketDataService는 DatetimeIndex를 반환하므로, 이를 다시 컬럼으로 만들어줘야 합니다.
+        if 'time' not in df.columns and isinstance(df.index, pd.DatetimeIndex):
+             df = df.reset_index()
+             # 컬럼명이 'index'나 다른 이름일 수 있으므로 확인 후 'time'으로 통일
+             if 'index' in df.columns:
+                 df = df.rename(columns={'index': 'time'})
+             
+             # Unix Timestamp(초 단위)로 변환
+             if 'time' in df.columns:
+                 df['time'] = df['time'].astype('int64') // 10**9
 
         # 2. 전략에서 필요한 지표 설정 추출
         configs = self._get_required_timeframes_and_indicators(strategy_snapshot, base_timeframe=timeframe)
         
-        # 3. 기본 타임프레임 지표 재계산 (인메모리)
-        # 최적화 중 파라미터가 변경되었으므로, 변경된 파라미터로 지표를 다시 계산해야 합니다.
+        # 3. 기본 타임프레임 지표 계산 (인메모리)
         base_indicators = configs['indicators'].get(timeframe, [])
-        # [확인] 기존 로직과 동일한 _apply_indicators를 사용하여 일관성 보장
         self._apply_indicators(df, base_indicators)
 
-        # 4. 로직 평가 및 신호 생성 (공통 메서드 재사용)
+        # 4. 로직 평가 및 신호 생성
         return self._compute_signals_on_dataframe(df, strategy_snapshot)
 
     # ==========================================================================

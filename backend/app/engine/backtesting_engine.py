@@ -26,8 +26,7 @@ class BacktestingEngine:
         TP/SL 설정을 가져와 데이터 무결성을 보장합니다.
         """
         # --- 1. 데이터 준비 ---
-        # inner join을 사용하여 시세 데이터와 신호 데이터의 교집합만 사용
-        self.data = ohlcv_df.join(signals_df, how='inner')
+        self.data = ohlcv_df.join(signals_df, how='left')
         if not self.data.index.is_monotonic_increasing:
              self.data = self.data.sort_index()
 

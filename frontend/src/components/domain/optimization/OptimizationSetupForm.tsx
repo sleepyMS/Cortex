@@ -182,7 +182,7 @@ export function OptimizationSetupForm() {
         to: startOfDay(new Date()),
       },
       currentTab: "general",
-      objective: "cortexScore",
+      objective: "backtest_score",
       constraints: [],
       general_trials: 100,
       wfo_folds: 5,
@@ -824,13 +824,13 @@ export function OptimizationSetupForm() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem
-                            value="cortexScore"
+                            value="backtest_score"
                             disabled={isShortTrainPeriod}
                           >
                             {t("objectives.cortexScore")}
                           </SelectItem>
                           <SelectItem
-                            value="CAGR"
+                            value="cagr_pct"
                             disabled={isShortTrainPeriod}
                           >
                             {t("objectives.CAGR")}
@@ -847,7 +847,7 @@ export function OptimizationSetupForm() {
                           >
                             {t("objectives.calmar")}
                           </SelectItem>
-                          <SelectItem value="totalReturnPct">
+                          <SelectItem value="total_return_pct">
                             {t("objectives.totalReturnPct")}
                           </SelectItem>
                           <SelectItem value="profit_factor">
