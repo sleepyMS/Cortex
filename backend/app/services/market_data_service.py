@@ -1,13 +1,14 @@
 # file: backend/app/services/market_data_service.py
 
 import asyncio
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, List
 
 import pandas as pd
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 import logging
 
 from ..database import AsyncSessionLocal
@@ -153,6 +154,37 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error in asyncio.run for historical data fetch: {e}", exc_info=True)
             return pd.DataFrame()
+        
+    def save_ohlcv_data_sync(self, db: Session, ticker: str, timeframe: str, ohlcv_data: List[list]):
+        """
+        [동기] 수집한 OHLCV 데이터를 DB에 저장(Upsert)합니다.
+        Celery 태스크에서 재사용하기 위해 서비스 계층으로 이동했습니다.
+        """
+        if not ohlcv_data:
+            return 0
+
+        table_name = f"ohlcv_{timeframe}"
+        # TimescaleDB(PostgreSQL)에 최적화된 Upsert 쿼리
+        sql_query = text(f"""
+            INSERT INTO {table_name} (time, ticker, open, high, low, close, volume)
+            VALUES (:time, :ticker, :open, :high, :low, :close, :volume)
+            ON CONFLICT (time, ticker) DO UPDATE SET
+                open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low,
+                close = EXCLUDED.close, volume = EXCLUDED.volume;
+        """)
+        
+        data_to_insert = [
+            {
+                "time": datetime.fromtimestamp(item[0] / 1000, tz=timezone.utc),
+                "ticker": ticker,
+                "open": item[1], "high": item[2], "low": item[3], "close": item[4], "volume": item[5]
+            }
+            for item in ohlcv_data
+        ]
+
+        db.execute(sql_query, data_to_insert)
+        db.commit()
+        return len(data_to_insert)
 
 
 market_data_service = MarketDataService()

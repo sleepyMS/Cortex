@@ -512,35 +512,75 @@ def run_all_active_bots():
     return asyncio.run(_run_all_concurrently())
 
 @celery_app.task(bind=True, name="fetch_and_store_ohlcv", queue="io_bound_queue")
-def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, limit: int = 500):
-    """[동기] OHLCV 데이터 수집 태스크"""
+def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, limit: int = 1000): # limit 기본값 1000으로 상향 권장
+    """[동기] 단일 회차 OHLCV 데이터 수집 태스크 (주기적 실행용)"""
     try:
         with SyncSessionLocal() as session:
             exchange = ccxt.binanceusdm()
-            ticker = ticker.replace('/', '')
-            ohlcv = exchange.fetch_ohlcv(ticker, timeframe, since=since, limit=limit)
-            if not ohlcv: return "No data received"
-
-            table_name = f"ohlcv_{timeframe}"
-            sql_query = text(f"""
-                INSERT INTO {table_name} (time, ticker, open, high, low, close, volume)
-                VALUES (:time, :ticker, :open, :high, :low, :close, :volume)
-                ON CONFLICT (time, ticker) DO UPDATE SET
-                    open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low,
-                    close = EXCLUDED.close, volume = EXCLUDED.volume;
-            """)
-            data_to_insert = [
-                {"time": datetime.fromtimestamp(item[0] / 1000, tz=timezone.utc), "ticker": ticker,
-                 "open": item[1], "high": item[2], "low": item[3], "close": item[4], "volume": item[5]}
-                for item in ohlcv
-            ]
-            session.execute(sql_query, data_to_insert)
-            session.commit()
-            return f"Stored {len(data_to_insert)} records for {ticker} ({timeframe})."
+            ticker_norm = ticker.replace('/', '')
+            # CCXT를 통해 데이터 가져오기
+            ohlcv = exchange.fetch_ohlcv(ticker_norm, timeframe, since=since, limit=limit)
+            
+            # 저장 로직은 서비스에게 위임
+            saved_count = market_data_service.save_ohlcv_data_sync(session, ticker_norm, timeframe, ohlcv)
+            return f"Stored {saved_count} records for {ticker_norm} ({timeframe})."
     except ccxt.NetworkError as e:
         self.retry(exc=e, countdown=60)
     except Exception as e:
-        raise self.retry(exc=e)
+        raise self.retry(exc=e, countdown=60)
+
+@celery_app.task(bind=True, name="backfill_ohlcv", queue="io_bound_queue")
+def backfill_ohlcv(self, ticker: str, timeframe: str, start_date_str: str):
+    """
+    [신규] 대량의 과거 데이터를 수집하기 위한 백필 태스크.
+    start_date_str 부터 현재까지 루프를 돌며 데이터를 모두 수집합니다.
+    예: backfill_ohlcv.delay("BTCUSDT", "1h", "2020-01-01T00:00:00Z")
+    """
+    logger.info(f"Starting backfill for {ticker} ({timeframe}) from {start_date_str}")
+    
+    # 시작 시간을 밀리초 타임스탬프로 변환
+    start_dt = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+    since = int(start_dt.timestamp() * 1000)
+    
+    total_saved = 0
+    exchange = ccxt.binanceusdm()
+    ticker_norm = ticker.replace('/', '')
+
+    try:
+        with SyncSessionLocal() as session:
+            while True:
+                # 1. 데이터 요청 (최대 1000개씩)
+                logger.info(f"Fetching {ticker} ({timeframe}) since {datetime.fromtimestamp(since/1000, tz=timezone.utc)}...")
+                ohlcv = exchange.fetch_ohlcv(ticker_norm, timeframe, since=since, limit=1000)
+                
+                if not ohlcv:
+                    logger.info("No more data to fetch.")
+                    break
+                
+                # 2. 데이터 저장
+                saved_count = market_data_service.save_ohlcv_data_sync(session, ticker_norm, timeframe, ohlcv)
+                total_saved += saved_count
+                
+                # 3. 다음 루프 준비
+                # 가져온 데이터의 마지막 캔들 시간 + 1ms를 다음 since로 설정
+                last_candle_time = ohlcv[-1][0]
+                
+                # [중요] 만약 이번에 가져온 데이터가 현재 시간과 매우 가깝다면 루프 종료
+                if last_candle_time >= (datetime.now(timezone.utc).timestamp() * 1000) - (60 * 1000): # 1분 정도 여유
+                     break
+                     
+                since = last_candle_time + 1 
+                
+                # 4. API 레이트 리밋 준수를 위한 대기
+                time.sleep(exchange.rateLimit / 1000 * 1.5) # 안전하게 약간 더 대기
+
+        logger.info(f"Backfill completed. Total {total_saved} records saved for {ticker} ({timeframe}).")
+        return f"Backfilled {total_saved} records."
+
+    except Exception as e:
+        logger.error(f"Backfill failed: {e}", exc_info=True)
+        # 백필은 오래 걸리므로 자동 재시도보다는 로그를 남기고 종료하는 것이 나을 수 있음
+        raise e
 
 @celery_app.task(name="fulfill_order_task", queue="io_bound_queue", bind=True)
 def fulfill_order_task(self, payload: dict):

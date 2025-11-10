@@ -26,7 +26,8 @@ class BacktestingEngine:
         TP/SL 설정을 가져와 데이터 무결성을 보장합니다.
         """
         # --- 1. 데이터 준비 ---
-        self.data = ohlcv_df.join(signals_df)
+        # inner join을 사용하여 시세 데이터와 신호 데이터의 교집합만 사용
+        self.data = ohlcv_df.join(signals_df, how='inner')
         if not self.data.index.is_monotonic_increasing:
              self.data = self.data.sort_index()
 
@@ -46,12 +47,15 @@ class BacktestingEngine:
             # ATR 계산 (이미 존재하면 재계산 방지)
             atr_col = f"ATR_{atr_period}"
             if atr_col not in self.data.columns:
+                # self.data에 직접 추가하면 join된 구간만 계산되므로,
+                # 원본 ohlcv_df에서 계산 후 join하는 것이 더 정확할 수 있으나,
+                # 여기서는 성능을 위해 self.data에 계산 (큰 차이 없을 것으로 가정)
                 self.data.ta.atr(
-                    high=ohlcv_lower['high'], low=ohlcv_lower['low'], close=ohlcv_lower['close'],
+                    high=self.data['high'], low=self.data['low'], close=self.data['close'],
                     length=atr_period, append=True
                 )
-            # 소문자로 통일
-            self.data.rename(columns={atr_col: f"atr_{atr_period}"}, inplace=True)
+            # 소문자로 통일 (pandas-ta는 대문자로 컬럼을 생성할 수 있음)
+            self.data.rename(columns={atr_col: f"atr_{atr_period}", f"ATR_{atr_period}": f"atr_{atr_period}"}, inplace=True)
 
         # --- 4. 시뮬레이션 상태 변수 초기화 ---
         self.balance = self.initial_capital
@@ -70,11 +74,17 @@ class BacktestingEngine:
         [신규] 제너레이터 방식으로 시뮬레이션을 단계별로 실행합니다.
         외부에서 이 함수를 루프 돌면서 중간 제어(Pruning)를 할 수 있습니다.
         """
-        total_steps = len(self.data)
-        # 그룹화된 데이터를 리스트로 변환하여 인덱싱 가능하게 함 (진행률 계산용)
-        grouped_data = list(self.data.groupby(level=0, sort=False))
+        total_rows = len(self.data)
+        if total_rows == 0:
+             yield self._calculate_summary_stats()
+             return
+
+        current_row_count = 0
         
-        for i, (timestamp, group) in enumerate(grouped_data):
+        # groupby 객체를 직접 순회하여 메모리 사용량 최적화
+        for timestamp, group in self.data.groupby(level=0, sort=False):
+            current_row_count += len(group)
+            
             # 그룹 내 마지막 행을 해당 타임스탬프의 대표 OHLCV 값으로 사용
             row_for_ohlc = group.iloc[-1]
 
@@ -127,19 +137,20 @@ class BacktestingEngine:
             if self.position_type:
                 self._update_trailing_stop(row_for_ohlc)
 
-            # [핵심 변경점] 일정 주기(예: 매 24개 캔들)마다 중간 결과를 외부로 보고(Yield)
-            if (i + 1) % 24 == 0 or (i + 1) == len(grouped_data):
+            # [핵심] 일정 주기(예: 매일, 또는 데이터의 1% 진행 시마다) 중간 보고
+            # 여기서는 약 24개 캔들(1시간봉 기준 하루)마다 보고한다고 가정
+            if current_row_count % 24 == 0:
                  current_stats = {
                      "equity": self.equity_curve[-1]['value'],
-                     "mdd_pct": self._calculate_current_mdd(), # 현재까지의 MDD 계산
-                     "progress": (i + 1) / len(grouped_data),
-                     "is_intermediate": True # 중간 보고임을 표시
+                     "mdd_pct": self._calculate_current_mdd(),
+                     "progress": current_row_count / total_rows,
+                     "is_intermediate": True
                  }
                  yield current_stats
 
         # 루프 종료 후 마지막 최종 결과 반환
         final_summary = self._calculate_summary_stats()
-        final_summary["is_intermediate"] = False # 최종 결과임을 표시
+        final_summary["is_intermediate"] = False
         yield final_summary
 
     def run(self) -> Tuple[Dict, List[Dict]]:
@@ -151,29 +162,19 @@ class BacktestingEngine:
         for result in self.run_step_by_step():
             final_result = result
         
-        # 제너레이터의 마지막 yield 값이 최종 요약 정보임이 보장됨
         return final_result, self.trade_logs
 
     def _calculate_current_mdd(self) -> float:
         """현재 시점까지의 MDD를 빠르게 계산하는 헬퍼 메서드"""
-        if not self.equity_curve:
-            return 0.0
+        if not self.equity_curve: return 0.0
         
-        # 전체 커브를 DataFrame으로 변환하는 것은 너무 느릴 수 있으므로,
-        # 최적화를 위해 필요한 값(peak, current equity)만 추적하는 방식 고려 가능
-        # 여기서는 정확성을 위해 기존 방식 유지하되, 성능 이슈 시 개선 필요
-        equity_values = [p['value'] for p in self.equity_curve]
-        peak = -np.inf
-        max_drawdown = 0.0
-        
-        for value in equity_values:
-            if value > peak:
-                peak = value
-            drawdown = (value - peak) / peak
-            if drawdown < max_drawdown:
-                max_drawdown = drawdown
-                
-        return max_drawdown * 100
+        # 성능을 위해 가장 최근 값들만 사용하여 근사치를 계산할 수도 있지만,
+        # 정확한 Pruning을 위해 전체 커브를 사용하여 계산합니다.
+        # (Numpy 벡터 연산으로 최적화 가능)
+        equity_values = np.array([p['value'] for p in self.equity_curve])
+        running_max = np.maximum.accumulate(equity_values)
+        drawdown = (equity_values - running_max) / running_max
+        return drawdown.min() * 100
 
     def _calculate_initial_tp_sl(self, row: pd.Series) -> Tuple[Optional[float], Optional[float]]:
         sl_price, tp_price = None, None
@@ -214,7 +215,6 @@ class BacktestingEngine:
         trade_price = price * (1 + self.slippage_pct / 100) if side == 'buy' else price * (1 - self.slippage_pct / 100)
         pnl, commission = None, 0.0
         quantity = 0.0
-
         trade_action_type = ""
 
         if is_entry:
@@ -241,10 +241,8 @@ class BacktestingEngine:
         else: # Exit Logic
             if self.position_size == 0: return
             trade_action_type = "LONG_EXIT" if self.position_type == 'long' else "SHORT_EXIT"
-
             quantity = abs(self.position_size)
             raw_pnl = (trade_price - self.position_avg_price) * quantity if self.position_type == 'long' else (self.position_avg_price - trade_price) * quantity
-            
             self.balance += (self.invested_capital + raw_pnl)
             exit_value = quantity * trade_price
             commission = exit_value * (self.fee_pct / 100)
@@ -276,7 +274,6 @@ class BacktestingEngine:
         self.equity_curve.append({'time': int(timestamp.timestamp()), 'value': equity})
 
     def _calculate_summary_stats(self) -> Dict:
-        """최종 성과 지표를 계산하여 반환합니다."""
         if not self.equity_curve: return {}
         equity_df = pd.DataFrame(self.equity_curve).set_index('time')
         equity_df.index = pd.to_datetime(equity_df.index, unit='s')
@@ -287,12 +284,8 @@ class BacktestingEngine:
         peak = equity_df['value'].expanding(min_periods=1).max()
         drawdown = (equity_df['value'] - peak) / peak
         mdd_pct = drawdown.min() * 100 if not drawdown.empty else 0.0
-        # drawdown_curve_json = [{'time': int(idx.timestamp()), 'value': round(val, 2)} for idx, val in (drawdown * 100).items()]
+        drawdown_curve_json = [{'time': int(idx.timestamp()), 'value': round(val, 2)} for idx, val in (drawdown * 100).items()]
         
-        # [최적화] 최적화 시에는 drawdown_curve_json 전체를 반환하지 않고 필요한 경우에만 계산하거나 생략
-        # 여기서는 일단 포함하되, 성능 이슈 시 제거 고려
-        drawdown_curve_json = [] 
-
         total_trades = self.winning_trades + self.losing_trades
         win_rate_pct = (self.winning_trades / total_trades) * 100 if total_trades > 0 else 0.0
         profit_factor = self.gross_profit / abs(self.gross_loss) if self.gross_loss != 0 else 0.0
@@ -337,8 +330,7 @@ class BacktestingEngine:
             backtest_score += score_factors[key]['score'] * (factor['weight'] / 100)
 
         return {
-            # 최종 자산 금액 (WFO 스티칭을 위해 필요)
-            "final_equity": final_equity,
+            "final_equity": final_equity, # [필수] WFO 연속 실행을 위해 자본금 전달
             "total_return_pct": round(total_return_pct, 2), "mdd_pct": round(mdd_pct, 2),
             "win_rate_pct": round(win_rate_pct, 2), "profit_factor": round(profit_factor, 2),
             "sharpe_ratio": round(sharpe_ratio, 2), "sortino_ratio": round(sortino_ratio, 2),

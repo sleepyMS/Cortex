@@ -6,11 +6,9 @@ from typing import List, Optional
 from datetime import datetime
 import logging
 
-# ▼▼▼ [수정] 비동기 의존성 및 서비스 임포트 정리 ▼▼▼
 from .. import schemas
 from ..dependencies import get_async_db
 from ..services.market_data_service import market_data_service
-# ▲▲▲ [수정] ▲▲▲
 
 logger = logging.getLogger(__name__)
 
