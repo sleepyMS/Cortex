@@ -137,24 +137,21 @@ class OptimizationService:
 
         # [핵심 수정] best_trial 수동 주입 로직 추가
         if job and job.status == models.OptimizationStatus.COMPLETED:
-            # 1. result_summary JSON에서 best_trial_id 추출
-            # (DB 모델에 result_summary 컬럼이 있다고 가정합니다)
             summary = job.result_summary
             if isinstance(summary, dict):
+                # 1. Best Trial 수동 주입 (기존 코드)
                 best_trial_id = summary.get("best_trial_id")
-                
                 if best_trial_id is not None:
-                    # 2. 해당 Trial 데이터 별도 조회
-                    # (이미 로드된 job.trials에서 찾을 수도 있지만, 확실하게 하기 위해 DB 조회)
                     trial_query = select(models.OptimizationTrial).filter_by(
                         job_id=job.id, 
                         trial_id=best_trial_id
                     )
-                    best_trial = (await db.execute(trial_query)).scalar_one_or_none()
-                    
-                    # 3. Pydantic 스키마가 가져갈 수 있도록 객체에 할당
-                    # (SQLAlchemy 모델에 임시 속성으로 추가)
-                    job.best_trial = best_trial
+                    job.best_trial = (await db.execute(trial_query)).scalar_one_or_none()
+                
+                # [핵심 수정] 2. Parameter Importance 수동 주입 추가
+                # DB에는 'parameter_importance' 라는 키로 저장되어 있다고 가정합니다.
+                # (tasks.py에서 저장할 때 사용한 키와 일치해야 합니다.)
+                job.parameter_importance = summary.get("parameter_importance")
 
         return job
 
