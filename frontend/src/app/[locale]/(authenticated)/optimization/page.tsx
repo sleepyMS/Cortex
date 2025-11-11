@@ -11,12 +11,14 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  Query,
+  InfiniteData,
 } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
 
 import apiClient from "@/lib/apiClient";
-import { AuthGuard } from "@/components/auth/AuthGuard"; // 인증 가드
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Button } from "@/components/ui/Button";
 import {
   Select,
@@ -28,10 +30,10 @@ import {
 import {
   OptimizationJob,
   OptimizationJobCard,
-} from "@/components/domain/optimization/OptimizationJobCard"; // OptimizationJobCard 임포트
-import { PlusCircle, BarChartHorizontal, Zap, Loader2 } from "lucide-react"; // Zap, Loader2 아이콘 추가
+} from "@/components/domain/optimization/OptimizationJobCard";
+import { PlusCircle, BarChartHorizontal, Zap, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Strategy } from "@/types/strategy"; // 기존 Strategy 타입을 재사용
+import { Strategy } from "@/types/strategy";
 
 // --- Helper Components ---
 
@@ -110,9 +112,19 @@ export default function OptimizationPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<
+    OptimizationJob[],
+    Error,
+    InfiniteData<OptimizationJob[], number>,
+    (string | string)[],
+    number
+  >({
     queryKey: ["optimizations", statusFilter, strategyFilter, typeFilter],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({
+      pageParam = 0,
+    }: {
+      pageParam: number;
+    }): Promise<OptimizationJob[]> => {
       const limit = 12;
       const params = new URLSearchParams({
         skip: (pageParam * limit).toString(),
@@ -126,13 +138,26 @@ export default function OptimizationPage() {
       const res = await apiClient.get(`/optimizations?${params.toString()}`);
       return res.data as OptimizationJob[];
     },
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length > 0 ? allPages.length : undefined,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length > 0 ? allPages.length : undefined;
+    },
+
     initialPageParam: 0,
-    // [수정] refetchInterval 제거 (사용자 요청 사항)
+
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+
+      const hasActiveJob = data.pages
+        .flat()
+        .some((job) => job.status === "running" || job.status === "pending");
+
+      return hasActiveJob ? 5000 : false;
+    },
   });
 
   useEffect(() => {
+    // 무한 스크롤을 위한 로직
     if (inView && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
@@ -144,6 +169,7 @@ export default function OptimizationPage() {
       apiClient.post(`/optimizations/${jobId}/cancel`),
     onSuccess: () => {
       toast.success(t("cancelSuccess"));
+      // 작업 취소 성공 시, 목록 캐시를 즉시 갱신합니다.
       queryClient.invalidateQueries({ queryKey: ["optimizations"] });
     },
     onError: (error: any) =>
@@ -158,6 +184,7 @@ export default function OptimizationPage() {
     mutationFn: (jobId: string) => apiClient.delete(`/optimizations/${jobId}`),
     onSuccess: () => {
       toast.success(t("deleteSuccess"));
+      // 작업 삭제 성공 시, 목록 캐시를 즉시 갱신합니다.
       queryClient.invalidateQueries({ queryKey: ["optimizations"] });
     },
     onError: (error: any) =>
