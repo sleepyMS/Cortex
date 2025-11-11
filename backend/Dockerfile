@@ -1,6 +1,6 @@
 # --- 1. Build Stage ---
 # Python 3.11을 기반으로 빌드 환경을 구성합니다.
-FROM python:3.11-slim as builder
+FROM python:3.10-slim as builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN pip install -r requirements.txt
 
 # --- 2. Final Stage ---
 # 가벼운 slim 이미지에서 최종 이미지를 구성합니다.
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
