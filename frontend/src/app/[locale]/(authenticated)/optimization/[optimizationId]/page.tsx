@@ -196,6 +196,8 @@ export default function OptimizationDetailPage({
     );
   }
 
+  const strategyForLabels = job.strategySnapshot || job.strategy;
+
   return (
     <div className="container mx-auto max-w-screen-xl px-4 py-8 space-y-8">
       {/* 1. 헤더 */}
@@ -233,7 +235,10 @@ export default function OptimizationDetailPage({
             <WFOPerformanceSummary folds={job.wfoResult?.folds} />
           ) : (
             // 일반 최적화일 때는 기존 Best Trial 표시
-            <BestResultCard bestTrial={job.bestTrial} strategy={job.strategy} />
+            <BestResultCard
+              bestTrial={job.bestTrial}
+              strategy={strategyForLabels}
+            />
           )}
         </div>
       </div>
@@ -256,7 +261,10 @@ export default function OptimizationDetailPage({
                 />
               </div>
               <div className="h-[400px]">
-                <ParameterStabilityChart folds={job.wfoResult.folds} />
+                <ParameterStabilityChart
+                  folds={job.wfoResult.folds}
+                  strategy={strategyForLabels}
+                />
               </div>
             </div>
           </section>
@@ -339,14 +347,14 @@ export default function OptimizationDetailPage({
                     trials={filteredTrials}
                     hoveredTrialId={hoveredTrialId}
                     onHoverTrial={setHoveredTrialId}
-                    strategy={job.strategy}
+                    strategy={strategyForLabels}
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-6">
                   <div className="h-[500px]">
                     <ParameterImportanceChart
                       data={job.parameterImportance}
-                      strategy={job.strategy}
+                      strategy={strategyForLabels}
                     />
                   </div>
                 </div>

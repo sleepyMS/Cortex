@@ -1067,6 +1067,7 @@ class OptimizationJobDetail(OptimizationJobSummary):
     """
     config: OptimizationConfig
     progress: Optional[OptimizationProgress] = None
+    strategy_snapshot: Optional[Strategy] = Field(None, validation_alias="strategy_snapshot")
     
     # 최적 결과 (전체 시도 중 1위)
     best_trial: Optional[TrialData] = None
@@ -1079,5 +1080,7 @@ class OptimizationJobDetail(OptimizationJobSummary):
     
     # 모든 시도 데이터 (대용량 주의, 필요시 페이지네이션 적용)
     trials: List[TrialData] = Field(default_factory=list)
-    
     used_credits: Optional[int] = None
+
+    class Config:
+        from_attributes = True

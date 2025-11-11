@@ -27,9 +27,12 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/ToggleGroup";
 import { Badge } from "@/components/ui/Badge";
 import { WFOFoldResult } from "@/types/optimization";
+import { Strategy } from "@/types/strategy";
+import { getReadableParamLabel } from "@/lib/strategy-utils"; // 공통 유틸리티 임포트
 
 interface ParameterStabilityChartProps {
   folds: WFOFoldResult[];
+  strategy?: Strategy; // [추가] 전략 정보 prop
 }
 
 // 색상 팔레트 (파라미터 구분을 위해)
@@ -44,19 +47,18 @@ const COLORS = [
 
 export const ParameterStabilityChart = ({
   folds,
+  strategy, // [추가]
 }: ParameterStabilityChartProps) => {
   const { resolvedTheme } = useTheme();
   const t = useTranslations("OptimizationDetailPage.WfoAnalysis");
-  const [mode, setMode] = useState<"raw" | "normalized">("normalized"); // 기본값: 정규화 모드
+  const [mode, setMode] = useState<"raw" | "normalized">("normalized");
 
   // 1. 데이터 전처리: folds 데이터를 차트용 데이터로 변환
   const chartData = useMemo(() => {
     if (!folds || folds.length === 0 || !folds[0]?.bestParams) return [];
 
-    // 모든 파라미터 키 추출
     const paramKeys = Object.keys(folds[0].bestParams);
 
-    // 각 파라미터별 최소/최대값 계산 (정규화를 위해)
     const minMax: Record<string, { min: number; max: number }> = {};
     paramKeys.forEach((key) => {
       const values = folds.map((f) => Number(f.bestParams[key]));
@@ -68,7 +70,7 @@ export const ParameterStabilityChart = ({
 
     return folds.map((fold) => {
       const dataPoint: any = {
-        foldIndex: `Fold ${fold.foldIndex + 1}`, // X축 레이블
+        foldIndex: `Fold ${fold.foldIndex + 1}`,
       };
 
       paramKeys.forEach((key) => {
@@ -76,10 +78,9 @@ export const ParameterStabilityChart = ({
         if (mode === "raw") {
           dataPoint[key] = rawValue;
         } else {
-          // 정규화: (값 - 최소) / (최대 - 최소) * 100
           const { min, max } = minMax[key];
           const range = max - min;
-          dataPoint[key] = range === 0 ? 50 : ((rawValue - min) / range) * 100; // 범위가 0이면 중간값(50)으로 표시
+          dataPoint[key] = range === 0 ? 50 : ((rawValue - min) / range) * 100;
         }
       });
 
@@ -121,7 +122,6 @@ export const ParameterStabilityChart = ({
           </TooltipProvider>
         </div>
 
-        {/* 보기 모드 토글 (Raw vs Normalized) */}
         <ToggleGroup
           type="single"
           value={mode}
@@ -144,7 +144,7 @@ export const ParameterStabilityChart = ({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              margin={{ top: 5, right: 30, left: 20, bottom: 20 }} // bottom 여백 추가
             >
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -163,6 +163,7 @@ export const ParameterStabilityChart = ({
                   mode === "normalized" ? `${val}%` : val
                 }
               />
+              {/* [핵심 수정] 툴팁 포매터 변경 */}
               <Tooltip
                 contentStyle={{
                   backgroundColor:
@@ -173,22 +174,23 @@ export const ParameterStabilityChart = ({
                   fontSize: "12px",
                 }}
                 formatter={(value: number, name: string) => [
-                  mode === "normalized"
-                    ? `${value.toFixed(1)}% (Normalized)`
-                    : value,
-                  name.split(".").pop(), // 긴 경로 대신 마지막 키만 표시
+                  // 값 포맷팅 (Raw/Normalized)
+                  mode === "normalized" ? `${value.toFixed(1)}%` : value,
+                  // [수정] 라벨을 공통 유틸리티로 생성
+                  getReadableParamLabel(name, strategy),
                 ]}
               />
+              {/* [핵심 수정] 범례 포매터 변경 */}
               <Legend
-                wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
-                formatter={(value) => value.split(".").pop()} // 범례도 짧게 표시
+                wrapperStyle={{ fontSize: "12px", paddingTop: "25px" }} // 상단 여백 추가
+                formatter={(value) => getReadableParamLabel(value, strategy)} // [수정]
               />
 
               {paramKeys.map((key, index) => (
                 <Line
                   key={key}
                   type="monotone"
-                  dataKey={key}
+                  dataKey={key} // key는 고유한 전체 경로
                   stroke={COLORS[index % COLORS.length]}
                   strokeWidth={2}
                   dot={{ r: 4 }}

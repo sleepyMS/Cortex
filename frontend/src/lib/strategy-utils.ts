@@ -7,23 +7,26 @@ import { Strategy } from "@/types/strategy";
  */
 export const getReadableParamLabel = (
   path: string,
-  strategy?: Strategy
+  strategy?: Strategy | null
 ): string => {
   if (!strategy) return path;
   try {
     const parts = path.split(".");
 
-    // Case 1: 일반 전략 규칙 (예: longEntryRules.blocks.0.mainLine.values.length)
-    if (parts[1] === "blocks" && parts.length >= 5) {
-      const section = parts[0]; // 예: longEntryRules
-      const blockIndex = Number(parts[2]) + 1; // 1부터 시작하도록 변경
-      const operand = parts[3]; // 예: mainLine
-      const paramName = parts[parts.length - 1]; // 예: length
+    // Case 1: TP/SL Logic (예: tpslLogic.stopLossPct)
+    if (parts[0] === "tpslLogic") {
+      // 카멜케이스를 공백으로 분리 (stopLossPct -> Stop Loss Pct)
+      const formattedName = parts[1]
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (str) => str.toUpperCase());
+      return `TP/SL - ${formattedName}`;
+    }
 
-      // 전략 객체에서 실제 지표 정보 조회
-      const block = (strategy as any)[section]?.blocks?.[Number(parts[2])];
-      const indicatorKey = block?.[operand]?.indicatorKey;
-      const indicatorLabel = indicatorKey ? `[${indicatorKey}]` : "";
+    // Case 2: General Block Logic (예: longEntryRules.blocks.0...)
+    if (parts[1] === "blocks" && parts.length >= 4) {
+      const section = parts[0]; // longEntryRules
+      const blockIndex = Number(parts[2]) + 1; // 1
+      const paramName = parts[parts.length - 1]; // length OR lowerBound
 
       const sectionMap: Record<string, string> = {
         longEntryRules: "L.Entry",
@@ -33,19 +36,34 @@ export const getReadableParamLabel = (
       };
       const sectionName = sectionMap[section] || section;
 
-      return `${sectionName} #${blockIndex} ${indicatorLabel} ${paramName}`.trim();
+      // 스냅샷 객체에서 실제 블록 정보 조회
+      const block = (strategy as any)[section]?.blocks?.[Number(parts[2])];
+      if (!block) return path;
+
+      let indicatorKey: string | undefined = undefined;
+
+      // 경로에 'values'가 포함되어 있는지 여부로 지표 파라미터인지 블록 파라미터인지 구분
+      if (parts.includes("values")) {
+        // 경로: ...blocks.0.OPERAND.values.PARAM (예: ...mainLine.values.length)
+        const operandKey = parts[3]; // "mainLine"
+        indicatorKey = block[operandKey]?.indicatorKey;
+      } else {
+        // 경로: ...blocks.0.PARAM (예: ...lowerBound)
+        // 이 경우, 블록의 '메인 지표' (e.g., State 블록의 'indicator')를 문맥으로 사용
+        indicatorKey = block.indicator?.indicatorKey;
+      }
+
+      const indicatorLabel = indicatorKey ? `[${indicatorKey}]` : "";
+
+      // 최종 조합: "L.Entry #1 [EMA] length"
+      return `${sectionName} #${blockIndex} ${indicatorLabel} ${paramName}`
+        .trim()
+        .replace(/\s\s+/, " ");
     }
 
-    // Case 2: TP/SL 설정 (예: tpslLogic.stopLossPct)
-    if (parts[0] === "tpslLogic") {
-      const formattedName = parts[1]
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (str) => str.toUpperCase());
-      return `TP/SL - ${formattedName}`;
-    }
-
-    return path;
+    return path; // Fallback
   } catch (e) {
-    return path;
+    console.warn("Failed to parse parameter path:", path, e);
+    return path; // 에러 시 원본 경로 반환
   }
 };

@@ -128,6 +128,8 @@ export interface OptimizationJobDetail {
    */
   config: OptimizationConfig;
 
+  strategySnapshot: Strategy | null;
+
   /**
    * 진행률 정보 (실행 중일 때 유효)
    */
