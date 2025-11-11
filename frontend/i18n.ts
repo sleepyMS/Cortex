@@ -1,4 +1,4 @@
-// file: frontend/i18n.ts (최종 통합 설정 파일 - 모든 경고 해결)
+// file: frontend/i18n.ts
 
 import { notFound } from "next/navigation";
 // 👈 requestLocale 임포트 (locale 파라미터 deprecation 해결)
@@ -33,7 +33,6 @@ export const pathnames = {
 export const timeZone = "Asia/Seoul";
 
 export default getRequestConfig(async (props) => {
-  // 👈 인자를 props로 받습니다.
   const locale = props.locale;
 
   const validatedLocale = locales.includes(locale as any)
