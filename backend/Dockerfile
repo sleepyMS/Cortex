@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Poetry (의존성 관리 도구) 설치 - 만약 requirements.txt를 쓰신다면 pip로 대체
