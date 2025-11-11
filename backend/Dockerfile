@@ -19,7 +19,7 @@ COPY requirements.txt .
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --pre
 
 # --- 2. Final Stage ---
 # 가벼운 slim 이미지에서 최종 이미지를 구성합니다.
