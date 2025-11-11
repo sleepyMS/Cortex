@@ -43,7 +43,7 @@ const fetchAdminDashboardSummary = async (): Promise<DashboardSummary> => {
 };
 
 export function AdminDashboardClient() {
-  const t = useTranslations("Dashboard");
+  const t = useTranslations("Dashboard.admin");
   const { user } = useUserStore();
 
   const {

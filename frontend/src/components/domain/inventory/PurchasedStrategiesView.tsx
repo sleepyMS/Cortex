@@ -60,7 +60,7 @@ const PurchasedStrategyCard = ({
           <span>
             {t("pricePaidLabel")}:{" "}
             <span className="font-semibold text-foreground">
-              ${strategy.pricePaid.toFixed(2)}
+              ${strategy.pricePaidInCredit.toFixed(2)}
             </span>
           </span>
         </div>
@@ -94,6 +94,8 @@ const PurchasedStrategyCard = ({
  */
 export function PurchasedStrategiesView() {
   const t = useTranslations("Inventory.purchasedStrategies");
+  const tRoot = useTranslations("Inventory");
+
   const {
     data: strategies,
     isLoading,
@@ -119,10 +121,10 @@ export function PurchasedStrategiesView() {
     return (
       <Alert variant="destructive" className="mt-8 max-w-lg mx-auto">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>{t("loadErrorTitle")}</AlertTitle>
+        <AlertTitle>{tRoot("loadErrorTitle")}</AlertTitle>
         <AlertDescription>{error?.message}</AlertDescription>
         <Button onClick={() => refetch()} className="mt-4">
-          {t("retryButton")}
+          {tRoot("retryButton")}
         </Button>
       </Alert>
     );

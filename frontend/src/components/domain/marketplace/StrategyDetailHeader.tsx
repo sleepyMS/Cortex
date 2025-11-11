@@ -42,6 +42,7 @@ export const StrategyDetailHeader = ({
   onChargeCredits,
 }: StrategyDetailHeaderProps) => {
   const t = useTranslations("Marketplace.strategyDetail");
+  const tRoot = useTranslations("Marketplace");
   const { creditBalance } = useUserStore();
 
   // 전략은 '유료 크레딧'으로만 구매 가능하므로 cashCreditBalance를 확인합니다.
@@ -72,7 +73,7 @@ export const StrategyDetailHeader = ({
       return (
         <Button size="lg" disabled className="w-full md:w-auto">
           <CheckCircle className="mr-2 h-5 w-5" />
-          {t("ownedButton")}
+          {tRoot("ownedButton")}
         </Button>
       );
     }
@@ -99,11 +100,11 @@ export const StrategyDetailHeader = ({
             className="w-full md:w-auto"
           >
             <Coins className="mr-2 h-5 w-5" />
-            {t("chargeCreditButton")}
+            {tRoot("chargeCreditButton")}
           </Button>
           <p className="text-xs text-destructive flex items-center justify-center md:justify-end gap-1">
             <CircleAlert className="h-3 w-3" />
-            {t("insufficientPaidCredit")}
+            {tRoot("insufficientPaidCredit")}
           </p>
         </div>
       );
@@ -124,7 +125,7 @@ export const StrategyDetailHeader = ({
         )}
         {isPurchasing
           ? t("purchasingButton")
-          : t("purchaseForPaidCredit", {
+          : tRoot("purchaseForPaidCredit", {
               price: strategy.price.toLocaleString(),
             })}
       </Button>

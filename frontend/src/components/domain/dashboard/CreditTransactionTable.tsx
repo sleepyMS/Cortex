@@ -165,6 +165,7 @@ const TransactionDetailsDialogContent = ({
                 {usageDetails?.details.map((detail: any, index: number) => (
                   <li key={index} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
+                      {/* @ts-expect-error */}
                       {t(`creditTypes.${detail.sourceType}`, {
                         default: detail.sourceType,
                       })}

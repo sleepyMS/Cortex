@@ -24,6 +24,18 @@
       }
     }
   },
+  "Payment": {
+    "userCancel": "Payment was cancelled by the user.",
+    "genericError": "An unknown error occurred during payment processing."
+  },
+  "Pagination": {
+    "firstPage": "Go to first page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Go to last page",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "Header": {
     "login": "Log In",
     "startFree": "Start Free",
@@ -228,6 +240,10 @@
         }
       ]
     },
+    "toggle": {
+      "monthly": "Monthly",
+      "yearly": "Annual (20% Off)"
+    },
     "faq": {
       "title": "Frequently Asked Questions",
       "items": [
@@ -259,6 +275,7 @@
     "forgotPasswordFailedPrefix": "Request Failed",
     "forgotPasswordFailedGeneric": "An error occurred while processing your request. Please try again.",
     "signupFailedPrefix": "Validation Error",
+    "signupFailedGeneric": "An unknown error occurred during signup.",
     "errors": {
       "emailRequired": "Email is required.",
       "invalidEmail": "Invalid email format.",
@@ -590,6 +607,28 @@
           "confirm": "Delete"
         }
       }
+    },
+    "admin": {
+      "loadingDashboard": "Loading admin dashboard...",
+      "accessDeniedTitle": "Access Denied",
+      "accessDeniedMessage": "You do not have permission to access this page. Please log in as an admin.",
+      "goToHomepage": "Go to Homepage",
+      "errorTitle": "Error",
+      "fetchError": "Failed to load data: {errorDetail}",
+      "tryAgainLater": "Please try again later.",
+      "noDataAvailable": "No data to display.",
+      "welcomeAdminMessage": "Welcome, {email} (Admin).",
+      "adminDashboardOverview": "Review the overall system status and key metrics.",
+      "totalUsers": "Total Users",
+      "activeUsers": "Active Users",
+      "totalStrategies": "Total Strategies",
+      "publicStrategies": "Public Strategies",
+      "totalBacktestsRun": "Total Backtests Run",
+      "totalSuccessfulBacktests": "Successful Backtests",
+      "totalLiveBots": "Total Live Bots",
+      "activeLiveBots": "Active Bots",
+      "overallPnl": "Overall PnL",
+      "latestSignups": "Latest Signups"
     }
   },
   "Navigation": {
@@ -802,6 +841,11 @@
     "selectSignal": "Select Signal",
     "any": "Any",
     "unknownLogicType": "Unknown Logic Type",
+    "selectChannelZone": "Select Channel Zone",
+    "selectAction": "Select Action",
+    "selectDivergenceType": "Select Divergence Type",
+    "selectPattern": "Select Pattern",
+    "direction": "Direction",
     "channelZoneLabel": "Channel Zone",
     "actionLabel": "Action",
     "signalLabel": "Signal",
@@ -841,6 +885,7 @@
     "modalPreviewTitle": "Strategy Preview",
     "modalPreviewDescription": "This is a preview of how your strategy will appear on the marketplace. The price and description will be finalized upon submission.",
     "modalRegisterTitle": "Confirm Strategy Listing",
+    "modalEditTitle": "Edit Market Listing",
     "modalDescription": "Are you sure you want to list this strategy on the marketplace? You can edit the details at any time after listing.",
     "empty": {
       "title": "Create your first investment strategy!",
@@ -891,7 +936,13 @@
     "parameters": "Parameters",
     "capital": "Capital",
     "commission": "Commission",
-    "totalReturnShort": "Return"
+    "totalReturnShort": "Return",
+    "statusPending": "Pending",
+    "statusRunning": "Running",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusCanceled": "Canceled",
+    "unknownError": "Unknown Error"
   },
   "BacktesterPage": {
     "title": "My Backtests",
@@ -1081,10 +1132,12 @@
       "shareWip": "Sharing feature is currently in development.",
       "loadingDate": "Loading date...",
       "initialCapital": "Initial Capital: ${amount}",
-      "totalTrades": "Total transactions: {count}"
+      "totalTrades": "Total transactions: {count}",
+      "unknownStrategy": "Unknown Strategy"
     },
     "errorTitle": "Error Loading Results",
     "errorMessage": "Failed to load data: {error}",
+    "errorNoStrategyInfo": "Rerun Failed: Original strategy info not found.",
     "noDataTitle": "No Data",
     "noDataMessage": "There is no backtest data to display.",
     "processingTitle": "Analyzing Results",
@@ -1423,6 +1476,7 @@
     "purchaseSuccessTitle": "Purchase Complete",
     "purchaseSuccessDescription": "'{productName}' was successfully purchased.",
     "paymentRedirecting": "Redirecting to payment page...",
+    "orderCreationError": "Order Creation Failed: {error}",
     "purchaseError": "Purchase Error: {error}",
     "paymentError": "Payment Error: {error}",
     "chargeCreditButton": "Charge Credits",
@@ -1468,6 +1522,19 @@
     "AuthorCard": {
       "title": "producer",
       "viewProfile": "View Profile"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by strategy name...",
+      "filterButton": "Filter by Category",
+      "categoryLabel": "Category",
+      "sortBy": "Sort by",
+      "sort": {
+        "newest": "Newest",
+        "highestReturn": "Highest Return",
+        "lowestMdd": "Lowest MDD",
+        "priceAsc": "Price (Low to High)",
+        "priceDesc": "Price (High to Low)"
+      }
     }
   },
   "StrategyPerformanceBadges": {
@@ -1497,10 +1564,23 @@
     "noResultsDescription": "No results found for {searchTerm}. Try searching for something else.",
     "purchasedStrategies": {
       "emptyTitle": "No Purchased Strategies",
-      "emptyDescription": "Find powerful trading strategies on the marketplace."
+      "emptyDescription": "Find powerful trading strategies on the marketplace.",
+      "authorLabel": "Author",
+      "pricePaidLabel": "Price Paid",
+      "purchasedAtLabel": "Purchased At",
+      "runBacktestButton": "Run Backtest"
     },
     "emptyTitle": "Your Inventory is Empty",
-    "emptyDescription": "Purchase various items from the Marketplace to enhance your strategies."
+    "emptyDescription": "Purchase various items from the Marketplace to enhance your strategies.",
+    "loadErrorTitle": "Failed to Load Inventory",
+    "retryButton": "Retry",
+    "statusUsed": "Used",
+    "quantityLabel": "Quantity",
+    "purchasedAtLabel": "Purchased At",
+    "usedButton": "Used",
+    "useButton": "Use Item",
+    "useItemSuccess": "Item used successfully.",
+    "useItemError": "Failed to use item: {error}"
   },
   "PaymentSuccessPage": {
     "approvingTitles": "Approving payment",

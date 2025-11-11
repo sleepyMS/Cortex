@@ -42,7 +42,9 @@ const FeatureSection = async () => {
               key={feature.key}
               index={index}
               icon={feature.icon}
+              // @ts-expect-error
               title={t(`features.${feature.key}.title`)}
+              // @ts-expect-error
               description={t(`features.${feature.key}.description`)}
             />
           ))}

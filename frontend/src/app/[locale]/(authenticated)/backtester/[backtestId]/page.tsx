@@ -50,12 +50,18 @@ const PageHeader = ({
   backtest: Backtest;
   totalTrades: number | null | undefined;
 }) => {
-  const t = useTranslations("BacktestDetailPage.Header");
+  // 1. 헤더 '표시용' t 함수
+  const tHeader = useTranslations("BacktestDetailPage.Header");
+
+  // 2. 페이지 '로직/오류용' t 함수 (새로 추가)
+  const tPage = useTranslations("BacktestDetailPage");
+
   const router = useRouter();
 
   const handleRerun = () => {
     if (!backtest.strategy) {
-      toast.error(t("errorNoStrategyInfo"));
+      // 3. tPage 함수를 사용하여 토스트 메시지 호출
+      toast.error(tPage("errorNoStrategyInfo"));
       console.error(
         "Rerun failed: Strategy information is missing in backtest data."
       );
@@ -71,7 +77,8 @@ const PageHeader = ({
     router.push(`/backtester/new?${params.toString()}`);
   };
   const handleShare = () => {
-    toast.info(t("shareWip"));
+    // 4. tHeader 함수 사용 (원래대로)
+    toast.info(tHeader("shareWip"));
   };
 
   // --- 날짜 유효성 검사 ---
@@ -87,10 +94,12 @@ const PageHeader = ({
       <CardHeader>
         <div className="flex flex-wrap justify-between items-start gap-4">
           <div>
-            <p className="text-sm font-medium text-primary">{t("strategy")}</p>
+            {/* 5. tHeader 함수 사용 (원래대로) */}
+            <p className="text-sm font-medium text-primary">
+              {tHeader("strategy")}
+            </p>
             <CardTitle className="text-2xl font-bold text-foreground">
               {backtest.strategy ? (
-                // 전략 정보가 있을 때: 전략 상세 페이지로 이동하는 링크 렌더링
                 <Link
                   href={`/strategies/${backtest.strategy.id}`}
                   className="hover:underline"
@@ -98,9 +107,9 @@ const PageHeader = ({
                   {backtest.strategy.name}
                 </Link>
               ) : (
-                // 전략 정보가 없을 때: 대체 텍스트 렌더링 (예: '삭제된 전략' 또는 '알 수 없음')
+                // 6. tHeader 함수 사용 (이제 정상 작동)
                 <span className="text-muted-foreground">
-                  {t("unknownStrategy")}
+                  {tHeader("unknownStrategy")}
                 </span>
               )}
             </CardTitle>
@@ -108,7 +117,7 @@ const PageHeader = ({
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleRerun}>
               <Repeat className="mr-2 h-4 w-4" />
-              {t("rerun")}
+              {tHeader("rerun")} {/* 7. tHeader 함수 사용 (원래대로) */}
             </Button>
             <Button
               variant="primary"
@@ -117,7 +126,7 @@ const PageHeader = ({
               disabled={backtest.status !== "completed"}
             >
               <Share2 className="mr-2 h-4 w-4" />
-              {t("share")}
+              {tHeader("share")} {/* 8. tHeader 함수 사용 (원래대로) */}
             </Button>
           </div>
         </div>
@@ -132,25 +141,26 @@ const PageHeader = ({
                 {format(endDate, "yyyy.MM.dd")}
               </>
             ) : (
-              t("loadingDate")
+              tHeader("loadingDate") /* 9. tHeader 함수 사용 (원래대로) */
             )}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4" />
           <span>
-            {t("initialCapital", {
+            {/* 10. tHeader 함수 사용 (원래대로) */}
+            {tHeader("initialCapital", {
               amount: (
                 backtest.parameters?.initialCapital ?? 0
               ).toLocaleString(),
             })}
           </span>
         </div>
-        {/* 3. '총 거래 횟수'를 표시하는 UI 요소를 추가합니다. */}
         {totalTrades !== null && typeof totalTrades !== "undefined" && (
           <div className="flex items-center gap-2">
             <BarChartHorizontal className="h-4 w-4" />
-            <span>{t("totalTrades", { count: totalTrades })}</span>
+            {/* 11. tHeader 함수 사용 (원래대로) */}
+            <span>{tHeader("totalTrades", { count: totalTrades })}</span>
           </div>
         )}
       </CardContent>

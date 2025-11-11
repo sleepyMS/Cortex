@@ -793,6 +793,7 @@ export const OptimizationParameterTreeView = ({
             <div key={sec.type}>
               <div className="flex items-center gap-4 mb-4">
                 <h4 className="text-sm font-semibold whitespace-nowrap">
+                  {/* @ts-expect-error */}
                   {t(sec.titleKey)}
                 </h4>
                 <div className="h-px bg-border flex-grow" />

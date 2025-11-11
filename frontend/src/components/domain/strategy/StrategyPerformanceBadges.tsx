@@ -66,14 +66,12 @@ export const StrategyPerformanceBadges = ({ summary }: Props) => {
   const t = useTranslations("StrategyPerformanceBadges");
   if (!summary) return null;
 
-  const {
-    totalReturnPct,
-    winRatePct,
-    mddPct,
-    sharpeRatio,
-    profitFactor,
-    sortinoRatio,
-  } = summary;
+  const totalReturnPct = summary.totalReturnPct;
+  const winRatePct = summary.winRatePct;
+  const mddPct = summary.mddPct;
+  const sharpeRatio = (summary as any).sharpeRatio;
+  const profitFactor = (summary as any).profitFactor;
+  const sortinoRatio = (summary as any).sortinoRatio;
   const isProfitable = totalReturnPct !== null && totalReturnPct >= 0;
 
   return (

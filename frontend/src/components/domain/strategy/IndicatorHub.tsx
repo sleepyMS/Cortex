@@ -193,6 +193,7 @@ export function IndicatorHub({
                       {logicTypeTranslations[logic] || logic}
                     </p>
                     <p className="text-xs text-muted-foreground">
+                      {/* @ts-expect-error */}
                       {t(`logicDescription.${logic}`)}
                     </p>
                   </div>

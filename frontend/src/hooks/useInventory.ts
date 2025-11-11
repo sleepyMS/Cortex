@@ -25,6 +25,9 @@ export interface UserInventoryItem {
   displayProperties: ShopItemMetadata;
   quantity: number;
   purchasedAt: string;
+  instanceId: string; // onUseItem(item.instanceId)에서 사용
+  isUsed: boolean; // item.isUsed에서 사용
+  type: string;
 }
 
 export interface PurchasedStrategy {

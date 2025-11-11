@@ -12,8 +12,8 @@ interface Props {
 
 export const KeyIndicatorBadges = ({ strategy }: Props) => {
   const { keyIndicators, strategyType } = useMemo(() => {
-    const hasLong = strategy.longEntryRules?.blocks.length > 0;
-    const hasShort = strategy.shortEntryRules?.blocks.length > 0;
+    const hasLong = (strategy.longEntryRules?.blocks?.length ?? 0) > 0;
+    const hasShort = (strategy.shortEntryRules?.blocks?.length ?? 0) > 0;
 
     let type = { label: "Custom", icon: Code };
     if (hasLong && hasShort)

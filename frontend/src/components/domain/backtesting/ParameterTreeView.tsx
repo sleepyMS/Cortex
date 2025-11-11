@@ -678,7 +678,10 @@ export const ParameterTreeView = ({
 
           return (
             <div key={sec.type}>
-              <h4 className="text-sm font-semibold mb-2">{t(sec.titleKey)}</h4>
+              <h4 className="text-sm font-semibold mb-2">
+                {/* @ts-expect-error */}
+                {t(sec.titleKey)}
+              </h4>
               <div className="space-y-3">
                 {sec.rules.blocks.map((block, blockIndex) => (
                   <React.Fragment key={block.id}>

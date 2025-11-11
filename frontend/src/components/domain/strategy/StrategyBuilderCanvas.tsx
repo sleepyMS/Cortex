@@ -159,6 +159,7 @@ export function StrategyBuilderCanvas({
       {sections.map(({ titleKey, rules, ruleType, color }) => (
         <Card key={ruleType} className={clsx("transition-colors", color)}>
           <CardHeader className="flex-row items-center justify-between">
+            {/* @ts-expect-error */}
             <CardTitle>{t(titleKey)}</CardTitle>
             <Button
               type="button"

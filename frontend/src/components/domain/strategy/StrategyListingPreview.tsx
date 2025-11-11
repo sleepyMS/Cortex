@@ -190,29 +190,29 @@ export const StrategyListingPreview = ({
                     <div className="flex flex-col gap-2">
                       <StatDisplay
                         label={tCard("totalReturn")}
-                        value={selectedBacktest.result.totalReturnPct}
+                        value={selectedBacktest.result.totalReturnPct ?? 0}
                         unit="%"
                         Icon={
-                          selectedBacktest.result.totalReturnPct >= 0
+                          (selectedBacktest.result.totalReturnPct ?? 0) >= 0
                             ? TrendingUp
                             : TrendingDown
                         }
                         colorClass={
-                          selectedBacktest.result.totalReturnPct >= 0
+                          (selectedBacktest.result.totalReturnPct ?? 0) >= 0
                             ? "text-emerald-500"
                             : "text-rose-500"
                         }
                       />
                       <StatDisplay
                         label={tCard("mdd")}
-                        value={selectedBacktest.result.mddPct}
+                        value={selectedBacktest.result.mddPct ?? 0}
                         unit="%"
                         Icon={TrendingDown}
                         colorClass="text-amber-600"
                       />
                       <StatDisplay
                         label={tCard("winRate")}
-                        value={selectedBacktest.result.winRatePct}
+                        value={selectedBacktest.result.winRatePct ?? 0}
                         unit="%"
                         Icon={Target}
                         colorClass="text-sky-500"

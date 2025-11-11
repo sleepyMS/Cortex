@@ -75,16 +75,16 @@ export const StrategyMarketCard = ({
   const tCommon = useTranslations("Marketplace");
   const { creditBalance } = useUserStore();
 
-  // [신규] 전략은 '유료 크레딧'으로만 구매 가능
+  // 전략은 '유료 크레딧'으로만 구매 가능
   const hasEnoughCredits = creditBalance
     ? creditBalance.cashCreditBalance >= strategy.price
     : false;
 
   const { latestBacktestSummary: metrics } = strategy;
-  const displayMetrics = metrics ?? {
-    totalReturnPct: 0,
-    mddPct: 0,
-    winRatePct: 0,
+  const displayMetrics = {
+    totalReturnPct: metrics?.totalReturnPct ?? 0,
+    mddPct: metrics?.mddPct ?? 0,
+    winRatePct: metrics?.winRatePct ?? 0,
   };
 
   const renderPurchaseButton = () => {
@@ -92,7 +92,7 @@ export const StrategyMarketCard = ({
       return (
         <Button disabled className="w-full">
           <CheckCircle className="mr-2 h-4 w-4" />
-          {t("ownedButton")}
+          {tCommon("ownedButton")}
         </Button>
       );
     }

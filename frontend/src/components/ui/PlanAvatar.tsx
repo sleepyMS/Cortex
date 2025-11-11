@@ -1,15 +1,29 @@
-"use client";
+// file: frontend/src/components/domain/profile/PlanAvatar.tsx
 
 import { cn } from "@/lib/utils";
 import { User, Sparkles, ShieldCheck } from "lucide-react";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 
+// --- Prop Interface ---
 interface PlanAvatarProps {
   username?: string | null;
   className?: string;
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
-export function PlanAvatar({ username, className }: PlanAvatarProps) {
+// --- 2. sizeMap 정의 (오류 7053 해결을 위한 객체 키 정의) ---
+const sizeMap = {
+  sm: { avatar: "h-12 w-12", icon: "h-3 w-3", initials: "text-xl" },
+  md: { avatar: "h-20 w-20", icon: "h-4 w-4", initials: "text-3xl" },
+  lg: { avatar: "h-32 w-32", icon: "h-6 w-6", initials: "text-4xl" },
+  xl: { avatar: "h-40 w-40", icon: "h-8 w-8", initials: "text-5xl" },
+};
+
+export function PlanAvatar({
+  username,
+  className,
+  size = "lg",
+}: PlanAvatarProps) {
   const { isPro, isTrader } = useUserSubscription();
 
   const planConfig = {
@@ -37,17 +51,23 @@ export function PlanAvatar({ username, className }: PlanAvatarProps) {
 
   const initials = username?.slice(0, 2).toUpperCase() || "?";
 
+  const currentSizeKey = size as keyof typeof sizeMap;
+  const { avatar, icon, initials: initialsClass } = sizeMap[currentSizeKey];
+
   return (
     <div
       className={cn(
-        "relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full border-2",
+        "relative flex shrink-0 items-center justify-center rounded-full border-2",
+        avatar,
         containerClass,
         className
       )}
     >
-      <span className="text-4xl font-bold text-foreground">{initials}</span>
+      <span className={cn("font-bold text-foreground", initialsClass)}>
+        {initials}
+      </span>
       <div className="absolute -bottom-1 -right-1 rounded-full bg-background p-1.5">
-        <Icon className={cn("h-6 w-6", iconClass)} />
+        <Icon className={cn(icon, iconClass)} />
       </div>
     </div>
   );

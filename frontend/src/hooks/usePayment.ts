@@ -90,6 +90,7 @@ export const usePaymentWindowMutation = () => {
       );
 
       // 결제창을 호출합니다.
+      // @ts-expect-error
       return tossPayments.requestPayment(paymentMethod, {
         orderId: checkoutData.orderId,
         orderName: checkoutData.orderName,

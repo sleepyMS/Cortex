@@ -32,7 +32,6 @@ export const PurchaseConfirmationModal = ({
   isPending,
 }: PurchaseConfirmationModalProps) => {
   const t = useTranslations("Marketplace");
-  const tCommon = useTranslations("Common");
 
   if (!product) return null;
 
@@ -56,11 +55,11 @@ export const PurchaseConfirmationModal = ({
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
           <DialogClose asChild>
-            <Button variant="outline">{tCommon("cancel")}</Button>
+            <Button variant="outline">{t("Common.cancel")}</Button>
           </DialogClose>
           <Button onClick={onConfirm} disabled={isPending}>
             {isPending && <Spinner className="mr-2 h-4 w-4" />}
-            {tCommon("confirm")}
+            {t("Common.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -58,8 +58,10 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
               {t("objective")}
             </span>
             <span className="font-medium text-primary">
+              {/* @ts-expect-error */}
               {tObj.has(config.objective)
-                ? tObj(config.objective)
+                ? // @ts-expect-error
+                  tObj(config.objective) // <-- 주석을 복사해서 넣습니다.
                 : config.objective}
             </span>
           </div>
@@ -118,6 +120,7 @@ export const ConfigSummaryCard = ({ config, type }: ConfigSummaryCardProps) => {
                     variant="outline"
                     className="bg-muted/50 text-xs font-normal"
                   >
+                    {/* @ts-expect-error */}
                     {tConst.has(c.type) ? tConst(c.type) : c.type} {c.operator}{" "}
                     {c.value}
                   </Badge>

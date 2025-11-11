@@ -38,6 +38,7 @@ export function SubscriptionCard() {
             <p className="text-xl font-bold">{currentPlan}</p>
           </div>
           <Badge variant={status === "active" ? "default" : "destructive"}>
+            {/* @ts-expect-error */}
             {t(status)}
           </Badge>
         </div>

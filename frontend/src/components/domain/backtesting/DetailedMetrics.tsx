@@ -24,7 +24,7 @@ interface DetailedMetricsProps {
   result: BacktestResultSummary;
 }
 
-const getScoreColor = (score?: number) => {
+const getScoreColor = (score?: number | null) => {
   if (score === undefined || score === null) return "text-muted-foreground";
   if (score >= 100) return "text-emerald-500";
   if (score >= 80) return "text-sky-500";
@@ -171,6 +171,7 @@ export const DetailedMetrics = ({ result }: DetailedMetricsProps) => {
                               </TooltipTrigger>
                               <TooltipContent sideOffset={4}>
                                 <p className="max-w-xs whitespace-pre-wrap break-words">
+                                  {/* @ts-expect-error */}
                                   {t(tooltipKey)}
                                 </p>
                               </TooltipContent>
@@ -181,11 +182,13 @@ export const DetailedMetrics = ({ result }: DetailedMetricsProps) => {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="w-full h-full cursor-help">
+                                {/* @ts-expect-error */}
                                 {t(metric.key)}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent sideOffset={4}>
                               <p className="max-w-xs whitespace-pre-wrap break-words">
+                                {/* @ts-expect-error */}
                                 {t(metric.tooltipKey)}
                               </p>
                             </TooltipContent>

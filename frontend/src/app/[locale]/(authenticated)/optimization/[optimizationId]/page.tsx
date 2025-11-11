@@ -219,7 +219,7 @@ export default function OptimizationDetailPage({
               <div className="space-y-0.5 text-center">
                 <p className="font-medium text-primary">
                   {job.status === "pending"
-                    ? t("statusPending")
+                    ? t("Header.statusPending")
                     : t("processingTitle")}
                 </p>
                 <p className="text-sm text-muted-foreground">

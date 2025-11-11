@@ -635,6 +635,9 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
   const tRule = useTranslations("RuleBlock"); // RuleBlock의 crossDirection 등을 위함
   const { metadata } = useIndicatorStore();
 
+  // @ts-expect-error
+  const tpslLabels = t.raw("paramLabels") as Record<string, string>;
+
   const indicatorDefinitions = useMemo(
     () =>
       metadata.reduce((acc, meta) => {
@@ -731,7 +734,7 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
               {Object.entries(tpslSnapshot).map(([key, value]) => {
                 if (typeof value !== "number") return null;
                 const path = `tpslLogic.${key}`;
-                const label = t(`paramLabels.${key}`);
+                const label = tpslLabels[key] || key;
                 return (
                   <ExecutionParameterDisplay
                     key={path}

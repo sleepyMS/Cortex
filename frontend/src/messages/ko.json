@@ -24,6 +24,18 @@
       }
     }
   },
+  "Payment": {
+    "userCancel": "결제를 취소했습니다.",
+    "genericError": "결제 처리 중 알 수 없는 오류가 발생했습니다."
+  },
+  "Pagination": {
+    "firstPage": "첫 페이지로 이동",
+    "previousPage": "이전 페이지",
+    "nextPage": "다음 페이지",
+    "lastPage": "마지막 페이지로 이동",
+    "previous": "이전",
+    "next": "다음"
+  },
   "Header": {
     "login": "로그인",
     "startFree": "무료로 시작하기",
@@ -228,6 +240,10 @@
         }
       ]
     },
+    "toggle": {
+      "monthly": "월간 결제",
+      "yearly": "연간 결제"
+    },
     "faq": {
       "title": "자주 묻는 질문",
       "items": [
@@ -259,6 +275,7 @@
     "forgotPasswordFailedPrefix": "요청 실패",
     "forgotPasswordFailedGeneric": "요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
     "signupFailedPrefix": "유효성 검사 오류",
+    "signupFailedGeneric": "회원가입 중 알 수 없는 오류가 발생했습니다.",
     "errors": {
       "emailRequired": "이메일은 필수 항목입니다.",
       "invalidEmail": "유효한 이메일 형식이 아닙니다.",
@@ -634,6 +651,28 @@
           "confirm": "계정 삭제"
         }
       }
+    },
+    "admin": {
+      "loadingDashboard": "관리자 대시보드 로딩 중...",
+      "accessDeniedTitle": "접근 거부됨",
+      "accessDeniedMessage": "이 페이지에 접근할 권한이 없습니다. 관리자 계정으로 로그인해주세요.",
+      "goToHomepage": "홈페이지로 이동",
+      "errorTitle": "오류",
+      "fetchError": "데이터를 불러오는 데 실패했습니다: {errorDetail}",
+      "tryAgainLater": "나중에 다시 시도해주세요.",
+      "noDataAvailable": "표시할 데이터가 없습니다.",
+      "welcomeAdminMessage": "{email}님, 환영합니다 (관리자).",
+      "adminDashboardOverview": "시스템 전체 현황과 주요 지표를 확인하세요.",
+      "totalUsers": "총 사용자 수",
+      "activeUsers": "활성 사용자",
+      "totalStrategies": "총 전략 수",
+      "publicStrategies": "공개 전략",
+      "totalBacktestsRun": "총 백테스트 실행",
+      "totalSuccessfulBacktests": "성공한 백테스트",
+      "totalLiveBots": "총 라이브 봇",
+      "activeLiveBots": "활성 라이브 봇",
+      "overallPnl": "전체 PnL",
+      "latestSignups": "최근 가입"
     }
   },
   "Navigation": {
@@ -846,6 +885,11 @@
     "selectSignal": "신호 선택",
     "any": "상관없음",
     "unknownLogicType": "알 수 없는 로직 타입",
+    "selectChannelZone": "채널 영역 선택",
+    "selectAction": "동작 선택",
+    "selectDivergenceType": "다이버전스 타입 선택",
+    "selectPattern": "캔들 패턴 선택",
+    "direction": "방향",
     "channelZoneLabel": "채널 존",
     "actionLabel": "동작",
     "signalLabel": "신호",
@@ -884,6 +928,7 @@
     "noMoreStrategies": "더 이상 불러올 전략이 없습니다.",
     "modalPreviewTitle": "전략 미리보기",
     "modalRegisterTitle": "전략 마켓 등록 확인",
+    "modalEditTitle": "마켓 등록 정보 수정",
     "modalDescription": "전략을 마켓플레이스에 등록하시겠습니까? 등록 후에도 언제든지 수정할 수 있습니다.",
     "modalPreviewDescription": "마켓플레이스에 등록될 전략의 모습을 미리 확인하세요. 가격 및 설명은 최종 등록 시 반영됩니다.",
     "empty": {
@@ -935,7 +980,13 @@
     "parameters": "파라미터",
     "capital": "자본금",
     "commission": "수수료",
-    "totalReturnShort": "수익률"
+    "totalReturnShort": "수익률",
+    "statusPending": "대기 중",
+    "statusRunning": "실행 중",
+    "statusCompleted": "완료",
+    "statusFailed": "실패",
+    "statusCanceled": "취소됨",
+    "unknownError": "알 수 없는 오류"
   },
   "BacktesterPage": {
     "title": "나의 백테스트",
@@ -1125,10 +1176,12 @@
       "shareWip": "공유 기능은 현재 준비 중입니다.",
       "loadingDate": "날짜 로딩 중...",
       "initialCapital": "초기 자본금: ${amount}",
-      "totalTrades": "총 거래: {count}회"
+      "totalTrades": "총 거래: {count}회",
+      "unknownStrategy": "알 수 없는 전략"
     },
     "errorTitle": "결과 로딩 오류",
     "errorMessage": "데이터를 불러오는 데 실패했습니다: {error}",
+    "errorNoStrategyInfo": "재실행 실패: 원본 전략 정보를 찾을 수 없습니다.",
     "noDataTitle": "데이터 없음",
     "noDataMessage": "표시할 백테스트 데이터가 없습니다.",
     "processingTitle": "결과를 분석하고 있습니다",
@@ -1468,6 +1521,7 @@
     "purchaseSuccessTitle": "구매 완료",
     "purchaseSuccessDescription": "'{productName}' 구매가 성공적으로 완료되었습니다.",
     "paymentRedirecting": "결제 페이지로 이동합니다...",
+    "orderCreationError": "주문 생성 실패: {error}",
     "purchaseError": "구매 오류: {error}",
     "paymentError": "결제 오류: {error}",
     "chargeCreditButton": "크레딧 충전",
@@ -1513,6 +1567,19 @@
     "AuthorCard": {
       "title": "제작자",
       "viewProfile": "프로필 보기"
+    },
+    "filters": {
+      "searchPlaceholder": "전략 이름으로 검색...",
+      "filterButton": "카테고리 필터",
+      "categoryLabel": "카테고리",
+      "sortBy": "정렬 기준",
+      "sort": {
+        "newest": "최신 등록순",
+        "highestReturn": "수익률 높은순",
+        "lowestMdd": "MDD 낮은순",
+        "priceAsc": "가격 낮은순",
+        "priceDesc": "가격 높은순"
+      }
     }
   },
   "StrategyPerformanceBadges": {
@@ -1542,10 +1609,23 @@
     "noResultsDescription": "{searchTerm}에 대한 검색 결과가 없습니다. 다른 키워드로 검색해보세요.",
     "purchasedStrategies": {
       "emptyTitle": "구매한 전략이 없습니다",
-      "emptyDescription": "마켓플레이스에서 강력한 트레이딩 전략을 찾아보세요."
+      "emptyDescription": "마켓플레이스에서 강력한 트레이딩 전략을 찾아보세요.",
+      "authorLabel": "제작자",
+      "pricePaidLabel": "구매 가격",
+      "purchasedAtLabel": "구매일",
+      "runBacktestButton": "백테스트 실행하기"
     },
     "emptyTitle": "인벤토리가 비어있습니다.",
-    "emptyDescription": "마켓플레이스에서 다양한 아이템을 구매하고 전략을 강화해보세요."
+    "emptyDescription": "마켓플레이스에서 다양한 아이템을 구매하고 전략을 강화해보세요.",
+    "loadErrorTitle": "인벤토리 로딩 실패",
+    "retryButton": "다시 시도",
+    "statusUsed": "사용됨",
+    "quantityLabel": "보유 수량",
+    "purchasedAtLabel": "구매일",
+    "usedButton": "사용 완료",
+    "useButton": "사용하기",
+    "useItemSuccess": "아이템을 성공적으로 사용했습니다.",
+    "useItemError": "아이템 사용 실패: {error}"
   },
   "PaymentSuccessPage": {
     "approvingTitle": "결제 승인 중",

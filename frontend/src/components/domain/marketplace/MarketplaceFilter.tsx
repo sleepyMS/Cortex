@@ -1,4 +1,4 @@
-// file: frontend/src/components/domain/marketplace/MarketplaceFilter.tsx (신규 파일)
+// file: frontend/src/components/domain/marketplace/MarketplaceFilter.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";

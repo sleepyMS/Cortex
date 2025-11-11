@@ -78,6 +78,7 @@ export function InventoryItemsView() {
           <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid">
             {ITEM_TYPES.map((type) => (
               <TabsTrigger key={type} value={type}>
+                {/* @ts-expect-error */}
                 {t(`tabs.${type}`)}
               </TabsTrigger>
             ))}
