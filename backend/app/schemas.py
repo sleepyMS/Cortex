@@ -1032,6 +1032,8 @@ class OptimizationJobSummary(CamelCaseModel):
     # DB의 'result_summary' 컬럼 값을 이 필드로 가져오겠다고 선언
     best_result_summary: Optional[TrialMetric] = Field(None, validation_alias="result_summary")
 
+    progress: Optional[OptimizationProgress] = None
+
     # 가져온 result_summary(전체 JSON)에서 필요한 best_metrics만 추출
     @field_validator('best_result_summary', mode='before')
     @classmethod

@@ -89,9 +89,16 @@ export default function OptimizationDetailPage({
           const message = JSON.parse(event.data);
           queryClient.setQueryData(
             ["optimizationDetail", optimizationId],
-            (old: any) => {
+            (old: OptimizationJobDetail | undefined) => {
               if (!old) return old;
-              const updated = { ...old, ...message };
+              const updated = {
+                ...old,
+                status: message.status || old.status,
+                progress: message.progress
+                  ? { ...old.progress, ...message.progress }
+                  : old.progress,
+              };
+
               if (
                 message.status === "completed" &&
                 old.status !== "completed"

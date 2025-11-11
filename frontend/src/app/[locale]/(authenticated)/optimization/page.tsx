@@ -29,7 +29,7 @@ import {
   OptimizationJob,
   OptimizationJobCard,
 } from "@/components/domain/optimization/OptimizationJobCard"; // OptimizationJobCard 임포트
-import { PlusCircle, BarChartHorizontal, Zap } from "lucide-react"; // Zap 아이콘 추가
+import { PlusCircle, BarChartHorizontal, Zap, Loader2 } from "lucide-react"; // Zap, Loader2 아이콘 추가
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Strategy } from "@/types/strategy"; // 기존 Strategy 타입을 재사용
 
@@ -93,7 +93,7 @@ export default function OptimizationPage() {
   // --- State for Filters ---
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [strategyFilter, setStrategyFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all"); // 최적화 타입 필터 추가
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   // --- Query to fetch strategies for the filter dropdown ---
   const { data: strategiesData } = useQuery<Strategy[]>({
@@ -121,7 +121,7 @@ export default function OptimizationPage() {
       if (statusFilter !== "all") params.set("status_filter", statusFilter);
       if (strategyFilter !== "all")
         params.set("strategy_id_filter", strategyFilter);
-      if (typeFilter !== "all") params.set("type_filter", typeFilter); // API 요청에 타입 필터 추가
+      if (typeFilter !== "all") params.set("type_filter", typeFilter);
 
       const res = await apiClient.get(`/optimizations?${params.toString()}`);
       return res.data as OptimizationJob[];
@@ -129,14 +129,7 @@ export default function OptimizationPage() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length > 0 ? allPages.length : undefined,
     initialPageParam: 0,
-    // 실시간 상태 업데이트를 위한 폴링 로직 (BacktesterPage와 동일)
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      const hasActiveJob = data?.pages
-        .flat()
-        .some((job) => job.status === "running" || job.status === "pending");
-      return hasActiveJob ? 5000 : false; // 활성 작업이 있을 때만 5초마다 폴링
-    },
+    // [수정] refetchInterval 제거 (사용자 요청 사항)
   });
 
   useEffect(() => {
@@ -148,10 +141,10 @@ export default function OptimizationPage() {
   // --- Mutations for Actions ---
   const cancelMutation = useMutation({
     mutationFn: (jobId: string) =>
-      apiClient.post(`/optimizations/${jobId}/cancel`), // API 엔드포인트 변경
+      apiClient.post(`/optimizations/${jobId}/cancel`),
     onSuccess: () => {
       toast.success(t("cancelSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["optimizations"] }); // queryKey 변경
+      queryClient.invalidateQueries({ queryKey: ["optimizations"] });
     },
     onError: (error: any) =>
       toast.error(
@@ -162,10 +155,10 @@ export default function OptimizationPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (jobId: string) => apiClient.delete(`/optimizations/${jobId}`), // API 엔드포인트 변경
+    mutationFn: (jobId: string) => apiClient.delete(`/optimizations/${jobId}`),
     onSuccess: () => {
       toast.success(t("deleteSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["optimizations"] }); // queryKey 변경
+      queryClient.invalidateQueries({ queryKey: ["optimizations"] });
     },
     onError: (error: any) =>
       toast.error(
@@ -272,7 +265,7 @@ export default function OptimizationPage() {
       {/* --- 무한 스크롤 트리거 --- */}
       <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
         {isFetchingNextPage && (
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         )}
         {!hasNextPage && optimizationJobs.length > 0 && (
           <p className="text-sm text-muted-foreground">{t("noMoreResults")}</p>

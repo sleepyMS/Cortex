@@ -47,26 +47,28 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/Tooltip";
-import { Progress } from "@/components/ui/Progress";
+// [삭제] Progress 컴포넌트 임포트 제거
+// import { Progress } from "@/components/ui/Progress";
 
 // --- 타입 정의 ---
 export interface OptimizationJob {
   id: string;
   status: "completed" | "running" | "pending" | "failed" | "canceled";
-  type: "general" | "wfo"; // 일반 최적화 또는 워크포워드 최적화
+  type: "general" | "wfo";
   strategy: Strategy;
-  progress: {
-    current_step: number; // 현재 진행된 Trial 또는 Fold
-    total_steps: number; // 총 Trial 또는 Fold
-  } | null;
+  // [삭제] progress 타입 정의 제거
+  // progress: {
+  //   current_step: number;
+  //   total_steps: number;
+  // } | null;
   bestResultSummary: {
     backtestScore: number | null;
     totalReturnPct: number | null;
     mddPct: number | null;
-    // winRatePct: number | null;
   } | null;
   createdAt: string;
   config?: {
+    // WFO Folds 카운트를 위해 유지
     wfoSettings?: {
       folds: number;
     };
@@ -81,10 +83,6 @@ interface OptimizationJobCardProps {
   isDeleting: boolean;
 }
 
-/**
- * 최적화 작업의 요약 정보를 표시하는 카드 컴포넌트.
- * BacktestCard와 유사한 디자인을 공유하며 최적화 관련 정보를 표시합니다.
- */
 export const OptimizationJobCard = ({
   job,
   onCancel,
@@ -95,7 +93,6 @@ export const OptimizationJobCard = ({
   const t = useTranslations("OptimizationJobCard");
   const isWfo = job.type === "wfo";
 
-  // BacktestCard와 동일한 상태 설정 객체 재사용
   const statusConfig = {
     completed: {
       label: t("status.completed"),
@@ -137,15 +134,7 @@ export const OptimizationJobCard = ({
   const currentStatus = statusConfig[job.status] || statusConfig.pending;
   const { bestResultSummary, strategy, id, status, type } = job;
 
-  // 프로그레스바 계산
-  const progressPct =
-    job.progress && job.progress.total_steps > 0
-      ? (job.progress.current_step / job.progress.total_steps) * 100
-      : 0;
-
-  const progressText = job.progress
-    ? `${job.progress.current_step} / ${job.progress.total_steps}`
-    : t("optimizing");
+  // [삭제] progressPct, progressText 변수 제거
 
   const typeConfig = {
     general: {
@@ -189,13 +178,25 @@ export const OptimizationJobCard = ({
               </div>
             </div>
           </CardHeader>
+
           <CardContent className="flex-grow space-y-4 flex flex-col justify-center">
             {isWfo ? (
               // --- WFO 전용 표시 ---
               <>
-                {status === "completed" && (
-                  <div className="flex flex-col items-center justify-center text-center h-full min-h-[70px] bg-muted/30 p-3 rounded-md border border-dashed border-teal-500/30">
-                    <BarChart className="h-6 w-6 text-teal-500 mb-2" />
+                {(status === "completed" ||
+                  status === "running" ||
+                  status === "pending") && (
+                  <div
+                    className={cn(
+                      "flex flex-col items-center justify-center text-center h-full min-h-[70px] bg-muted/30 p-3 rounded-md border border-dashed",
+                      status === "completed"
+                        ? "border-teal-500/30"
+                        : "border-border"
+                    )}
+                  >
+                    {status === "completed" ? (
+                      <BarChart className="h-6 w-6 text-teal-500 mb-2" />
+                    ) : null}
                     <p className="text-xs font-semibold">
                       {t("wfo.summaryTitle")}
                     </p>
@@ -273,18 +274,7 @@ export const OptimizationJobCard = ({
               </div>
             )}
 
-            {/* --- 'running' 상태일 때 프로그레스 바 표시 --- */}
-            {status === "running" && (
-              <div className="pt-2">
-                <Progress value={progressPct} className="h-2" />
-                <p className="text-xs text-center text-blue-500 mt-1.5">
-                  {t("optimizingStatus", {
-                    current: job.progress?.current_step ?? 0,
-                    total: job.progress?.total_steps ?? 0,
-                  })}
-                </p>
-              </div>
-            )}
+            {/* [삭제] 'running' 상태일 때 프로그레스 바 전체 블록 제거 */}
           </CardContent>
         </Link>
         <CardFooter className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
@@ -308,7 +298,10 @@ export const OptimizationJobCard = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  disabled={isCanceling || status !== "running"}
+                  disabled={
+                    isCanceling ||
+                    (status !== "running" && status !== "pending")
+                  }
                   onClick={() => onCancel(id)}
                   className="text-yellow-600 dark:text-yellow-500"
                 >
@@ -316,7 +309,9 @@ export const OptimizationJobCard = ({
                   {t("actions.cancel")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={isDeleting}
+                  disabled={
+                    isDeleting || status === "running" || status === "pending"
+                  }
                   onClick={() => onDelete(id)}
                   className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
                 >

@@ -54,13 +54,10 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // --- 상태 관리 ---
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newStrategyName, setNewStrategyName] = useState("");
 
-  // --- 다이얼로그 열기 핸들러 ---
   const handleOpenDialog = () => {
-    // 기본 이름 설정 (예: "MyStrategy (Optimized #12)")
     if (job.bestTrial) {
       setNewStrategyName(
         `${job.strategy.name} (Optimized #${job.bestTrial.trialId})`
@@ -69,29 +66,28 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
     setIsDialogOpen(true);
   };
 
-  // --- 재실행 핸들러 ---
   const handleRerun = () => {
-    router.push(`/optimization/new?rerun_id=${job.id}`);
+    // 참고: /optimization/new?rerun_id=... 로직은 아직 구현되지 않았을 수 있습니다.
+    // 우선 /optimization/new 로 보냅니다.
+    router.push("/optimization/new");
   };
 
-  // --- '새 전략으로 저장' 뮤테이션 ---
   const applyStrategyMutation = useMutation({
     mutationFn: async () => {
       if (!job.bestTrial) throw new Error(t("errorNoBestTrial"));
 
-      // 사용자가 입력한 새 이름을 포함하여 요청 전송
       const res = await apiClient.post(
         `/strategies/${job.strategy.id}/clone-with-optimization`,
         {
           optimizationId: job.id,
           trialId: job.bestTrial.trialId,
-          newName: newStrategyName, // [핵심] 입력받은 새 이름 전달
+          newName: newStrategyName,
         }
       );
       return res.data;
     },
     onSuccess: (newStrategy) => {
-      setIsDialogOpen(false); // 성공 시 다이얼로그 닫기
+      setIsDialogOpen(false);
       toast.success(t("cloneSuccess"), {
         description: newStrategy.name,
         action: {
@@ -99,8 +95,6 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
           onClick: () => router.push(`/strategies/${newStrategy.id}/edit`),
         },
       });
-      // 필요 시 관련 쿼리 무효화
-      // queryClient.invalidateQueries({ queryKey: ["strategies"] });
     },
     onError: (error: any) => {
       toast.error(t("applyError"), {
@@ -109,7 +103,6 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
     },
   });
 
-  // --- UI 헬퍼 설정 ---
   const typeConfig: Record<
     OptimizationType,
     { label: string; Icon: React.ElementType; className: string }
@@ -128,31 +121,38 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
     },
   };
 
+  // [핵심 수정]
+  // className을 textClass(텍스트용)와 iconClass(아이콘용)로 분리합니다.
   const statusConfig = {
     running: {
       icon: Loader2,
       text: t("statusRunning"),
-      className: "text-blue-500 animate-spin",
+      textClass: "text-blue-500",
+      iconClass: "text-blue-500 animate-spin", // <-- 스핀은 아이콘에만 적용
     },
     pending: {
       icon: Clock,
       text: t("statusPending"),
-      className: "text-yellow-500",
+      textClass: "text-yellow-500",
+      iconClass: "text-yellow-500",
     },
     completed: {
       icon: CheckCircle,
       text: t("statusCompleted"),
-      className: "text-emerald-500",
+      textClass: "text-emerald-500",
+      iconClass: "text-emerald-500",
     },
     failed: {
       icon: AlertCircle,
       text: t("statusFailed"),
-      className: "text-destructive",
+      textClass: "text-destructive",
+      iconClass: "text-destructive",
     },
     canceled: {
       icon: XCircle,
       text: t("statusCanceled"),
-      className: "text-muted-foreground",
+      textClass: "text-muted-foreground",
+      iconClass: "text-muted-foreground",
     },
   };
 
@@ -186,13 +186,20 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
                 {format(new Date(job.createdAt), "yyyy-MM-dd HH:mm")}
               </time>
             </div>
+
+            {/* [핵심 수정] 
+                아이콘과 텍스트에 분리된 클래스를 적용합니다.
+            */}
             <div
               className={cn(
                 "flex items-center gap-1.5",
-                currentStatus.className
+                currentStatus.textClass // <-- 여기는 색상만 적용
               )}
             >
-              <currentStatus.icon className="h-4 w-4" />
+              <currentStatus.icon
+                className={cn("h-4 w-4", currentStatus.iconClass)}
+              />{" "}
+              {/* <-- 여기에 스핀 적용 */}
               <span>{currentStatus.text}</span>
             </div>
           </div>
@@ -226,7 +233,7 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={handleOpenDialog} // [수정] 다이얼로그 열기
+                    onClick={handleOpenDialog}
                     disabled={!canApply}
                   >
                     <Copy className="mr-2 h-4 w-4" />

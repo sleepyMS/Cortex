@@ -152,7 +152,7 @@ def run_optimization(self, job_id: str):
         strategy_data = job.strategy_snapshot if hasattr(job, 'strategy_snapshot') and job.strategy_snapshot else schemas.Strategy.model_validate(job.strategy).model_dump()
         strategy_snapshot = schemas.StrategyCreate.model_validate(strategy_data)
 
-        WebSocketManager.send_status_update(job_id, "running", "데이터 로딩 중...", 5)
+        WebSocketManager.send_optimization_update(job_id, "running", "데이터 로딩 중...", 5)
 
         # 2. 데이터 로딩 (단 1회 전체 로딩)
         target_coin = strategy_snapshot.target_coins[0].ticker if strategy_snapshot.target_coins else "BTCUSDT"
@@ -230,13 +230,20 @@ def run_optimization(self, job_id: str):
 
                     # e. 진행률 업데이트
                     current_trial_num = start_trial_num + trial.number
-                    if current_trial_num % 10 == 0:
-                        progress_pct = int((current_trial_num / total_trials_for_progress) * 100)
-                        WebSocketManager.send_status_update(
-                            job_id, "running", 
-                            f"진행 중... ({current_trial_num}/{total_trials_for_progress})", 
-                            max(10, min(99, progress_pct))
-                        )
+
+                    # 1. 프론트엔드가 필요로 하는 progress 객체 생성
+                    progress_data = {
+                        "currentStep": current_trial_num + 1, # (0-base 인덱스이므로 +1)
+                        "totalSteps": total_trials_for_progress
+                    }
+                    
+                    # 2. WebSocketManager로 전송
+                    WebSocketManager.send_optimization_update(
+                        job_id, 
+                        "running", 
+                        f"진행 중... ({progress_data['currentStep']}/{progress_data['totalSteps']})", 
+                        progress_data 
+                    )
                     
                     trial.set_user_attr("metrics", result)
                     return result.get(config.objective, -9999)
@@ -258,11 +265,15 @@ def run_optimization(self, job_id: str):
 
         # === CASE 1: 일반 최적화 (General) ===
         if config.general_settings:
-            WebSocketManager.send_status_update(job_id, "running", "최적화 시작...", 10)
+            WebSocketManager.send_optimization_update(job_id, "running", "최적화 시작...", 10)
             
             n_trials = config.general_settings.trials
             sampler = optuna.samplers.TPESampler(seed=42)
-            # [핵심] MedianPruner 설정 (초기 5회는 무조건 실행하여 기준 데이터 확보)
+
+            job.progress = {"current_step": 0, "total_steps": n_trials}
+            session.commit()
+
+            # MedianPruner 설정 (초기 5회는 무조건 실행하여 기준 데이터 확보)
             pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10) # 처음 10% 구간은 봐줌
             main_study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
             
@@ -294,6 +305,11 @@ def run_optimization(self, job_id: str):
             folds = config.wfo_settings.folds
             trials_per_fold = config.wfo_settings.trials_per_fold
             total_wfo_trials = folds * trials_per_fold
+
+            # WFO 시작 전, 총 시도 횟수를 DB에 업데이트합니다.
+            job.progress = {"current_step": 0, "total_steps": total_wfo_trials}
+            session.commit()
+
             splits = _split_data_expanding_window(base_ohlcv_df, folds, WARMUP_CANDLES)
             
             wfo_fold_results = []
@@ -305,7 +321,7 @@ def run_optimization(self, job_id: str):
                 fold_idx = i + 1
                 logger.info(f"Starting WFO Fold {fold_idx}/{folds}...")
                 start_progress = 10 + int((i / folds) * 80)
-                WebSocketManager.send_status_update(job_id, "running", f"WFO 구간 {fold_idx}/{folds} 진행 중...", start_progress)
+                WebSocketManager.send_optimization_update(job_id, "running", f"WFO 구간 {fold_idx}/{folds} 진행 중...", start_progress)
 
                 sampler = optuna.samplers.TPESampler(seed=42 + i) 
                 pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10)
@@ -397,7 +413,7 @@ def run_optimization(self, job_id: str):
         job.completed_at = datetime.now(timezone.utc)
         session.commit()
 
-        WebSocketManager.send_status_update(job_id, "completed", "최적화가 완료되었습니다.", 100)
+        WebSocketManager.send_optimization_update(job_id, "completed", "최적화가 완료되었습니다.", 100)
         logger.info(f"Optimization job {job_id} completed successfully.")
 
     except Exception as exc:
@@ -406,7 +422,7 @@ def run_optimization(self, job_id: str):
             job.status = OptimizationStatus.FAILED
             session.commit()
         except: pass
-        WebSocketManager.send_status_update(job_id, "failed", f"실패: {str(exc)}", 0)
+        WebSocketManager.send_optimization_update(job_id, "failed", f"실패: {str(exc)}", 0)
 
     finally:
         session.close()
