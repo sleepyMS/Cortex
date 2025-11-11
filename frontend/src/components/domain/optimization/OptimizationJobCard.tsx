@@ -66,6 +66,11 @@ export interface OptimizationJob {
     // winRatePct: number | null;
   } | null;
   createdAt: string;
+  config?: {
+    wfoSettings?: {
+      folds: number;
+    };
+  };
 }
 
 interface OptimizationJobCardProps {
@@ -88,6 +93,7 @@ export const OptimizationJobCard = ({
   isDeleting,
 }: OptimizationJobCardProps) => {
   const t = useTranslations("OptimizationJobCard");
+  const isWfo = job.type === "wfo";
 
   // BacktestCard와 동일한 상태 설정 객체 재사용
   const statusConfig = {
@@ -183,72 +189,89 @@ export const OptimizationJobCard = ({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-grow space-y-4">
-            <div className="flex justify-around text-center">
-              {/* --- 최적화 핵심 결과 표시 --- */}
-              <div className="w-1/3">
-                <Tooltip>
-                  <TooltipTrigger className="cursor-help">
-                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                      <Target className="h-3 w-3" />
-                      {t("bestScore")}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("bestScoreTooltip")}</TooltipContent>
-                </Tooltip>
-                <p
-                  className={cn(
-                    "text-lg font-bold",
-                    bestResultSummary &&
-                      bestResultSummary.backtestScore !== null
-                      ? bestResultSummary.backtestScore >= 0
-                        ? "text-emerald-500"
-                        : "text-rose-500"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {bestResultSummary?.backtestScore?.toFixed(2) ?? "N/A"}
-                </p>
+          <CardContent className="flex-grow space-y-4 flex flex-col justify-center">
+            {isWfo ? (
+              // --- WFO 전용 표시 ---
+              <>
+                {status === "completed" && (
+                  <div className="flex flex-col items-center justify-center text-center h-full min-h-[70px] bg-muted/30 p-3 rounded-md border border-dashed border-teal-500/30">
+                    <BarChart className="h-6 w-6 text-teal-500 mb-2" />
+                    <p className="text-xs font-semibold">
+                      {t("wfo.summaryTitle")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("wfo.summaryDesc")}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              // --- General 전용 표시 ---
+              <div className="flex justify-around text-center">
+                <div className="w-1/3">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help">
+                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                        <Target className="h-3 w-3" />
+                        {t("bestScore")}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("bestScoreTooltip")}</TooltipContent>
+                  </Tooltip>
+                  <p
+                    className={cn(
+                      "text-lg font-bold",
+                      bestResultSummary &&
+                        bestResultSummary.backtestScore !== null
+                        ? bestResultSummary.backtestScore >= 0
+                          ? "text-emerald-500"
+                          : "text-rose-500"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {bestResultSummary?.backtestScore?.toFixed(2) ?? "N/A"}
+                  </p>
+                </div>
+                <div className="w-1/3">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help">
+                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                        {t("bestReturn")}
+                        <HelpCircle className="h-3 w-3" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("bestReturnTooltip")}</TooltipContent>
+                  </Tooltip>
+                  <p
+                    className={cn(
+                      "text-lg font-bold",
+                      bestResultSummary &&
+                        bestResultSummary.totalReturnPct !== null
+                        ? bestResultSummary.totalReturnPct >= 0
+                          ? "text-emerald-500"
+                          : "text-rose-500"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {bestResultSummary?.totalReturnPct?.toFixed(2) ?? "N/A"}%
+                  </p>
+                </div>
+                <div className="w-1/3">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help">
+                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                        {t("bestMdd")}
+                        <HelpCircle className="h-3 w-3" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("bestMddTooltip")}</TooltipContent>
+                  </Tooltip>
+                  <p className="text-lg font-bold text-foreground">
+                    {bestResultSummary?.mddPct?.toFixed(2) ?? "N/A"}%
+                  </p>
+                </div>
               </div>
-              <div className="w-1/3">
-                <Tooltip>
-                  <TooltipTrigger className="cursor-help">
-                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                      {t("bestReturn")}
-                      <HelpCircle className="h-3 w-3" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("bestReturnTooltip")}</TooltipContent>
-                </Tooltip>
-                <p
-                  className={cn(
-                    "text-lg font-bold",
-                    bestResultSummary &&
-                      bestResultSummary.totalReturnPct !== null
-                      ? bestResultSummary.totalReturnPct >= 0
-                        ? "text-emerald-500"
-                        : "text-rose-500"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {bestResultSummary?.totalReturnPct?.toFixed(2) ?? "N/A"}%
-                </p>
-              </div>
-              <div className="w-1/3">
-                <Tooltip>
-                  <TooltipTrigger className="cursor-help">
-                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                      {t("bestMdd")}
-                      <HelpCircle className="h-3 w-3" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("bestMddTooltip")}</TooltipContent>
-                </Tooltip>
-                <p className="text-lg font-bold text-foreground">
-                  {bestResultSummary?.mddPct?.toFixed(2) ?? "N/A"}%
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* --- 'running' 상태일 때 프로그레스 바 표시 --- */}
             {status === "running" && (

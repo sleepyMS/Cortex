@@ -1296,6 +1296,10 @@
     "actions": {
       "cancel": "Cancel Job",
       "delete": "Delete Record"
+    },
+    "wfo": {
+      "summaryTitle": "WFO Result",
+      "summaryDesc": "Detailed OOS results available in the report."
     }
   },
   "NewOptimizationPage": {
