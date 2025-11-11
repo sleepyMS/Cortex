@@ -480,6 +480,7 @@
           "MARKETPLACE_B2C_ORDER": "마켓플레이스 아이템 구매",
           "MARKETPLACE_C2C_ORDER": "마켓플레이스 전략 구매",
           "BACKTEST": "백테스트 실행",
+          "OPTIMIZATION_JOB": "전략 최적화 실행",
           "ATTENDANCE_DAILY": "일일 출석 보상",
           "ATTENDANCE_BONUS": "연속 출석 보너스",
           "EVENT_COUPON": "이벤트/쿠폰 지급",

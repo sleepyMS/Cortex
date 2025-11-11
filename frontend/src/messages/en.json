@@ -480,6 +480,7 @@
           "MARKETPLACE_B2C_ORDER": "Marketplace Item Purchase",
           "MARKETPLACE_C2C_ORDER": "Marketplace Strategy Purchase",
           "BACKTEST": "Backtest Execution",
+          "OPTIMIZATION_JOB": "Strategy Optimization Execution",
           "ATTENDANCE_DAILY": "Daily Attendance Reward",
           "ATTENDANCE_BONUS": "Consecutive Attendance Bonus",
           "EVENT_COUPON": "Event/Coupon Grant",
