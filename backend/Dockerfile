@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
 # Poetry (의존성 관리 도구) 설치 - 만약 requirements.txt를 쓰신다면 pip로 대체
 # 여기서는 requirements.txt를 사용한다고 가정하겠습니다.
 COPY requirements.txt .
+COPY pandas-ta-0.3.14.zip .
 
 # 가상환경을 생성하고 의존성을 설치합니다.
 RUN python -m venv /opt/venv
