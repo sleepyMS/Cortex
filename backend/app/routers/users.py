@@ -80,7 +80,7 @@ async def update_users_me_profile(
     try:
         username_to_revalidate = updated_user.username
         # revalidate_url = f"{settings.APP.FRONTEND_BASE_URL}/api/revalidate-profile"
-        revalidate_url = "http://10.106.0.238:3000/api/revalidate-profile" #
+        revalidate_url = "http://10.106.2.249:3000/api/revalidate-profile" #
         
         # 타임아웃을 설정한 AsyncClient 사용 (e.g., 10초)
         async with httpx.AsyncClient(timeout=10.0) as client:

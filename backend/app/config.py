@@ -100,7 +100,7 @@ class Settings(BaseSettings):
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        env_nested_delimiter="__"  # 👈 중첩 구조는 __ (언더스코어 두 개)로 구분
+        env_nested_delimiter="__"  # 중첩 구조는 __ (언더스코어 두 개)로 구분
     )
 
     DB: DatabaseSettings
