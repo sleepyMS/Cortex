@@ -15,9 +15,9 @@ import { ThemeScript } from "@/lib/ThemeScript";
 
 const fontSans = localFont({
   src: "../../../public/fonts/PretendardJPVariable.woff2",
-  display: "swap", // 폰트 로딩 중 대체 텍스트를 보여줍니다.
-  weight: "400 500 700", // 사용할 폰트 굵기를 지정할 수 있습니다.
-  variable: "--font-sans", // CSS 변수 이름은 그대로 유지합니다.
+  display: "swap",
+  weight: "400 500 700",
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
