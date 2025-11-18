@@ -16,33 +16,33 @@ graph TD
         Browser -- HTTPS Request --> ALB[Load Balancer]
 
         subgraph "Application Services (Auto-scaled)"
-            ALB -- HTTP --> API[<b>API Service (FastAPI)</b><br>api.cortex.com<br><i>I/O Bound, 1-N Instances</i>]
+            ALB -- HTTP --> API["API Service (FastAPI)<br>api.cortex.com<br>I/O Bound, 1-N Instances"]
             ALB -- WebSocket --> API
         end
 
         subgraph "Background Services (Decoupled)"
-            CPU_Worker[<b>CPU Worker (Celery)</b><br><i>CPU Bound, 1-N Instances</i>]
-            IO_Worker[<b>I/O Worker (Celery)</b><br><i>I/O Bound, 1-N Instances</i>]
-            Beat[<b>Beat Scheduler (Celery)</b><br><i>Singleton, 1 Instance</i>]
+            CPU_Worker["CPU Worker (Celery)<br>CPU Bound, 1-N Instances"]
+            IO_Worker["I/O Worker (Celery)<br>I/O Bound, 1-N Instances"]
+            Beat["Beat Scheduler (Celery)<br>Singleton, 1 Instance"]
         end
 
         subgraph "Core Infrastructure"
-            API -- 작업 발행 (Publish) --> Redis[(<b>Managed Redis</b><br>Celery Broker & Pub/Sub)]
-            CPU_Worker -- `cpu_bound_queue` 구독 --> Redis
-            IO_Worker -- `io_bound_queue` 구독 --> Redis
-            Beat -- 작업 스케줄링 --> Redis
+            API -- "작업 발행 (Publish)" --> Redis[("Managed Redis<br>Celery Broker & Pub/Sub")]
+            CPU_Worker -- "`cpu_bound_queue` 구독" --> Redis
+            IO_Worker -- "`io_bound_queue` 구독" --> Redis
+            Beat -- "작업 스케줄링" --> Redis
 
-            API -- CRUD --> DB[(<b>Managed DB</b><br>PostgreSQL w/ TimescaleDB)]
-            CPU_Worker -- 결과 저장 --> DB
-            IO_Worker -- 상태 업데이트 --> DB
+            API -- CRUD --> DB[("Managed DB<br>PostgreSQL w/ TimescaleDB")]
+            CPU_Worker -- "결과 저장" --> DB
+            IO_Worker -- "상태 업데이트" --> DB
         end
     end
 
     subgraph "Third-Party Services"
-        Browser -- 결제 요청 --> PaymentGW["💳 Toss Payments"]
+        Browser -- "결제 요청" --> PaymentGW["💳 Toss Payments"]
         PaymentGW -- Webhook --> API
-        IO_Worker -- 데이터 수집 --> CCXT["Exchanges (CCXT)"]
-        IO_Worker -- 알림 발송 --> EmailSvc["📧 Email Service"]
+        IO_Worker -- "데이터 수집" --> CCXT["Exchanges (CCXT)"]
+        IO_Worker -- "알림 발송" --> EmailSvc["📧 Email Service"]
     end
 ```
 
