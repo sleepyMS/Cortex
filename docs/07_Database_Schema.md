@@ -156,6 +156,32 @@ erDiagram
         DateTime updated_at
     }
 
+    %% --- 2.5. 전략 최적화 (Optimization) ---
+    optimization_jobs {
+        UUID id PK
+        UUID user_id FK
+        UUID strategy_id FK
+        String status "PENDING, RUNNING, COMPLETED..."
+        String type "GENERAL, WFO"
+        Jsonb config "실행 설정 스냅샷 (범위, 목표 등)"
+        Jsonb strategy_snapshot "실행 시점의 전략 복사본"
+        Jsonb progress "진행률 (current/total)"
+        Jsonb result_summary "최종 결과 요약"
+        Jsonb wfo_result "WFO 상세 결과 (OOS 커브 등)"
+        String celery_task_id
+        DateTime created_at
+        DateTime completed_at
+    }
+    optimization_trials {
+        BigInt id PK
+        UUID job_id FK
+        Integer trial_id "작업 내 Trial 번호"
+        Jsonb params "파라미터 조합"
+        Jsonb metrics "성과 지표"
+        String state "COMPLETE, PRUNED, FAIL"
+        DateTime created_at
+    }
+
     %% --- 3. 마켓플레이스 및 아이템 ---
     shop_item_details {
         UUID id PK
@@ -291,6 +317,7 @@ erDiagram
     users ||--|{ comments : "writes"
     users ||--|{ likes : "gives"
     users ||--|{ refresh_tokens : "has"
+    users ||--|{ optimization_jobs : runs
 
     plans ||--|| plan_features : "defines"
     plans ||--|{ subscriptions : "subscribed by"
@@ -299,11 +326,14 @@ erDiagram
     strategies ||--|{ live_bots : powers
     strategies ||--o{ marketplace_products : listed_as
     strategies ||--o| users : "can be featured by"
+    strategies ||--|{ optimization_jobs : "is optimized by"
 
     backtests ||--|| backtest_results : "produces"
     backtests ||--|{ trade_logs : records
     backtests ||--o{ community_posts : "can be shared as"
     backtests ||--o{ marketplace_products : "can be representative for"
+
+    optimization_jobs ||--|{ optimization_trials : "contains"
 
     api_keys ||--|{ live_bots : "used by"
     live_bots ||--|{ trade_logs : records
@@ -346,12 +376,15 @@ erDiagram
 - **`credits_attendance_logs`**: 무료 크레딧 보상의 기준이 되는 일일 출석 기록.
 - **`settlements`**: 전략 판매 대금을 판매자에게 **'현금(KRW)'**으로 정산하기 위한 기록부. 크레딧 시스템과 완전히 분리된 플랫폼의 채무(liability)를 관리합니다.
 - **`refresh_tokens`**: JWT 리프레시 토큰 관리.
+- **`optimization_jobs`**: 최적화 작업(General/WFO)의 메인 테이블. 실행 설정(`config`), 전략 스냅샷(`strategy_snapshot`), 최종 요약 결과(`result_summary`), WFO 상세 결과(`wfo_result`) 등을 JSONB로 저장합니다.
+- **`optimization_trials`**: 개별 최적화 시도(Trial)의 파라미터 조합(`params`)과 성과 지표(`metrics`)를 저장하는 경량 테이블입니다.
 
 ---
 
 ## 3. 데이터 정책 (Data Policy)
 
 - **소프트 삭제 (Soft Delete)**: 사용자 탈퇴 시, `users` 테이블의 `is_active`를 `False`로 변경하고 개인 식별 정보를 익명화 처리합니다. 데이터는 물리적으로 삭제되지 않습니다.
+- **전략 스냅샷 (Strategy Snapshot)**: `backtests` 테이블과 `optimization_jobs` 테이블 모두 `strategy_snapshot` (Jsonb) 컬럼을 가집니다. 백테스트 또는 최적화 실행 시점의 전략 설정 전체를 JSON으로 복사하여 저장합니다. 이를 통해 **원본 전략(`strategies` 테이블)이 수정되거나 삭제되어도 과거의 실행 결과는 원본 그대로 보존**됩니다.
 - **크레딧 종류 및 사용처**:
   - **유료 크레딧**: 현금으로 충전. 플랫폼 기능 사용 및 **다른 사용자의 전략 구매(P2P)**에 모두 사용 가능합니다.
   - **무료(보너스) 크레딧**: 출석, 이벤트 등으로 지급. **플랫폼 기능 사용(B2C)**에만 사용할 수 있으며, 다른 사용자의 전략 구매에는 사용할 수 없습니다.
