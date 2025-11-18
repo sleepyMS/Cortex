@@ -27,22 +27,22 @@ graph TD
         end
 
         subgraph "Core Infrastructure"
-            API -- "작업 발행 (Publish)" --> Redis[("Managed Redis<br>Celery Broker & Pub/Sub")]
-            CPU_Worker -- "`cpu_bound_queue` 구독" --> Redis
-            IO_Worker -- "`io_bound_queue` 구독" --> Redis
-            Beat -- "작업 스케줄링" --> Redis
+            API --> Redis[("Managed Redis<br>Celery Broker & Pub/Sub")]
+            CPU_Worker --> Redis
+            IO_Worker --> Redis
+            Beat --> Redis
 
-            API -- CRUD --> DB[("Managed DB<br>PostgreSQL w/ TimescaleDB")]
-            CPU_Worker -- "결과 저장" --> DB
-            IO_Worker -- "상태 업데이트" --> DB
+            API --> DB[("Managed DB<br>PostgreSQL w/ TimescaleDB")]
+            CPU_Worker --> DB
+            IO_Worker --> DB
         end
     end
 
     subgraph "Third-Party Services"
-        Browser -- "결제 요청" --> PaymentGW["💳 Toss Payments"]
+        Browser --> PaymentGW["💳 Toss Payments"]
         PaymentGW -- Webhook --> API
-        IO_Worker -- "데이터 수집" --> CCXT["Exchanges (CCXT)"]
-        IO_Worker -- "알림 발송" --> EmailSvc["📧 Email Service"]
+        IO_Worker --> CCXT["Exchanges (CCXT)"]
+        IO_Worker --> EmailSvc["📧 Email Service"]
     end
 ```
 
