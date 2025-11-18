@@ -78,15 +78,34 @@
 - **`StrategyChart.tsx`:** `useChartIndicatorManager` 훅을 사용하여, 전달받은 데이터를 기반으로 메인 차트와 보조 지표 패널의 전체적인 레이아웃을 구성합니다.
 - **`MarkersPrimitive.ts`:** `lightweight-charts` v5의 프리미티브 API를 사용하여, 차트 위에 매수/매도 신호 마커(화살표)를 직접 그리는 역할을 담당하는 핵심 클래스입니다.
 
-### 4.4. 커뮤니티 (Community)
+### 4.4. 최적화 (Optimization)
+
+> 전략 최적화 설정, 실행, 결과 분석을 담당하는 도메인 컴포넌트입니다.
+
+- **`OptimizationSetupForm.tsx`**: 최적화 생성 페이지(`/optimization/new`)의 모든 로직을 담당하는 핵심 폼 컴포넌트입니다.
+  - `General` / `WFO` 탭 전환
+  - `OptimizationParameterTreeView`를 사용하여 최적화할 파라미터 범위를 선택합니다.
+  - 비용 견적(`estimate-cost`) API를 호출하고, 크레딧을 검증하여 제출(`POST /optimizations`)합니다.
+- **`OptimizationParameterTreeView.tsx`**: `OptimizationSetupForm` 내에서 전략의 규칙을 시각적으로 보여주고, 사용자가 최적화할 파라미터(Min/Max/Step)를 선택하도록 렌더링합니다.
+- **`OptimizationJobCard.tsx`**: 최적화 목록 페이지(`/optimization`)에서 개별 최적화 작업의 상태(Pending, Running, Completed)와 타입을 표시하는 카드입니다.
+- **`OptimizationHeader.tsx`**: 최적화 상세 페이지(`/optimization/:id`)의 헤더입니다. 작업 상태, 재실행, '새 전략으로 저장' 기능을 제공합니다.
+- **`ConfigSummaryCard.tsx`**: 상세 페이지에서 해당 최적화 작업의 설정값(기간, 목표, 제약 조건 등)을 요약하여 보여줍니다.
+- **`BestResultCard.tsx`**: 일반(General) 최적화 상세 페이지에서 가장 성과가 좋았던 단일 Trial의 핵심 성과(점수, 수익률)와 파라미터 조합을 표시합니다.
+- **`OOSPerformanceChart.tsx`**: WFO(워크포워드) 최적화 상세 페이지에서 **Out-of-Sample(OOS)** 구간의 수익 곡선 차트만 렌더링합니다.
+- **`ParameterStabilityChart.tsx`**: WFO 상세 페이지에서 각 Fold별 최적 파라미터의 변화 추이를 라인 차트로 시각화합니다. (Raw/Normalized 모드 지원)
+- **`ParameterImportanceChart.tsx`**: 상세 페이지에서 어떤 파라미터가 최적화 목표에 가장 큰 영향을 미쳤는지 보여주는 가로 막대 차트입니다.
+- **`ParallelCoordinatesChart.tsx`**: 상세 페이지에서 수백 개의 Trial을 라인으로 시각화하여, 파라미터와 성과 간의 관계를 한눈에 파악할 수 있게 합니다.
+- **`TrialsTable.tsx`**: 상세 페이지에서 모든 Trial 목록을 서버 사이드 페이지네이션/정렬/필터링 기능이 적용된 테이블로 보여줍니다.
+
+### 4.5. 커뮤니티 (Community)
 
 - **`SharedResultCard.tsx`**, **`CommentSection.tsx`**
 
-### 4.5. 구독 및 설정 (Subscription & Settings)
+### 4.6. 구독 및 설정 (Subscription & Settings)
 
 - **`PricingTable.tsx`**, **`ApiKeyManager.tsx`**, **`SubscriptionStatus.tsx`**
 
-### 4.6. 관리자 (Admin)
+### 4.7. 관리자 (Admin)
 
 - **`AdminStatCard.tsx`**, **`AdminUserTable.tsx`**
 
