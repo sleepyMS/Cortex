@@ -67,6 +67,41 @@
   - `EquityChart`: 누적 수익률 곡선 차트 (재사용)
   - `TradeLogTable`: 상세 거래 내역 테이블 (재사용)
 
+### **전략 최적화 목록 페이지 (`/optimization`)**
+
+- **개발 단계:** `[Phase 4]`
+- **역할:** 사용자가 실행한 모든 전략 최적화 작업(General, WFO)의 목록과 상태, 요약 결과를 보여줍니다.
+- **주요 기능 및 컴포넌트:**
+  - `OptimizationJobCard`: 개별 최적화 작업의 요약 정보 카드 (WFO/General 타입 구분 표시).
+  - 상태(`statusFilter`), 전략(`strategyFilter`), 타입(`typeFilter`)별 서버사이드 필터링 기능.
+  - `useInfiniteQuery`와 `useInView`를 사용한 무한 스크롤.
+  - `refetchInterval`을 사용한 '실행중' 작업 상태 자동 갱신(폴링).
+  - 새 최적화 생성(`.../new`) 페이지로 이동 버튼.
+
+### **새 최적화 생성 페이지 (`/optimization/new`)**
+
+- **개발 단계:** `[Phase 4]`
+- **역할:** 사용자가 새로운 최적화 작업을 설정하고 제출하는 페이지입니다.
+- **주요 기능 및 컴포넌트:**
+  - `OptimizationSetupForm`: 최적화 설정의 모든 로직을 담당하는 핵심 폼 컴포넌트.
+  - `OptimizationParameterTreeView`: 전략 규칙을 시각화하고 최적화할 파라미터 범위를 선택.
+  - 'General' / 'WFO' 탭 전환 기능.
+  - 비용 견적 API(`POST /optimizations/estimate-cost`) 연동 및 실시간 요약.
+
+### **최적화 상세 결과 페이지 (`/optimization/:id`)**
+
+- **개발 단계:** `[Phase 4]`
+- **역할:** 완료된 (또는 실행 중인) 특정 최적화 작업의 상세 결과 전체를 시각화합니다.
+- **주요 기능 및 컴포넌트:**
+  - `OptimizationHeader`: 작업 상태(WebSocket 실시간 갱신), '새 전략으로 저장' 기능 제공.
+  - `ConfigSummaryCard`: 실행 당시의 설정값(기간, 목표, 제약 조건 등) 요약.
+  - **(General) `BestResultCard`**: 일반 최적화 시 최고의 Trial 결과 및 파라미터 표시.
+  - **[WFO] `OOSPerformanceChart`**: WFO 최적화 시 Out-of-Sample 수익 곡선 차트 표시.
+  - **[WFO] `ParameterStabilityChart`**: WFO Fold별 파라미터 안정성 추이 차트.
+  - `ParameterImportanceChart`: 파라미터 중요도(영향력) 차트.
+  - `ParallelCoordinatesChart`: 전체 Trial의 파라미터-성과 관계 시각화 차트.
+  - `TrialsTable`: 서버사이드 페이지네이션/정렬/필터링이 적용된 전체 Trial 목록.
+
 ### **전략 허브 목록 페이지 (`/strategies`)**
 
 - **개발 단계:** `[Phase 2]`
