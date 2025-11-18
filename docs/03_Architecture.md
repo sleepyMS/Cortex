@@ -6,64 +6,43 @@
 
 ## 1. 시스템 구조도 (System Architecture Diagram)
 
-
-```mermaid
-graph TD
-    subgraph "Client Layer"
-        User["👤 사용자"] --> Browser[/"💻 웹 브라우저 (Next.js)"/]
-    end
-
-    Browser -- API Request --> APIGateway[<b>API Gateway</b>]
-
-    subgraph "Cortex Backend (Hybrid MSA)"
-        APIGateway -- Route --> WebService["<b>Web & Community Service</b><br>(Well-Structured Monolith)<br>- Authentication<br>- Marketplace<br>- Community"]
-        APIGateway -- Route --> BacktestService["<b>Backtesting Service</b><br>(Microservice)"]
-        APIGateway -- Route --> OptimizationService["<b>Optimization Service</b><br>(Microservice)"]
-
-        subgraph "Internal Communication"
-            WebService -- Publish Event --> MessageBus[(Message Bus)]
-            BacktestService -- Subscribe/Publish --> MessageBus
-            OptimizationService -- Subscribe/Publish --> MessageBus
-        end
-    end
-
-    WebService --> WebDB[(DB for Web Service)]
-    BacktestService --> QuantDB[(DB for Quant Engine)]
-    OptimizationService --> QuantDB
-```
-    
 ```mermaid
 graph TD
     subgraph "User's Browser"
-        User["👤 사용자"] --> Browser[/"💻 웹 브라우저 (Next.js)"/]
+        User["👤 사용자"] --> Browser[/"💻 웹 브라우저 (Next.js on Vercel)"/]
     end
 
-    subgraph "Vercel"
-        Browser -- HTTPS Request --> FE[Frontend UI/UX]
-    end
+    subgraph "Cloud Infrastructure (e.g., AWS, Render)"
+        Browser -- HTTPS Request --> ALB[Load Balancer]
 
-    subgraph "Cloud Server (e.g., AWS, GCP)"
-        subgraph "API & Web Server"
-            FE -- API Call --> BE[<b>FastAPI Backend</b><br>Store, Marketplace, Credit, Settlement Services]
-            Browser -- WebSocket --> BE
+        subgraph "Application Services (Auto-scaled)"
+            ALB -- HTTP --> API[<b>API Service (FastAPI)</b><br>api.cortex.com<br><i>I/O Bound, 1-N Instances</i>]
+            ALB -- WebSocket --> API
         end
 
-        subgraph "Database"
-            BE --> DB[(PostgreSQL w/ TimescaleDB)]
-            Celery[Celery Workers] --> DB
+        subgraph "Background Services (Decoupled)"
+            CPU_Worker[<b>CPU Worker (Celery)</b><br><i>CPU Bound, 1-N Instances</i>]
+            IO_Worker[<b>I/O Worker (Celery)</b><br><i>I/O Bound, 1-N Instances</i>]
+            Beat[<b>Beat Scheduler (Celery)</b><br><i>Singleton, 1 Instance</i>]
         end
 
-        subgraph "Async Task Queue & Event Bus"
-            BE -- Enqueue Job / Publish Event --> Redis[Redis]
-            Redis -- Dequeue Job / Subscribe Event --> Celery
+        subgraph "Core Infrastructure"
+            API -- 작업 발행 (Publish) --> Redis[(<b>Managed Redis</b><br>Celery Broker & Pub/Sub)]
+            CPU_Worker -- `cpu_bound_queue` 구독 --> Redis
+            IO_Worker -- `io_bound_queue` 구독 --> Redis
+            Beat -- 작업 스케줄링 --> Redis
+
+            API -- CRUD --> DB[(<b>Managed DB</b><br>PostgreSQL w/ TimescaleDB)]
+            CPU_Worker -- 결과 저장 --> DB
+            IO_Worker -- 상태 업데이트 --> DB
         end
     end
 
     subgraph "Third-Party Services"
-        Browser -- Checkout --> PaymentGW["💳 Toss Payments"]
-        PaymentGW -- Webhook --> BE
-        Celery -- Exchange API Call --> CCXT["CCXT Library<br>via Exchange"]
-        Celery -- Email Send --> EmailSvc["📧 이메일 서비스<br>(e.g., SendGrid)"]
+        Browser -- 결제 요청 --> PaymentGW["💳 Toss Payments"]
+        PaymentGW -- Webhook --> API
+        IO_Worker -- 데이터 수집 --> CCXT["Exchanges (CCXT)"]
+        IO_Worker -- 알림 발송 --> EmailSvc["📧 Email Service"]
     end
 ```
 
@@ -71,46 +50,46 @@ graph TD
 
 ## 2. 구성 요소 역할 및 데이터 흐름
 
-### 2.1. 기본 API 요청 흐름
+Cortex 백엔드는 **리소스 유형별로 분리된 마이크로서비스 아키텍처(MSA)**를 따릅니다. 모든 서비스는 동일한 Docker 이미지를 공유하지만, 실행 시점의 명령어(`CMD`)와 리소스 할당(CPU/Memory), 오토스케일링 정책을 다르게 적용합니다.
 
-1.  **사용자 (User):** 브라우저를 통해 프론트엔드(Next.js)와 상호작용합니다.
-2.  **프론트엔드 (Next.js on Vercel):** 사용자의 요청에 따라 UI를 렌더링하고, 백엔드(FastAPI)에 API를 호출하여 데이터를 주고받습니다.
-3.  **백엔드 (FastAPI on Cloud):** API 요청을 받아 인증, 비즈니스 로직 처리 후 데이터베이스와 통신하여 결과를 프론트엔드에 반환합니다.
+### 2.1. 핵심 서비스 컴포넌트
 
-### 2.2. 플랫폼 경제 및 비동기 처리 흐름
+1.  **API Service (FastAPI)**
 
-플랫폼의 경제 시스템은 **'크레딧 충전(B2C)'**과 **'전략 구매(P2P)'**라는 두 가지 핵심 흐름으로 구성되며, 안정적인 처리를 위해 이벤트 기반 비동기 방식을 적극적으로 활용합니다.
+    - **역할:** 사용자의 즉각적인 HTTP 요청(로그인, 전략 조회 등)과 WebSocket 연결을 처리하는 **대면 서비스**입니다.
+    - **특징 (I/O Bound):** 대부분의 시간을 DB 조회나 외부 API 응답 대기(I/O)에 사용합니다.
+    - **작업 처리:** 무거운 작업(백테스트, 최적화)을 직접 처리하지 않고, Redis에 작업을 등록(`Enqueue`)한 뒤 사용자에게 즉시 응답합니다.
+    - **스케일링:** CPU/메모리 사용량(트래픽)에 따라 1대에서 N대로 확장됩니다.
 
-#### **2.2.1. 크레딧 충전 (B2C 현금 거래)**
+2.  **CPU-Bound Worker (Celery)**
 
-1.  **충전 요청:** 사용자가 프론트엔드에서 '크레딧 팩' 구매를 요청하면, 백엔드 **Store Service**는 **Toss Payments 결제**에 필요한 정보를 프론트엔드에 전달합니다.
-2.  **Webhook 수신:** 결제가 성공하면, **Toss Payments가 백엔드의 Webhook 엔드포인트로 비동기 알림**을 보냅니다.
-3.  **이벤트 발행 (Publish):** Webhook 엔드포인트는 `payment.credit_charge.succeeded`와 같은 명확한 '이벤트'를 Redis(메시지 버스)에 발행하고 즉시 `200 OK`로 응답하여 Toss Payments와의 통신을 종료합니다.
-4.  **이벤트 처리 (Consume):** 별도의 Celery 워커가 이벤트를 구독하고 있다가, `CreditService`를 호출하여 사용자에게 `source_type='PURCHASE'`인 **'유료 크레딧'을 지급**하고 `credits_ledgers`에 내역을 기록하는 후속 작업을 비동기적으로 처리합니다.
+    - **역할:** `cpu_bound_queue`를 구독하며, **백테스트(`run_backtest`)** 및 **전략 최적화(`run_optimization`)**처럼 CPU를 100% 사용하는 무거운 계산 작업을 전담합니다.
+    - **특징 (CPU Bound):** 시스템의 다른 서비스에 영향을 주지 않도록 격리된 환경에서 실행됩니다.
+    - **스케일링:** API 트래픽과 무관하게, `cpu_bound_queue`의 작업량(또는 워커의 CPU 부하)에 따라 1대에서 N대로 확장됩니다.
 
-#### **2.2.2. 전략 구매 및 정산 (P2P 크레딧 거래)**
+3.  **I/O-Bound Worker (Celery)**
 
-1.  **구매 요청:** 사용자가 마켓플레이스에서 다른 사용자의 전략을 **크레딧**으로 구매 요청합니다.
-2.  **동기 처리:** 이 거래는 동기적으로 처리됩니다. **Marketplace Service**는 다음 로직을 **하나의 DB 트랜잭션** 내에서 실행합니다.
-    a. **Credit Service 호출:** 구매자의 **'유료 크레딧'** 잔액을 확인하고 차감합니다. (무료 크레딧은 사용 불가)
-    b. **Settlement Service 호출:** 판매 수수료를 계산하여 `settlements` 테이블에 판매자에 대한 **'정산 예정액(KRW)'**을 기록합니다.
-    c. `marketplace_orders` 생성 및 아이템 지급(e.g., `user_unlocked_items` 추가)을 처리합니다.
-3.  **결과 응답:** 트랜잭션이 성공적으로 완료되면, 사용자에게 즉시 구매 성공을 알립니다.
-4.  **정산 실행:** 매월 정산일에, 관리자는 별도의 백오피스 기능을 통해 `settlements` 테이블 기록을 바탕으로 판매자에게 **실제 현금**을 이체합니다.
+    - **역할:** `io_bound_queue`를 구독하며, **빠르지만 실패 가능성이 있는** 외부 통신 작업을 전담합니다. (예: 데이터 수집 `fetch_and_store_ohlcv`, 자동매매 봇 `run_all_active_bots`, 이벤트 처리 `dispatch_event`, 이메일 발송 등)
+    - **특징 (I/O Bound):** 작업 대부분을 외부 API 응답 대기에 사용하므로, 높은 동시성(`concurrency`)으로 여러 작업을 동시에 처리합니다.
+    - **장점 (장애 격리):** 이 워커가 거래소 API 오류로 중단되더라도, API Service나 CPU Worker는 전혀 영향을 받지 않습니다.
 
-### 2.3. 비동기 백테스팅 흐름
+4.  **Beat Scheduler (Celery)**
+    - **역할:** `celery_beat.py`에 정의된 스케줄(예: "매시간 데이터 수집")에 맞춰 Redis에 주기적으로 작업을 등록합니다.
+    - **특징 (Singleton):** 작업 중복 등록을 방지하기 위해 항상 **단 1대**만 실행되어야 합니다.
 
-1.  **비용 견적 및 크레딧 차감:** 사용자가 백테스팅을 요청하면, FastAPI 서버는 **CostCalculationService**를 통해 소모 크레딧을 계산하고, **CreditService**를 통해 사용자의 **모든 크레딧(무료+유료)**을 차감합니다.
-2.  **Job Enqueue:** 크레딧 차감이 성공하면, DB에 `Backtest` 객체를 `pending` 상태로 생성하고 **Celery에 작업(`run_backtest`)을 등록(Enqueue)**한 뒤, 사용자에게는 "요청이 접수되었습니다"라고 즉시 응답합니다.
-3.  **Job Dequeue & Execution:** 별도의 서버에서 대기하던 **Celery Worker**가 Redis를 통해 작업을 전달받아 실제 백테스팅 시뮬레이션을 실행합니다.
-4.  **Execution & Result:** Celery Worker는 시세 데이터를 조회하고, 복잡한 계산을 수행한 뒤, 최종 결과를 데이터베이스에 저장하고 `Backtest` 객체의 상태를 `completed` 또는 `failed`로 업데이트합니다.
+### 2.2. 비동기 최적화/백테스팅 흐름
 
-### 2.4. 실시간 통신 흐름 (WebSocket)
+1.  **Job Request (API Service):** 사용자가 최적화/백테스트를 요청하면, `api` 서비스가 크레딧을 차감하고 DB에 `OptimizationJob`을 `pending` 상태로 생성합니다.
+2.  **Enqueue (Redis):** `api` 서비스가 `run_optimization` 작업을 `cpu_bound_queue`에 등록하고, 사용자에게는 "접수되었습니다"라고 즉시 응답합니다.
+3.  **Execution (CPU Worker):** `cpu-worker`가 큐에서 작업을 가져와, `backtesting_engine.py`을 사용하여 무거운 계산을 수행합니다.
+4.  **Result (DB):** 작업 완료 후, `cpu-worker`가 `OptimizationJob`의 상태를 `completed`로 업데이트하고 결과를 DB에 저장합니다.
 
-1.  **Connection:** 사용자가 백테스팅 결과 페이지에 접속하면, 프론트엔드는 `/ws/backtest/{backtest_id}`로 WebSocket 연결을 요청합니다.
-2.  **Subscription:** FastAPI 서버는 Redis의 Pub/Sub 채널(`ws:backtest:{backtest_id}`)을 구독합니다.
-3.  **Real-time Update:** 백그라운드 Celery 워커에서 실행되는 백테스팅 작업은 진행률이 바뀔 때마다 Redis 채널로 상태 메시지를 발행(Publish)합니다.
-4.  **Message Push:** FastAPI 서버는 Redis 채널에서 메시지를 수신하는 즉시, 연결된 WebSocket 클라이언트에게 해당 메시지를 실시간으로 전달합니다.
+### 2.3. 실시간 통신 흐름 (WebSocket)
+
+1.  **Connection (API Service):** 사용자가 최적화 상세 페이지에 진입하면, `WS /ws/optimization/{job_id}`로 `api` 서비스에 웹소켓 연결을 요청합니다.
+2.  **Subscription (API Service):** `api` 서비스는 Redis의 Pub/Sub 채널(예: `ws:optimization:{job_id}`)을 구독합니다.
+3.  **Publish (CPU Worker):** `cpu-worker`가 최적화 작업을 수행하던 중(`tasks.py`), `WebSocketManager`를 통해 현재 진행률(예: "5/100 완료")을 Redis 채널에 발행(Publish)합니다.
+4.  **Push (API Service):** `api` 서비스가 Redis로부터 메시지를 수신하는 즉시, 연결된 사용자 웹소켓으로 해당 진행률 데이터를 푸시합니다.
 
 ---
 
