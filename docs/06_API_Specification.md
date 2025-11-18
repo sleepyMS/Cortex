@@ -393,7 +393,8 @@
       "result": {
         "totalReturnPct": 125.5,
         "winRatePct": 65.2,
-        "mddPct": -15.8
+        "mddPct": -15.8,
+        "backtestScore": 85.0
       },
       "strategy": {
         "id": "s1b2c3d4-e5f6-7890-1234-567890abcdef",
@@ -431,7 +432,7 @@
 - **Description:** 특정 백테스팅 작업의 상세 정보 및 결과를 조회합니다.
 - **Authorization:** `Required (User)`
 - **Path Parameters:** `backtest_id`: `string (UUID)`
-- **Success Response (200 OK):** (매우 상세한 `Backtest` 객체, `strategySnapshot` 및 전체 `result` 포함)
+- **Success Response (200 OK):** (매우 상세한 `Backtest` 객체, `strategySnapshot` 전략 규칙 전체, `parameters` 실행 파라미터 및 상세 성과 지표 `result`를 모두 포함)
 
 ### `GET /backtests/{backtest_id}/trade_logs`
 
@@ -609,7 +610,133 @@
 
 ---
 
-## 6. 라이브 봇 (Live Bots)
+## 6. 전략 최적화 (Optimizations)
+
+### `POST /optimizations/estimate-cost`
+
+- **Description:** 최적화 작업을 실행하기 전, 소모될 크레딧 비용을 미리 계산합니다.
+- **Authorization:** `Required (User)`
+- **Request Body:**
+  ```json
+  {
+    "strategyId": "a1b2c3d4...",
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2025-01-01T00:00:00Z",
+    "trials": 1500
+  }
+  ```
+- **Success Response (200 OK):** (`CostEstimationResponse` 스키마)
+  ```json
+  {
+    "originalCost": 3000,
+    "discountPct": 0.5,
+    "finalCost": 1500,
+    "userBalance": 10000,
+    "isSufficient": true
+  }
+  ```
+
+### `POST /optimizations`
+
+- **Description:** 새로운 전략 최적화 작업을 비동기적으로 요청합니다. 요청 시 크레딧이 차감됩니다.
+- **Authorization:** `Required (User)`
+- **Request Body:** (`OptimizationCreate` 스키마)
+  ```json
+  {
+    "strategyId": "a1b2c3d4...",
+    "optimizationType": "general",
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2025-01-01T00:00:00Z",
+    "initialCapital": 10000,
+    "objective": "cortexScore",
+    "constraints": [{ "type": "mdd", "operator": "<=", "value": 30 }],
+    "parameterRanges": [
+      {
+        "path": "longEntryRules.blocks.0.mainLine.values.length",
+        "min": 5,
+        "max": 20,
+        "step": 1
+      }
+    ],
+    "commonParameters": {
+      "leverage": 1,
+      "fee": 0.05,
+      "slippage": 0.01
+    },
+    "generalSettings": { "trials": 1500 }
+  }
+  ```
+- **Success Response (202 Accepted):** (`OptimizationJobSummary` 스키마)
+  ```json
+  {
+    "id": "opt_abc...",
+    "status": "pending",
+    "type": "general",
+    "strategy": { "id": "a1b2c3d4...", "name": "My Strategy" },
+    "createdAt": "2025-11-18T14:00:00Z",
+    "completedAt": null,
+    "bestResultSummary": null
+  }
+  ```
+- **Error Response:** `402 Payment Required`: 크레딧 잔액이 부족할 경우 반환됩니다.
+
+### `GET /optimizations`
+
+- **Description:** 현재 사용자의 최적화 작업 목록을 조회합니다.
+- **Authorization:** `Required (User)`
+- **Query Parameters:** `skip`, `limit`, `statusFilter`, `strategyIdFilter`, `typeFilter`
+- **Success Response (200 OK):** (`OptimizationJobSummary` 객체의 배열)
+
+### `GET /optimizations/{job_id}`
+
+- **Description:** 특정 최적화 작업의 상세 정보를 조회합니다. (WFO 결과, 파라미터 중요도, Trial 목록 포함)
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `job_id`: `string (UUID)`
+- **Success Response (200 OK):** (`OptimizationJobDetail` 스키마)
+
+### `GET /optimizations/{job_id}/trials`
+
+- **Description:** 특정 최적화 작업의 Trial 목록을 페이지네이션하여 조회합니다. (필터링/정렬 지원)
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `job_id`: `string (UUID)`
+- **Query Parameters:** `page`, `limit`, `sort_by`, `sort_desc`, `min_score`
+- **Success Response (200 OK):** (`PaginatedTrialsResponse` 스키마)
+  ```json
+  {
+  "items": [
+  {
+  "trialId": 1,
+  "jobId": "opt_abc...",
+  "params": { "...": 10 },
+  "metrics": { "totalReturnPct": 150.0, "mddPct": -15.0, ... },
+  "state": "COMPLETE",
+  "createdAt": "..."
+  }
+  ],
+  "total": 1500,
+  "page": 1,
+  "size": 20,
+  "pages": 75
+  }
+  ```
+
+### `POST /optimizations/{job_id}/cancel`
+
+- **Description:** 실행 중인 최적화 작업을 취소합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `job_id`: `string (UUID)`
+- **Success Response (200 OK):** `json { "message": "Optimization job canceled successfully." }`
+
+### `DELETE /optimizations/{job_id}`
+
+- **Description:** 최적화 작업 기록을 영구적으로 삭제합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `job_id`: `string (UUID)`
+- **Success Response (204 No Content):** (No content)
+
+---
+
+## 7. 라이브 봇 (Live Bots)
 
 ### `POST /live_bots`
 
@@ -672,7 +799,7 @@
 
 ---
 
-## 7. API 키 (API Keys)
+## 8. API 키 (API Keys)
 
 ### `POST /api_keys`
 
@@ -716,7 +843,7 @@
 
 ---
 
-## 8. 구독 및 결제 (Subscriptions & Payments)
+## 9. 구독 및 결제 (Subscriptions & Payments)
 
 ### `GET /subscriptions/me`
 
@@ -768,7 +895,7 @@
 
 ---
 
-## 9. 커뮤니티 (Community)
+## 10. 커뮤니티 (Community)
 
 ### `POST /community/posts`
 
@@ -850,7 +977,7 @@
 
 ---
 
-## 10. 관리자 (Admin)
+## 11. 관리자 (Admin)
 
 ### `GET /admin/users`
 
@@ -869,7 +996,7 @@
 
 ---
 
-## 11. 플랜 (Plans)
+## 12. 플랜 (Plans)
 
 ### `GET /plans`
 
@@ -895,7 +1022,7 @@
 
 ---
 
-## 12. 마켓플레이스 (Marketplace)
+## 13. 마켓플레이스 (Marketplace)
 
 ### `GET /marketplace/products`
 
@@ -1018,17 +1145,40 @@
 
 ---
 
-## 13. 웹소켓 (WebSocket)
+## 14. 웹소켓 (WebSocket)
 
 ### `WS /ws/backtest/{backtest_id}`
 
 - **Description:** 백테스트 진행 상황을 실시간으로 클라이언트에게 전달합니다.
 - **Connection Parameters:** `backtest_id`: `string (UUID)`
-- **Messages from Server:** `json { "status": "string", "progress": "integer", "message": "string" }`
+- **Messages from Server:**
+  ```json
+  {
+    "status": "string",
+    "progress": "integer",
+    "message": "string"
+  }
+  ```
+
+### `WS /ws/optimization/{optimization_id}`
+
+- **Description:** 최적화 진행 상황(Trial)을 실시간으로 클라이언트에게 전달합니다.
+- **Connection Parameters:** `optimization_id`: `string (UUID)`
+- **Messages from Server:** (`OptimizationProgress` 스키마 형식)
+  ```json
+  {
+    "status": "running",
+    "message": "진행 중... (10/1500)",
+    "progress": {
+      "currentStep": 10,
+      "totalSteps": 1500
+    }
+  }
+  ```
 
 ---
 
-## 14. 크레딧 (Credits)
+## 15. 크레딧 (Credits)
 
 ### `GET /credits/me/balance`
 
@@ -1070,7 +1220,7 @@
 
 ---
 
-## 15. 정산 (Settlements)
+## 16. 정산 (Settlements)
 
 ### `GET /settlements/me/summary`
 
