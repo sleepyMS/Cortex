@@ -55,7 +55,7 @@ celery_app.conf.task_queues = {
 celery_app.conf.task_routes = {
     # 백테스팅과 최적화는 'cpu_bound_queue'로 보냅니다.
     'run_backtest': {'queue': 'cpu_bound_queue'},
-    'run_parameter_optimization': {'queue': 'cpu_bound_queue'}, # 향후 최적화 기능용
+    'run_optimization': {'queue': 'cpu_bound_queue'}, 
 
     # 자동매매 봇과 데이터 수집은 'io_bound_queue'로 보냅니다.
     'run_all_active_bots': {'queue': 'io_bound_queue'},

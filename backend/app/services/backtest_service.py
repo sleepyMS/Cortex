@@ -19,7 +19,7 @@ from ..celery_app import celery_app
 from ..tasks import run_backtest
 from ..services.cost_calculator import cost_calculator_service
 from ..services.credit_service import credit_service
-from ..services.marketplace_service import marketplace_service # check_strategy_purchase를 위해 추가
+from ..services.marketplace_service import marketplace_service 
 
 
 logger = logging.getLogger(__name__)
@@ -36,23 +36,17 @@ def _apply_parameter_overrides(strategy_dict: Dict[str, Any], overrides: List[An
     modified_strategy = copy.deepcopy(strategy_dict)
 
     for override in overrides:
-        # --- [핵심 수정] ---
-        # override는 Pydantic 모델 객체이므로, .path와 .value로 직접 접근합니다.
-        # 불필요하고 오류를 유발하는 getattr, .get()을 제거합니다.
         path_str_raw = override.path
         value = override.value
-        # -------------------
         
         if not path_str_raw:
             continue
 
         try:
-            # --- [핵심 해결 로직] ---
             # 경로 탐색을 시작하기 전에, 프론트엔드의 '.children.blocks.' 패턴을
             # 백엔드 데이터 구조인 '.children.'으로 미리 변환합니다.
             sanitized_path = path_str_raw.replace(".children.blocks.", ".children.")
             parts = sanitized_path.split('.')
-            # -------------------------
 
             current_level = modified_strategy
             
@@ -108,26 +102,13 @@ class BacktestService:
             by_alias=True 
         )
 
-        # [핵심] 이제 _apply_parameter_overrides 함수가 모든 오버라이드를 처리합니다.
         overrides = backtest_create.parameters.overrides or []
         strategy_snapshot_dict = _apply_parameter_overrides(strategy_dict, overrides)
-        
-        # --- [제거] 아래의 중복된 tpslLogic 처리 로직을 완전히 삭제합니다. ---
-        # if backtest_create.parameters.tpsl_logic:
-        #     tpsl_override_dict = backtest_create.parameters.tpsl_logic.model_dump(
-        #         mode='json', by_alias=True, exclude_unset=True
-        #     )
-        #     if strategy_snapshot_dict.get('tpslLogic') is None:
-        #         strategy_snapshot_dict['tpslLogic'] = {}
-        #     strategy_snapshot_dict['tpslLogic'].update(tpsl_override_dict)
-        # -----------------------------------------------------------------
         
         params_to_store = schemas.BacktestParametersPayload(
             start_date=backtest_create.start_date,
             end_date=backtest_create.end_date,
             initial_capital=backtest_create.initial_capital,
-            # [수정] payload의 parameters에서 tpslLogic이 제거되었으므로,
-            # 백엔드 스키마도 이에 맞춰 업데이트하거나, 아래처럼 필요한 부분만 전달합니다.
             parameters=schemas.BacktestExecutionParameters(
                 leverage=backtest_create.parameters.leverage,
                 fee=backtest_create.parameters.fee,
@@ -157,7 +138,7 @@ class BacktestService:
         백테스트 요청의 모든 과정을 처리합니다.
         트랜잭션 관리와 비용 계산은 각각의 책임있는 서비스에 위임합니다.
         """
-        # --- 1. 비용 계산 (매우 간소화됨) ---
+        # --- 1. 비용 계산 ---
         cost_estimation = await cost_calculator_service.calculate_cost_from_api_request(
             db, user, backtest_create
         )
