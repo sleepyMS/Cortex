@@ -30,13 +30,13 @@
   - [x] **랜딩 페이지 (`/`)**: 서비스의 핵심 가치를 소개하는 첫 화면.
   - [x] **회원가입 페이지 (`/signup`)**: 신규 사용자 등록.
   - [x] **로그인 페이지 (`/login`)**: 기존 사용자 로그인.
-  - [ ] **백테스팅 페이지 (`/backtester`)**
-    - [ ] (1) 백테스팅 조건 설정 폼 구현 (`BacktestSetupForm.tsx`)
-    - [ ] (2) 결과 요약 지표(수익률, MDD 등) 표시 (`BacktestResultSummary.tsx`)
-    - [ ] (3) 누적 수익률 곡선 차트 표시 (`EquityChart.tsx`)
-    - [ ] (4) 상세 거래 내역 테이블 표시 (`TradeLogTable.tsx`)
-    - [ ] (5) 백테스팅 목록 및 상태 표시 (`BacktestList.tsx`)
-    - [ ] (6) 백테스팅 상세 결과 페이지 (`/backtester/[backtestId]`) 통합
+  - [x] **백테스팅 페이지 (`/backtester`)**
+    - [x] (1) 백테스팅 조건 설정 폼 구현 (`BacktestSetupForm.tsx`)
+    - [x] (2) 결과 요약 지표(수익률, MDD 등) 표시 (`BacktestResultSummary.tsx`)
+    - [x] (3) 누적 수익률 곡선 차트 표시 (`EquityChart.tsx`)
+    - [x] (4) 상세 거래 내역 테이블 표시 (`TradeLogTable.tsx`)
+    - [x] (5) 백테스팅 목록 및 상태 표시 (`BacktestList.tsx`)
+    - [x] (6) 백테스팅 상세 결과 페이지 (`/backtester/[backtestId]`) 통합
 - **Core Components**
   - [x] **UI Kit (`/ui`)**: `Button`, `Input`, `Card`, `Spinner`, `Select`, `Popover`, `Calendar(DatePickerCustom)`, `Table`, `Badge`, `Separator`, `DropdownMenu` 등 기본 컴포넌트 개발
   - [ ] **Layout (`/layout`)**: `Header`, `Footer`, `PageWrapper` 등 레이아웃 컴포넌트 개발 (기존 코드와 통합 완료)
@@ -44,7 +44,7 @@
 - **Backend & Infrastructure**
   - [x] **사용자 인증**: 회원가입 및 JWT 기반 로그인/인증 API 개발 (`auth.py` 완료)
   - [x] **이메일 인증 및 비밀번호 재설정 기능 구현** (백엔드 로직 및 API 완료)
-  - [ ] **기본 백테스팅 엔진**: Long-only, 수수료/슬리피지 로직이 포함된 V1 엔진 개발 (Celery 태스크 스텁)
+  - [x] **기본 백테스팅 엔진**: Long-only, 수수료/슬리피지 로직이 포함된 V1 엔진 개발 (Celery 태스크 스텁)
   - [x] **백테스팅 API**: 백테스팅 실행 요청을 받아 결과를 반환하는 API 엔드포인트 개발 (`backtests.py` 완료)
 
 ---
@@ -104,9 +104,9 @@
   - [ ] `SharedResultCard`
   - [ ] `CommentSection`
 - **Backend & Infrastructure**
-  - [ ] **커스텀 전략 엔진**: JSON 기반의 전략 규칙을 해석하고 실행하는 V2 엔진 개발 (데이터 직렬화/역직렬화 및 유효성 검사 로직 구현)
+  - [x] **커스텀 전략 엔진**: JSON 기반의 전략 규칙을 해석하고 실행하는 V2 엔진 개발 (데이터 직렬화/역직렬화 및 유효성 검사 로직 구현)
   - [ ] **커뮤니티 기능**: 공유, 댓글, 좋아요 관련 DB 스키마 및 API 개발 (백엔드 구현 완료)
-  - [ ] **백테스팅 엔진 고도화**: Long/Short 포지션, 레버리지, 고급 성과 지표(샤프 지수 등) 계산 로직 추가 (Placeholder)
+  - [x] **백테스팅 엔진 고도화**: Long/Short 포지션, 레버리지, 고급 성과 지표(샤프 지수 등) 계산 로직 추가 (Placeholder)
 
 ---
 
@@ -115,8 +115,8 @@
 > **목표:** 전문 투자자들을 위한 고급 기능들을 추가하여 서비스의 깊이를 더한다.
 
 - [ ] **페이퍼 트레이딩 페이지 (`/paper-trading`)**
-- [ ] **전략 최적화 페이지 (`/optimization`)**
+- [x] **전략 최적화 페이지 (`/optimization`)**
 - [ ] **Backend & Infrastructure**
   - [ ] **페이퍼 트레이딩 엔진**: 실시간 시세 기반 모의 거래 엔진 개발
-  - [ ] **전략 최적화 로직**: 대규모 병렬 백테스팅을 위한 비동기 태스크 큐(Celery) 도입
+  - [x] **전략 최적화 로직**: 대규모 병렬 백테스팅을 위한 비동기 태스크 큐(Celery) 도입
   - [ ] **알림 서비스**: 이메일, 웹 푸시 등 알림 시스템 연동
