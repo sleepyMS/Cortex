@@ -466,8 +466,25 @@ class SubscriptionService:
         subscription.plan_id = new_plan_id
         subscription.plan = new_plan
         subscription.next_plan_id = None # 예약된 변경 취소
-        
+
         await db.flush()
+
+        # 업그레이드 시 차등 크레딧 지급
+        current_plan_credits = current_plan.monthly_credit_reward
+        new_plan_credits = new_plan.monthly_credit_reward
+        credit_difference = new_plan_credits - current_plan_credits
+
+        if credit_difference > 0:
+            await credit_service.grant_subscription_bonus_credits(
+                db=db,
+                user_id=user.id,
+                amount=credit_difference,
+                source_id=f"UPGRADE_{subscription.id}"
+            )
+            logger.info(
+                f"Granted {credit_difference} additional credits for upgrade "
+                f"from {current_plan.name.value} to {new_plan.name.value}"
+            )
 
         # Identity Map을 우회하기 위해 expunge
         db.expunge(subscription)
