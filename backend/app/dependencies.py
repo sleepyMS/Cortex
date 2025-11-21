@@ -64,7 +64,14 @@ async def get_current_user(
 
     query = (
         select(models.User)
-        .options(joinedload(models.User.subscription).joinedload(models.Subscription.plan).joinedload(models.Plan.features))
+        .options(
+            joinedload(models.User.subscription)
+                .joinedload(models.Subscription.plan)
+                .joinedload(models.Plan.features),
+            joinedload(models.User.subscription)
+                .joinedload(models.Subscription.next_plan)
+                .joinedload(models.Plan.features),
+        )
         .filter(models.User.email == email)
     )
     result = await db.execute(query)

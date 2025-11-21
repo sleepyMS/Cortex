@@ -230,6 +230,7 @@ class SubscriptionSchema(CamelCaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     plan: PlanSchema
+    next_plan: Optional[PlanSchema] = None
 
 # --- 구독 관련 Request 스키마 ---
 class BillingKeyRegistrationRequest(CamelCaseModel):

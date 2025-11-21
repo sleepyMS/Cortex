@@ -12,13 +12,13 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { CheckCircle, ExternalLink } from "lucide-react";
+import { ArrowRight, CheckCircle, ExternalLink } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 
 export function SubscriptionCard() {
   const t = useTranslations("Dashboard.settings.subscription");
   const router = useRouter();
-  const { currentPlan, status, endDate, features, isLoading } =
+  const { currentPlan, status, endDate, features, subscription, isLoading } =
     useUserSubscription();
 
   if (isLoading) {
@@ -36,6 +36,18 @@ export function SubscriptionCard() {
           <div>
             <p className="text-sm text-muted-foreground">{t("currentPlan")}</p>
             <p className="text-xl font-bold">{currentPlan}</p>
+
+            {/* 다운그레이드 예약 표시 */}
+            {subscription?.nextPlan && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                <ArrowRight className="h-4 w-4" />
+                <span>
+                  {t("scheduledChange", {
+                    planName: subscription.nextPlan.name,
+                  })}
+                </span>
+              </p>
+            )}
           </div>
           <Badge variant={status === "active" ? "default" : "destructive"}>
             {/* @ts-expect-error */}

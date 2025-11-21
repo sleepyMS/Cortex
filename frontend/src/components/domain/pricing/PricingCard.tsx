@@ -5,9 +5,22 @@
 import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/AlertDialog";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useSubscriptionCheckoutMutation } from "@/hooks/useSubscription";
+import {
+  useSubscriptionCheckoutMutation,
+  useSubscriptionChangeMutation,
+} from "@/hooks/useSubscription";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { toast } from "sonner";
@@ -34,10 +47,12 @@ export const PricingCard = ({
   const tCard = useTranslations("Pricing.card");
   const tDashboard = useTranslations("Dashboard.overview");
 
-  const { user } = useUserSubscription();
+  const { user, subscription } = useUserSubscription();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const checkoutMutation = useSubscriptionCheckoutMutation();
+  const changePlanMutation = useSubscriptionChangeMutation();
 
   const isTrader = planName === "Trader";
   const isPro = planName === "Pro";
@@ -110,6 +125,12 @@ export const PricingCard = ({
       return;
     }
 
+    // 이미 빌링키가 있는 경우 (카드 등록됨) -> 확인 다이얼로그 표시
+    if (subscription?.paymentGatewayCustomerKey) {
+      setShowConfirmDialog(true);
+      return;
+    }
+
     setIsRedirecting(true);
     try {
       const clientKey = process.env.NEXT_PUBLIC_TOSS_BILLING_CLIENT_KEY!;
@@ -136,7 +157,17 @@ export const PricingCard = ({
     }
   };
 
-  // 가격 포맷팅 로직 
+  const handleConfirmPlanChange = async () => {
+    setShowConfirmDialog(false);
+    try {
+      await changePlanMutation.mutateAsync({ planId });
+      // 성공 처리는 hook 내부 onSuccess에서 처리됨 (toast 등)
+    } catch (error) {
+      // 에러 처리는 hook 내부 onError에서 처리됨
+    }
+  };
+
+  // 가격 포맷팅 로직
   const formattedPrice = new Intl.NumberFormat("ko-KR", {
     style: "currency",
     currency: "KRW",
@@ -172,7 +203,7 @@ export const PricingCard = ({
           <p className="text-xl font-medium text-muted-foreground">{tagline}</p>
           <div className="mt-2 text-3xl font-extrabold text-foreground">
             {isFree ? (
-              tDashboard("free") 
+              tDashboard("free")
             ) : (
               <>
                 {formattedPrice}
@@ -201,14 +232,45 @@ export const PricingCard = ({
       <Button
         onClick={handleSubscribeClick}
         className={`w-full mt-10 text-lg font-semibold ${buttonStyle}`}
-        disabled={checkoutMutation.isPending || isRedirecting}
+        disabled={
+          checkoutMutation.isPending ||
+          changePlanMutation.isPending ||
+          isRedirecting
+        }
       >
-        {checkoutMutation.isPending || isRedirecting
-          ? tCard("button.processing") 
+        {checkoutMutation.isPending ||
+        changePlanMutation.isPending ||
+        isRedirecting
+          ? tCard("button.processing")
           : isFree
-          ? tCard("button.start") 
+          ? tCard("button.start")
           : tCard("button.subscribe")}{" "}
       </Button>
+
+      {/* 플랜 변경 확인 다이얼로그 */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tCard("confirmDialog.title", { planName })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tCard("confirmDialog.description", {
+                planName,
+                price: formattedPrice,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {tCard("confirmDialog.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPlanChange}>
+              {tCard("confirmDialog.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };

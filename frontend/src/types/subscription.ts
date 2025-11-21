@@ -61,4 +61,10 @@ export interface Subscription {
   updatedAt: string;
   /** 구독 중인 플랜의 상세 정보 (API 응답에 포함) */
   plan: Plan;
+  /** 결제 빌링키 (카드 등록 여부 확인용) */
+  paymentGatewayCustomerKey?: string;
+  /** 다음 결제 주기에 변경될 플랜 ID (다운그레이드 예약용) */
+  nextPlanId?: string;
+  /** 다음 결제 주기에 변경될 플랜 상세 정보 (다운그레이드 예약용) */
+  nextPlan?: Plan;
 }

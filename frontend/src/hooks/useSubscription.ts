@@ -74,3 +74,32 @@ export const useSubscriptionCheckoutMutation = () => {
     },
   });
 };
+
+interface ChangePlanPayload {
+  planId: string;
+}
+
+/**
+ * 구독 플랜 변경 뮤테이션 훅
+ */
+export const useSubscriptionChangeMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: ChangePlanPayload) => {
+      const response = await apiClient.post("/subscriptions/change-plan", payload);
+      return response.data;
+    },
+    onSuccess: (updatedSubscription: Subscription) => {
+      toast.success("구독 플랜이 성공적으로 변경되었습니다.");
+      queryClient.setQueryData(["userSubscription", "me"], updatedSubscription);
+    },
+    onError: (err: any) => {
+      let errorMessage = "플랜 변경 중 오류가 발생했습니다.";
+      if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      }
+      toast.error(errorMessage);
+    },
+  });
+};

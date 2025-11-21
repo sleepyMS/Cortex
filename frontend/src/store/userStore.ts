@@ -62,6 +62,9 @@ interface Subscription {
   status: string;
   currentPeriodEnd: string | null;
   plan: Plan;
+  paymentGatewayCustomerKey?: string;
+  nextPlanId?: string;
+  nextPlan?: Plan;
 }
 
 /**

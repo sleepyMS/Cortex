@@ -125,7 +125,13 @@
       "perMonth": "/월",
       "loginRequired": "로그인이 필요합니다.",
       "paymentCanceled": "카드 등록을 취소했습니다.",
-      "paymentError": "오류가 발생했습니다: {error}"
+      "paymentError": "오류가 발생했습니다: {error}",
+      "confirmDialog": {
+        "title": "{planName} 플랜으로 변경하시겠습니까?",
+        "description": "선택한 플랜: {planName} ({price}/월). 즉시 변경되며 차액이 청구될 수 있습니다.",
+        "cancel": "취소",
+        "confirm": "확인"
+      }
     },
     "common": {
       "unlimited": "무제한",
@@ -616,6 +622,7 @@
         "endDate": "갱신/만료일",
         "notApplicable": "해당 없음",
         "dailyBacktests": "일일 백테스트 한도",
+        "scheduledChange": "{planName} 플랜으로 변경 예정",
         "changePlanButton": "플랜 변경하기",
         "billingHistoryButton": "결제 내역 보기"
       },

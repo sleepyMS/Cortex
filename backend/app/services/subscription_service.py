@@ -37,7 +37,8 @@ class SubscriptionService:
         query = (
             select(models.Subscription)
             .options(
-                joinedload(models.Subscription.plan).joinedload(models.Plan.features)
+                joinedload(models.Subscription.plan).joinedload(models.Plan.features),
+                joinedload(models.Subscription.next_plan).joinedload(models.Plan.features)  # 추가
             )
             .filter(models.Subscription.user_id == user.id)
         )
@@ -403,7 +404,22 @@ class SubscriptionService:
         if new_plan.price < current_plan.price:
             subscription.next_plan_id = new_plan_id
             await db.flush()
+
+            # Identity Map을 우회하기 위해 expunge
+            db.expunge(subscription)
+
             logger.info(f"User {user.id} scheduled downgrade to {new_plan.name.value}")
+
+            # select + options 패턴으로 완전히 새로 로드
+            stmt = (
+                select(models.Subscription)
+                .options(
+                    joinedload(models.Subscription.plan).joinedload(models.Plan.features),
+                    joinedload(models.Subscription.next_plan).joinedload(models.Plan.features),
+                )
+                .where(models.Subscription.id == subscription.id)
+            )
+            subscription = await db.scalar(stmt)
             return subscription
 
         # 2. 업그레이드 (가격이 더 높아지는 경우) -> 즉시 결제 및 반영
@@ -451,17 +467,23 @@ class SubscriptionService:
         subscription.next_plan_id = None # 예약된 변경 취소
         
         await db.flush()
-        await db.refresh(subscription)
-        
+
+        # Identity Map을 우회하기 위해 expunge
+        db.expunge(subscription)
+
         logger.info(f"User {user.id} upgraded plan to {new_plan.name.value}")
-        
-        return await db.get(
-            models.Subscription,
-            subscription.id,
-            options=[
-                joinedload(models.Subscription.plan).joinedload(models.Plan.features)
-            ],
+
+        # select + options 패턴으로 완전히 새로 로드
+        stmt = (
+            select(models.Subscription)
+            .options(
+                joinedload(models.Subscription.plan).joinedload(models.Plan.features),
+                joinedload(models.Subscription.next_plan).joinedload(models.Plan.features),
+            )
+            .where(models.Subscription.id == subscription.id)
         )
+        subscription = await db.scalar(stmt)
+        return subscription
 
     async def process_recurring_payments(
         self,
