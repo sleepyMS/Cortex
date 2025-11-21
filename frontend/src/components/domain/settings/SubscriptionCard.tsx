@@ -188,34 +188,49 @@ export function SubscriptionCard() {
           )}
         </div>
 
-        {/* Basic 플랜이 아닌 경우 구독 해지 버튼 표시 */}
+        {/* 구독 해지 또는 해지 취소 버튼 */}
         {currentPlan !== "Basic" && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full mt-2">
+          <>
+            {/* 이미 Basic으로 해지 예약된 경우 - 해지 취소 버튼 */}
+            {subscription?.nextPlan?.name === "Basic" ? (
+              <Button
+                variant="primary"
+                className="w-full mt-2"
+                onClick={handleCancelPlanChange}
+              >
                 <X className="mr-2 h-4 w-4" />
-                {t("cancelSubscription.button")}
+                구독 해지 취소
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t("cancelSubscription.confirmTitle")}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("cancelSubscription.confirmDescription")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>
-                  {t("cancelConfirmCancel")}
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={handleCancelSubscription}>
-                  {t("cancelSubscription.confirmButton")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            ) : (
+              /* 해지 예약이 없는 경우 - 구독 해지 버튼 */
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full mt-2">
+                    <X className="mr-2 h-4 w-4" />
+                    {t("cancelSubscription.button")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("cancelSubscription.confirmTitle")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("cancelSubscription.confirmDescription")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>
+                      {t("cancelConfirmCancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCancelSubscription}>
+                      {t("cancelSubscription.confirmButton")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </>
         )}
       </div>
     </div>
