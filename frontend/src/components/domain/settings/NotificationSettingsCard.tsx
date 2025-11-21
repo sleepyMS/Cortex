@@ -36,12 +36,8 @@ export function NotificationSettingsCard() {
   const t = useTranslations("Dashboard.settings.notifications");
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("description")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="bg-card border rounded-lg">
+      <div className="p-6 space-y-4">
         <NotificationItem
           id="bot-trades"
           label={t("botTrades.label")}
@@ -60,7 +56,7 @@ export function NotificationSettingsCard() {
         <div className="flex justify-end pt-2">
           <Button>{t("saveButton")}</Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

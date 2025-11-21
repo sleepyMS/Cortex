@@ -90,12 +90,8 @@ export function SubscriptionCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("description")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="bg-card border rounded-lg">
+      <div className="p-6 space-y-6">
         <div className="flex justify-between items-center p-4 border rounded-lg">
           <div>
             <p className="text-sm text-muted-foreground">{t("currentPlan")}</p>
@@ -221,7 +217,7 @@ export function SubscriptionCard() {
             </AlertDialogContent>
           </AlertDialog>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

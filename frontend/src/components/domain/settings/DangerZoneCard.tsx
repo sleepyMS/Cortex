@@ -36,12 +36,8 @@ export function DangerZoneCard() {
   const isConfirmationMatching = confirmInput === user?.username;
 
   return (
-    <Card className="border-destructive">
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("description")}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="bg-card border border-destructive rounded-lg">
+      <div className="p-6">
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive">{t("deleteButton")}</Button>
@@ -83,7 +79,7 @@ export function DangerZoneCard() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
