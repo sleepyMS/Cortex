@@ -38,6 +38,7 @@ export const useUserSubscriptionQuery = () => {
  */
 export const useSubscriptionCheckoutMutation = () => {
   const queryClient = useQueryClient();
+  const updateSubscription = useUserStore((state) => state.updateSubscription);
 
   return useMutation({
     mutationFn: async (payload: RegisterCardPayload) => {
@@ -47,28 +48,25 @@ export const useSubscriptionCheckoutMutation = () => {
       );
       return response.data;
     },
-    onSuccess: (updatedSubscription: Subscription) => {
-      // 카드 등록 및 첫 결제 요청이 성공적으로 서버에 전달되었습니다.
-      // 실제 구독 상태는 웹훅에 의해 확정되므로 약간의 지연이 있을 수 있음.
+    onSuccess: (data) => {
       toast.success(
         "카드가 성공적으로 등록되었으며, 첫 구독료 결제가 시작되었습니다."
       );
 
-      // 최신 구독 정보로 캐시 즉시 업데이트
-      queryClient.setQueryData(["userSubscription", "me"], updatedSubscription);
+      updateSubscription(data);
+
+      // React Query 캐시도 무효화
+      queryClient.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (err: any) => {
       let errorMessage = "카드 등록 중 오류가 발생했습니다.";
 
-      // FastAPI 422 오류 등 Validation 에러 처리
       if (
         err.response?.data?.detail &&
         Array.isArray(err.response.data.detail)
       ) {
         errorMessage = err.response.data.detail[0].msg;
-      }
-      // 일반적인 오류 메시지가 있는 경우
-      else if (err.response?.data?.detail) {
+      } else if (err.response?.data?.detail) {
         errorMessage = err.response.data.detail;
       }
 
@@ -86,6 +84,7 @@ interface ChangePlanPayload {
  */
 export const useSubscriptionChangeMutation = () => {
   const queryClient = useQueryClient();
+  const updateSubscription = useUserStore((state) => state.updateSubscription);
 
   return useMutation({
     mutationFn: async (payload: ChangePlanPayload) => {
@@ -95,9 +94,13 @@ export const useSubscriptionChangeMutation = () => {
       );
       return response.data;
     },
-    onSuccess: (updatedSubscription: Subscription) => {
+    onSuccess: (data) => {
       toast.success("구독 플랜이 성공적으로 변경되었습니다.");
-      queryClient.setQueryData(["userSubscription", "me"], updatedSubscription);
+
+      updateSubscription(data);
+
+      // React Query 캐시도 무효화
+      queryClient.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (err: any) => {
       let errorMessage = "플랜 변경 중 오류가 발생했습니다.";
