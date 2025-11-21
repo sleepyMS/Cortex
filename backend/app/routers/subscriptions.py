@@ -167,3 +167,34 @@ async def update_billing_key(
             status_code=500,
             detail="카드 변경 처리 중 오류가 발생했습니다."
         )
+
+@router.post(
+    "/cancel-plan-change",
+    summary="Cancel scheduled plan change"
+)
+async def cancel_plan_change(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    예약된 플랜 변경을 취소합니다.
+    """
+    try:
+        subscription = await subscription_service.cancel_plan_change(
+            db=db,
+            user=current_user,
+        )
+        await db.commit()
+        
+        return {
+            "message": "플랜 변경 예약이 취소되었습니다.",
+            "subscription": subscription
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel plan change for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="플랜 변경 예약 취소 중 오류가 발생했습니다."
+        )

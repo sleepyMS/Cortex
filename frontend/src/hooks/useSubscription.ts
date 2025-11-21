@@ -136,3 +136,27 @@ export function useUpdateCardMutation() {
     },
   });
 }
+
+export function useCancelPlanChangeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post(
+        "/subscriptions/cancel-plan-change"
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("플랜 변경 예약이 취소되었습니다.");
+      // [수정] refetchQueries로 변경하여 즉시 반영
+      queryClient.refetchQueries({ queryKey: ["userSubscription"] });
+      queryClient.refetchQueries({ queryKey: ["me"] });
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.detail || "플랜 변경 예약 취소에 실패했습니다.";
+      toast.error(errorMessage);
+    },
+  });
+}

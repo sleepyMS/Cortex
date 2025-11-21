@@ -597,5 +597,54 @@ class SubscriptionService:
         
         return results
 
+    async def cancel_plan_change(
+        self,
+        db: AsyncSession,
+        user: models.User,
+    ) -> models.Subscription:
+        """
+        예약된 플랜 변경을 취소합니다.
+        """
+        subscription = await db.scalar(
+            select(models.Subscription)
+            .options(
+                joinedload(models.Subscription.plan).joinedload(models.Plan.features),
+                joinedload(models.Subscription.next_plan).joinedload(models.Plan.features),
+            )
+            .filter_by(user_id=user.id)
+        )
+
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="구독 정보를 찾을 수 없습니다."
+            )
+
+        if not subscription.next_plan_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="예약된 플랜 변경이 없습니다."
+            )
+
+        # 예약 취소
+        subscription.next_plan_id = None
+        subscription.next_plan = None
+        await db.flush()
+
+        logger.info(f"Cancelled scheduled plan change for user {user.id}")
+
+        # 변경사항 반영을 위해 다시 로드
+        db.expunge(subscription)
+        stmt = (
+            select(models.Subscription)
+            .options(
+                joinedload(models.Subscription.plan).joinedload(models.Plan.features),
+                joinedload(models.Subscription.next_plan).joinedload(models.Plan.features),
+            )
+            .where(models.Subscription.id == subscription.id)
+        )
+        subscription = await db.scalar(stmt)
+        return subscription
+        
 # 서비스 인스턴스 생성
 subscription_service = SubscriptionService()

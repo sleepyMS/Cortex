@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { useCancelPlanChangeMutation } from "@/hooks/useSubscription";
 import {
   Card,
   CardContent,
@@ -13,10 +14,22 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/AlertDialog";
+import {
   ArrowRight,
   CheckCircle,
   ExternalLink,
   CreditCard,
+  X,
 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
@@ -24,6 +37,7 @@ import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 export function SubscriptionCard() {
   const t = useTranslations("Dashboard.settings.subscription");
   const router = useRouter();
+  const cancelPlanChangeMutation = useCancelPlanChangeMutation();
   const {
     user,
     currentPlan,
@@ -59,6 +73,10 @@ export function SubscriptionCard() {
     }
   };
 
+  const handleCancelPlanChange = () => {
+    cancelPlanChangeMutation.mutate();
+  };
+
   if (isLoading) {
     return <Skeleton className="h-64 w-full" />;
   }
@@ -77,14 +95,49 @@ export function SubscriptionCard() {
 
             {/* 다운그레이드 예약 표시 */}
             {subscription?.nextPlan && (
-              <p className="text-sm text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                <ArrowRight className="h-4 w-4" />
-                <span>
-                  {t("scheduledChange", {
-                    planName: subscription.nextPlan.name,
-                  })}
-                </span>
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <ArrowRight className="h-4 w-4" />
+                  <span>
+                    {t("scheduledChange", {
+                      planName: subscription.nextPlan.name,
+                    })}
+                  </span>
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      {t("cancelScheduledChange")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("cancelConfirmTitle")}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("cancelConfirmDescription", {
+                          currentPlan: currentPlan,
+                          nextPlan: subscription.nextPlan.name,
+                        })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>
+                        {t("cancelConfirmCancel")}
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={handleCancelPlanChange}>
+                        {t("cancelConfirmButton")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </div>
           <Badge variant={status === "active" ? "default" : "destructive"}>

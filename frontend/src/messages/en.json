@@ -662,7 +662,14 @@
         "scheduledChange": "Scheduled to change to {planName} plan",
         "changePlanButton": "Change Plan",
         "billingHistoryButton": "View Billing History",
-        "changeCardButton": "Change Card"
+        "changeCardButton": "Change Card",
+        "cancelScheduledChange": "Cancel Scheduled Change",
+        "cancelSuccess": "Scheduled plan change has been cancelled.",
+        "cancelError": "Failed to cancel scheduled plan change.",
+        "cancelConfirmTitle": "Cancel scheduled plan change?",
+        "cancelConfirmDescription": "The scheduled change from {currentPlan} to {nextPlan} will be cancelled, and your current plan will be maintained.",
+        "cancelConfirmButton": "Cancel Schedule",
+        "cancelConfirmCancel": "Go Back"
       }
     },
     "admin": {

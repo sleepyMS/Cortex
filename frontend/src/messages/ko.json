@@ -661,7 +661,14 @@
         "scheduledChange": "{planName} 플랜으로 변경 예정",
         "changePlanButton": "플랜 변경하기",
         "billingHistoryButton": "결제 내역 보기",
-        "changeCardButton": "카드 변경하기"
+        "changeCardButton": "카드 변경하기",
+        "cancelScheduledChange": "예약 취소",
+        "cancelSuccess": "플랜 변경 예약이 취소되었습니다.",
+        "cancelError": "플랜 변경 예약 취소에 실패했습니다.",
+        "cancelConfirmTitle": "플랜 변경 예약을 취소하시겠습니까?",
+        "cancelConfirmDescription": "{currentPlan} 플랜에서 {nextPlan} 플랜으로의 변경 예약이 취소되며, 현재 플랜이 유지됩니다.",
+        "cancelConfirmButton": "예약 취소",
+        "cancelConfirmCancel": "돌아가기"
       },
       "notifications": {
         "title": "알림 설정",
