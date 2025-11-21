@@ -369,6 +369,30 @@
     "goToSettings": "설정 페이지로 이동",
     "retry": "다시 시도"
   },
+  "PaymentResult": {
+    "invalidAccess": "잘못된 접근입니다. 결제 정보를 찾을 수 없습니다.",
+    "processingUpdate": "결제 수단을 변경 중입니다. 잠시만 기다려주세요...",
+    "processingBilling": "결제 정보를 처리 중입니다. 잠시만 기다려주세요...",
+    "updateCard": {
+      "successToast": "카드가 성공적으로 변경되었습니다.",
+      "failToast": "카드 변경 실패: {message}",
+      "failTitle": "카드 변경에 실패했습니다",
+      "goToSettings": "설정 페이지로 돌아가기"
+    },
+    "billing": {
+      "successToast": "결제 수단 등록 및 첫 구독 결제가 완료되었습니다.",
+      "failToast": "카드 등록 실패: {message}",
+      "failTitle": "카드 등록에 실패했습니다",
+      "contactSupport": "다른 카드를 이용하시거나, 문제가 지속될 경우 고객센터로 문의해주세요.",
+      "goToPricing": "가격 정책 페이지로 돌아가기"
+    },
+    "common": {
+      "failReason": "실패 사유: {message}",
+      "errorCode": "에러코드: {code}",
+      "unknownError": "알 수 없는 오류",
+      "unknownErrorDesc": "알 수 없는 오류가 발생했습니다."
+    }
+  },
   "Dashboard": {
     "tabs": {
       "pageTitle": "대시보드",

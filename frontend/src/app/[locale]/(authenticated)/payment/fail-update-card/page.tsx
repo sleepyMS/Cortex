@@ -9,7 +9,7 @@ import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
-export default function FailBillingPage() {
+export default function FailUpdateCardPage() {
   const t = useTranslations("PaymentResult");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,7 +19,7 @@ export default function FailBillingPage() {
 
   useEffect(() => {
     toast.error(
-      t("billing.failToast", {
+      t("updateCard.failToast", {
         message: errorMessage || t("common.unknownError"),
       })
     );
@@ -31,7 +31,7 @@ export default function FailBillingPage() {
         <CardHeader className="flex flex-col items-center text-center">
           <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
           <CardTitle className="text-2xl font-bold">
-            {t("billing.failTitle")}
+            {t("updateCard.failTitle")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
@@ -45,13 +45,12 @@ export default function FailBillingPage() {
               {t("common.errorCode", { code: errorCode || "N/A" })}
             </p>
           </div>
-          <p className="text-muted-foreground">{t("billing.contactSupport")}</p>
           <Button
-            onClick={() => router.push("/pricing")}
+            onClick={() => router.push("/dashboard?tab=settings")}
             className="w-full"
             variant="primary"
           >
-            {t("billing.goToPricing")}
+            {t("updateCard.goToSettings")}
           </Button>
         </CardContent>
       </Card>

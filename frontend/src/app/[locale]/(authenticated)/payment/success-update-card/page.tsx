@@ -6,8 +6,10 @@ import { useRouter } from "@/i18n/navigation";
 import { useUpdateCardMutation } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/Spinner";
+import { useTranslations } from "next-intl";
 
 export default function PaymentSuccessUpdateCardPage() {
+  const t = useTranslations("PaymentResult");
   const router = useRouter();
   const searchParams = useSearchParams();
   const updateCardMutation = useUpdateCardMutation();
@@ -20,7 +22,7 @@ export default function PaymentSuccessUpdateCardPage() {
     const planId = searchParams.get("planId");
 
     if (!authKey || !planId) {
-      toast.error("잘못된 접근입니다. 결제 정보를 찾을 수 없습니다.");
+      toast.error(t("invalidAccess"));
       router.push("/dashboard?tab=settings");
       return;
     }
@@ -29,22 +31,18 @@ export default function PaymentSuccessUpdateCardPage() {
       hasMutated.current = true;
       try {
         await updateCardMutation.mutateAsync({ authKey, planId });
-        // 성공 메시지는 hook 내부에서 처리됨
+        // 성공 메시지는 hook 내부에서 처리됨 (필요시 hook도 수정 가능하지만 일단 유지)
         router.push("/dashboard?tab=settings");
       } catch (error) {
-        // 에러 메시지는 hook 내부에서 처리됨
         router.push("/dashboard?tab=settings");
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router]);
+  }, [searchParams, router, t]);
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center space-y-4">
       <Spinner size="lg" />
-      <p className="text-lg text-muted-foreground">
-        결제 수단을 변경 중입니다. 잠시만 기다려주세요...
-      </p>
+      <p className="text-lg text-muted-foreground">{t("processingUpdate")}</p>
     </div>
   );
 }

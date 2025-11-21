@@ -369,6 +369,30 @@
     "goToSettings": "Go to Settings",
     "retry": "Retry"
   },
+  "PaymentResult": {
+    "invalidAccess": "Invalid access. Payment information not found.",
+    "processingUpdate": "Updating payment method. Please wait...",
+    "processingBilling": "Processing payment information. Please wait...",
+    "updateCard": {
+      "successToast": "Card updated successfully.",
+      "failToast": "Card update failed: {message}",
+      "failTitle": "Card Update Failed",
+      "goToSettings": "Go to Settings"
+    },
+    "billing": {
+      "successToast": "Card registration and first subscription payment completed.",
+      "failToast": "Card registration failed: {message}",
+      "failTitle": "Card Registration Failed",
+      "contactSupport": "Please try another card or contact support if the problem persists.",
+      "goToPricing": "Go to Pricing Page"
+    },
+    "common": {
+      "failReason": "Reason: {message}",
+      "errorCode": "Error Code: {code}",
+      "unknownError": "Unknown Error",
+      "unknownErrorDesc": "An unknown error occurred."
+    }
+  },
   "Dashboard": {
     "tabs": {
       "pageTitle": "Dashboard",
