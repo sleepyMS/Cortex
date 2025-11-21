@@ -1,0 +1,17 @@
+
+@celery_app.task(name="process_daily_recurring_payments", queue="io_bound_queue")
+def process_daily_recurring_payments():
+    """매일 실행되는 정기 구독 갱신 태스크."""
+    async def _process_recurring():
+        async with AsyncSessionLocal() as db:
+            from .gateways.toss_payments_client import TossPaymentsClient
+            from .core.config import settings
+            toss_client = TossPaymentsClient(secret_key=settings.TOSS_PAYMENTS_SECRET_KEY)
+            results = await subscription_service.process_recurring_payments(db, toss_client)
+            logger.info(f"Recurring payments processed: {results['success']} succeeded, {results['failed']} failed")
+            return results
+    try:
+        return asyncio.run(_process_recurring())
+    except Exception as e:
+        logger.error(f"Error in process_daily_recurring_payments: {e}", exc_info=True)
+        raise

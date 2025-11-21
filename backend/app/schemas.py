@@ -222,7 +222,20 @@ class SubscriptionSchema(CamelCaseModel):
     plan_id: uuid.UUID
     status: str
     current_period_end: Optional[datetime]
+    payment_method_details: Optional[str]
+    created_at: datetime
+    updated_at: Optional[datetime]
     plan: PlanSchema
+
+# --- 구독 관련 Request 스키마 ---
+class BillingKeyRegistrationRequest(CamelCaseModel):
+    """구독 카드 등록 요청"""
+    plan_id: uuid.UUID = Field(..., description="구독하려는 플랜의 ID")
+    auth_key: str = Field(..., description="Toss Payments 프론트엔드 SDK로부터 받은 임시 인증 키")
+
+class SubscriptionChangeRequest(CamelCaseModel):
+    """구독 플랜 변경 요청"""
+    plan_id: uuid.UUID = Field(..., description="변경하려는 플랜의 ID")
 
 class UserSignupResponse(CamelCaseModel):
     """회원가입 성공 시 반환되는 최소한의 사용자 정보"""
@@ -893,12 +906,6 @@ class OrderCreateResponse(CamelCaseModel):
     amount: int
     customer_name: str
     customer_email: EmailStr
-    # success_url, fail_url 등은 프론트엔드에서 동적으로 생성 가능
-
-class BillingKeyRegistrationRequest(CamelCaseModel):
-    plan_id: uuid.UUID = Field(..., description="구독하려는 플랜의 ID")
-    auth_key: str = Field(..., description="Toss Payments 프론트엔드 SDK로부터 받은 임시 인증 키")
-
 
 # ==============================================================================
 # 8. 최적화(Optimization) 관련 스키마

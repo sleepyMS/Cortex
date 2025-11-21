@@ -43,6 +43,8 @@ from .services.marketplace_service import marketplace_service
 from .services.notification_service import notification_service 
 from .services.subscription_service import subscription_service
 from .services.verification_service import verification_service
+from .gateways.toss_payments_client import TossPaymentsClient
+from .config import settings
 
 logger = get_task_logger(__name__)
 
@@ -766,3 +768,31 @@ def dispatch_event(event_name: str, payload: dict):
         for task_name in task_names:
             args = [event_name, payload] if event_name in ["backtest.completed", "backtest.failed"] else [payload]
             celery_app.send_task(task_name, args=args)
+
+@celery_app.task(name="process_daily_recurring_payments", queue="io_bound_queue")
+def process_daily_recurring_payments():
+    """
+    매일 실행되는 정기 구독 갱신 태스크.
+    만료된 구독을 조회하여 자동 결제를 시도하고, 성공 시 구독을 연장합니다.
+    """
+    async def _process_recurring():
+        async with AsyncSessionLocal() as db:
+            # TossPaymentsClient 초기화
+            toss_client = TossPaymentsClient(secret_key=settings.PAYMENT.TOSS_BILLING_SECRET_KEY)
+
+            
+            # 정기 결제 처리
+            results = await subscription_service.process_recurring_payments(db, toss_client)
+            
+            logger.info(
+                f"Recurring payments processed: {results['success']} succeeded, "
+                f"{results['failed']} failed"
+            )
+            
+            return results
+    
+    try:
+        return asyncio.run(_process_recurring())
+    except Exception as e:
+        logger.error(f"Error in process_daily_recurring_payments: {e}", exc_info=True)
+        raise

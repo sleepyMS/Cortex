@@ -116,4 +116,33 @@ class PaymentService:
             raise HTTPException(status_code=500, detail="결제 승인 중 서버 내부 오류가 발생했습니다.")
 
 
+    async def charge_subscription_renewal(
+        self,
+        toss_client: TossPaymentsClient,
+        billing_key: str,
+        amount: int,
+        order_id: str,
+        order_name: str,
+        customer_email: str,
+        customer_key: str
+    ) -> Dict:
+        """
+        [구독 갱신용] 저장된 빌링키로 정기 결제를 수행합니다.
+        """
+        charge_payload = {
+            "amount": amount,
+            "orderId": order_id,
+            "orderName": order_name,
+            "customerEmail": customer_email,
+            "customerKey": customer_key
+        }
+        
+        # 빌링키 결제 요청
+        payment_data = await toss_client.charge_billing_key(
+            billing_key=billing_key,
+            payload=charge_payload
+        )
+        
+        return payment_data
+
 payment_service = PaymentService()

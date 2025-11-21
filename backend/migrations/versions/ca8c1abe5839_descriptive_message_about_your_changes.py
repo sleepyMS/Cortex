@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: 9694f78c82c2
+Revision ID: ca8c1abe5839
 Revises: 
-Create Date: 2025-11-10 06:17:23.419068
+Create Date: 2025-11-21 19:36:13.179786
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '9694f78c82c2'
+revision: str = 'ca8c1abe5839'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -98,6 +98,22 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'exchange', name='_user_exchange_uc')
     )
+    op.create_table('checkout_infos',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('plan_id', sa.UUID(), nullable=False),
+    sa.Column('order_id', sa.String(length=255), nullable=False),
+    sa.Column('order_name', sa.String(length=255), nullable=False),
+    sa.Column('amount', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('payment_key', sa.String(length=255), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['plan_id'], ['plans.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_checkout_infos_order_id'), 'checkout_infos', ['order_id'], unique=True)
     op.create_table('credits_attendance_logs',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -244,8 +260,10 @@ def upgrade() -> None:
     sa.Column('payment_method_details', sa.String(length=255), nullable=True, comment='카드 정보 요약 (현대카드 1234)'),
     sa.Column('payment_gateway_sub_id', sa.String(length=255), nullable=True),
     sa.Column('refresh_token', sa.String(length=512), nullable=True),
+    sa.Column('next_plan_id', sa.UUID(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['next_plan_id'], ['plans.id'], ),
     sa.ForeignKeyConstraint(['plan_id'], ['plans.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
@@ -520,6 +538,8 @@ def downgrade() -> None:
     op.drop_table('credits_ledgers')
     op.drop_index(op.f('ix_credits_attendance_logs_user_id'), table_name='credits_attendance_logs')
     op.drop_table('credits_attendance_logs')
+    op.drop_index(op.f('ix_checkout_infos_order_id'), table_name='checkout_infos')
+    op.drop_table('checkout_infos')
     op.drop_table('api_keys')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')

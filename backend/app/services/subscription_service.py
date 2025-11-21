@@ -222,6 +222,8 @@ class SubscriptionService:
         
         await db.flush()
 
+        await db.refresh(subscription)
+
         if target_plan.monthly_credit_reward > 0:
             await credit_service.grant_subscription_bonus_credits(
                 db=db,
@@ -231,7 +233,7 @@ class SubscriptionService:
             )
             logger.info(f"Granted {target_plan.monthly_credit_reward} bonus credits to new subscriber {user.email}.")
         
-        await db.commit()
+        # commit은 dependency가 자동으로 처리
 
         publish_event(
             "subscription.created",
@@ -245,9 +247,18 @@ class SubscriptionService:
             }
         )
 
-        return schemas.SubscriptionSchema.model_validate(subscription)
-
-
+        # DB 세션이 닫히기 전에 응답 스키마를 수동으로 구성
+        return schemas.SubscriptionSchema(
+            id=subscription.id,
+            user_id=subscription.user_id,
+            plan_id=subscription.plan_id,
+            status=subscription.status,
+            current_period_end=subscription.current_period_end,
+            payment_method_details=subscription.payment_method_details,
+            created_at=subscription.created_at,
+            updated_at=subscription.updated_at,
+            plan=schemas.PlanSchema.model_validate(subscription.plan)
+        )
 
     async def activate_or_update_subscription(
         self, db: AsyncSession, customer_key: str, payment_data: dict
@@ -312,11 +323,9 @@ class SubscriptionService:
             "amount": payment_data.get("totalAmount", subscription.plan.price),
             "next_payment_date": subscription.current_period_end
         }
-        
-        await db.commit() 
 
         publish_event("subscription.renewed", event_payload)
-            
+
         return subscription
     
     async def handle_subscription_payment_failure(
@@ -356,8 +365,182 @@ class SubscriptionService:
             },
         )
         
-        await db.commit()
         logger.info(f"Subscription for user {customer_key} has been canceled due to payment failure: {failure_message}")
+
+    async def change_subscription_plan(
+        self,
+        db: AsyncSession,
+        user: models.User,
+        new_plan_id: uuid.UUID,
+        toss_client: TossPaymentsClient
+    ) -> models.Subscription:
+        """
+        사용자의 구독 플랜을 변경합니다.
+        - 업그레이드: 차액 즉시 결제 후 즉시 반영
+        - 다운그레이드: 다음 결제일에 반영 (예약)
+        """
+        subscription = await db.scalar(
+            select(models.Subscription)
+            .options(joinedload(models.Subscription.plan))
+            .filter_by(user_id=user.id)
+        )
+
+        if not subscription:
+            raise HTTPException(status_code=404, detail="활성 구독 정보가 없습니다.")
+        
+        if not subscription.payment_gateway_customer_key:
+            raise HTTPException(status_code=400, detail="등록된 결제 수단이 없습니다. 카드를 먼저 등록해주세요.")
+
+        new_plan = await plan_service.get_plan_by_id(db, new_plan_id)
+        if not new_plan:
+            raise HTTPException(status_code=404, detail="변경할 플랜을 찾을 수 없습니다.")
+        
+        current_plan = subscription.plan
+        if current_plan.id == new_plan_id:
+            raise HTTPException(status_code=400, detail="이미 해당 플랜을 구독 중입니다.")
+
+        # 1. 다운그레이드 (가격이 더 낮아지는 경우) -> 예약
+        if new_plan.price < current_plan.price:
+            subscription.next_plan_id = new_plan_id
+            await db.flush()
+            logger.info(f"User {user.id} scheduled downgrade to {new_plan.name.value}")
+            return subscription
+
+        # 2. 업그레이드 (가격이 더 높아지는 경우) -> 즉시 결제 및 반영
+        # 일할 계산 (Proration)
+        now = datetime.now(timezone.utc)
+        period_end = subscription.current_period_end
+        
+        if period_end <= now:
+            # 만료되었거나 갱신 시점인 경우 -> 전체 금액 결제
+            prorated_charge = new_plan.price
+        else:
+            total_days = 30 # 한 달을 30일로 가정
+            remaining_days = (period_end - now).days + 1 # 남은 일수 (오늘 포함)
+            
+            if remaining_days < 0: remaining_days = 0
+            
+            daily_rate_old = current_plan.price / total_days
+            daily_rate_new = new_plan.price / total_days
+            
+            # 차액 계산: (새 플랜 일할 - 구 플랜 일할) * 남은 일수
+            prorated_charge = int((daily_rate_new - daily_rate_old) * remaining_days)
+        
+        if prorated_charge > 0:
+            try:
+                order_id = f"CHG_{uuid.uuid4().hex[:12]}"
+                order_name = f"{new_plan.name.value} 플랜 업그레이드 (차액 결제)"
+                
+                await payment_service.charge_subscription_renewal(
+                    toss_client=toss_client,
+                    billing_key=subscription.payment_gateway_customer_key,
+                    customer_key=str(user.id),
+                    order_id=order_id,
+                    order_name=order_name,
+                    amount=prorated_charge,
+                    customer_email=user.email
+                )
+                logger.info(f"Charged {prorated_charge} for plan upgrade for user {user.id}")
+            except Exception as e:
+                logger.error(f"Failed to charge for plan upgrade: {e}")
+                raise HTTPException(status_code=500, detail="플랜 변경 결제에 실패했습니다.")
+
+        # 플랜 변경 반영
+        subscription.plan_id = new_plan_id
+        subscription.plan = new_plan
+        subscription.next_plan_id = None # 예약된 변경 취소
+        
+        await db.flush()
+        await db.refresh(subscription)
+        
+        logger.info(f"User {user.id} upgraded plan to {new_plan.name.value}")
+        
+        return await db.get(
+            models.Subscription,
+            subscription.id,
+            options=[
+                joinedload(models.Subscription.plan).joinedload(models.Plan.features)
+            ],
+        )
+
+    async def process_recurring_payments(
+        self,
+        db: AsyncSession,
+        toss_client: TossPaymentsClient
+    ):
+        """
+        만료된 구독을 찾아 정기 결제를 수행합니다.
+        """
+        now = datetime.now(timezone.utc)
+        
+        stmt = (
+            select(models.Subscription)
+            .options(
+                joinedload(models.Subscription.user),
+                joinedload(models.Subscription.plan),
+                joinedload(models.Subscription.next_plan) # 예약된 플랜 로드
+            )
+            .filter(
+                models.Subscription.status == "active",
+                models.Subscription.current_period_end <= now,
+                models.Subscription.payment_gateway_customer_key.isnot(None)
+            )
+        )
+        result = await db.execute(stmt)
+        subscriptions = result.scalars().all()
+        
+        logger.info(f"Found {len(subscriptions)} subscriptions to renew.")
+        
+        results = {"success": 0, "failed": 0}
+        
+        for sub in subscriptions:
+            try:
+                # [New] 예약된 플랜 변경(다운그레이드) 처리
+                if sub.next_plan_id:
+                    logger.info(f"Processing scheduled plan change for user {sub.user_id} to {sub.next_plan.name.value}")
+                    sub.plan_id = sub.next_plan_id
+                    sub.plan = sub.next_plan # 메모리 상 객체도 업데이트
+                    sub.next_plan_id = None
+                    sub.next_plan = None
+                    # DB에 반영하여 plan 관계 업데이트 (가격 정보 등)
+                    await db.flush()
+                    await db.refresh(sub, attribute_names=["plan"])
+
+                new_order_id = str(uuid.uuid4())
+                order_name = f"{sub.plan.name.value} 정기 결제"
+                
+                payment_result = await payment_service.charge_subscription_renewal(
+                    toss_client=toss_client,
+                    billing_key=sub.payment_gateway_customer_key,
+                    customer_key=str(sub.user_id),
+                    order_id=new_order_id,
+                    order_name=order_name,
+                    amount=sub.plan.price,
+                    customer_email=sub.user.email
+                )
+                
+                new_period_end = datetime.now(timezone.utc) + relativedelta(months=1)
+                sub.status = "active"
+                sub.current_period_end = new_period_end
+                sub.payment_gateway_sub_id = payment_result.get("paymentKey")
+                
+                if sub.plan.monthly_credit_reward > 0:
+                    await credit_service.grant_subscription_bonus_credits(
+                        db=db,
+                        user_id=sub.user_id,
+                        amount=sub.plan.monthly_credit_reward,
+                        source_id=new_order_id
+                    )
+                
+                results["success"] += 1
+                logger.info(f"Successfully renewed subscription for user {sub.user_id}")
+                
+            except Exception as e:
+                logger.error(f"Failed to renew subscription for user {sub.user_id}: {e}")
+                sub.status = "canceled"
+                results["failed"] += 1
+        
+        return results
 
 # 서비스 인스턴스 생성
 subscription_service = SubscriptionService()

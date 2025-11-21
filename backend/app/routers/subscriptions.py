@@ -71,3 +71,20 @@ async def register_card_for_subscription(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="결제 시스템에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )
+
+@router.post("/change-plan", response_model=schemas.SubscriptionSchema)
+async def change_subscription_plan(
+    request_data: schemas.SubscriptionChangeRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+    toss_client: TossPaymentsClient = Depends(get_billing_toss_client)
+):
+    """
+    기존 빌링키를 사용하여 플랜을 변경합니다.
+    - 업그레이드: 차액 즉시 결제
+    - 다운그레이드: 다음 결제일에 반영 예약
+    """
+    subscription = await subscription_service.change_subscription_plan(
+        db, current_user, request_data.plan_id, toss_client
+    )
+    return schemas.SubscriptionSchema.model_validate(subscription)

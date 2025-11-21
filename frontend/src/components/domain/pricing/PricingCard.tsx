@@ -31,7 +31,6 @@ export const PricingCard = ({
   isHighlighted = false,
   isFree = false,
 }: PricingCardProps) => {
-  // 1. t 함수를 용도에 맞게 분리합니다.
   const tCard = useTranslations("Pricing.card");
   const tDashboard = useTranslations("Dashboard.overview");
 
@@ -63,7 +62,6 @@ export const PricingCard = ({
     return () => observer.disconnect();
   }, []);
 
-  // --- (카드 스타일링 로직 - 기존과 동일) ---
   let cardStyles = "";
   let headerTextColor = "";
   let buttonStyle = "";
@@ -105,11 +103,9 @@ export const PricingCard = ({
       buttonStyle = "bg-primary text-black hover:bg-primary/80";
     }
   }
-  // --- (스타일링 로직 끝) ---
 
   const handleSubscribeClick = async () => {
     if (!user) {
-      // 2. [개선] i18n 키 사용
       toast.error(tCard("loginRequired"));
       return;
     }
@@ -122,6 +118,7 @@ export const PricingCard = ({
 
       const tossPayments = await loadTossPayments(clientKey);
       const payment = tossPayments.payment({ customerKey });
+      console.log(planId);
 
       await payment.requestBillingAuth({
         method: "CARD",
@@ -132,17 +129,15 @@ export const PricingCard = ({
       });
     } catch (error: any) {
       if (error.code === "USER_CANCEL") {
-        // 3. [개선] i18n 키 사용
         toast.info(tCard("paymentCanceled"));
       } else {
-        // 4. [개선] i18n 키 (동적 값 포함) 사용
         toast.error(tCard("paymentError", { error: error.message }));
       }
       setIsRedirecting(false);
     }
   };
 
-  // 가격 포맷팅 로직 (기존과 동일)
+  // 가격 포맷팅 로직 
   const formattedPrice = new Intl.NumberFormat("ko-KR", {
     style: "currency",
     currency: "KRW",
@@ -178,11 +173,10 @@ export const PricingCard = ({
           <p className="text-xl font-medium text-muted-foreground">{tagline}</p>
           <div className="mt-2 text-3xl font-extrabold text-foreground">
             {isFree ? (
-              tDashboard("free") // 5. [개선] tDashboard 훅 사용
+              tDashboard("free") 
             ) : (
               <>
                 {formattedPrice}
-                {/* 6. [개선] /월 텍스트를 i18n 키로 대체 */}
                 <span className="text-xl font-medium text-gray-500">
                   {tCard("perMonth")}
                 </span>
@@ -211,11 +205,10 @@ export const PricingCard = ({
         disabled={checkoutMutation.isPending || isRedirecting}
       >
         {checkoutMutation.isPending || isRedirecting
-          ? tCard("button.processing") // 7. [개선] tCard 훅 사용
+          ? tCard("button.processing") 
           : isFree
-          ? tCard("button.start") // 7. [개선] tCard 훅 사용
+          ? tCard("button.start") 
           : tCard("button.subscribe")}{" "}
-        {/* 7. [개선] tCard 훅 사용 */}
       </Button>
     </motion.div>
   );

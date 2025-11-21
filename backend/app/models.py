@@ -101,7 +101,7 @@ class Plan(Base):
     monthly_credit_reward = Column(Integer, nullable=False, server_default="0")
     
     features = relationship("PlanFeature", back_populates="plan", uselist=False, cascade="all, delete-orphan")
-    subscriptions = relationship("Subscription", back_populates="plan")
+    subscriptions = relationship("Subscription", back_populates="plan", foreign_keys="[Subscription.plan_id]")
 
 class PlanFeature(Base):
     """플랜별 기능 제한 모델"""
@@ -137,11 +137,38 @@ class Subscription(Base):
     payment_method_details = Column(String(255), nullable=True, comment="카드 정보 요약 (현대카드 1234)")
     payment_gateway_sub_id = Column(String(255), unique=True, nullable=True)
     refresh_token = Column(String(512), nullable=True)
+    
+    # [New] 다음 결제 주기에 변경될 플랜 ID (다운그레이드 예약용)
+    next_plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     user = relationship("User", back_populates="subscription")
-    plan = relationship("Plan", back_populates="subscriptions")
+    plan = relationship("Plan", back_populates="subscriptions", foreign_keys=[plan_id])
+    next_plan = relationship("Plan", foreign_keys=[next_plan_id])
+
+
+class CheckoutInfo(Base):
+    """결제 요청 전 임시 저장되는 주문 정보"""
+    __tablename__ = "checkout_infos"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False)
+    
+    order_id = Column(String(255), unique=True, nullable=False, index=True)
+    order_name = Column(String(255), nullable=False)
+    amount = Column(Integer, nullable=False)
+    status = Column(String(50), default="ready", nullable=False) # ready, paid, failed
+    
+    payment_key = Column(String(255), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    user = relationship("User")
+    plan = relationship("Plan")
 
 
 # ==============================================================================
