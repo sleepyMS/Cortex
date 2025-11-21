@@ -3,6 +3,7 @@ import apiClient from "@/lib/apiClient";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useUserStore } from "@/store/userStore";
 
 export interface Subscription {
   id: string;
@@ -139,6 +140,7 @@ export function useUpdateCardMutation() {
 
 export function useCancelPlanChangeMutation() {
   const queryClient = useQueryClient();
+  const updateSubscription = useUserStore((state) => state.updateSubscription);
 
   return useMutation({
     mutationFn: async () => {
@@ -147,13 +149,43 @@ export function useCancelPlanChangeMutation() {
       );
       return response.data;
     },
-    onSuccess: () => {
-      toast.success("플랜 변경 예약이 취소되었습니다.");
-      // [수정] refetchQueries로 변경하여 즉시 반영
-      queryClient.refetchQueries({ queryKey: ["userSubscription"] });
-      queryClient.refetchQueries({ queryKey: ["me"] });
+    // Optimistic Update: 서버 응답 전에 UI 즉시 업데이트
+    onMutate: async () => {
+      // Zustand store에서 현재 subscription 가져오기
+      const currentUser = useUserStore.getState().user;
+      const previousSubscription = currentUser?.subscription;
+
+      // UI를 즉시 업데이트 (next_plan 제거)
+      if (previousSubscription) {
+        updateSubscription({
+          ...previousSubscription,
+          nextPlanId: undefined,
+          nextPlan: undefined,
+        });
+      }
+
+      // 롤백용 컨텍스트 반환
+      return { previousSubscription };
     },
-    onError: (error: any) => {
+    // 성공 시: 서버 응답으로 최종 확인
+    onSuccess: (data) => {
+      toast.success("플랜 변경 예약이 취소되었습니다.");
+
+      // 서버에서 받은 최신 subscription 데이터로 업데이트
+      if (data.subscription) {
+        updateSubscription(data.subscription);
+      }
+
+      // React Query 캐시도 무효화 (다른 곳에서 사용할 수 있으므로)
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+    // 실패 시: Optimistic Update 롤백
+    onError: (error: any, variables, context) => {
+      // 이전 데이터로 복원
+      if (context?.previousSubscription) {
+        updateSubscription(context.previousSubscription);
+      }
+
       const errorMessage =
         error?.response?.data?.detail || "플랜 변경 예약 취소에 실패했습니다.";
       toast.error(errorMessage);

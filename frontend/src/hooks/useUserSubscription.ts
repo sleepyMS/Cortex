@@ -14,7 +14,7 @@ export function useUserSubscription() {
   const endDate = subscription?.currentPeriodEnd || null;
   const currentPlan = subscription?.plan?.name || "Basic";
 
-  const allowedTimeframes = features?.supportedTimeframes.split(",") || [
+  const allowedTimeframes = features?.supportedTimeframes?.split(",") || [
     "1h",
     "4h",
     "1d",

@@ -107,6 +107,7 @@ interface Actions {
   refreshSession: () => Promise<string | null>;
   setCreditBalance: (balance: CreditBalanceSummary) => void;
   syncCreditBalance: () => Promise<void>;
+  updateSubscription: (subscription: Subscription) => void; // [추가]
 }
 
 const initialState: State = {
@@ -231,9 +232,19 @@ export const useUserStore = create<State & Actions>()(
           set({ creditBalance: response.data });
         } catch (error) {
           console.error("Failed to sync credit balance:", error);
-          // 에러 발생 시 크레딧 정보를 null로 처리하여 오래된 정보가 표시되지 않도록 할 수 있습니다.
-          // set({ creditBalance: null });
         }
+      },
+
+      // [추가] subscription만 업데이트하는 액션
+      updateSubscription: (subscription) => {
+        set((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                subscription,
+              }
+            : null,
+        }));
       },
     }),
     {

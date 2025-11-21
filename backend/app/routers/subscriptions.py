@@ -188,7 +188,7 @@ async def cancel_plan_change(
         
         return {
             "message": "플랜 변경 예약이 취소되었습니다.",
-            "subscription": subscription
+            "subscription": schemas.SubscriptionSchema.model_validate(subscription)
         }
     except HTTPException:
         raise
