@@ -118,7 +118,6 @@ export const PricingCard = ({
 
       const tossPayments = await loadTossPayments(clientKey);
       const payment = tossPayments.payment({ customerKey });
-      console.log(planId);
 
       await payment.requestBillingAuth({
         method: "CARD",

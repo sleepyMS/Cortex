@@ -1,3 +1,5 @@
+# file: backend/app/schemas.py
+
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from datetime import datetime
@@ -223,6 +225,8 @@ class SubscriptionSchema(CamelCaseModel):
     status: str
     current_period_end: Optional[datetime]
     payment_method_details: Optional[str]
+    payment_gateway_customer_key: Optional[str] = None
+    next_plan_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: Optional[datetime]
     plan: PlanSchema
