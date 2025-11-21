@@ -18,6 +18,7 @@ from ..services.credit_service import credit_service
 from ..gateways.toss_payments_client import TossPaymentsClient
 
 from ..event_bus import publish_event
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -484,6 +485,38 @@ class SubscriptionService:
         )
         subscription = await db.scalar(stmt)
         return subscription
+
+    async def update_payment_method(
+        self,
+        db: AsyncSession,
+        user: models.User,
+    ) -> dict:
+        """
+        사용자의 결제 수단을 변경하기 위한 Toss Payments 빌링키 재발급 URL을 생성합니다.
+        """
+        subscription = await db.scalar(
+            select(models.Subscription)
+            .options(joinedload(models.Subscription.plan))
+            .filter_by(user_id=user.id)
+        )
+
+        if not subscription:
+            raise HTTPException(status_code=404, detail="활성 구독 정보가 없습니다.")
+        
+        if not subscription.payment_gateway_customer_key:
+            raise HTTPException(status_code=400, detail="등록된 결제 수단이 없습니다.")
+
+        # 프론트엔드 SDK에서 사용할 설정값 반환
+        customer_key = str(user.id)
+        success_url = f"{settings.APP.FRONTEND_BASE_URL}/subscription/update-card/success"
+        fail_url = f"{settings.APP.FRONTEND_BASE_URL}/subscription/update-card/fail"
+        
+        return {
+            "customer_key": customer_key,
+            "success_url": success_url,
+            "fail_url": fail_url,
+            "client_key": settings.PAYMENT.TOSS_WIDGET_CLIENT_KEY
+        }
 
     async def process_recurring_payments(
         self,

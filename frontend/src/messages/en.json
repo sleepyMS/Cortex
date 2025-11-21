@@ -357,6 +357,18 @@
     "authError": "Authentication error: {errorDetail}",
     "loginProcessError": "An issue occurred during login processing."
   },
+  "UpdateCard": {
+    "title": "Updating Card",
+    "description": "Registering a new payment card...",
+    "processing": "Verifying card information, please wait...",
+    "successTitle": "Card updated successfully!",
+    "successDesc": "Redirecting to settings...",
+    "failTitle": "Card Update Failed",
+    "failDesc": "There was a problem during card registration.",
+    "errorToast": "Failed to change card.",
+    "goToSettings": "Go to Settings",
+    "retry": "Retry"
+  },
   "Dashboard": {
     "tabs": {
       "pageTitle": "Dashboard",
@@ -625,7 +637,8 @@
         "dailyBacktests": "Daily Backtest Limit",
         "scheduledChange": "Scheduled to change to {planName} plan",
         "changePlanButton": "Change Plan",
-        "billingHistoryButton": "View Billing History"
+        "billingHistoryButton": "View Billing History",
+        "changeCardButton": "Change Card"
       }
     },
     "admin": {

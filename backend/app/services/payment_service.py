@@ -29,6 +29,19 @@ class PaymentService:
             customer_email=user.email,
         )
 
+        # PaymentService 클래스 내부에 추가
+    async def issue_billing_key(
+        self,
+        toss_client: TossPaymentsClient,
+        auth_key: str,
+        customer_key: str
+    ) -> Dict:
+        """빌링키 발급만 수행"""
+        return await toss_client.issue_billing_key(
+            auth_key=auth_key, 
+            customer_key=customer_key
+        )
+
     async def issue_and_charge_first_subscription(
         self,
         toss_client: TossPaymentsClient,

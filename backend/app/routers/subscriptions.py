@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select 
 import logging
 import uuid
 
@@ -12,6 +13,7 @@ from ..dependencies import (
     get_billing_toss_client, 
 )
 from ..services.subscription_service import subscription_service
+from ..services.payment_service import payment_service 
 from ..gateways.toss_payments_client import TossPaymentsClient  
 
 logger = logging.getLogger(__name__)
@@ -88,3 +90,80 @@ async def change_subscription_plan(
         db, current_user, request_data.plan_id, toss_client
     )
     return schemas.SubscriptionSchema.model_validate(subscription)
+
+@router.post(
+    "/update-payment-method",
+    summary="Update payment method (card)"
+)
+async def update_payment_method(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    사용자의 결제 수단(카드)을 변경하기 위한 Toss Payments 위젯 URL을 반환합니다.
+    만료된 카드 갱신이나 다른 카드로 변경 시 사용합니다.
+    """
+    try:
+        result = await subscription_service.update_payment_method(
+            db=db,
+            user=current_user,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate payment method update URL for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="결제 수단 변경 URL 생성에 실패했습니다."
+        )
+
+@router.post(
+    "/update-billing-key",
+    summary="Update billing key after card registration"
+)
+async def update_billing_key(
+    request_data: schemas.BillingKeyRegistrationRequest,
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    toss_client: TossPaymentsClient = Depends(get_billing_toss_client),
+):
+    """
+    Toss Payments에서 새 카드 등록 후 authKey를 받아 빌링키를 업데이트합니다.
+    기존 subscription의 billing_key를 새 billing_key로 변경합니다.
+    """
+    try:
+        # authKey로 빌링키 발급
+        billing_response = await payment_service.issue_billing_key(
+            toss_client=toss_client,
+            auth_key=request_data.auth_key,
+            customer_key=str(current_user.id),
+        )
+        
+        new_billing_key = billing_response.get("billingKey")
+        if not new_billing_key:
+            raise HTTPException(status_code=500, detail="빌링키 발급에 실패했습니다.")
+
+        # 기존 subscription의 billing_key 업데이트
+        subscription = await db.scalar(
+            select(models.Subscription).filter_by(user_id=current_user.id)
+        )
+        
+        if not subscription:
+            raise HTTPException(status_code=404, detail="구독 정보를 찾을 수 없습니다.")
+        
+        subscription.payment_gateway_customer_key = new_billing_key
+        await db.flush()
+        
+        logger.info(f"Updated billing key for user {current_user.id}")
+        
+        return {"message": "카드가 성공적으로 변경되었습니다.", "success": True}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update billing key for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="카드 변경 처리 중 오류가 발생했습니다."
+        )

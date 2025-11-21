@@ -12,14 +12,52 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ArrowRight, CheckCircle, ExternalLink } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle,
+  ExternalLink,
+  CreditCard,
+} from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 
 export function SubscriptionCard() {
   const t = useTranslations("Dashboard.settings.subscription");
   const router = useRouter();
-  const { currentPlan, status, endDate, features, subscription, isLoading } =
-    useUserSubscription();
+  const {
+    user,
+    currentPlan,
+    status,
+    endDate,
+    features,
+    subscription,
+    isLoading,
+  } = useUserSubscription();
+
+  const handleChangeCard = async () => {
+    if (!user) return;
+
+    try {
+      const clientKey = process.env.NEXT_PUBLIC_TOSS_BILLING_CLIENT_KEY!;
+      const customerKey = String(user.id);
+
+      const tossPayments = await loadTossPayments(clientKey);
+
+      // [수정] payment 객체 생성
+      const payment = tossPayments.payment({ customerKey });
+
+      // [수정] payment 객체에서 requestBillingAuth 호출
+      await payment.requestBillingAuth({
+        method: "CARD", // 메서드 이름이 아니라 객체 속성으로 전달해야 할 수도 있습니다. 확인 필요하지만 PricingCard 참고함
+        successUrl: `${window.location.origin}/payment/success-update-card?planId=${subscription?.planId}`,
+        failUrl: `${window.location.origin}/payment/fail-update-card`,
+        customerEmail: user.email,
+        customerName: user.username || user.email,
+      });
+    } catch (error) {
+      console.error("Failed to request billing auth:", error);
+    }
+  };
 
   if (isLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -70,17 +108,27 @@ export function SubscriptionCard() {
             </span>
           </div>
         </div>
-        <div className="flex gap-4 pt-2">
+        <div className="flex gap-2 pt-2">
           <Button
             variant="outline"
-            className="w-full"
+            className="flex-1"
             onClick={() => router.push("/pricing")}
           >
             <ExternalLink className="mr-2 h-4 w-4" />
             {t("changePlanButton")}
           </Button>
-          {/* 실제 결제 포탈이 있다면 아래 버튼을 활성화합니다. */}
-          {/* <Button variant="outline" className="w-full">{t("billingHistoryButton")}</Button> */}
+
+          {/* 카드 등록된 경우에만 카드 변경 버튼 표시 */}
+          {subscription?.paymentGatewayCustomerKey && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleChangeCard}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              {t("changeCardButton")}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

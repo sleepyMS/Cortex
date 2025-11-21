@@ -1,5 +1,6 @@
 // file: frontend/src/hooks/useSubscription.ts
 import apiClient from "@/lib/apiClient";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -87,7 +88,10 @@ export const useSubscriptionChangeMutation = () => {
 
   return useMutation({
     mutationFn: async (payload: ChangePlanPayload) => {
-      const response = await apiClient.post("/subscriptions/change-plan", payload);
+      const response = await apiClient.post(
+        "/subscriptions/change-plan",
+        payload
+      );
       return response.data;
     },
     onSuccess: (updatedSubscription: Subscription) => {
@@ -103,3 +107,32 @@ export const useSubscriptionChangeMutation = () => {
     },
   });
 };
+
+/**
+ * 카드 변경(빌링키 업데이트) 뮤테이션 훅
+ * - authKey와 planId를 받아 백엔드에 빌링키 업데이트 요청
+ */
+export function useUpdateCardMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { authKey: string; planId: string }) => {
+      const response = await apiClient.post(
+        "/subscriptions/update-billing-key",
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("결제 수단이 성공적으로 변경되었습니다.");
+      queryClient.invalidateQueries({ queryKey: ["userSubscription", "me"] });
+    },
+    onError: (err: any) => {
+      let errorMessage = "결제 수단 변경 중 오류가 발생했습니다.";
+      if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      }
+      toast.error(errorMessage);
+    },
+  });
+}

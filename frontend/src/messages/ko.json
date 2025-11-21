@@ -357,6 +357,18 @@
     "authError": "인증 오류: {errorDetail}",
     "loginProcessError": "로그인 처리 중 문제가 발생했습니다."
   },
+  "UpdateCard": {
+    "title": "카드 변경 처리 중",
+    "description": "새로운 결제 카드를 등록하고 있습니다...",
+    "processing": "카드 정보를 확인하고 있습니다. 잠시만 기다려주세요.",
+    "successTitle": "카드가 성공적으로 변경되었습니다!",
+    "successDesc": "설정 페이지로 이동합니다...",
+    "failTitle": "카드 변경 실패",
+    "failDesc": "카드 등록 과정에서 문제가 발생했습니다.",
+    "errorToast": "카드 변경에 실패했습니다.",
+    "goToSettings": "설정 페이지로 이동",
+    "retry": "다시 시도"
+  },
   "Dashboard": {
     "tabs": {
       "pageTitle": "대시보드",
@@ -624,7 +636,8 @@
         "dailyBacktests": "일일 백테스트 한도",
         "scheduledChange": "{planName} 플랜으로 변경 예정",
         "changePlanButton": "플랜 변경하기",
-        "billingHistoryButton": "결제 내역 보기"
+        "billingHistoryButton": "결제 내역 보기",
+        "changeCardButton": "카드 변경하기"
       },
       "notifications": {
         "title": "알림 설정",
