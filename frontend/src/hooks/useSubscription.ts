@@ -195,3 +195,48 @@ export function useCancelPlanChangeMutation() {
     },
   });
 }
+
+/**
+ * 구독 해지 뮤테이션 훅
+ */
+export function useCancelSubscriptionMutation() {
+  const queryClient = useQueryClient();
+  const updateSubscription = useUserStore((state) => state.updateSubscription);
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post(
+        "/subscriptions/cancel-subscription"
+      );
+      return response.data;
+    },
+    // Optimistic Update
+    onMutate: async () => {
+      const currentUser = useUserStore.getState().user;
+      const previousSubscription = currentUser?.subscription;
+
+      // Basic 플랜 정보는 서버 응답을 기다려야 하므로 optimistic update는 생략
+      return { previousSubscription };
+    },
+    // 성공 시
+    onSuccess: (data) => {
+      toast.success(
+        "구독이 해지되었습니다. 현재 결제 기간이 끝나면 Basic 플랜으로 전환됩니다."
+      );
+
+      // 서버에서 받은 최신 subscription 데이터로 업데이트
+      if (data.subscription) {
+        updateSubscription(data.subscription);
+      }
+
+      // React Query 캐시도 무효화
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+    // 실패 시
+    onError: (error: any, variables, context) => {
+      const errorMessage =
+        error?.response?.data?.detail || "구독 해지에 실패했습니다.";
+      toast.error(errorMessage);
+    },
+  });
+}

@@ -2,7 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
-import { useCancelPlanChangeMutation } from "@/hooks/useSubscription";
+import {
+  useCancelPlanChangeMutation,
+  useCancelSubscriptionMutation,
+} from "@/hooks/useSubscription";
 import {
   Card,
   CardContent,
@@ -38,6 +41,7 @@ export function SubscriptionCard() {
   const t = useTranslations("Dashboard.settings.subscription");
   const router = useRouter();
   const cancelPlanChangeMutation = useCancelPlanChangeMutation();
+  const cancelSubscriptionMutation = useCancelSubscriptionMutation();
   const {
     user,
     currentPlan,
@@ -75,6 +79,10 @@ export function SubscriptionCard() {
 
   const handleCancelPlanChange = () => {
     cancelPlanChangeMutation.mutate();
+  };
+
+  const handleCancelSubscription = () => {
+    cancelSubscriptionMutation.mutate();
   };
 
   if (isLoading) {
@@ -183,6 +191,36 @@ export function SubscriptionCard() {
             </Button>
           )}
         </div>
+
+        {/* Basic 플랜이 아닌 경우 구독 해지 버튼 표시 */}
+        {currentPlan !== "Basic" && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full mt-2">
+                <X className="mr-2 h-4 w-4" />
+                {t("cancelSubscription.button")}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t("cancelSubscription.confirmTitle")}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("cancelSubscription.confirmDescription")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {t("cancelConfirmCancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleCancelSubscription}>
+                  {t("cancelSubscription.confirmButton")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </CardContent>
     </Card>
   );

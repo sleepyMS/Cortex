@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select 
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 import logging
 import uuid
 
@@ -13,8 +14,9 @@ from ..dependencies import (
     get_billing_toss_client, 
 )
 from ..services.subscription_service import subscription_service
-from ..services.payment_service import payment_service 
-from ..gateways.toss_payments_client import TossPaymentsClient  
+from ..services.payment_service import payment_service
+from ..services.plan_service import plan_service
+from ..gateways.toss_payments_client import TossPaymentsClient
 
 logger = logging.getLogger(__name__)
 
@@ -197,4 +199,78 @@ async def cancel_plan_change(
         raise HTTPException(
             status_code=500,
             detail="플랜 변경 예약 취소 중 오류가 발생했습니다."
+        )
+
+@router.post(
+    "/cancel-subscription",
+    summary="Cancel subscription"
+)
+async def cancel_subscription(
+    current_user: models.User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    구독을 해지합니다. 다음 결제일에 Basic 플랜으로 전환됩니다.
+    """
+    try:
+        # 현재 구독 확인
+        subscription = await db.scalar(
+            select(models.Subscription)
+            .options(joinedload(models.Subscription.plan))
+            .filter_by(user_id=current_user.id)
+        )
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="활성 구독 정보가 없습니다."
+            )
+        
+        # 이미 Basic 플랜인 경우
+        if subscription.plan.name == models.PlanType.BASIC:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 Basic 플랜을 사용 중입니다."
+            )
+        
+        # Basic 플랜 ID 조회
+        basic_plan = await plan_service.get_plan_by_name(db, models.PlanType.BASIC)
+        
+        if not basic_plan:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Basic 플랜을 찾을 수 없습니다."
+            )
+        
+        # 다운그레이드 로직 재사용 (Basic 플랜으로 예약)
+        subscription.next_plan_id = basic_plan.id
+        await db.flush()
+        
+        # 변경사항 반영을 위해 다시 로드
+        db.expunge(subscription)
+        stmt = (
+            select(models.Subscription)
+            .options(
+                joinedload(models.Subscription.plan).joinedload(models.Plan.features),
+                joinedload(models.Subscription.next_plan).joinedload(models.Plan.features),
+            )
+            .where(models.Subscription.id == subscription.id)
+        )
+        subscription = await db.scalar(stmt)
+        
+        await db.commit()
+        
+        logger.info(f"User {current_user.id} cancelled subscription")
+        
+        return {
+            "message": "구독이 해지되었습니다. 현재 결제 기간이 끝나면 Basic 플랜으로 전환됩니다.",
+            "subscription": schemas.SubscriptionSchema.model_validate(subscription)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel subscription for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="구독 해지 중 오류가 발생했습니다."
         )

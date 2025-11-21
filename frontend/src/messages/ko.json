@@ -668,7 +668,15 @@
         "cancelConfirmTitle": "플랜 변경 예약을 취소하시겠습니까?",
         "cancelConfirmDescription": "{currentPlan} 플랜에서 {nextPlan} 플랜으로의 변경 예약이 취소되며, 현재 플랜이 유지됩니다.",
         "cancelConfirmButton": "예약 취소",
-        "cancelConfirmCancel": "돌아가기"
+        "cancelConfirmCancel": "돌아가기",
+        "cancelSubscription": {
+          "button": "구독 해지",
+          "confirmTitle": "구독을 해지하시겠습니까?",
+          "confirmDescription": "현재 결제 기간이 끝나면 Basic 플랜으로 전환됩니다. 해지 후에도 남은 기간 동안은 현재 플랜의 모든 기능을 계속 사용할 수 있습니다.",
+          "confirmButton": "해지하기",
+          "success": "구독이 해지되었습니다.",
+          "error": "구독 해지에 실패했습니다."
+        }
       },
       "notifications": {
         "title": "알림 설정",
