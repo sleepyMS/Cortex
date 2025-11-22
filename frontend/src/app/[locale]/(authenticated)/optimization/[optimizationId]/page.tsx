@@ -283,65 +283,67 @@ export default function OptimizationDetailPage({
         <>
           <Separator className="my-2" />
           <section className="space-y-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <BarChart className="h-6 w-6 text-primary" />
-                <h2 className="text-2xl font-bold">
-                  {t("DetailedAnalysis.sectionTitle")}
-                </h2>
-              </div>
-
-              {/* 필터링 및 내보내기 컨트롤 */}
-              <div className="flex flex-wrap items-center gap-4 bg-muted/40 p-2 pl-4 pr-2 rounded-lg border w-full md:w-auto">
-                <div className="flex items-center gap-3 flex-1 md:flex-none min-w-[240px]">
-                  <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Label className="text-sm whitespace-nowrap flex-1 flex justify-between">
-                    <span>{t("DetailedAnalysis.minScoreFilter")}</span>
-                    <span className="font-mono font-bold text-primary ml-2 w-8 text-right">
-                      {minScore[0]}
-                    </span>
-                  </Label>
-                  <Slider
-                    value={minScore}
-                    onValueChange={setMinScore}
-                    max={90}
-                    step={5}
-                    className="w-[100px] shrink-0"
-                  />
-                </div>
-                <Separator
-                  orientation="vertical"
-                  className="h-6 hidden md:block"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                  className="h-9 gap-1.5 flex-1 md:flex-none"
-                  disabled={isExporting || allTrials.length === 0}
-                >
-                  {isExporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                  <span>CSV</span>
-                </Button>
-              </div>
+            {/* 헤더만 표시 */}
+            <div className="flex items-center gap-2">
+              <BarChart className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold">
+                {t("DetailedAnalysis.sectionTitle")}
+              </h2>
             </div>
 
             {/* 분석 탭 (차트 / 테이블) */}
             <Tabs defaultValue="charts" className="w-full">
-              <TabsList className="grid w-full md:w-auto grid-cols-2 md:inline-grid">
-                <TabsTrigger value="charts" className="gap-2">
-                  <BarChartHorizontal className="h-4 w-4" />
-                  {t("DetailedAnalysis.tabs.charts")}
-                </TabsTrigger>
-                <TabsTrigger value="table" className="gap-2">
-                  <List className="h-4 w-4" />
-                  {t("DetailedAnalysis.tabs.trials")}
-                </TabsTrigger>
-              </TabsList>
+              {/* 탭 버튼과 필터를 같은 행에 배치 */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <TabsList className="grid w-full md:w-auto grid-cols-2 md:inline-grid">
+                  <TabsTrigger value="charts" className="gap-2">
+                    <BarChartHorizontal className="h-4 w-4" />
+                    {t("DetailedAnalysis.tabs.charts")}
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="gap-2">
+                    <List className="h-4 w-4" />
+                    {t("DetailedAnalysis.tabs.trials")}
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* 필터링 및 내보내기 컨트롤 */}
+                <div className="flex flex-wrap items-center gap-4 bg-muted/40 p-2 pl-4 pr-2 rounded-lg border w-full md:w-auto">
+                  <div className="flex items-center gap-3 flex-1 md:flex-none min-w-[240px]">
+                    <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Label className="text-sm whitespace-nowrap flex-1 flex justify-between">
+                      <span>{t("DetailedAnalysis.minScoreFilter")}</span>
+                      <span className="font-mono font-bold text-primary ml-2 w-8 text-right">
+                        {minScore[0]}
+                      </span>
+                    </Label>
+                    <Slider
+                      value={minScore}
+                      onValueChange={setMinScore}
+                      max={90}
+                      step={5}
+                      className="w-[100px] shrink-0"
+                    />
+                  </div>
+                  <Separator
+                    orientation="vertical"
+                    className="h-6 hidden md:block"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    className="h-9 gap-1.5 flex-1 md:flex-none"
+                    disabled={isExporting || allTrials.length === 0}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span>CSV</span>
+                  </Button>
+                </div>
+              </div>
 
               {/* 탭 1: 차트 */}
               <TabsContent
