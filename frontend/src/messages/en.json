@@ -1727,7 +1727,8 @@
       "initialCapital": "Initial Capital",
       "wfoFolds": "WFO Folds",
       "foldsUnit": "folds",
-      "constraints": "Constraints"
+      "constraints": "Constraints",
+      "optimizedParameters": "Optimized Parameters"
     },
     "BestResult": {
       "title": "Best Result",

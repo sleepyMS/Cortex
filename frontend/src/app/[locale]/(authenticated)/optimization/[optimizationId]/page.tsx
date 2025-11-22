@@ -234,7 +234,12 @@ export default function OptimizationDetailPage({
       {/* 3. 요약 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <ConfigSummaryCard config={job.config} type={job.type} />
+          <ConfigSummaryCard
+            config={job.config}
+            type={job.type}
+            bestTrial={job.bestTrial}
+            strategy={strategyForLabels}
+          />
         </div>
         <div className="lg:col-span-2">
           {job.type === "wfo" ? (

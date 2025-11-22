@@ -1759,7 +1759,8 @@
       "initialCapital": "초기 자본금",
       "wfoFolds": "WFO 구간 수",
       "foldsUnit": "개 구간",
-      "constraints": "제약 조건"
+      "constraints": "제약 조건",
+      "optimizedParameters": "최적화된 파라미터"
     },
     "BestResult": {
       "title": "최고의 결과",
