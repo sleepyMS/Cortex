@@ -38,7 +38,7 @@ interface TooltipState {
 }
 
 // --- 내부 상수 및 헬퍼 ---
-const MARGIN = { top: 60, right: 40, bottom: 40, left: 40 };
+const MARGIN = { top: 70, right: 50, bottom: 50, left: 50 };
 const MAX_DISPLAY_TRIALS = 300;
 
 // 값 정규화 함수 (0~1 범위로 변환)
@@ -258,7 +258,7 @@ export const ParallelCoordinatesChart = ({
           <div className="w-full h-full min-h-[400px]">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-              preserveAspectRatio="none"
+              preserveAspectRatio="xMidYMid meet"
               className="w-full h-full block"
               onMouseLeave={handleMouseLeave} // [수정] SVG 전체에 Leave 이벤트
             >
@@ -303,16 +303,17 @@ export const ParallelCoordinatesChart = ({
                         y1={MARGIN.top}
                         x2="0"
                         y2={HEIGHT - MARGIN.bottom}
-                        stroke={isDark ? "#374151" : "#e5e7eb"}
-                        strokeWidth="2"
+                        stroke={isDark ? "#4b5563" : "#d1d5db"}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
                       />
                       <text
                         x="0"
                         y={MARGIN.top - 25}
                         textAnchor="middle"
-                        fontSize="12"
-                        fontWeight="500"
-                        fill={isDark ? "#6b7280" : "#4b5563"}
+                        fontSize="14"
+                        fontWeight="600"
+                        fill={isDark ? "#9ca3af" : "#374151"}
                       >
                         {dim.readableLabel.length > 20
                           ? dim.readableLabel.substring(0, 18) + "..."
@@ -323,9 +324,10 @@ export const ParallelCoordinatesChart = ({
                         x="0"
                         y={MARGIN.top - 8}
                         textAnchor="middle"
-                        fontSize="10"
-                        fill={isDark ? "#6b7280" : "#4b5563"}
-                        opacity="0.7"
+                        fontSize="11"
+                        fontWeight="500"
+                        fill={isDark ? "#9ca3af" : "#4b5563"}
+                        opacity="0.8"
                       >
                         {dim.max.toFixed(dim.max > 100 ? 0 : 2)}
                       </text>
@@ -333,9 +335,10 @@ export const ParallelCoordinatesChart = ({
                         x="0"
                         y={HEIGHT - MARGIN.bottom + 15}
                         textAnchor="middle"
-                        fontSize="10"
-                        fill={isDark ? "#6b7280" : "#4b5563"}
-                        opacity="0.7"
+                        fontSize="11"
+                        fontWeight="500"
+                        fill={isDark ? "#9ca3af" : "#4b5563"}
+                        opacity="0.8"
                       >
                         {dim.min.toFixed(dim.min > 100 ? 0 : 2)}
                       </text>
