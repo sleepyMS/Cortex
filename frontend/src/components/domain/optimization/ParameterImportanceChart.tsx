@@ -87,7 +87,7 @@ export const ParameterImportanceChart = ({
             <BarChart
               data={processedData}
               layout="vertical"
-              margin={{ top: 5, right: 30, left: 140, bottom: 5 }}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
             >
               <CartesianGrid
                 horizontal={false}
@@ -104,7 +104,7 @@ export const ParameterImportanceChart = ({
               <YAxis
                 type="category"
                 dataKey="readableName"
-                width={130}
+                width={180}
                 stroke={resolvedTheme === "dark" ? "#9ca3af" : "#6b7280"}
                 tick={{ fontSize: 11 }}
                 interval={0}
