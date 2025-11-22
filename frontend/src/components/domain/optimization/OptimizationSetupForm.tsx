@@ -879,7 +879,7 @@ export function OptimizationSetupForm() {
                     {constraintFields.map((field, index) => (
                       <div
                         key={field.id}
-                        className="flex items-start gap-2 p-3 bg-muted/30 rounded-md border"
+                        className="grid grid-cols-[2fr_auto_1.5fr_auto] items-center gap-2 p-3 bg-muted/30 rounded-md border"
                       >
                         <Controller
                           control={control}
@@ -890,7 +890,7 @@ export function OptimizationSetupForm() {
                               value={typeField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[160px] h-9">
+                                <SelectTrigger className="h-9">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -913,13 +913,13 @@ export function OptimizationSetupForm() {
                               value={opField.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="w-[70px] h-9 font-mono">
+                                <SelectTrigger className="w-[80px] h-9 font-mono">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value=">=">&ge;</SelectItem>
-                                <SelectItem value="<=">&le;</SelectItem>
+                                <SelectItem value=">=">≥</SelectItem>
+                                <SelectItem value="<=">≤</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
@@ -931,8 +931,8 @@ export function OptimizationSetupForm() {
                             <Input
                               type="number"
                               step="any"
-                              className="flex-1 h-9"
-                              placeholder="Value"
+                              className="h-9"
+                              placeholder="값"
                               {...valField}
                             />
                           )}

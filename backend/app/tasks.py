@@ -207,11 +207,12 @@ def run_optimization(self, job_id: str):
                     )
                     
                     result = None
-                    # [핵심] 단계별 실행 및 중간 보고
+                    # 단계별 실행 및 중간 보고
                     for intermediate in engine.run_step_by_step():
                         if intermediate.get("is_intermediate"):
-                            # step을 단순 진행률이 아닌 고유한 카운터 값으로 사용
-                            trial.report(-intermediate["mdd_pct"], step=report_step)
+                            # 가지치기는 Cortex 종합 점수 기준 (균형잡힌 평가)
+                            backtest_score = intermediate.get("backtest_score", 0)
+                            trial.report(backtest_score, step=report_step)
                             report_step += 1 # 다음 보고를 위해 카운터 증가
 
                             if trial.should_prune():

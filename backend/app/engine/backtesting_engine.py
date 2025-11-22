@@ -139,13 +139,21 @@ class BacktestingEngine:
             # [핵심] 일정 주기(예: 매일, 또는 데이터의 1% 진행 시마다) 중간 보고
             # 여기서는 약 24개 캔들(1시간봉 기준 하루)마다 보고한다고 가정
             if current_row_count % 24 == 0:
-                 current_stats = {
-                     "equity": self.equity_curve[-1]['value'],
-                     "mdd_pct": self._calculate_current_mdd(),
-                     "progress": current_row_count / total_rows,
-                     "is_intermediate": True
-                 }
-                 yield current_stats
+                current_equity = self.equity_curve[-1]['value']
+                current_mdd = self._calculate_current_mdd()
+                
+                # 가지치기용 간단한 점수 계산 (MDD 기반)
+                # MDD가 -50%면 점수 0, MDD가 0%면 점수 100
+                simple_score = max(0, 100 + (current_mdd * 2))
+                
+                current_stats = {
+                    "equity": current_equity,
+                    "mdd_pct": current_mdd,
+                    "backtest_score": simple_score,
+                    "progress": current_row_count / total_rows,
+                    "is_intermediate": True
+                }
+                yield current_stats
 
         # 루프 종료 후 마지막 최종 결과 반환
         final_summary = self._calculate_summary_stats()
