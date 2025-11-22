@@ -1234,7 +1234,7 @@
       "share": "커뮤니티에 공유",
       "shareWip": "공유 기능은 현재 준비 중입니다.",
       "loadingDate": "날짜 로딩 중...",
-      "initialCapital": "초기 자본금: ${amount}",
+      "initialCapital": "초기 자본금: {amount}",
       "totalTrades": "총 거래: {count}회",
       "unknownStrategy": "알 수 없는 전략"
     },

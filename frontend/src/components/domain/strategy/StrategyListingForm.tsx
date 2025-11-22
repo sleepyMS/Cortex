@@ -183,12 +183,12 @@ export const StrategyListingForm = ({
           <span className="text-muted-foreground">
             {t("platformFee", { fee: PLATFORM_FEE_PERCENT })}
           </span>
-          <span>- ${platformFee.toFixed(2)}</span>
+          <span>- {platformFee.toFixed(2)}CC</span>
         </div>
         <Separator />
         <div className="flex justify-between font-semibold">
           <span className="text-foreground">{t("estimatedEarnings")}</span>
-          <span className="text-primary">${estimatedEarnings.toFixed(2)}</span>
+          <span className="text-primary">{estimatedEarnings.toFixed(2)}CC</span>
         </div>
       </div>
 

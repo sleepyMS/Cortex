@@ -1203,7 +1203,7 @@
       "share": "Share to Community",
       "shareWip": "Sharing feature is currently in development.",
       "loadingDate": "Loading date...",
-      "initialCapital": "Initial Capital: ${amount}",
+      "initialCapital": "Initial Capital: {amount}",
       "totalTrades": "Total transactions: {count}",
       "unknownStrategy": "Unknown Strategy"
     },
