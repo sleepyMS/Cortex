@@ -93,6 +93,12 @@ class PlanSettings(BaseModel):
     PRO: PlanFeatureSettings
 
 
+
+class RenderSettings(BaseModel):
+    RENDER_API_KEY: Optional[str] = None
+    RENDER_SERVICE_ID: Optional[str] = None
+
+
 # --- 2. 최상위 Settings 클래스 ---
 
 class Settings(BaseSettings):
@@ -109,6 +115,9 @@ class Settings(BaseSettings):
     EMAIL: EmailSettings
     PAYMENT: PaymentSettings
     PLANS: PlanSettings
+    RENDER: RenderSettings
+
+
 
 
 # --- 3. 전역 settings 객체 생성 ---
