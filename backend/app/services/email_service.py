@@ -1,10 +1,8 @@
 # file: backend/app/services/email_service.py
 
-import httpx
 import logging
 from typing import Dict, Any
-
-# --- 중앙 설정 객체 임포트 ---
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from ..config import settings
 
 logger = logging.getLogger(__name__)
@@ -12,21 +10,20 @@ logger = logging.getLogger(__name__)
 class EmailService:
     """
     이메일 전송을 담당하는 서비스 클래스.
-    SendGrid, MailerSend 등 외부 이메일 서비스 API를 연동합니다.
+    SMTP를 사용하여 이메일을 전송합니다.
     """
     def __init__(self):
-        # --- 모든 설정을 settings 객체에서 가져옴 ---
-        email_settings = settings.EMAIL
-        self.mail_api_key = email_settings.MAIL_API_KEY
-        self.mail_sender_email = email_settings.MAIL_SENDER_EMAIL
-        self.mail_service_url = email_settings.MAIL_SERVICE_URL
-
-        if not all([self.mail_api_key, self.mail_sender_email, self.mail_service_url]):
-            logger.warning("Email service is not fully configured in .env file. Email sending will be disabled.")
-            self.is_configured = False
-        else:
-            self.is_configured = True
-            logger.info("Email service is configured for MailerSend.")
+        self.conf = ConnectionConfig(
+            MAIL_USERNAME=settings.EMAIL.MAIL_USERNAME,
+            MAIL_PASSWORD=settings.EMAIL.MAIL_PASSWORD,
+            MAIL_FROM=settings.EMAIL.MAIL_FROM,
+            MAIL_PORT=settings.EMAIL.MAIL_PORT,
+            MAIL_SERVER=settings.EMAIL.MAIL_SERVER,
+            MAIL_STARTTLS=settings.EMAIL.MAIL_STARTTLS,
+            MAIL_SSL_TLS=settings.EMAIL.MAIL_SSL_TLS,
+            USE_CREDENTIALS=settings.EMAIL.USE_CREDENTIALS,
+            VALIDATE_CERTS=settings.EMAIL.VALIDATE_CERTS
+        )
 
     async def send_email(
         self,
@@ -36,42 +33,23 @@ class EmailService:
         plain_text_content: str | None = None
     ) -> bool:
         """단일 이메일을 비동기적으로 전송합니다."""
+        
+        message = MessageSchema(
+            subject=subject,
+            recipients=[to_email],
+            body=html_content,
+            subtype=MessageType.html
+        )
 
-        if not self.is_configured:
-            logger.error(f"Email service not configured. Skipping email to {to_email} with subject '{subject}'.")
-            return False
-
-        headers = {
-            "Authorization": f"Bearer {self.mail_api_key}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "from": {
-                "email": self.mail_sender_email,
-                "name": "Cortex"
-            },
-            "to": [
-                {"email": to_email}
-            ],
-            "subject": subject,
-            "text": plain_text_content or " ",
-            "html": html_content
-        }
-
+        fm = FastMail(self.conf)
+        
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(self.mail_service_url, headers=headers, json=payload, timeout=10.0)
-                response.raise_for_status()
-                logger.info(f"Email sent successfully to {to_email} with subject '{subject}'.")
-                return True
-        except httpx.HTTPStatusError as e:
-            logger.error(f"MailerSend API returned an error: {e.response.text}", exc_info=True)
-        except httpx.RequestError as e:
-            logger.error(f"Network error sending email to {to_email}: {e}", exc_info=True)
+            await fm.send_message(message)
+            logger.info(f"Email sent successfully to {to_email} with subject '{subject}'.")
+            return True
         except Exception as e:
-            logger.error(f"Unexpected error sending email to {to_email}: {e}", exc_info=True)
-        return False
+            logger.error(f"Error sending email to {to_email}: {e}", exc_info=True)
+            return False
 
     def get_verification_email_content(self, username: str, verification_link: str) -> Dict[str, str]:
         """

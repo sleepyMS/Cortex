@@ -46,10 +46,16 @@ class AppSettings(BaseModel):
 
 
 class EmailSettings(BaseModel):
-    MAIL_API_KEY: Optional[str] = None
-    MAIL_SENDER_EMAIL: Optional[str] = None
-    MAIL_SERVICE_URL: Optional[str] = None
-
+    MAIL_USERNAME: str
+    MAIL_PASSWORD: str
+    MAIL_FROM: str
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp-relay.brevo.com"
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = True
+    
 
 class PaymentSettings(BaseModel):
     STRIPE_SECRET_KEY: Optional[str] = None
