@@ -300,7 +300,10 @@ class SignalService:
             signal = values.get('signal', 9)
             params_str = f"{fast}_{slow}_{signal}"
             
-            prefix_map = {'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds'}
+            prefix_map = {
+                'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds',
+                'macdh': 'macdh', 'macds': 'macds' 
+            }
             target_prefix = prefix_map.get(output_key, 'macd')
 
         elif kind == 'stoch':
@@ -309,7 +312,10 @@ class SignalService:
             d = values.get('d', 3)
             smooth_k = values.get('smooth_k', 3)
             params_str = f"{k}_{d}_{smooth_k}"
-            target_prefix = f"stoch{output_key}" if output_key in ['k', 'd'] else "stochk"
+            
+            if output_key in ['k', 'stochk', 'k_line']: target_prefix = "stochk"
+            elif output_key in ['d', 'stochd', 'd_line']: target_prefix = "stochd"
+            else: target_prefix = "stochk"
 
         elif kind == 'supertrend':
             # SUPERT_7_3.0
@@ -317,7 +323,10 @@ class SignalService:
             multiplier = values.get('multiplier', 3.0)
             params_str = f"{length}_{float(multiplier)}"
             
-            prefix_map = {'supertrend': 'supert', 'direction': 'supertd', 'long': 'supertl', 'short': 'superts'}
+            prefix_map = {
+                'supertrend': 'supert', 'direction': 'supertd', 'long': 'supertl', 'short': 'superts',
+                'supertd': 'supertd', 'supertl': 'supertl', 'superts': 'superts'
+            }
             target_prefix = prefix_map.get(output_key, 'supert')
 
         elif kind == 'ichimoku':

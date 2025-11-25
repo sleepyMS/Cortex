@@ -131,7 +131,7 @@ INDICATOR_DEFINITIONS = {
             "d": {"label": "%D 기간", "type": "int", "default": 3, "step": 1, "validation_range": [2, 50], "optimization_range": [3, 20]},
             "smooth_k": {"label": "Slowing", "type": "int", "default": 3, "step": 1, "validation_range": [1, 50], "optimization_range": [1, 20]},
         },
-        "outputs": [{"key": "k_line", "label": "%K 라인", "min": 0, "max": 100}, {"key": "d_line", "label": "%D 라인", "min": 0, "max": 100}],
+        "outputs": [{"key": "stochk", "label": "%K 라인", "min": 0, "max": 100}, {"key": "stochd", "label": "%D 라인", "min": 0, "max": 100}],
         "supportedTimeframes": ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1M"],
         "supportedLogics": ["comparison", "crossover", "state"],
     },
