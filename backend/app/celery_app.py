@@ -67,6 +67,7 @@ celery_app.conf.task_routes = {
     'send_verification_email_task': {'queue': 'io_bound_queue'},
     'send_purchase_notification_task': {'queue': 'io_bound_queue'},
     'send_backtest_notification_task': {'queue': 'io_bound_queue'},
+    'send_optimization_notification_task': {'queue': 'io_bound_queue'},
     'handle_recurring_payment_success_task': {'queue': 'io_bound_queue'},
     'handle_recurring_payment_failure_task': {'queue': 'io_bound_queue'},
     'send_subscription_created_task': {'queue': 'io_bound_queue'},

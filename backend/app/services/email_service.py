@@ -324,5 +324,39 @@ class EmailService:
         """
         return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
 
+    def get_optimization_completed_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        최적화 완료 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        subject = f"Cortex: '{context.get('strategy_name', '전략')}' 최적화가 완료되었습니다."
+        username = context.get('username', '고객')
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님!</p>
+            <p>'<b>{context.get('strategy_name', 'N/A')}</b>' 전략에 대한 파라미터 최적화 작업이 완료되었습니다.</p>
+            <p>최적화된 파라미터와 성과를 확인하고 전략을 업데이트해보세요.</p>
+            <br>
+            <p><a href="{context.get('frontend_url', '#')}/optimization/{context.get('job_id', '')}" style="display: inline-block; padding: 10px 20px; background-color: #6a0dad; color: white; text-decoration: none; border-radius: 5px;">결과 확인하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님!
+        '{context.get('strategy_name', 'N/A')}' 전략에 대한 파라미터 최적화 작업이 완료되었습니다.
+        최적화된 파라미터와 성과를 확인하고 전략을 업데이트해보세요.
+
+        결과 확인하기: {context.get('frontend_url', '#')}/optimization/{context.get('job_id', '')}
+        
+        감사합니다,
+        Cortex 팀 드림
+        """
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+        
 # 서비스 인스턴스 생성
 email_service = EmailService()

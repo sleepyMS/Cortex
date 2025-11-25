@@ -416,6 +416,9 @@ def run_optimization(self, job_id: str):
         job.completed_at = datetime.now(timezone.utc)
         session.commit()
 
+        # 완료 알림 이벤트 발행
+        publish_event("optimization.completed", {"job_id": job_id, "user_id": str(job.user_id)})
+
         WebSocketManager.send_optimization_update(job_id, "completed", "최적화가 완료되었습니다.", 100)
         logger.info(f"Optimization job {job_id} completed successfully.")
 
@@ -751,6 +754,15 @@ def send_subscription_failed_task(self, payload: dict):
     try: return asyncio.run(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
+@celery_app.task(name="send_optimization_notification_task", queue="io_bound_queue", bind=True)
+def send_optimization_notification_task(self, event_name: str, payload: dict):
+    async def _send():
+        async with AsyncSessionLocal() as session:
+            if event_name == "optimization.completed":
+                await notification_service.send_optimization_completed_notification(session, payload.get("job_id"))
+    try: return asyncio.run(_send())
+    except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
+
 @celery_app.task(name="dispatch_event", queue="io_bound_queue")
 def dispatch_event(event_name: str, payload: dict):
     EVENT_SUBSCRIBERS = {
@@ -758,6 +770,7 @@ def dispatch_event(event_name: str, payload: dict):
         "order.fulfilled": ["send_purchase_notification_task"],
         "backtest.completed": ["send_backtest_notification_task"],
         "backtest.failed": ["send_backtest_notification_task"],
+        "optimization.completed": ["send_optimization_notification_task"],
         "subscription.recurring_payment.succeeded": ["handle_recurring_payment_success_task"],
         "subscription.recurring_payment.failed": ["handle_recurring_payment_failure_task"],
         "user.needs_verification": ["send_verification_email_task"],
@@ -767,7 +780,7 @@ def dispatch_event(event_name: str, payload: dict):
     }
     if task_names := EVENT_SUBSCRIBERS.get(event_name):
         for task_name in task_names:
-            args = [event_name, payload] if event_name in ["backtest.completed", "backtest.failed"] else [payload]
+            args = [event_name, payload] if event_name in ["backtest.completed", "backtest.failed", "optimization.completed"] else [payload]
             celery_app.send_task(task_name, args=args)
 
 @celery_app.task(name="process_daily_recurring_payments", queue="io_bound_queue")
