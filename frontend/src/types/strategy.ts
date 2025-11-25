@@ -1,4 +1,4 @@
-import { IndicatorMetadata } from "./indicator";
+// file: frontend/src/types/strategy.ts
 
 // --- 기본 타입 정의 ---
 export type LogicOperator = "AND" | "OR";
@@ -27,6 +27,7 @@ export interface IndicatorValue {
   outputs: string[];
   values: Record<string, any>;
   timeframe: string;
+  offset?: number;
 }
 
 // --- 규칙 블록(LogicBlock)을 구성하는 개별 로직 타입 정의 ---

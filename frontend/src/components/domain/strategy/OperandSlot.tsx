@@ -79,8 +79,14 @@ export function OperandSlot({
       }
     }
     parts.push(value.timeframe);
+
+    // Offset이 0보다 크면 표시
+    if (value.offset && value.offset > 0) {
+      parts.push(`Offset: ${value.offset}`);
+    }
+
     return parts.filter(Boolean).join(", ");
-  }, [value, indicatorMetadata]); // 의존성 배열에 indicatorMetadata 추가
+  }, [value, indicatorMetadata]);
 
   if (value === null) {
     return (

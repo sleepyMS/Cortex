@@ -70,6 +70,10 @@ export function ParameterPopover({
     onUpdate({ ...indicatorValue, timeframe: newTimeframe });
   };
 
+  const handleOffsetChange = (newOffset: number) => {
+    onUpdate({ ...indicatorValue, offset: newOffset });
+  };
+
   const planName = currentPlan || "Basic";
   // [개선] supportedTimeframes는 이제 백엔드 메타데이터에서 가져옵니다.
   const supportedTimeframes = metadata.supportedTimeframes || [];
@@ -176,6 +180,21 @@ export function ParameterPopover({
                 </SelectContent>
               </Select>
             )}
+          </div>
+
+          <Separator />
+
+          {/* Offset 입력 */}
+          <div className="grid grid-cols-3 items-center gap-4">
+            <Label htmlFor="offset">Offset (봉 전)</Label>
+            <Input
+              id="offset"
+              type="number"
+              min={0}
+              value={indicatorValue.offset ?? 0}
+              onChange={(e) => handleOffsetChange(Number(e.target.value))}
+              className="col-span-2 h-8"
+            />
           </div>
 
           <Separator />

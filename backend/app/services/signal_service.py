@@ -436,6 +436,21 @@ class SignalService:
         
         return None
 
+    def _get_operand_series(self, df: pd.DataFrame, operand: Union[schemas.IndicatorValue, float, int, None]) -> Optional[pd.Series]:
+        """
+        Offset 기능을 지원하기 위한 헬퍼 메서드
+        """
+        col_name = self._get_indicator_column_name(df.columns, operand)
+        if col_name is None: return None
+        
+        series = df[col_name] if isinstance(col_name, str) else pd.Series(col_name, index=df.index)
+        
+        # Offset 적용 (n봉 전 데이터 가져오기)
+        if isinstance(operand, schemas.IndicatorValue) and getattr(operand, 'offset', 0) > 0:
+            series = series.shift(operand.offset)
+            
+        return series
+
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
         """
         단일 LogicBlock을 평가하여 boolean Series를 반환합니다.
@@ -444,11 +459,11 @@ class SignalService:
         block_type = block.type
         
         if block_type == "comparison":
-            op_a_name = self._get_indicator_column_name(df.columns, block.operand_a)
-            op_b_name = self._get_indicator_column_name(df.columns, block.operand_b)
-            if op_a_name is None or op_b_name is None: return pd.Series(False, index=df.index)
-            series_a = df[op_a_name] if isinstance(op_a_name, str) else pd.Series(op_a_name, index=df.index)
-            series_b = df[op_b_name] if isinstance(op_b_name, str) else pd.Series(op_b_name, index=df.index)
+            series_a = self._get_operand_series(df, block.operand_a)
+            series_b = self._get_operand_series(df, block.operand_b)
+            
+            if series_a is None or series_b is None: return pd.Series(False, index=df.index)
+            
             op_map = {">": series_a > series_b, "<": series_a < series_b, "==": series_a == series_b, "!=": series_a != series_b}
             parent_series = op_map.get(block.operator, pd.Series(False, index=df.index))
 

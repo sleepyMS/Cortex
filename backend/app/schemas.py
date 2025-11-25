@@ -309,6 +309,7 @@ class IndicatorValue(CamelCaseModel):
     outputs: List[str]
     values: Dict[str, Any]
     timeframe: str
+    offset: int = 0
 
 class BaseLogicBlock(CamelCaseModel):
     id: str
