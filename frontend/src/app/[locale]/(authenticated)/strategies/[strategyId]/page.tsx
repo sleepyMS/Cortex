@@ -134,30 +134,40 @@ const fetchOHLCVData = async (
 const fetchIndicatorData = async (
   ticker: string,
   timeframe: string,
-  indicatorConfigs: any[]
+  indicatorConfigs: any[],
+  signal?: AbortSignal
 ) => {
   if (indicatorConfigs.length === 0) return null;
-  const { data } = await apiClient.post("/strategies/calculate-indicators", {
-    ticker,
-    timeframe,
-    indicators: indicatorConfigs,
-  });
+  const { data } = await apiClient.post(
+    "/strategies/calculate-indicators",
+    {
+      ticker,
+      timeframe,
+      indicators: indicatorConfigs,
+    },
+    { signal }
+  );
   return data.results;
 };
 
 const fetchSignalData = async (
   ticker: string,
   timeframe: string,
-  rules: any
+  rules: any,
+  signal?: AbortSignal
 ): Promise<SignalData> => {
   if (!rules.longEntryRules && !rules.shortEntryRules) {
     return { signals: [] };
   }
-  const { data } = await apiClient.post("/strategies/calculate-signals", {
-    ticker,
-    timeframe,
-    ...rules,
-  });
+  const { data } = await apiClient.post(
+    "/strategies/calculate-signals",
+    {
+      ticker,
+      timeframe,
+      ...rules,
+    },
+    { signal }
+  );
   return data;
 };
 
@@ -362,14 +372,15 @@ export default function StrategyEditorPage({
   // Fetch indicators using the debounced configs
   const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
-    queryFn: () =>
-      fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs),
+    queryFn: ({ signal }) =>
+      fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs, signal),
     enabled: !!ohlcvData && indicatorConfigs.length > 0,
   });
 
   const { data: signalData, isLoading: isLoadingSignals } = useQuery({
     queryKey: ["signals", chartTicker, chartTimeframe, debouncedRules],
-    queryFn: () => fetchSignalData(chartTicker, chartTimeframe, debouncedRules),
+    queryFn: ({ signal }) =>
+      fetchSignalData(chartTicker, chartTimeframe, debouncedRules, signal),
     enabled: !!ohlcvData && !!debouncedRules,
   });
 
