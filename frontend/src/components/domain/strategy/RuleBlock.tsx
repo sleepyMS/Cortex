@@ -1,3 +1,5 @@
+// file: frontend/src/components/domain/strategy/RuleBlock.tsx
+
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -370,7 +372,6 @@ export function RuleBlock({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="upper">{t("upperChannel")}</SelectItem>
-          <SelectItem value="middle">{t("middleChannel")}</SelectItem>
           <SelectItem value="lower">{t("lowerChannel")}</SelectItem>
           <SelectItem value="kumo">{t("kumoCloud")}</SelectItem>
         </SelectContent>

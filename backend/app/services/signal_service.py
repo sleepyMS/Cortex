@@ -394,8 +394,21 @@ class SignalService:
                 if upper_col_name in df.columns: upper_col = upper_col_name
                 if lower_col_name in df.columns: lower_col = lower_col_name
             else:
-                upper_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": ["upper"]})
-                lower_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": ["lower"]})
+                # Channel Zone에 따른 상/하단 경계 동적 설정
+                # 기본값: 전체 채널 (upper ~ lower)
+                upper_key = "upper"
+                lower_key = "lower"
+
+                if block.channel_zone == "upper":     # 상단 채널: Upper ~ Middle
+                    upper_key = "upper"
+                    lower_key = "middle"
+                elif block.channel_zone == "lower":   # 하단 채널: Middle ~ Lower
+                    upper_key = "middle"
+                    lower_key = "lower"
+                
+                # 설정된 키로 컬럼 찾기
+                upper_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": [upper_key]})
+                lower_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": [lower_key]})
                 upper_col = self._get_indicator_column_name(df.columns, upper_ind_val)
                 lower_col = self._get_indicator_column_name(df.columns, lower_ind_val)
             
