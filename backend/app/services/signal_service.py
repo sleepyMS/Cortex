@@ -276,7 +276,8 @@ class SignalService:
     indicator_value: Union[schemas.IndicatorValue, float, int]
     ) -> Optional[Union[str, float, int]]:
         """
-        [기존 로직 100% 유지] 데이터프레임에서 지표 컬럼명을 찾습니다.
+        [Refactored] 데이터프레임에서 지표 컬럼명을 찾습니다.
+        pandas_ta의 컬럼 명명 규칙(파라미터 순서, float 포맷팅 등)을 명시적으로 처리합니다.
         """
         if indicator_value is None: return None
         if isinstance(indicator_value, (int, float)): return indicator_value
@@ -290,36 +291,119 @@ class SignalService:
         output_key = indicator_value.outputs[0].lower() if indicator_value.outputs else ""
         params_str, target_prefix = "", ""
 
-        if kind == 'macd' and output_key in ['macd', 'histogram', 'signal']:
+        # --- Indicator Specific Naming Logic ---
+        
+        if kind == 'macd':
+            # MACD_12_26_9
+            fast = values.get('fast', 12)
+            slow = values.get('slow', 26)
+            signal = values.get('signal', 9)
+            params_str = f"{fast}_{slow}_{signal}"
+            
             prefix_map = {'macd': 'macd', 'histogram': 'macdh', 'signal': 'macds'}
             target_prefix = prefix_map.get(output_key, 'macd')
-            params_str = "_".join(map(str, values.values()))
-        elif kind == 'stoch' and output_key in ['k', 'd']:
-            target_prefix = f"stoch{output_key}"
-            params_str = "_".join(map(str, values.values()))
-        elif kind == 'supertrend' and output_key in ['supertrend', 'direction', 'long', 'short']:
+
+        elif kind == 'stoch':
+            # STOCHk_14_3_3
+            k = values.get('k', 14)
+            d = values.get('d', 3)
+            smooth_k = values.get('smooth_k', 3)
+            params_str = f"{k}_{d}_{smooth_k}"
+            target_prefix = f"stoch{output_key}" if output_key in ['k', 'd'] else "stochk"
+
+        elif kind == 'supertrend':
+            # SUPERT_7_3.0
+            length = values.get('length', 7)
+            multiplier = values.get('multiplier', 3.0)
+            params_str = f"{length}_{float(multiplier)}"
+            
             prefix_map = {'supertrend': 'supert', 'direction': 'supertd', 'long': 'supertl', 'short': 'superts'}
             target_prefix = prefix_map.get(output_key, 'supert')
-            params_str = "_".join(map(str, values.values()))
+
         elif kind == 'ichimoku':
-            tenkan, kijun, chikou = values.get('tenkan', 9), values.get('kijun', 26), values.get('chikou', 26)
+            # Ichimoku is complex, usually no params in suffix for some cols, or specific ones
+            # pandas_ta: ISA_9, ISB_26, ITS_9, IKS_26, ICS_26
+            tenkan = values.get('tenkan', 9)
+            kijun = values.get('kijun', 26)
+            chikou = values.get('chikou', 26)
+            
             if output_key == 'tenkan_sen': target_prefix, params_str = 'its', str(tenkan)
             elif output_key == 'kijun_sen': target_prefix, params_str = 'iks', str(kijun)
             elif output_key in ['span_a', 'upper']: target_prefix, params_str = 'isa', str(tenkan)
             elif output_key in ['span_b', 'lower']: target_prefix, params_str = 'isb', str(kijun)
             elif output_key == 'lagging': target_prefix, params_str = 'ics', str(chikou)
             else: target_prefix, params_str = 'its', str(tenkan)
+
         elif kind == 'kc':
+            # KCLe_20_2.0
             length = values.get('length', 20)
-            scalar = values.get('scalar', 2)
-            params_str = f"{length}_{scalar}"
+            scalar = values.get('scalar', 2.0)
+            params_str = f"{length}_{float(scalar)}"
             target_prefix = {'upper': 'kcue', 'middle': 'kcbe', 'lower': 'kcle'}.get(output_key, 'kcbe')
+
         elif kind == 'bbands':
+            # BBU_5_2.0
             length = values.get('length', 5)
             std = values.get('std', 2.0)
             params_str = f"{length}_{float(std)}" 
             target_prefix = {'upper': 'bbu', 'middle': 'bbm', 'lower': 'bbl', 'width': 'bbb', 'percent': 'bbp'}.get(output_key, 'bbu')
+
+        elif kind == 'cci':
+            # CCI_14_0.015
+            length = values.get('length', 14)
+            c = values.get('c', 0.015)
+            params_str = f"{length}_{c}" # c is usually float 0.015
+            target_prefix = "cci"
+
+        elif kind == 'atr':
+            # ATRr_14 (default)
+            length = values.get('length', 14)
+            params_str = str(length)
+            target_prefix = "atrr" # Default to ATRr
+
+        elif kind == 'psar':
+            # PSARl_0.02_0.2
+            af0 = values.get('af0', 0.02)
+            max_af = values.get('max_af', 0.2)
+            # pandas_ta naming might vary, but usually af0_max_af
+            params_str = f"{af0}_{max_af}"
+            target_prefix = {'long': 'psarl', 'short': 'psars', 'af': 'psaraf', 'r': 'psarr'}.get(output_key, 'psarl')
+
+        elif kind == 'sma':
+            length = values.get('length', 10)
+            params_str = str(length)
+            target_prefix = "sma"
+            
+        elif kind == 'ema':
+            length = values.get('length', 10)
+            params_str = str(length)
+            target_prefix = "ema"
+            
+        elif kind == 'hma':
+            length = values.get('length', 10)
+            params_str = str(length)
+            target_prefix = "hma"
+
+        elif kind == 'rsi':
+            length = values.get('length', 14)
+            params_str = str(length)
+            target_prefix = "rsi"
+
+        elif kind == 'adx':
+            length = values.get('length', 14)
+            params_str = str(length)
+            target_prefix = {'adx': 'adx', 'dmp': 'dmp', 'dmn': 'dmn'}.get(output_key, 'adx')
+            
+        elif kind == 'obv':
+            params_str = ""
+            target_prefix = "obv"
+            
+        elif kind == 'vwap':
+            params_str = ""
+            target_prefix = "vwap"
+
         else:
+            # Fallback for unknown indicators
             possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
             if possible_prefixes:
                 found = False
@@ -333,8 +417,14 @@ class SignalService:
             if values: params_str = "_".join([f"{v}" for k, v in sorted(values.items())])
 
         expected_col_base = f"{target_prefix}_{params_str}".lower() if params_str else target_prefix.lower()
+        
+        # Exact match attempt
         for col in df_columns:
             if col.lower() == expected_col_base: return col
+            
+        # Fallback: Try matching without specific float formatting if failed (e.g. 0.015 vs 0.0150)
+        # or partial match if strict match fails (risky but helpful)
+        
         return None
 
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
