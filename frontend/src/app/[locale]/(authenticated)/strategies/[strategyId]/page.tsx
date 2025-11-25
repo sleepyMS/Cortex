@@ -315,29 +315,6 @@ export default function StrategyEditorPage({
     staleTime: 5 * 60 * 1000,
   });
 
-  const indicatorConfigs = useMemo(
-    () =>
-      parseRulesForIndicators({
-        longEntry: strategyState.longEntryRules,
-        longExit: strategyState.longExitRules,
-        shortEntry: strategyState.shortEntryRules,
-        shortExit: strategyState.shortExitRules,
-      }),
-    [
-      strategyState.longEntryRules,
-      strategyState.longExitRules,
-      strategyState.shortEntryRules,
-      strategyState.shortExitRules,
-    ]
-  );
-
-  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
-    queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
-    queryFn: () =>
-      fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs),
-    enabled: !!ohlcvData && indicatorConfigs.length > 0,
-  });
-
   const currentRules = useMemo(
     () => ({
       longEntryRules: strategyState.longEntryRules,
@@ -364,6 +341,31 @@ export default function StrategyEditorPage({
       clearTimeout(timer);
     };
   }, [currentRules]);
+
+  // Use debouncedRules instead of strategyState
+  const indicatorConfigs = useMemo(
+    () =>
+      parseRulesForIndicators({
+        longEntry: debouncedRules.longEntryRules,
+        longExit: debouncedRules.longExitRules,
+        shortEntry: debouncedRules.shortEntryRules,
+        shortExit: debouncedRules.shortExitRules,
+      }),
+    [
+      debouncedRules.longEntryRules,
+      debouncedRules.longExitRules,
+      debouncedRules.shortEntryRules,
+      debouncedRules.shortExitRules,
+    ]
+  );
+
+  // Fetch indicators using the debounced configs
+  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
+    queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
+    queryFn: () =>
+      fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs),
+    enabled: !!ohlcvData && indicatorConfigs.length > 0,
+  });
 
   const { data: signalData, isLoading: isLoadingSignals } = useQuery({
     queryKey: ["signals", chartTicker, chartTimeframe, debouncedRules],
