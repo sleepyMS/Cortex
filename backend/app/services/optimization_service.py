@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import select, desc, delete, asc, func, cast, Float
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from .. import models, schemas
 from ..tasks import run_optimization
@@ -117,7 +118,7 @@ class OptimizationService:
         return db_job
 
     async def get_job(
-        self, db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID
+        self, db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID, with_trials: bool = True
     ) -> Optional[models.OptimizationJob]:
         """
         특정 최적화 작업의 상세 정보를 조회합니다.
@@ -126,20 +127,27 @@ class OptimizationService:
             select(models.OptimizationJob)
             .filter_by(id=job_id, user_id=user_id)
             .options(
-                selectinload(models.OptimizationJob.strategy),
-                # trials는 대량 데이터일 수 있으므로 상세 페이지에서는 필요한 경우에만 로드하거나
-                # 페이지네이션을 사용하는 것이 좋지만, 일단 현재 구조 유지를 위해 로드합니다.
-                selectinload(models.OptimizationJob.trials)
+                selectinload(models.OptimizationJob.strategy)
             )
         )
+        
+        # with_trials가 True일 때만 trials 관계를 로딩합니다.
+        if with_trials:
+            query = query.options(selectinload(models.OptimizationJob.trials))
+
         result = await db.execute(query)
         job = result.scalar_one_or_none()
 
-        # [핵심 수정] best_trial 수동 주입 로직 추가
+        # trials를 로딩하지 않았을 때, Pydantic 모델 변환 시 
+        # Lazy Loading 에러가 발생하지 않도록 빈 리스트를 명시적으로 할당합니다.
+        if job and not with_trials:
+            # set_committed_value를 사용하여 DB 로딩 없이 값을 강제로 주입합니다.
+            set_committed_value(job, "trials", [])
+
+        # best_trial 수동 주입 로직
         if job and job.status == models.OptimizationStatus.COMPLETED:
             summary = job.result_summary
             if isinstance(summary, dict):
-                # 1. Best Trial 수동 주입 (기존 코드)
                 best_trial_id = summary.get("best_trial_id")
                 if best_trial_id is not None:
                     trial_query = select(models.OptimizationTrial).filter_by(
@@ -148,21 +156,13 @@ class OptimizationService:
                     )
                     job.best_trial = (await db.execute(trial_query)).scalar_one_or_none()
                 
-                # [핵심 수정] 2. Parameter Importance 수동 주입 추가
-                # DB에는 'parameter_importance' 라는 키로 저장되어 있다고 가정합니다.
-                # (tasks.py에서 저장할 때 사용한 키와 일치해야 합니다.)
                 job.parameter_importance = summary.get("parameter_importance")
 
-            # WFO일 경우, WFO 전체 성과를 best_result_summary로 사용
             if job.type == models.OptimizationType.WFO and job.wfo_result:
                 wfo_data = job.wfo_result
                 if isinstance(wfo_data, dict):
-                    # WFO 전체 결과를 요약 정보로 활용
                     job.best_result_summary = {
                         "total_return_pct": wfo_data.get("total_return_pct"),
-                        # WFO는 단일 MDD 등을 계산하기 어려울 수 있으나, 
-                        # 가능하다면 tasks.py에서 계산하여 wfo_result에 포함시키는 것이 좋습니다.
-                        # 현재는 있는 정보만 매핑합니다.
                     }
 
         return job

@@ -28,6 +28,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Spinner } from "@/components/ui/Spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { Separator } from "@/components/ui/Separator";
 import { Label } from "@/components/ui/Label";
@@ -119,9 +120,25 @@ export default function OptimizationDetailPage({
     }
   }, [job?.status, optimizationId, queryClient]);
 
-  // 3. 데이터 필터링 로직 (차트 및 내보내기용)
-  // job.trials가 존재한다고 가정합니다. (백엔드 서비스에서 selectinload로 로드됨)
-  const allTrials = useMemo(() => job?.trials || [], [job?.trials]);
+  // 3. 차트용 데이터 페칭 (CSR)
+  // 초기 로딩 속도 개선을 위해 trials를 별도로 가져옵니다.
+  const { data: trialsData, isLoading: isTrialsLoading } = useQuery({
+    queryKey: ["optimizationTrials", optimizationId, "chart"],
+    queryFn: async () => {
+      // 시각화를 위해 최대 2000개의 Trial만 가져옵니다.
+      const response = await apiClient.get(
+        `/optimizations/${optimizationId}/trials`,
+        {
+          params: { page: 1, limit: 2000 },
+        }
+      );
+      return response.data.items as TrialData[];
+    },
+    enabled: !!job && job.status === "completed",
+    staleTime: Infinity,
+  });
+
+  const allTrials = useMemo(() => trialsData || [], [trialsData]);
 
   // [중요] 이 부분이 누락되어 에러가 발생했었습니다. 다시 추가합니다.
   const filteredTrials = useMemo(() => {
@@ -357,12 +374,20 @@ export default function OptimizationDetailPage({
               >
                 <div className="h-[500px]">
                   {/* 필터링된 데이터를 차트에 전달 */}
-                  <ParallelCoordinatesChart
-                    trials={filteredTrials}
-                    hoveredTrialId={hoveredTrialId}
-                    onHoverTrial={setHoveredTrialId}
-                    strategy={strategyForLabels}
-                  />
+                  {isTrialsLoading ? (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <Spinner size="lg" />
+                    </div>
+                  ) : (
+                    <div className="h-full w-full animate-in fade-in duration-700">
+                      <ParallelCoordinatesChart
+                        trials={filteredTrials}
+                        hoveredTrialId={hoveredTrialId}
+                        onHoverTrial={setHoveredTrialId}
+                        strategy={strategyForLabels}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 gap-6">
                   <div className="h-[500px]">

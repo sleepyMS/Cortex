@@ -97,8 +97,9 @@ async def read_optimization_detail(
     db: AsyncSession = Depends(get_async_db)
 ):
     """특정 최적화 작업의 상세 정보를 조회합니다."""
-    # 이미 검증된 job이 있지만, trials 등 추가 관계 로딩을 위해 서비스 호출
-    return await optimization_service.get_job(db, job.id, job.user_id)
+    # trials 로딩을 제외하여 초기 응답 속도를 개선합니다.
+    # trials 데이터는 별도 엔드포인트(/optimizations/{job_id}/trials)를 통해 CSR로 가져옵니다.
+    return await optimization_service.get_job(db, job.id, job.user_id, with_trials=False)
 
 @router.get("/{job_id}/trials", response_model=schemas.PaginatedTrialsResponse)
 async def read_optimization_trials(
