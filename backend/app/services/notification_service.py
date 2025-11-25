@@ -129,7 +129,46 @@ class NotificationService:
             html_content=email_content["html"],
             plain_text_content=email_content["plain_text"]
         )
-        
+
+    async def send_optimization_failed_notification(self, db_session, job_id: str, error_message: str):
+        """
+        최적화 실패 알림을 email_service를 통해 보냅니다.
+        """
+        # 1. DB에서 최적화 작업 정보와 사용자, 전략 이름을 조회
+        job = await db_session.get(
+            models.OptimizationJob,
+            uuid.UUID(job_id),
+            options=[
+                joinedload(models.OptimizationJob.user),
+                joinedload(models.OptimizationJob.strategy)
+            ]
+        )
+
+        if not job or not job.user or not job.strategy:
+            logger.warning(f"Notification service: Optimization Job {job_id} or relations not found. Aborting failure email.")
+            return
+
+        # 2. email_service에 전달할 context 생성
+        context = {
+            "username": job.user.username or job.user.email.split('@')[0],
+            "user_email": job.user.email,
+            "strategy_name": job.strategy.name,
+            "job_id": str(job.id),
+            "frontend_url": settings.APP.FRONTEND_BASE_URL,
+            "error": error_message  # 에러 메시지 추가
+        }
+
+        # 3. email_service를 통해 템플릿 생성 (실패용)
+        email_content = self.email_service.get_optimization_failed_content(context)
+
+        # 4. email_service를 통해 이메일 발송
+        await self.email_service.send_email(
+            to_email=job.user.email,
+            subject=email_content["subject"],
+            html_content=email_content["html"],
+            plain_text_content=email_content["plain_text"]
+        )
+
     async def send_subscription_created_email(self, payload: Dict[str, Any]):
         """
         'subscription.created' 이벤트를 받아 환영 이메일을 보냅니다.

@@ -357,6 +357,47 @@ class EmailService:
         Cortex 팀 드림
         """
         return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
+
+    def get_optimization_failed_content(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        최적화 실패 알림을 위한 HTML 및 일반 텍스트 콘텐츠를 생성합니다.
+        """
+        subject = f"Cortex: '{context.get('strategy_name', '전략')}' 최적화 작업이 실패했습니다."
+        username = context.get('username', '고객')
+        error_message = context.get('error', '알 수 없는 오류')
+        
+        html_content = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>안녕하세요, {username}님.</p>
+            <p>아쉽게도 요청하신 '<b>{context.get('strategy_name', 'N/A')}</b>' 전략에 대한 최적화 작업이 실패했습니다.</p>
+            <p><b>오류 내용:</b><br>{error_message}</p>
+            <br>
+            <p>잠시 후 다시 시도해 주시거나, 문제가 지속되면 고객센터로 문의해 주세요.</p>
+            <br>
+            <p><a href="{context.get('frontend_url', '#')}/optimization/{context.get('job_id', '')}" style="display: inline-block; padding: 10px 20px; background-color: #d32f2f; color: white; text-decoration: none; border-radius: 5px;">작업 내역 확인하기</a></p>
+            <br>
+            <p>감사합니다,<br>Cortex 팀 드림</p>
+        </body>
+        </html>
+        """
+        
+        plain_text_content = f"""
+        안녕하세요, {username}님.
+        아쉽게도 요청하신 '{context.get('strategy_name', 'N/A')}' 전략에 대한 최적화 작업이 실패했습니다.
+
+        오류 내용:
+        {error_message}
+
+        잠시 후 다시 시도해 주시거나, 문제가 지속되면 고객센터로 문의해 주세요.
+
+        작업 내역 확인하기: {context.get('frontend_url', '#')}/optimization/{context.get('job_id', '')}
+        
+        감사합니다,
+        Cortex 팀 드림
+        """
+        return {"subject": subject, "html": html_content, "plain_text": plain_text_content}
         
 # 서비스 인스턴스 생성
 email_service = EmailService()

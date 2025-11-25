@@ -428,6 +428,10 @@ def run_optimization(self, job_id: str):
             job.status = OptimizationStatus.FAILED
             session.commit()
         except: pass
+        
+        # 실패 알림 이벤트 발행
+        publish_event("optimization.failed", {"job_id": job_id, "user_id": str(job.user_id), "error_message": str(exc)})
+        
         WebSocketManager.send_optimization_update(job_id, "failed", f"실패: {str(exc)}", 0)
 
     finally:
@@ -760,6 +764,8 @@ def send_optimization_notification_task(self, event_name: str, payload: dict):
         async with AsyncSessionLocal() as session:
             if event_name == "optimization.completed":
                 await notification_service.send_optimization_completed_notification(session, payload.get("job_id"))
+            elif event_name == "optimization.failed":
+                await notification_service.send_optimization_failed_notification(session, payload.get("job_id"), payload.get("error_message"))
     try: return asyncio.run(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
@@ -771,6 +777,7 @@ def dispatch_event(event_name: str, payload: dict):
         "backtest.completed": ["send_backtest_notification_task"],
         "backtest.failed": ["send_backtest_notification_task"],
         "optimization.completed": ["send_optimization_notification_task"],
+        "optimization.failed": ["send_optimization_notification_task"],
         "subscription.recurring_payment.succeeded": ["handle_recurring_payment_success_task"],
         "subscription.recurring_payment.failed": ["handle_recurring_payment_failure_task"],
         "user.needs_verification": ["send_verification_email_task"],
@@ -780,7 +787,7 @@ def dispatch_event(event_name: str, payload: dict):
     }
     if task_names := EVENT_SUBSCRIBERS.get(event_name):
         for task_name in task_names:
-            args = [event_name, payload] if event_name in ["backtest.completed", "backtest.failed", "optimization.completed"] else [payload]
+            args = [event_name, payload] if event_name in ["backtest.completed", "backtest.failed", "optimization.completed", "optimization.failed"] else [payload]
             celery_app.send_task(task_name, args=args)
 
 @celery_app.task(name="process_daily_recurring_payments", queue="io_bound_queue")
