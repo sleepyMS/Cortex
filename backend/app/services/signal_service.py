@@ -314,6 +314,11 @@ class SignalService:
             scalar = values.get('scalar', 2)
             params_str = f"{length}_{scalar}"
             target_prefix = {'upper': 'kcue', 'middle': 'kcbe', 'lower': 'kcle'}.get(output_key, 'kcbe')
+        elif kind == 'bbands':
+            length = values.get('length', 5)
+            std = values.get('std', 2.0)
+            params_str = f"{length}_{float(std)}" 
+            target_prefix = {'upper': 'bbu', 'middle': 'bbm', 'lower': 'bbl', 'width': 'bbb', 'percent': 'bbp'}.get(output_key, 'bbu')
         else:
             possible_prefixes = [p.lower() for p in OUTPUT_PREFIX_MAP.get(key_raw.upper(), [])]
             if possible_prefixes:
@@ -334,7 +339,7 @@ class SignalService:
 
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
         """
-        [기존 로직 100% 유지] 단일 LogicBlock을 평가하여 boolean Series를 반환합니다.
+        단일 LogicBlock을 평가하여 boolean Series를 반환합니다.
         """
         parent_series = pd.Series(True, index=df.index)
         block_type = block.type
