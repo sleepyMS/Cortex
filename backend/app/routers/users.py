@@ -67,14 +67,14 @@ async def update_users_me_profile(
 ):
     """현재 로그인된 사용자의 프로필 정보를 비동기로 업데이트하고, 프론트엔드 캐시를 무효화합니다."""
     
-    # 1. (기존 로직) 프로필 업데이트
+    # 1. 프로필 업데이트
     updated_user = await user_service.update_user_profile(db, current_user, user_update)
     
-    # 2. (기존 로직) 커밋 (get_async_db가 처리)
+    # 2. 커밋 (get_async_db가 처리)
     
     logger.info(f"User {current_user.email} successfully updated their profile.")
 
-    # 3. (수정) 프론트엔드 캐시 무효화 (Blocking)
+    # 3. 프론트엔드 캐시 무효화 (Blocking)
     #    onSuccess의 router.refresh()가 stale 데이터를 가져오는 것을 막기 위해,
     #    API 응답을 반환하기 *전에* Next.js revalidation이 완료되기를 기다립니다.
     try:
@@ -120,17 +120,11 @@ async def update_users_me_password(
     현재 사용자의 비밀번호를 업데이트하고, 다른 모든 활성 세션을 강제 로그아웃시킵니다.
     """
     # 1. 서비스 호출하여 비밀번호 변경 및 모든 기존 토큰 무효화
-    #    (user_service의 로직은 변경할 필요 없습니다.)
     await user_service.update_user_password(db, current_user, password_update)
-    
-    # 2. '새 토큰 발급' 로직을 완전히 제거합니다.
-    # new_access_token, new_refresh_token = await auth_service.create_and_set_tokens(...)
-    
-    # (get_async_db가 자동으로 commit을 처리합니다)
     
     logger.info(f"User {current_user.email} successfully updated their password and will be logged out.")
     
-    # 3. 프론트엔드에 간단한 성공 메시지를 반환합니다.
+    # 2. 프론트엔드에 간단한 성공 메시지를 반환.
     return {"message": "비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요."}
 
 

@@ -1,7 +1,6 @@
 // file: frontend/src/app/api/revalidate-profile/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-// 👇 1. revalidatePath 대신 revalidateTag를 임포트
 import { revalidateTag } from "next/cache";
 
 export async function POST(request: NextRequest) {
