@@ -54,7 +54,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 cd backend
 .\venv\Scripts\activate
 docker-compose up -d
-# 4. FastAPI 웹 서버 실행 (Cortex 루트 경로에서)
 uvicorn main:app --reload
 ```
 
