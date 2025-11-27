@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { Lock, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -23,9 +23,9 @@ import {
   FormMessage,
 } from "@/components/ui/Form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
-import { Button } from "@/components/ui/Button";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { Separator } from "@/components/ui/Separator";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 // --- Props 타입 정의 ---
 interface TpslFormProps {
@@ -41,6 +41,9 @@ export function TpslForm({ form, onModeChange }: TpslFormProps) {
   const router = useRouter();
   const { isProOrTrader } = useUserSubscription();
   const [selectedMode, setSelectedMode] = useState<TpslMode>("percentage");
+
+  // 폼 값 감시 (체크박스 상태 동기화용)
+  const watchedValues = useWatch({ control: form.control });
 
   useEffect(() => {
     const initialValues = form.getValues();
@@ -58,13 +61,16 @@ export function TpslForm({ form, onModeChange }: TpslFormProps) {
     if (newMode === selectedMode) return;
     setSelectedMode(newMode);
     onModeChange(newMode);
+
+    // 모드 변경 시 값 초기화 로직은 유지하되,
+    // 체크박스 로직에 의해 null로 설정되므로 여기서는 모드 전환에 집중
     if (newMode === "atr") {
-      form.setValue("takeProfitPct", null, { shouldValidate: true });
-      form.setValue("stopLossPct", null, { shouldValidate: true });
+      form.setValue("takeProfitPct", null);
+      form.setValue("stopLossPct", null);
     } else if (newMode === "percentage") {
-      form.setValue("atrTakeProfitMultiplier", null, { shouldValidate: true });
-      form.setValue("atrStopLossMultiplier", null, { shouldValidate: true });
-      form.setValue("atrPeriod", null, { shouldValidate: true });
+      form.setValue("atrTakeProfitMultiplier", null);
+      form.setValue("atrStopLossMultiplier", null);
+      form.setValue("atrPeriod", null);
     }
   };
 
@@ -118,142 +124,244 @@ export function TpslForm({ form, onModeChange }: TpslFormProps) {
 
         <Separator />
 
-        {/* 변경: grid-cols-2를 grid-cols-[1fr_auto_1fr]로 수정하여 구분선 공간 확보 */}
         <div className="grid grid-cols-[1fr_auto_1fr] gap-x-8 gap-y-6 pt-4">
           {/* 1. 퍼센티지 기반 손익절 설정 UI */}
           <fieldset
             disabled={selectedMode !== "percentage"}
-            className="space-y-4 transition-opacity duration-300 disabled:opacity-50"
+            className="space-y-6 transition-opacity duration-300 disabled:opacity-50"
           >
             <h3 className="font-medium text-foreground">
               {t("percentageTab")}
             </h3>
+
+            {/* 익절 (Percentage) */}
             <FormField
               control={form.control}
               name="takeProfitPct"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("takeProfitPctLabel")}</FormLabel>
-                  <div className="flex items-center gap-2">
-                    <FormControl>
-                      <Input
-                        className="w-[50%]"
-                        type="number"
-                        step="0.1"
-                        placeholder={t("takeProfitPctPlaceholder")}
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || null)
-                        }
-                        value={field.value ?? ""}
+              render={({ field }) => {
+                const isEnabled =
+                  field.value !== null && field.value !== undefined;
+                return (
+                  <FormItem className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="use-tp-pct"
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            field.onChange(10); // 기본값 10%
+                          } else {
+                            field.onChange(null);
+                          }
+                        }}
                       />
-                    </FormControl>
-                    <span className="text-muted-foreground">
-                      {t("percentSymbol")}
-                    </span>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
+                      <FormLabel
+                        htmlFor="use-tp-pct"
+                        className="cursor-pointer font-normal"
+                      >
+                        {t("takeProfitPctLabel")} 사용
+                      </FormLabel>
+                    </div>
+                    <div className="flex items-center gap-2 pl-6">
+                      <FormControl>
+                        <Input
+                          className="w-[50%]"
+                          type="number"
+                          step="0.1"
+                          placeholder={t("takeProfitPctPlaceholder")}
+                          {...field}
+                          disabled={!isEnabled}
+                          onChange={(e) =>
+                            field.onChange(parseFloat(e.target.value) || null)
+                          }
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <span className="text-muted-foreground">
+                        {t("percentSymbol")}
+                      </span>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
+
+            {/* 손절 (Percentage) */}
             <FormField
               control={form.control}
               name="stopLossPct"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("stopLossPctLabel")}</FormLabel>
-                  <div className="flex items-center gap-2">
-                    <FormControl>
-                      <Input
-                        className="w-[50%]"
-                        type="number"
-                        step="0.1"
-                        placeholder={t("stopLossPctPlaceholder")}
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || null)
-                        }
-                        value={field.value ?? ""}
+              render={({ field }) => {
+                const isEnabled =
+                  field.value !== null && field.value !== undefined;
+                return (
+                  <FormItem className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="use-sl-pct"
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            field.onChange(5); // 기본값 5%
+                          } else {
+                            field.onChange(null);
+                          }
+                        }}
                       />
-                    </FormControl>
-                    <span className="text-muted-foreground">
-                      {t("percentSymbol")}
-                    </span>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
+                      <FormLabel
+                        htmlFor="use-sl-pct"
+                        className="cursor-pointer font-normal"
+                      >
+                        {t("stopLossPctLabel")} 사용
+                      </FormLabel>
+                    </div>
+                    <div className="flex items-center gap-2 pl-6">
+                      <FormControl>
+                        <Input
+                          className="w-[50%]"
+                          type="number"
+                          step="0.1"
+                          placeholder={t("stopLossPctPlaceholder")}
+                          {...field}
+                          disabled={!isEnabled}
+                          onChange={(e) =>
+                            field.onChange(parseFloat(e.target.value) || null)
+                          }
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <span className="text-muted-foreground">
+                        {t("percentSymbol")}
+                      </span>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </fieldset>
 
-          {/* 변경: 수직 구분선 추가 */}
           <Separator orientation="vertical" className="h-auto" />
 
           {/* 2. ATR 기반 손익절 설정 UI */}
           <div className="relative">
             <fieldset
               disabled={selectedMode !== "atr"}
-              className="space-y-4 transition-opacity duration-300 disabled:opacity-50"
+              className="space-y-6 transition-opacity duration-300 disabled:opacity-50"
             >
               <h3 className="font-medium text-foreground flex items-center gap-2">
                 {t("atrTab")}
               </h3>
+
+              {/* 익절 (ATR) */}
               <FormField
                 control={form.control}
                 name="atrTakeProfitMultiplier"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("atrTakeProfitLabel")}</FormLabel>
-                    <div className="flex items-center gap-2">
-                      <FormControl>
-                        <Input
-                          className="w-[50%]"
-                          type="number"
-                          step="0.1"
-                          placeholder={t("atrTakeProfitMultiplierPlaceholder")}
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || null)
-                          }
-                          value={field.value ?? ""}
+                render={({ field }) => {
+                  const isEnabled =
+                    field.value !== null && field.value !== undefined;
+                  return (
+                    <FormItem className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="use-tp-atr"
+                          checked={isEnabled}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange(3); // 기본값 3배
+                            } else {
+                              field.onChange(null);
+                            }
+                          }}
                         />
-                      </FormControl>
-                      <span className="text-muted-foreground">
-                        {t("atrMultiplierUnit")}
-                      </span>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                        <FormLabel
+                          htmlFor="use-tp-atr"
+                          className="cursor-pointer font-normal"
+                        >
+                          {t("atrTakeProfitLabel")} 사용
+                        </FormLabel>
+                      </div>
+                      <div className="flex items-center gap-2 pl-6">
+                        <FormControl>
+                          <Input
+                            className="w-[50%]"
+                            type="number"
+                            step="0.1"
+                            placeholder={t(
+                              "atrTakeProfitMultiplierPlaceholder"
+                            )}
+                            {...field}
+                            disabled={!isEnabled}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || null)
+                            }
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <span className="text-muted-foreground">
+                          {t("atrMultiplierUnit")}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
+
+              {/* 손절 (ATR) */}
               <FormField
                 control={form.control}
                 name="atrStopLossMultiplier"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("atrStopLossLabel")}</FormLabel>
-                    <div className="flex items-center gap-2">
-                      <FormControl>
-                        <Input
-                          className="w-[50%]"
-                          type="number"
-                          step="0.1"
-                          placeholder={t("atrStopLossMultiplierPlaceholder")}
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || null)
-                          }
-                          value={field.value ?? ""}
+                render={({ field }) => {
+                  const isEnabled =
+                    field.value !== null && field.value !== undefined;
+                  return (
+                    <FormItem className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="use-sl-atr"
+                          checked={isEnabled}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange(2); // 기본값 2배
+                            } else {
+                              field.onChange(null);
+                            }
+                          }}
                         />
-                      </FormControl>
-                      <span className="text-muted-foreground">
-                        {t("atrMultiplierUnit")}
-                      </span>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                        <FormLabel
+                          htmlFor="use-sl-atr"
+                          className="cursor-pointer font-normal"
+                        >
+                          {t("atrStopLossLabel")} 사용
+                        </FormLabel>
+                      </div>
+                      <div className="flex items-center gap-2 pl-6">
+                        <FormControl>
+                          <Input
+                            className="w-[50%]"
+                            type="number"
+                            step="0.1"
+                            placeholder={t("atrStopLossMultiplierPlaceholder")}
+                            {...field}
+                            disabled={!isEnabled}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || null)
+                            }
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <span className="text-muted-foreground">
+                          {t("atrMultiplierUnit")}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
+
+              {/* ATR Period (항상 표시하되, TP/SL 중 하나라도 켜져있을 때 유효) */}
               <FormField
                 control={form.control}
                 name="atrPeriod"
