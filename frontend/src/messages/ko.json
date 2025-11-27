@@ -1028,6 +1028,21 @@
     "confirmUnlist": "등록 취소 확인",
     "selling": "판매 중"
   },
+  "StrategySnapshotList": {
+    "title": "성과 스냅샷 (History)",
+    "description": "과거 백테스트 결과를 클릭하여 당시의 전략 설정을 불러올 수 있습니다.",
+    "noSnapshotError": "이 백테스트에는 저장된 전략 스냅샷이 없습니다.",
+    "restoreSuccess": "전략 설정이 해당 시점으로 복원되었습니다.",
+    "restoreError": "스냅샷을 불러오는 중 오류가 발생했습니다.",
+    "restoreButtonTooltip": "이 설정 불러오기",
+    "columns": {
+      "date": "날짜",
+      "return": "수익률",
+      "winRate": "승률",
+      "mdd": "MDD",
+      "action": "복원"
+    }
+  },
   "StrategyBacktestHistory": {
     "title": "이 전략의 최근 백테스트",
     "loadingBacktests": "백테스트 기록 불러오는 중...",

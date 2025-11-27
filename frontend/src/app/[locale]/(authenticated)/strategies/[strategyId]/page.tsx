@@ -69,6 +69,7 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { IndicatorMetadata } from "@/types/indicator";
 import { BackButton } from "@/components/ui/BackButton";
+import { StrategySnapshotList } from "@/components/domain/strategy/StrategySnapshotList";
 
 // --- 애니메이션 효과를 정의 ---
 const barVariants = {
@@ -554,6 +555,36 @@ export default function StrategyEditorPage({
     toast.info(t("form.changesCanceled"));
   };
 
+  const handleRestoreSnapshot = (snapshot: any) => {
+    // 1. 기본 정보 폼 복원
+    formMethods.reset({
+      name: snapshot.name,
+      description: snapshot.description,
+      isPublic: snapshot.isPublic,
+      takeProfitPct: snapshot.tpslLogic?.takeProfitPct,
+      stopLossPct: snapshot.tpslLogic?.stopLossPct,
+      atrStopLossMultiplier: snapshot.tpslLogic?.atrStopLossMultiplier,
+      atrTakeProfitMultiplier: snapshot.tpslLogic?.atrTakeProfitMultiplier,
+      atrPeriod: snapshot.tpslLogic?.atrPeriod,
+    });
+
+    // 2. 전략 로직 상태 복원 (Zustand)
+    strategyState.setStrategy({
+      longEntryRules: snapshot.longEntryRules,
+      longExitRules: snapshot.longExitRules,
+      shortEntryRules: snapshot.shortEntryRules,
+      shortExitRules: snapshot.shortExitRules,
+      targetCoins: snapshot.targetCoins,
+    });
+
+    // 3. TPSL 모드 상태 동기화
+    if (snapshot.tpslLogic?.atrPeriod) {
+      setTpslMode("atr");
+    } else {
+      setTpslMode("percentage");
+    }
+  };
+
   if (isEditMode && isLoadingStrategy) {
     return (
       <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
@@ -656,6 +687,14 @@ export default function StrategyEditorPage({
                       />
                     </CardContent>
                   </Card>
+
+                  {/* 성과 스냅샷 목록 */}
+                  {isEditMode && existingStrategy?.backtests && (
+                    <StrategySnapshotList
+                      backtests={existingStrategy.backtests}
+                      onRestore={handleRestoreSnapshot}
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col gap-8 lg:col-span-2">
                   <TargetCoinForm

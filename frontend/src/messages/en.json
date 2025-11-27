@@ -997,6 +997,21 @@
     "confirmUnlist": "Confirm Unlisting",
     "selling": "Selling"
   },
+  "StrategySnapshotList": {
+    "title": "Performance Snapshots",
+    "description": "Click on a past backtest result to restore its strategy settings.",
+    "noSnapshotError": "No strategy snapshot saved for this backtest.",
+    "restoreSuccess": "Strategy settings restored to this point.",
+    "restoreError": "Failed to load snapshot.",
+    "restoreButtonTooltip": "Restore this setting",
+    "columns": {
+      "date": "Date",
+      "return": "Return",
+      "winRate": "Win Rate",
+      "mdd": "MDD",
+      "action": "Action"
+    }
+  },
   "StrategyBacktestHistory": {
     "title": "Recent Backtests for This Strategy",
     "loadingBacktests": "Loading backtest history...",
