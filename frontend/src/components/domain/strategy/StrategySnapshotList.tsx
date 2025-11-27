@@ -61,6 +61,10 @@ export function StrategySnapshotList({
     return null;
   }
 
+  const sortedBacktests = [...backtests].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -71,7 +75,6 @@ export function StrategySnapshotList({
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        {/* [수정] 스크롤 적용: 최대 높이 300px, 세로 스크롤 허용 */}
         <div className="rounded-md border max-h-[300px] overflow-y-auto custom-scrollbar">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
@@ -90,7 +93,7 @@ export function StrategySnapshotList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {backtests.map((item) => (
+              {sortedBacktests.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="text-xs text-muted-foreground">
                     {format(new Date(item.createdAt), "yyyy-MM-dd HH:mm")}
