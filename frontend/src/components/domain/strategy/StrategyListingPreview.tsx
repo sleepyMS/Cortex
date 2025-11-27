@@ -80,13 +80,11 @@ export const StrategyListingPreview = ({
           control={control}
           name="representativeBacktestId"
           render={({ field }) => {
-            // ▼▼▼ [핵심 수정 1/2] ▼▼▼
             // 현재 선택된 백테스트의 ID(field.value)를 사용해
             // 전체 백테스트 객체를 찾습니다.
             const selectedBacktest = strategy.backtests?.find(
               (bt) => bt.id === field.value
             );
-            // ▲▲▲ [핵심 수정 1/2] ▲▲▲
 
             return (
               <FormItem>
@@ -98,7 +96,6 @@ export const StrategyListingPreview = ({
                   defaultValue={field.value}
                 >
                   <FormControl>
-                    {/* ▼▼▼ [핵심 수정 2/2] ▼▼▼ */}
                     <SelectTrigger className="h-auto text-left">
                       {/* 선택된 값이 있으면, 직접 만든 간결한 UI를 표시합니다. */}
                       {selectedBacktest ? (
@@ -127,10 +124,8 @@ export const StrategyListingPreview = ({
                         />
                       )}
                     </SelectTrigger>
-                    {/* ▲▲▲ [핵심 수정 2/2] ▲▲▲ */}
                   </FormControl>
-                  <SelectContent>
-                    {/* SelectContent 내부는 기존과 동일하게 유지 */}
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
                     {strategy.backtests?.length > 0 ? (
                       strategy.backtests.map((bt) => (
                         <SelectItem key={bt.id} value={bt.id}>
