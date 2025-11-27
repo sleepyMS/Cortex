@@ -451,11 +451,98 @@ class SignalService:
             
         return series
 
+    def _calculate_divergence(self, df: pd.DataFrame, indicator_col: str, price_col: str = 'close', order: int = 5):
+        """
+        [Standard] Calculate divergence using Peak/Trough detection (Fractal approach).
+        Detects Regular/Hidden Bullish/Bearish divergences.
+        
+        Args:
+            order (int): Number of candles on each side to confirm a peak. 
+                         Signal will be delayed by 'order' candles.
+        """
+        if indicator_col not in df.columns: return
+        
+        price = df[price_col]
+        ind = df[indicator_col]
+        
+        # 1. Helper to find local extrema (Peaks & Troughs)
+        def get_extrema(series, window):
+            # Check if current value is higher/lower than 'window' neighbors on both sides
+            is_max = pd.Series(True, index=series.index)
+            is_min = pd.Series(True, index=series.index)
+            
+            for i in range(1, window + 1):
+                # Shift(-i) is future data, so we must shift the final signal later
+                is_max &= (series > series.shift(i)) & (series > series.shift(-i))
+                is_min &= (series < series.shift(i)) & (series < series.shift(-i))
+            return is_max, is_min
+
+        # 2. Identify Peaks (Highs) and Troughs (Lows)
+        price_highs, price_lows = get_extrema(price, order)
+        
+        # 3. Calculate Divergence Logic
+        # We compare "Price at Current Peak" vs "Price at Previous Peak"
+        # And "Indicator at Current Peak" vs "Indicator at Previous Peak"
+        
+        def find_divergence(mask, mode):
+            signals = pd.Series(0, index=df.index)
+            
+            # Indices where extrema occur
+            # We use Price Extrema as the reference points
+            idxs = np.where(mask)[0]
+            
+            if len(idxs) < 2: return signals
+            
+            # Values at peaks
+            curr_p = price.iloc[idxs].values
+            curr_i = ind.iloc[idxs].values
+            
+            # Shift to get previous peak values
+            prev_p = np.roll(curr_p, 1)
+            prev_i = np.roll(curr_i, 1)
+            
+            # Ignore first element (invalid comparison)
+            valid = np.ones(len(idxs), dtype=bool)
+            valid[0] = False
+            
+            if mode == 'bullish': # Compare Lows (Troughs)
+                # Regular Bullish: Price Lower Low, Ind Higher Low
+                reg_bull = (curr_p < prev_p) & (curr_i > prev_i) & valid
+                # Hidden Bullish: Price Higher Low, Ind Lower Low
+                hid_bull = (curr_p > prev_p) & (curr_i < prev_i) & valid
+                
+                signals.iloc[idxs[reg_bull]] = 1
+                signals.iloc[idxs[hid_bull]] = 2
+                
+            elif mode == 'bearish': # Compare Highs (Peaks)
+                # Regular Bearish: Price Higher High, Ind Lower High
+                reg_bear = (curr_p > prev_p) & (curr_i < prev_i) & valid
+                # Hidden Bearish: Price Lower High, Ind Higher High
+                hid_bear = (curr_p < prev_p) & (curr_i > prev_i) & valid
+                
+                signals.iloc[idxs[reg_bear]] = -1
+                signals.iloc[idxs[hid_bear]] = -2
+                
+            return signals
+
+        # Calculate raw signals at the time of the peak
+        s_bull = find_divergence(price_lows, 'bullish')
+        s_bear = find_divergence(price_highs, 'bearish')
+        
+        # Combine signals
+        div_series = s_bull.add(s_bear, fill_value=0)
+        
+        # [CRITICAL] Shift signal by 'order' to prevent lookahead bias
+        # Because we used shift(-i) to find peaks, we only know it's a peak 'order' bars later.
+        div_series = div_series.shift(order).fillna(0)
+        
+        df[f"{indicator_col}_divergence"] = div_series
+
     def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
         """
         단일 LogicBlock을 평가하여 boolean Series를 반환합니다.
         """
-        parent_series = pd.Series(True, index=df.index)
+        parent_series = pd.Series(False, index=df.index)
         block_type = block.type
         
         if block_type == "comparison":
@@ -549,10 +636,18 @@ class SignalService:
             base_ind_col = self._get_indicator_column_name(df.columns, block.indicator)
             if base_ind_col:
                 divergence_col = f"{base_ind_col}_divergence"
+                
+                # 다이버전스 컬럼이 없으면 계산 로직 호출
+                if divergence_col not in df.columns:
+                    self._calculate_divergence(df, base_ind_col)
+                
                 if divergence_col in df.columns:
                     div_series = df[divergence_col]
-                    if block.divergence_type in ["bullish", "hidden_bullish"]: parent_series = div_series > 0
-                    elif block.divergence_type in ["bearish", "hidden_bearish"]: parent_series = div_series < 0
+                    # 1: Bullish, 2: Hidden Bullish, -1: Bearish, -2: Hidden Bearish
+                    if block.divergence_type == "bullish": parent_series = div_series == 1
+                    elif block.divergence_type == "hidden_bullish": parent_series = div_series == 2
+                    elif block.divergence_type == "bearish": parent_series = div_series == -1
+                    elif block.divergence_type == "hidden_bearish": parent_series = div_series == -2
         
         elif block_type == "pattern":
             pattern_col = f"cdl_{block.pattern_key.lower()}"
