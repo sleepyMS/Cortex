@@ -1,4 +1,4 @@
-// file: frontend/src/app/[locale]]/strategies/[strategyId]/page.tsx
+// file: frontend/src/app/[locale]]/(authenticated)/strategies/[strategyId]/page.tsx
 
 "use client";
 

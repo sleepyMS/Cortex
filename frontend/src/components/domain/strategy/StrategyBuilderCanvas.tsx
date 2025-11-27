@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import clsx from "clsx";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Maximize2, Minimize2 } from "lucide-react";
 
 import {
   LogicBlock,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { RuleBlock } from "./RuleBlock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 
+// ... (인터페이스 정의는 기존과 동일하게 유지) ...
 interface StrategyBuilderCanvasProps {
   longEntryRules: PositionRules | null;
   longExitRules: PositionRules | null;
@@ -39,7 +40,8 @@ interface StrategyBuilderCanvasProps {
   onDeleteRule: (ruleType: StrategyType, id: string) => void;
 }
 
-// --- 재귀 렌더러 ---
+// ... (RecursiveRuleRenderer 컴포넌트도 기존과 동일하게 유지) ...
+// (지면 관계상 생략했습니다. 기존 코드를 그대로 두시면 됩니다.)
 interface RecursiveRuleRendererProps {
   items: LogicBlock[];
   ruleType: StrategyType;
@@ -108,19 +110,23 @@ function RecursiveRuleRenderer({
   );
 }
 
-// --- 메인 캔버스 컴포넌트 ---
 export function StrategyBuilderCanvas({
   longEntryRules,
   longExitRules,
   shortEntryRules,
   shortExitRules,
-  onAddTopLevelRule, // 👈 2. props 이름 변경
+  onAddTopLevelRule,
   onTriggerNestedAddRule,
   onTriggerOperandHub,
   onUpdateRule,
   onDeleteRule,
 }: StrategyBuilderCanvasProps) {
   const t = useTranslations("StrategyBuilder");
+
+  // [추가] 현재 확대된 섹션을 추적하는 상태
+  const [focusedSection, setFocusedSection] = useState<StrategyType | null>(
+    null
+  );
 
   const sections: {
     titleKey: string;
@@ -154,55 +160,94 @@ export function StrategyBuilderCanvas({
     },
   ];
 
+  const handleToggleFocus = (ruleType: StrategyType) => {
+    setFocusedSection((prev) => (prev === ruleType ? null : ruleType));
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-      {sections.map(({ titleKey, rules, ruleType, color }) => (
-        <Card key={ruleType} className={clsx("transition-colors", color)}>
-          <CardHeader className="flex-row items-center justify-between">
-            {/* @ts-expect-error */}
-            <CardTitle>{t(titleKey)}</CardTitle>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onAddTopLevelRule(ruleType)} // 👈 3. 호출하는 함수 이름 변경
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {t("addTopLevelCondition")}
-            </Button>
-          </CardHeader>
-          <CardContent className="min-h-[200px]">
-            {!rules || rules.blocks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <p className="mb-4">{t("noConditionsYet")}</p>
+    <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 transition-all duration-500 ease-in-out">
+      {sections.map(({ titleKey, rules, ruleType, color }) => {
+        const isFocused = focusedSection === ruleType;
+
+        return (
+          <Card
+            key={ruleType}
+            className={clsx(
+              "transition-all duration-300 ease-in-out",
+              color,
+              // [수정] 확대 시 전체 너비(col-span-2) 차지 및 순서 최상단(order-first) 이동
+              isFocused
+                ? "xl:col-span-2 order-first shadow-lg ring-2 ring-primary/20"
+                : ""
+            )}
+          >
+            <CardHeader className="flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                {/* @ts-expect-error */}
+                <CardTitle>{t(titleKey)}</CardTitle>
                 <Button
                   type="button"
-                  variant="secondary"
-                  onClick={() => onAddTopLevelRule(ruleType)} // 👈 4. 호출하는 함수 이름 변경
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleToggleFocus(ruleType)}
+                  title={isFocused ? "축소" : "확대"}
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  {t("addFirstCondition")}
+                  {isFocused ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
-            ) : (
-              <RecursiveRuleRenderer
-                items={rules.blocks}
-                ruleType={ruleType}
-                onUpdateRule={(id, newBlock) =>
-                  onUpdateRule(ruleType, id, newBlock)
-                }
-                onDeleteRule={(id) => onDeleteRule(ruleType, id)}
-                onTriggerNestedAddRule={(parentId, as) =>
-                  onTriggerNestedAddRule(ruleType, parentId, as)
-                }
-                onTriggerOperandHub={(blockId, operandKey) =>
-                  onTriggerOperandHub(ruleType, blockId, operandKey)
-                }
-              />
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onAddTopLevelRule(ruleType)}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t("addTopLevelCondition")}
+              </Button>
+            </CardHeader>
+            <CardContent
+              className={clsx(
+                "transition-all duration-300",
+                isFocused ? "min-h-[400px]" : "min-h-[200px]"
+              )}
+            >
+              {!rules || rules.blocks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-8">
+                  <p className="mb-4">{t("noConditionsYet")}</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => onAddTopLevelRule(ruleType)}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    {t("addFirstCondition")}
+                  </Button>
+                </div>
+              ) : (
+                <RecursiveRuleRenderer
+                  items={rules.blocks}
+                  ruleType={ruleType}
+                  onUpdateRule={(id, newBlock) =>
+                    onUpdateRule(ruleType, id, newBlock)
+                  }
+                  onDeleteRule={(id) => onDeleteRule(ruleType, id)}
+                  onTriggerNestedAddRule={(parentId, as) =>
+                    onTriggerNestedAddRule(ruleType, parentId, as)
+                  }
+                  onTriggerOperandHub={(blockId, operandKey) =>
+                    onTriggerOperandHub(ruleType, blockId, operandKey)
+                  }
+                />
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
