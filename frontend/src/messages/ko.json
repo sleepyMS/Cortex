@@ -1035,6 +1035,7 @@
     "restoreSuccess": "전략 설정이 해당 시점으로 복원되었습니다.",
     "restoreError": "스냅샷을 불러오는 중 오류가 발생했습니다.",
     "restoreButtonTooltip": "이 설정 불러오기",
+    "emptyState": "저장된 성과 스냅샷이 없습니다.",
     "columns": {
       "date": "날짜",
       "return": "수익률",

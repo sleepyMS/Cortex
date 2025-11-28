@@ -1004,6 +1004,7 @@
     "restoreSuccess": "Strategy settings restored to this point.",
     "restoreError": "Failed to load snapshot.",
     "restoreButtonTooltip": "Restore this setting",
+    "emptyState": "No snapshots available.",
     "columns": {
       "date": "Date",
       "return": "Return",

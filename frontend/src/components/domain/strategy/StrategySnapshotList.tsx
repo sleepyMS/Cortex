@@ -57,9 +57,9 @@ export function StrategySnapshotList({
     }
   };
 
-  if (!backtests || backtests.length === 0) {
-    return null;
-  }
+  // if (!backtests || backtests.length === 0) {
+  //   return null;
+  // }
 
   const sortedBacktests = [...backtests].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -75,7 +75,7 @@ export function StrategySnapshotList({
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border max-h-[300px] overflow-y-auto custom-scrollbar">
+        <div className="rounded-md border h-[300px] overflow-y-auto custom-scrollbar relative">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
@@ -93,45 +93,56 @@ export function StrategySnapshotList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedBacktests.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {format(new Date(item.createdAt), "yyyy-MM-dd HH:mm")}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    <span
-                      className={
-                        (item.result?.totalReturnPct || 0) >= 0
-                          ? "text-green-500"
-                          : "text-red-500"
-                      }
-                    >
-                      {item.result?.totalReturnPct?.toFixed(2)}%
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {item.result?.winRatePct?.toFixed(1)}%
-                  </TableCell>
-                  <TableCell className="text-right text-red-400">
-                    {item.result?.mddPct?.toFixed(2)}%
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRestore(item.id)}
-                      disabled={loadingId === item.id}
-                      title={t("restoreButtonTooltip")}
-                    >
-                      {loadingId === item.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                      )}
-                    </Button>
+              {sortedBacktests.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="h-[200px] text-center text-muted-foreground"
+                  >
+                    {t("emptyState")}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                sortedBacktests.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {format(new Date(item.createdAt), "yyyy-MM-dd HH:mm")}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      <span
+                        className={
+                          (item.result?.totalReturnPct || 0) >= 0
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }
+                      >
+                        {item.result?.totalReturnPct?.toFixed(2)}%
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.result?.winRatePct?.toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-right text-red-400">
+                      {item.result?.mddPct?.toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRestore(item.id)}
+                        disabled={loadingId === item.id}
+                        title={t("restoreButtonTooltip")}
+                      >
+                        {loadingId === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
