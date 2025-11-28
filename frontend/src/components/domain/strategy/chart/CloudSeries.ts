@@ -110,10 +110,6 @@ class CloudSeriesRenderer implements ICustomSeriesPaneRenderer {
       drawnCount++;
     }
 
-    if (drawnCount > 0) {
-      console.log("[CloudSeries] Drew", drawnCount, "cloud segments");
-    }
-
     ctx.restore();
   }
 
@@ -151,7 +147,6 @@ class CloudSeriesPaneView
       });
 
       this._renderer.update(bars);
-      console.log("[CloudSeries] Updated with", bars.length, "bars");
     } else {
       this._renderer.update([]);
     }

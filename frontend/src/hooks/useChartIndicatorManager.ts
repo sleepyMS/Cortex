@@ -457,7 +457,6 @@ export function useChartIndicatorManager({
           // Add cloud series
           let cloudSeries = indicatorState.series.get(cloudKey);
           if (!cloudSeries) {
-            console.log("[BB] Creating new CloudSeries");
             cloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
               cloudColor,
               priceLineVisible: false,
@@ -465,12 +464,6 @@ export function useChartIndicatorManager({
             });
             indicatorState.series.set(cloudKey, cloudSeries);
           }
-          console.log(
-            "[BB] Setting cloud data with",
-            cloudData.length,
-            "points"
-          );
-          console.log("[BB] First cloud point:", cloudData[0]);
           cloudSeries.setData(cloudData as any);
 
           // Add upper band line
