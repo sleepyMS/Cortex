@@ -390,14 +390,14 @@ function StrategiesPageContent() {
     <>
       {/* Split view layout */}
       {isSplitView ? (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex min-h-screen">
           {/* Left sidebar - Strategy list (hidden on mobile) */}
           <motion.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: "30%", opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden"
+            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
           >
             <div className="flex-shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
               <h2 className="text-base font-semibold text-foreground">
@@ -447,7 +447,7 @@ function StrategiesPageContent() {
             animate={{ width: isSplitView ? "70%" : "100%", opacity: 1 }}
             exit={{ width: "100%", opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="flex-1 overflow-hidden"
+            className="flex-1 overflow-y-auto"
           >
             <StrategyEditorPanel
               strategyId={editStrategyId}

@@ -606,7 +606,7 @@ export function StrategyEditorPanel({
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="min-h-screen flex flex-col">
       <IndicatorHub
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
@@ -639,7 +639,7 @@ export function StrategyEditorPanel({
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         <div className="p-6">
           <FormProvider {...formMethods}>
             <form
@@ -832,7 +832,7 @@ export function StrategyEditorPanel({
       <AnimatePresence>
         {isDirty && (
           <motion.div
-            className="sticky bottom-0 inset-x-0 flex justify-center z-20 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+            className="fixed bottom-0 inset-x-0 flex justify-center z-20 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
             variants={barVariants}
             initial="hidden"
             animate="visible"
