@@ -690,9 +690,10 @@ export function useChartIndicatorManager({
             (d) => d.value != null
           );
 
-          // Create cloud data with dynamic colors
-          const cloudKey = `${baseKey}_cloud`;
-          const cloudData: CloudData[] = [];
+          // Create separate cloud data for bullish and bearish clouds
+          const bullishCloudData: CloudData[] = [];
+          const bearishCloudData: CloudData[] = [];
+
           const isaMap = new Map(
             isaData.map((d) => [timeToSeconds(d.time), d.value])
           );
@@ -705,26 +706,58 @@ export function useChartIndicatorManager({
             const a = isaMap.get(time);
             const b = isbMap.get(time);
             if (a !== undefined && b !== undefined) {
-              cloudData.push({
+              const cloudPoint = {
                 time: time as UTCTimestamp,
                 upperValue: Math.max(a, b),
                 lowerValue: Math.min(a, b),
-                color: a > b ? bullishCloudColor : bearishCloudColor, // Dynamic color
-              });
+              };
+
+              if (a > b) {
+                bullishCloudData.push({
+                  ...cloudPoint,
+                  color: bullishCloudColor,
+                });
+              } else {
+                bearishCloudData.push({
+                  ...cloudPoint,
+                  color: bearishCloudColor,
+                });
+              }
             }
           });
 
-          // Add cloud series
-          let cloudSeries = indicatorState.series.get(cloudKey);
-          if (!cloudSeries) {
-            cloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
-              cloudColor: bullishCloudColor, // Default color
+          console.log(
+            "[Ichimoku] Bullish cloud points:",
+            bullishCloudData.length,
+            "Bearish cloud points:",
+            bearishCloudData.length
+          );
+
+          // Add bullish cloud series (green)
+          const bullishCloudKey = `${baseKey}_cloud_bullish`;
+          let bullishCloudSeries = indicatorState.series.get(bullishCloudKey);
+          if (!bullishCloudSeries) {
+            bullishCloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
+              cloudColor: bullishCloudColor,
               priceLineVisible: false,
               lastValueVisible: false,
             });
-            indicatorState.series.set(cloudKey, cloudSeries);
+            indicatorState.series.set(bullishCloudKey, bullishCloudSeries);
           }
-          cloudSeries.setData(cloudData as any);
+          bullishCloudSeries.setData(bullishCloudData as any);
+
+          // Add bearish cloud series (red)
+          const bearishCloudKey = `${baseKey}_cloud_bearish`;
+          let bearishCloudSeries = indicatorState.series.get(bearishCloudKey);
+          if (!bearishCloudSeries) {
+            bearishCloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
+              cloudColor: bearishCloudColor,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(bearishCloudKey, bearishCloudSeries);
+          }
+          bearishCloudSeries.setData(bearishCloudData as any);
 
           // Add 5 lines
           const allLines = [
