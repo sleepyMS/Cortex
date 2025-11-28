@@ -931,6 +931,8 @@
     "upperChannel": "상단 채널",
     "middleChannel": "중간 채널",
     "lowerChannel": "하단 채널",
+    "cloudTop": "구름대 상단",
+    "cloudBottom": "구름대 하단",
     "kumoCloud": "구름대",
     "enterChannel": "진입",
     "exitChannel": "이탈",

@@ -900,6 +900,8 @@
     "upperChannel": "Upper Channel",
     "middleChannel": "Middle Channel",
     "lowerChannel": "Lower Channel",
+    "cloudTop": "Cloud Top",
+    "cloudBottom": "Cloud Bottom",
     "kumoCloud": "Kumo Cloud",
     "enterChannel": "Enters",
     "exitChannel": "Exits",

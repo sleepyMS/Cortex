@@ -371,8 +371,16 @@ export function RuleBlock({
           <SelectValue placeholder={t("selectChannelZone")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="upper">{t("upperChannel")}</SelectItem>
-          <SelectItem value="lower">{t("lowerChannel")}</SelectItem>
+          <SelectItem value="upper">
+            {logic.indicator?.indicatorKey === "Ichimoku"
+              ? t("cloudTop")
+              : t("upperChannel")}
+          </SelectItem>
+          <SelectItem value="lower">
+            {logic.indicator?.indicatorKey === "Ichimoku"
+              ? t("cloudBottom")
+              : t("lowerChannel")}
+          </SelectItem>
           <SelectItem value="kumo">{t("kumoCloud")}</SelectItem>
         </SelectContent>
       </Select>
