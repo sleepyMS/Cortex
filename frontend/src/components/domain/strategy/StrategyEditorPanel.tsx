@@ -1,5 +1,4 @@
-// file: frontend/src/app/[locale]]/(authenticated)/strategies/[strategyId]/page.tsx
-
+// frontend/src/components/domain/strategy/StrategyEditorPanel.tsx
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,11 +10,10 @@ import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
-import { Loader2, Save, ArrowLeft, X } from "lucide-react";
+import { Loader2, Save, X, ArrowLeft } from "lucide-react";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
-import { useRouter as useNextRouter } from "next/navigation";
 
-// --- 커스텀 훅, 타입, 유틸리티 임포트 ---
+// --- Custom hooks, types, utilities ---
 import { useStrategyState } from "@/hooks/useStrategyState";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import {
@@ -33,7 +31,7 @@ import { OHLCVData, SignalData } from "@/types/market";
 import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
 import apiClient from "@/lib/apiClient";
 
-// --- UI 및 도메인 컴포넌트 임포트 ---
+// --- UI and domain components ---
 import DynamicStrategyChart from "@/components/domain/strategy/DynamicStrategyChart";
 import { IndicatorHub } from "@/components/domain/strategy/IndicatorHub";
 import { StrategyBuilderCanvas } from "@/components/domain/strategy/StrategyBuilderCanvas";
@@ -69,10 +67,9 @@ import {
 } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { IndicatorMetadata } from "@/types/indicator";
-import { BackButton } from "@/components/ui/BackButton";
 import { StrategySnapshotList } from "@/components/domain/strategy/StrategySnapshotList";
 
-// --- 애니메이션 효과를 정의 ---
+// --- Animation variants ---
 const barVariants = {
   hidden: { y: 60, opacity: 0 },
   visible: {
@@ -83,7 +80,7 @@ const barVariants = {
   exit: { y: 60, opacity: 0 },
 } as const;
 
-// --- Zod 폼 스키마 정의 ---
+// --- Zod form schema ---
 const formSchema = z.object({
   name: z
     .string()
@@ -104,7 +101,7 @@ const formSchema = z.object({
 
 type StrategyFormValues = z.infer<typeof formSchema>;
 
-// --- API 페이로드 타입 정의 ---
+// --- API payload type ---
 interface StrategyPayload {
   name: string;
   description: string | null | undefined;
@@ -117,7 +114,7 @@ interface StrategyPayload {
   targetCoins: TargetCoin[];
 }
 
-// --- API 호출 헬퍼 함수 ---
+// --- API helper functions ---
 const fetchStrategy = async (id: string): Promise<Strategy> => {
   const { data } = await apiClient.get(`/strategies/${id}`);
   return data;
@@ -173,35 +170,23 @@ const fetchSignalData = async (
   return data;
 };
 
-// --- 메인 페이지 컴포넌트 ---
+// --- Props ---
+interface StrategyEditorPanelProps {
+  strategyId: string | null; // null for create mode
+  onClose: () => void;
+}
 
-// 1. Props 타입을 명확하게 정의합니다.
-type StrategyEditorPageProps = {
-  params: {
-    strategyId: string;
-  };
-};
-
-// 2. 정의한 타입을 컴포넌트에 적용합니다.
-export default function StrategyEditorPage({
-  params,
-}: StrategyEditorPageProps) {
+// --- Main component ---
+export function StrategyEditorPanel({
+  strategyId,
+  onClose,
+}: StrategyEditorPanelProps) {
   const t = useTranslations("StrategyBuilder");
+  const tPage = useTranslations("StrategiesPage");
   const router = useRouter();
-  const nextRouter = useNextRouter();
   const queryClient = useQueryClient();
 
-  const strategyId = params.strategyId === "new" ? null : params.strategyId;
   const isEditMode = !!strategyId;
-
-  // Redirect to new split view URL for backward compatibility
-  useEffect(() => {
-    if (strategyId) {
-      nextRouter.replace(`/strategies?edit=${strategyId}`);
-    } else {
-      nextRouter.replace(`/strategies?create=true`);
-    }
-  }, [strategyId, nextRouter]);
 
   const strategyState = useStrategyState();
   const { allowedTimeframes } = useUserSubscription();
@@ -302,11 +287,9 @@ export default function StrategyEditorPage({
   }, [isEditMode, strategyState.reset, formMethods.reset]);
 
   /**
-   * 컴포넌트가 화면에서 사라질 때 Zustand 상태를 초기화하는 클린업 함수
+   * Cleanup function to reset Zustand state when component unmounts
    */
   useEffect(() => {
-    // 이 Effect는 컴포넌트가 처음 마운트될 때 한 번만 실행됩니다.
-    // 반환되는 함수는 컴포넌트가 언마운트될 때(페이지를 벗어날 때) 호출됩니다.
     return () => {
       strategyState.reset();
     };
@@ -364,7 +347,6 @@ export default function StrategyEditorPage({
     };
   }, [currentRules]);
 
-  // Use debouncedRules instead of strategyState
   const indicatorConfigs = useMemo(
     () =>
       parseRulesForIndicators({
@@ -381,7 +363,6 @@ export default function StrategyEditorPage({
     ]
   );
 
-  // Fetch indicators using the debounced configs
   const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
     queryFn: ({ signal }) =>
@@ -515,7 +496,7 @@ export default function StrategyEditorPage({
       );
       queryClient.invalidateQueries({ queryKey: ["userStrategies"] });
       queryClient.invalidateQueries({ queryKey: ["strategy", strategyId] });
-      router.push("/strategies");
+      onClose();
     },
     onError: (error: any) => {
       toast.error(
@@ -567,7 +548,6 @@ export default function StrategyEditorPage({
   };
 
   const handleRestoreSnapshot = (snapshot: any) => {
-    // 1. 기본 정보 폼 복원
     formMethods.reset({
       name: snapshot.name,
       description: snapshot.description,
@@ -579,7 +559,6 @@ export default function StrategyEditorPage({
       atrPeriod: snapshot.tpslLogic?.atrPeriod,
     });
 
-    // 2. 전략 로직 상태 복원 (Zustand)
     strategyState.setStrategy({
       longEntryRules: snapshot.longEntryRules,
       longExitRules: snapshot.longExitRules,
@@ -588,7 +567,6 @@ export default function StrategyEditorPage({
       targetCoins: snapshot.targetCoins,
     });
 
-    // 3. TPSL 모드 상태 동기화
     if (snapshot.tpslLogic?.atrPeriod) {
       setTpslMode("atr");
     } else {
@@ -596,248 +574,276 @@ export default function StrategyEditorPage({
     }
   };
 
+  const handleClose = () => {
+    if (isDirty) {
+      if (confirm(tPage("splitView.confirmClose"))) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  // Keyboard shortcut: Esc to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDirty, onClose]);
+
   if (isEditMode && isLoadingStrategy) {
     return (
-      <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-4 text-muted-foreground">Loading strategy data...</p>
-        </div>
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground">Loading strategy data...</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="h-full flex flex-col overflow-hidden">
       <IndicatorHub
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
         selectionMode={hubSelectionMode}
       />
-      <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        <FormProvider {...formMethods}>
-          <form
-            onSubmit={formMethods.handleSubmit(onSubmit)}
-            className="space-y-8"
-          >
-            <div className="space-y-8">
-              <div className="flex items-center justify-center relative">
-                <div className="absolute left-0">
-                  <BackButton />
-                </div>
-                <div className="text-center">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                    {isEditMode ? t("editTitle") : t("title")}
-                  </h1>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-                <div className="flex flex-col gap-8 lg:col-span-3">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t("form.basicInfoTitle")}</CardTitle>
-                      <CardDescription>
-                        {t("form.basicInfoDescription")}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <FormField
-                        control={formMethods.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t("form.nameLabel")}</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder={t("form.namePlaceholder")}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={formMethods.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t("form.descriptionLabel")}</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder={t("form.descriptionPlaceholder")}
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={formMethods.control}
-                        name="isPublic"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                              <FormLabel>{t("form.isPublicLabel")}</FormLabel>
-                              <FormDescription>
-                                {t("form.isPublicDescription")}
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </CardContent>
-                  </Card>
+      {/* Header with close button */}
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClose}
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">
+                {isEditMode ? t("editTitle") : t("title")}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {tPage("splitView.keyboardShortcut")}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                  {/* 성과 스냅샷 목록 */}
-                  {isEditMode && existingStrategy?.backtests && (
-                    <StrategySnapshotList
-                      backtests={existingStrategy.backtests}
-                      onRestore={handleRestoreSnapshot}
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6">
+          <FormProvider {...formMethods}>
+            <form
+              onSubmit={formMethods.handleSubmit(onSubmit)}
+              className="space-y-8"
+            >
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+                  <div className="flex flex-col gap-8 lg:col-span-3">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{t("form.basicInfoTitle")}</CardTitle>
+                        <CardDescription>
+                          {t("form.basicInfoDescription")}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <FormField
+                          control={formMethods.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t("form.nameLabel")}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder={t("form.namePlaceholder")}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={formMethods.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {t("form.descriptionLabel")}
+                              </FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder={t("form.descriptionPlaceholder")}
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={formMethods.control}
+                          name="isPublic"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>{t("form.isPublicLabel")}</FormLabel>
+                                <FormDescription>
+                                  {t("form.isPublicDescription")}
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {isEditMode && existingStrategy?.backtests && (
+                      <StrategySnapshotList
+                        backtests={existingStrategy.backtests}
+                        onRestore={handleRestoreSnapshot}
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-8 lg:col-span-2">
+                    <TargetCoinForm
+                      targetCoins={strategyState.targetCoins}
+                      setTargetCoins={strategyState.setTargetCoins}
                     />
-                  )}
-                </div>
-                <div className="flex flex-col gap-8 lg:col-span-2">
-                  <TargetCoinForm
-                    targetCoins={strategyState.targetCoins}
-                    setTargetCoins={strategyState.setTargetCoins}
-                  />
-                  <TpslForm form={formMethods} onModeChange={setTpslMode} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                  <h2 className="text-2xl font-bold text-foreground">
-                    {t("chartTitle")}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={chartTicker}
-                      onValueChange={setChartTicker}
-                      disabled={strategyState.targetCoins.length === 0}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select a coin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {strategyState.targetCoins.map((coin) => (
-                          <SelectItem key={coin.ticker} value={coin.ticker}>
-                            {coin.ticker}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center p-1 rounded-md bg-muted">
-                      {["15m", "1h", "4h", "1d"].map((tf) => (
-                        <Button
-                          key={tf}
-                          type="button"
-                          variant={chartTimeframe === tf ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => setChartTimeframe(tf)}
-                          className="h-8 px-3"
-                        >
-                          {tf}
-                        </Button>
-                      ))}
-                    </div>
+                    <TpslForm form={formMethods} onModeChange={setTpslMode} />
                   </div>
                 </div>
 
-                <div className="relative">
-                  {isLoadingOHLCV ? (
-                    <Skeleton className="w-full h-[400px] rounded-lg" />
-                  ) : isError ? (
-                    <div className="w-full h-[400px] rounded-lg border bg-destructive/10 flex items-center justify-center text-destructive font-semibold">
-                      Chart data could not be loaded. (
-                      {(error as Error).message})
+                <Separator />
+
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h2 className="text-2xl font-bold text-foreground">
+                      {t("chartTitle")}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={chartTicker}
+                        onValueChange={setChartTicker}
+                        disabled={strategyState.targetCoins.length === 0}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select a coin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {strategyState.targetCoins.map((coin) => (
+                            <SelectItem key={coin.ticker} value={coin.ticker}>
+                              {coin.ticker}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center p-1 rounded-md bg-muted">
+                        {["15m", "1h", "4h", "1d"].map((tf) => (
+                          <Button
+                            key={tf}
+                            type="button"
+                            variant={
+                              chartTimeframe === tf ? "primary" : "ghost"
+                            }
+                            size="sm"
+                            onClick={() => setChartTimeframe(tf)}
+                            className="h-8 px-3"
+                          >
+                            {tf}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
-                  ) : (
-                    <DynamicStrategyChart
-                      rules={{
-                        longEntry: strategyState.longEntryRules,
-                        longExit: strategyState.longExitRules,
-                        shortEntry: strategyState.shortEntryRules,
-                        shortExit: strategyState.shortExitRules,
-                      }}
-                      ohlcvData={ohlcvData}
-                      indicatorData={indicatorData}
-                      isLoadingIndicators={isLoadingIndicators}
-                      signalData={signalData}
-                      isLoadingSignals={isLoadingSignals}
-                    />
-                  )}
+                  </div>
+
+                  <div className="relative">
+                    {isLoadingOHLCV ? (
+                      <Skeleton className="w-full h-[400px] rounded-lg" />
+                    ) : isError ? (
+                      <div className="w-full h-[400px] rounded-lg border bg-destructive/10 flex items-center justify-center text-destructive font-semibold">
+                        Chart data could not be loaded. (
+                        {(error as Error).message})
+                      </div>
+                    ) : (
+                      <DynamicStrategyChart
+                        rules={{
+                          longEntry: strategyState.longEntryRules,
+                          longExit: strategyState.longExitRules,
+                          shortEntry: strategyState.shortEntryRules,
+                          shortExit: strategyState.shortExitRules,
+                        }}
+                        ohlcvData={ohlcvData}
+                        indicatorData={indicatorData}
+                        isLoadingIndicators={isLoadingIndicators}
+                        signalData={signalData}
+                        isLoadingSignals={isLoadingSignals}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h2 className="mb-4 text-2xl font-bold text-foreground">
+                    {t("rulesTitle")}
+                  </h2>
+                  <StrategyBuilderCanvas
+                    longEntryRules={strategyState.longEntryRules}
+                    longExitRules={strategyState.longExitRules}
+                    shortEntryRules={strategyState.shortEntryRules}
+                    shortExitRules={strategyState.shortExitRules}
+                    onAddTopLevelRule={handleAddTopLevelRule}
+                    onTriggerNestedAddRule={handleTriggerNestedAddRule}
+                    onTriggerOperandHub={handleTriggerOperandHub}
+                    onUpdateRule={(ruleType, id, newBlock) =>
+                      strategyState.updateRule(ruleType, id, newBlock)
+                    }
+                    onDeleteRule={(ruleType, id) =>
+                      strategyState.deleteRule(ruleType, id)
+                    }
+                  />
                 </div>
               </div>
-
-              <Separator />
-
-              <div>
-                <h2 className="mb-4 text-2xl font-bold text-foreground">
-                  {t("rulesTitle")}
-                </h2>
-                <StrategyBuilderCanvas
-                  longEntryRules={strategyState.longEntryRules}
-                  longExitRules={strategyState.longExitRules}
-                  shortEntryRules={strategyState.shortEntryRules}
-                  shortExitRules={strategyState.shortExitRules}
-                  onAddTopLevelRule={handleAddTopLevelRule}
-                  onTriggerNestedAddRule={handleTriggerNestedAddRule}
-                  onTriggerOperandHub={handleTriggerOperandHub}
-                  onUpdateRule={(ruleType, id, newBlock) =>
-                    strategyState.updateRule(ruleType, id, newBlock)
-                  }
-                  onDeleteRule={(ruleType, id) =>
-                    strategyState.deleteRule(ruleType, id)
-                  }
-                />
-              </div>
-            </div>
-          </form>
-        </FormProvider>
+            </form>
+          </FormProvider>
+        </div>
       </div>
+
+      {/* Floating save bar */}
       <AnimatePresence>
         {isDirty && (
           <motion.div
-            className="sticky bottom-4 inset-x-0 flex justify-center z-10 px-4"
+            className="sticky bottom-0 inset-x-0 flex justify-center z-20 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
             variants={barVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
-            {/* ✅ [수정] justify-between 제거, 일반 flex 컨테이너로 변경 */}
-            <div className="w-full max-w-7xl p-3 sm:p-4 bg-background/80 backdrop-blur-lg border rounded-lg shadow-2xl flex items-center gap-4">
+            <div className="w-full max-w-7xl flex items-center justify-between gap-4">
               <motion.span className="text-sm font-semibold text-foreground hidden sm:inline flex-shrink-0">
                 {t("form.unsavedChanges")}
               </motion.span>
 
-              {/* ✅ [수정] ml-auto 클래스를 추가하여 버튼 그룹을 항상 오른쪽으로 밀어냅니다. */}
               <div className="flex items-center justify-end gap-2 ml-auto">
-                {/* '뒤로가기' 버튼: sm 사이즈 이상에서만 보이도록 유지 */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.back()}
-                  className="hidden sm:inline-flex"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  {t("form.goBackButton")}
-                </Button>
-
-                {/* '취소'와 '저장' 버튼 */}
                 <Button
                   type="button"
                   variant="ghost"

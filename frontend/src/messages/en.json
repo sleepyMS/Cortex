@@ -971,6 +971,12 @@
     "view": {
       "list": "List View",
       "card": "Card View"
+    },
+    "splitView": {
+      "closeEditor": "Close Editor",
+      "unsavedChanges": "You have unsaved changes",
+      "keyboardShortcut": "Press Esc to close",
+      "confirmClose": "Close without saving changes?"
     }
   },
   "StrategyCard": {

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -12,6 +12,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { useSearchParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 import apiClient from "@/lib/apiClient";
 import { Strategy } from "@/types/strategy";
@@ -45,6 +47,7 @@ import { PlusCircle, List, LayoutGrid } from "lucide-react";
 import { StrategyCard } from "@/components/domain/strategy/StrategyCard";
 import { StrategyListingForm } from "@/components/domain/strategy/StrategyListingForm";
 import { StrategyListingPreview } from "@/components/domain/strategy/StrategyListingPreview";
+import { StrategyEditorPanel } from "@/components/domain/strategy/StrategyEditorPanel";
 
 // --- 설정값 및 Zod 스키마 (페이지 레벨에서 관리) ---
 const KEY_INDICATORS = [
@@ -119,8 +122,10 @@ const EmptyState = () => {
 };
 
 // --- Main Page Component ---
-export default function StrategiesPage() {
+function StrategiesPageContent() {
   const t = useTranslations("StrategiesPage");
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   // --- 상태 관리 ---
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -354,211 +359,337 @@ export default function StrategiesPage() {
     }
   };
 
+  // --- Split view logic ---
+  const editStrategyId = searchParams.get("edit");
+  const isCreating = searchParams.get("create") === "true";
+  const isSplitView = !!(editStrategyId || isCreating);
+
+  const handleCloseEditor = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("edit");
+    params.delete("create");
+    router.push(`/strategies?${params.toString()}`);
+  };
+
+  const handleNavigateToEdit = (strategyId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("edit", strategyId);
+    router.push(`/strategies?${params.toString()}`);
+  };
+
+  const handleNavigateToCreate = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("create", "true");
+    router.push(`/strategies?${params.toString()}`);
+  };
+
+  // Force list view when in split view mode
+  const effectiveViewMode = isSplitView ? "list" : viewMode;
+
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
-      {/* 1. 페이지 헤더 */}
-      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            {t("subtitle", {
-              defaultMessage: "Manage and analyze your trading strategies",
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center p-1 bg-muted/50 rounded-lg border">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-              aria-label="Grid view"
-              className="h-9 w-9 p-0"
-            >
-              <LayoutGrid className="h-5 w-5" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              aria-label="List view"
-              className="h-9 w-9 p-0"
-            >
-              <List className="h-5 w-5" />
-            </Button>
-          </div>
-          <Link href="/strategies/new">
-            <Button className="h-10 px-4 shadow-sm">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {t("createNewStrategy")}
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* 2. 필터링 UI */}
-      <div className="mb-8 space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          {/* 검색 입력창 */}
-          <div className="relative w-full lg:w-[300px]">
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10 bg-background w-full transition-all focus:ring-2 focus:ring-primary/20"
-            />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-search"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
+    <>
+      {/* Split view layout */}
+      {isSplitView ? (
+        <div className="flex h-screen overflow-hidden">
+          {/* Left sidebar - Strategy list (hidden on mobile) */}
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "30%", opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden"
+          >
+            <div className="flex-shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
+              <h2 className="text-base font-semibold text-foreground">
+                {t("title")}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {strategies.length}개의 전략
+              </p>
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-            {/* 상태 필터 */}
-            <Select
-              value={filterStatus}
-              onValueChange={(v: any) => setFilterStatus(v)}
-            >
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue placeholder={t("filterPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("filterAll")}</SelectItem>
-                <SelectItem value="public">{t("filterPublic")}</SelectItem>
-                <SelectItem value="private">{t("filterPrivate")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* 지표 필터 */}
-            <Select
-              value={indicatorFilter}
-              onValueChange={(v: any) => setIndicatorFilter(v)}
-            >
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("indicatorFilterAll")}</SelectItem>
-                {KEY_INDICATORS.map((indicator) => (
-                  <SelectItem key={indicator} value={indicator}>
-                    {indicator}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* 정렬 */}
-            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder={t("sortByPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated_at_desc">
-                  {t("sortByLastUpdated")}
-                </SelectItem>
-                <SelectItem value="created_at_desc">
-                  {t("sortByNewest")}
-                </SelectItem>
-                <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* 필터 초기화 버튼 */}
-            {(filterStatus !== "all" || indicatorFilter !== "all") && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setFilterStatus("all");
-                  setIndicatorFilter("all");
-                }}
-                className="px-3"
-              >
-                Reset
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 3. 전략 목록 */}
-      {renderContent()}
-
-      {/* 4. 무한 스크롤 감지 영역 */}
-      <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
-        {isFetchingNextPage && <Spinner />}
-        {!hasNextPage && strategies.length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {t("noMoreStrategies")}
-          </p>
-        )}
-      </div>
-
-      {/* 5. 마켓 등록/수정 모달 */}
-      <Dialog open={isListingModalOpen} onOpenChange={handleModalOpenChange}>
-        <DialogContent className="max-w-4xl p-0">
-          {isFetching || !strategyDetailData ? (
-            <div className="flex items-center justify-center h-[600px]">
-              <Spinner size="lg" />
-            </div>
-          ) : (
-            <Form {...form}>
-              <div className="grid grid-cols-1 md:grid-cols-5">
-                {/* 좌측: 미리보기 패널 */}
-                <div className="col-span-2 p-6 hidden md:block bg-muted/50 border-r">
-                  <DialogHeader className="mb-6">
-                    <DialogTitle className="text-xl">
-                      {t("modalPreviewTitle")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {t("modalPreviewDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <StrategyListingPreview
-                    strategy={strategyDetailData}
-                    control={form.control}
-                  />
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {isLoading ? (
+                <LoadingSkeleton viewMode="list" />
+              ) : strategies.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  {t("noStrategiesAvailable")}
                 </div>
+              ) : (
+                strategies.map((strategy: Strategy) => (
+                  <div
+                    key={strategy.id}
+                    onClick={() => handleNavigateToEdit(strategy.id)}
+                    className={`cursor-pointer transition-all rounded-lg ${
+                      editStrategyId === strategy.id
+                        ? "ring-2 ring-primary"
+                        : ""
+                    }`}
+                  >
+                    <StrategyCard
+                      strategy={strategy}
+                      viewMode="list"
+                      compact={true}
+                      onOpenListingModal={handleOpenListingModal}
+                    />
+                  </div>
+                ))
+              )}
+              {/* Infinite scroll trigger */}
+              <div ref={ref} className="h-10 flex justify-center items-center">
+                {isFetchingNextPage && <Spinner />}
+              </div>
+            </div>
+          </motion.div>
 
-                {/* 우측: 설정 폼 패널 */}
-                <div className="col-span-3 p-8 overflow-y-auto max-h-[90vh]">
-                  <DialogHeader className="mb-6">
-                    <DialogTitle className="text-2xl font-bold">
-                      {strategyDetailData.marketplaceListing
-                        ? t("modalEditTitle")
-                        : t("modalRegisterTitle")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {t("modalDescription", {
-                        strategyName: strategyDetailData.name,
-                      })}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <StrategyListingForm
-                    onSubmit={form.handleSubmit(handleListingSubmit)}
-                    isSubmitting={listStrategyMutation.isPending}
-                    strategy={strategyDetailData}
-                  />
+          {/* Right panel - Strategy editor */}
+          <motion.div
+            initial={{ width: "100%", opacity: 0 }}
+            animate={{ width: isSplitView ? "70%" : "100%", opacity: 1 }}
+            exit={{ width: "100%", opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="flex-1 overflow-hidden"
+          >
+            <StrategyEditorPanel
+              strategyId={editStrategyId}
+              onClose={handleCloseEditor}
+            />
+          </motion.div>
+        </div>
+      ) : (
+        /* Normal full-width view */
+        <div className="container mx-auto max-w-7xl px-4 py-8">
+          {/* 1. 페이지 헤더 */}
+          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                {t("title")}
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                {t("subtitle", {
+                  defaultMessage: "Manage and analyze your trading strategies",
+                })}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center p-1 bg-muted/50 rounded-lg border">
+                <Button
+                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  aria-label="Grid view"
+                  className="h-9 w-9 p-0"
+                >
+                  <LayoutGrid className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  aria-label="List view"
+                  className="h-9 w-9 p-0"
+                >
+                  <List className="h-5 w-5" />
+                </Button>
+              </div>
+              <Button
+                className="h-10 px-4 shadow-sm"
+                onClick={handleNavigateToCreate}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t("createNewStrategy")}
+              </Button>
+            </div>
+          </div>
+
+          {/* 2. 필터링 UI */}
+          <div className="mb-8 space-y-4">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              {/* 검색 입력창 */}
+              <div className="relative w-full lg:w-[300px]">
+                <Input
+                  placeholder={t("searchPlaceholder")}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10 bg-background w-full transition-all focus:ring-2 focus:ring-primary/20"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="lucide lucide-search"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
                 </div>
               </div>
-            </Form>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                {/* 상태 필터 */}
+                <Select
+                  value={filterStatus}
+                  onValueChange={(v: any) => setFilterStatus(v)}
+                >
+                  <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectValue placeholder={t("filterPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("filterAll")}</SelectItem>
+                    <SelectItem value="public">{t("filterPublic")}</SelectItem>
+                    <SelectItem value="private">
+                      {t("filterPrivate")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* 지표 필터 */}
+                <Select
+                  value={indicatorFilter}
+                  onValueChange={(v: any) => setIndicatorFilter(v)}
+                >
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue
+                      placeholder={t("indicatorFilterPlaceholder")}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {t("indicatorFilterAll")}
+                    </SelectItem>
+                    {KEY_INDICATORS.map((indicator) => (
+                      <SelectItem key={indicator} value={indicator}>
+                        {indicator}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* 정렬 */}
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder={t("sortByPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="updated_at_desc">
+                      {t("sortByLastUpdated")}
+                    </SelectItem>
+                    <SelectItem value="created_at_desc">
+                      {t("sortByNewest")}
+                    </SelectItem>
+                    <SelectItem value="name_asc">
+                      {t("sortByNameAsc")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* 필터 초기화 버튼 */}
+                {(filterStatus !== "all" || indicatorFilter !== "all") && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setFilterStatus("all");
+                      setIndicatorFilter("all");
+                    }}
+                    className="px-3"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. 전략 목록 */}
+          {renderContent()}
+
+          {/* 4. 무한 스크롤 감지 영역 */}
+          <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
+            {isFetchingNextPage && <Spinner />}
+            {!hasNextPage && strategies.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {t("noMoreStrategies")}
+              </p>
+            )}
+          </div>
+
+          {/* 5. 마켓 등록/수정 모달 */}
+          <Dialog
+            open={isListingModalOpen}
+            onOpenChange={handleModalOpenChange}
+          >
+            <DialogContent className="max-w-4xl p-0">
+              {isFetching || !strategyDetailData ? (
+                <div className="flex items-center justify-center h-[600px]">
+                  <Spinner size="lg" />
+                </div>
+              ) : (
+                <Form {...form}>
+                  <div className="grid grid-cols-1 md:grid-cols-5">
+                    {/* 좌측: 미리보기 패널 */}
+                    <div className="col-span-2 p-6 hidden md:block bg-muted/50 border-r">
+                      <DialogHeader className="mb-6">
+                        <DialogTitle className="text-xl">
+                          {t("modalPreviewTitle")}
+                        </DialogTitle>
+                        <DialogDescription>
+                          {t("modalPreviewDescription")}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <StrategyListingPreview
+                        strategy={strategyDetailData}
+                        control={form.control}
+                      />
+                    </div>
+
+                    {/* 우측: 설정 폼 패널 */}
+                    <div className="col-span-3 p-8 overflow-y-auto max-h-[90vh]">
+                      <DialogHeader className="mb-6">
+                        <DialogTitle className="text-2xl font-bold">
+                          {strategyDetailData.marketplaceListing
+                            ? t("modalEditTitle")
+                            : t("modalRegisterTitle")}
+                        </DialogTitle>
+                        <DialogDescription>
+                          {t("modalDescription", {
+                            strategyName: strategyDetailData.name,
+                          })}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <StrategyListingForm
+                        onSubmit={form.handleSubmit(handleListingSubmit)}
+                        isSubmitting={listStrategyMutation.isPending}
+                        strategy={strategyDetailData}
+                      />
+                    </div>
+                  </div>
+                </Form>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Wrapper component with Suspense for useSearchParams
+export default function StrategiesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-screen">
+          <Spinner size="lg" />
+        </div>
+      }
+    >
+      <StrategiesPageContent />
+    </Suspense>
   );
 }

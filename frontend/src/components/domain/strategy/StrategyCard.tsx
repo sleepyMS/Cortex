@@ -62,12 +62,14 @@ interface StrategyCardProps {
   strategy: Strategy;
   viewMode?: "grid" | "list";
   onOpenListingModal: (strategy: Strategy) => void;
+  compact?: boolean; // For split view sidebar
 }
 
 export function StrategyCard({
   strategy,
   viewMode = "grid",
   onOpenListingModal,
+  compact = false,
 }: StrategyCardProps) {
   const t = useTranslations("StrategyCard");
   const router = useRouter();
@@ -126,7 +128,7 @@ export function StrategyCard({
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem
-        onSelect={() => handleNavigate(`/strategies/${strategy.id}`)}
+        onSelect={() => handleNavigate(`/strategies?edit=${strategy.id}`)}
         className="cursor-pointer"
       >
         <Edit className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -214,10 +216,56 @@ export function StrategyCard({
 
   // --- List View 렌더링 ---
   if (viewMode === "list") {
+    // Compact mode for split view sidebar
+    if (compact) {
+      return (
+        <Link href={`/strategies?edit=${strategy.id}`}>
+          <Card className="group w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card cursor-pointer">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors flex-1">
+                  {strategy.name}
+                </h3>
+                {strategy.marketplaceListing && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-teal-50 text-teal-700 border-teal-200 text-[9px] px-1 py-0 h-4 flex-shrink-0"
+                  >
+                    <Store className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                {strategy.description || t("noDescription")}
+              </p>
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-1.5">
+                  {strategy.isPublic ? (
+                    <Globe className="h-3 w-3 text-blue-600" />
+                  ) : (
+                    <Lock className="h-3 w-3 text-slate-500" />
+                  )}
+                  <span className="text-[10px] text-muted-foreground">
+                    {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground tabular-nums">
+                  {displayDateString
+                    ? format(new Date(displayDateString), "MM.dd")
+                    : t("noDate")}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      );
+    }
+
+    // Full list view for normal page
     return (
       <Card className="group flex items-center w-full p-4 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/20 hover:shadow-sm bg-card/50 hover:bg-card">
         <Link
-          href={`/strategies/${strategy.id}`}
+          href={`/strategies?edit=${strategy.id}`}
           className="flex items-center gap-6 flex-grow truncate"
         >
           <div className="flex-grow truncate space-y-1">
@@ -298,7 +346,7 @@ export function StrategyCard({
   return (
     <Card className="group flex flex-col justify-between h-full transition-all duration-300 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 bg-card/50 hover:bg-card overflow-hidden">
       <Link
-        href={`/strategies/${strategy.id}`}
+        href={`/strategies?edit=${strategy.id}`}
         className="flex flex-col flex-grow h-full p-6"
       >
         <CardHeader className="p-0 mb-4 space-y-2">

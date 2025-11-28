@@ -1002,6 +1002,12 @@
     "view": {
       "list": "리스트 뷰",
       "card": "카드 뷰"
+    },
+    "splitView": {
+      "closeEditor": "편집기 닫기",
+      "unsavedChanges": "저장되지 않은 변경사항이 있습니다",
+      "keyboardShortcut": "Esc 키를 눌러 닫기",
+      "confirmClose": "변경사항을 저장하지 않고 닫으시겠습니까?"
     }
   },
   "StrategyCard": {
