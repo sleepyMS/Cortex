@@ -298,10 +298,12 @@ export function ApiKeyManagerTab() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    <KeyRound className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                    {t("table.empty")}
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="h-[250px] p-0">
+                    <div className="flex flex-col h-full items-center justify-center text-muted-foreground">
+                      <KeyRound className="h-8 w-8 mb-2" />
+                      {t("table.empty")}
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
