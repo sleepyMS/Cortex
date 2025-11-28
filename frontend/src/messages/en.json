@@ -1393,6 +1393,10 @@
   },
   "OptimizationPage": {
     "title": "My Optimizations",
+    "subtitle": "Find the best parameters for your strategy.",
+    "searchStrategy": "Search strategy...",
+    "noStrategyFound": "No strategy found.",
+    "resetFilters": "Reset Filters",
     "description": "Review and manage your optimization jobs.",
     "createNewOptimization": "New Optimization",
     "filterStatusPlaceholder": "Filter by status",

@@ -34,6 +34,22 @@ import {
 import { PlusCircle, BarChartHorizontal, Zap, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Strategy } from "@/types/strategy";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/Command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/Popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // --- Helper Components ---
 
@@ -227,63 +243,166 @@ export default function OptimizationPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-        <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
+      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            {t("subtitle", {
+              defaultMessage: "Find the best parameters for your strategy",
+            })}
+          </p>
+        </div>
         <Link href="/optimization/new">
-          <Button>
+          <Button className="h-10 px-4 shadow-sm">
             <PlusCircle className="mr-2 h-4 w-4" />
             {t("createNewOptimization")}
           </Button>
         </Link>
       </div>
 
-      {/* --- 3개의 필터 --- */}
-      <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* 1. 상태 필터 */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder={t("filterStatusPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
-            <SelectItem value="running">{t("filterStatusRunning")}</SelectItem>
-            <SelectItem value="pending">{t("filterStatusPending")}</SelectItem>
-            <SelectItem value="completed">
-              {t("filterStatusCompleted")}
-            </SelectItem>
-            <SelectItem value="failed">{t("filterStatusFailed")}</SelectItem>
-            <SelectItem value="canceled">
-              {t("filterStatusCanceled")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="mb-8 space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          {/* Status Tabs */}
+          <Tabs
+            defaultValue="all"
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            className="w-full lg:w-auto"
+          >
+            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-6 h-10">
+              <TabsTrigger value="all">{t("filterStatusAll")}</TabsTrigger>
+              <TabsTrigger
+                value="running"
+                className="data-[state=active]:text-blue-700 data-[state=active]:bg-blue-50 dark:data-[state=active]:text-blue-300 dark:data-[state=active]:bg-blue-950/30"
+              >
+                {t("filterStatusRunning")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="completed"
+                className="data-[state=active]:text-emerald-700 data-[state=active]:bg-emerald-50 dark:data-[state=active]:text-emerald-300 dark:data-[state=active]:bg-emerald-950/30"
+              >
+                {t("filterStatusCompleted")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="failed"
+                className="data-[state=active]:text-rose-700 data-[state=active]:bg-rose-50 dark:data-[state=active]:text-rose-300 dark:data-[state=active]:bg-rose-950/30"
+              >
+                {t("filterStatusFailed")}
+              </TabsTrigger>
+              <TabsTrigger value="pending">
+                {t("filterStatusPending")}
+              </TabsTrigger>
+              <TabsTrigger value="canceled">
+                {t("filterStatusCanceled")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        {/* 2. 전략 필터 */}
-        <Select value={strategyFilter} onValueChange={setStrategyFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder={t("filterStrategyPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterStrategyAll")}</SelectItem>
-            {strategiesData?.map((strategy) => (
-              <SelectItem key={strategy.id} value={strategy.id}>
-                {strategy.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            {/* Strategy Combobox */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className={cn(
+                    "w-full sm:w-[200px] justify-between",
+                    !strategyFilter || strategyFilter === "all"
+                      ? "text-muted-foreground"
+                      : ""
+                  )}
+                >
+                  {strategyFilter && strategyFilter !== "all"
+                    ? strategiesData?.find(
+                        (strategy) => strategy.id === strategyFilter
+                      )?.name
+                    : t("filterStrategyPlaceholder")}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0 overflow-hidden">
+                <Command className="bg-transparent">
+                  <CommandInput placeholder={t("searchStrategy")} />
+                  <CommandList>
+                    <CommandEmpty>{t("noStrategyFound")}</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="all"
+                        onSelect={() => setStrategyFilter("all")}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            strategyFilter === "all"
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        {t("filterStrategyAll")}
+                      </CommandItem>
+                      {strategiesData?.map((strategy) => (
+                        <CommandItem
+                          key={strategy.id}
+                          value={strategy.name}
+                          onSelect={() => {
+                            setStrategyFilter(
+                              strategy.id === strategyFilter
+                                ? "all"
+                                : strategy.id
+                            );
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              strategyFilter === strategy.id
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          {strategy.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
-        {/* 3. 최적화 타입 필터 */}
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder={t("filterTypePlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterTypeAll")}</SelectItem>
-            <SelectItem value="general">{t("filterTypeGeneral")}</SelectItem>
-            <SelectItem value="wfo">{t("filterTypeWFO")}</SelectItem>
-          </SelectContent>
-        </Select>
+            {/* Type Filter */}
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder={t("filterTypePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("filterTypeAll")}</SelectItem>
+                <SelectItem value="general">
+                  {t("filterTypeGeneral")}
+                </SelectItem>
+                <SelectItem value="wfo">{t("filterTypeWFO")}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Reset Button */}
+            {(statusFilter !== "all" ||
+              strategyFilter !== "all" ||
+              typeFilter !== "all") && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setStatusFilter("all");
+                  setStrategyFilter("all");
+                  setTypeFilter("all");
+                }}
+                className="px-3"
+              >
+                {t("resetFilters")}
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* --- 메인 콘텐츠 --- */}

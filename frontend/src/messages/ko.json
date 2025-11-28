@@ -1425,6 +1425,10 @@
   },
   "OptimizationPage": {
     "title": "나의 최적화",
+    "subtitle": "전략에 가장 적합한 파라미터를 찾아보세요",
+    "searchStrategy": "전략 검색...",
+    "noStrategyFound": "전략을 찾을 수 없습니다.",
+    "resetFilters": "필터 초기화",
     "description": "전략 최적화 작업 내역을 검토하고 관리합니다.",
     "createNewOptimization": "새 최적화 생성",
     "filterStatusPlaceholder": "상태로 필터링",

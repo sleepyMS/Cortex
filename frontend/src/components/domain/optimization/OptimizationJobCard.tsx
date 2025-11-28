@@ -156,63 +156,75 @@ export const OptimizationJobCard = ({
     <TooltipProvider delayDuration={100}>
       <Card
         className={cn(
-          "flex flex-col h-full transition-all hover:shadow-md border border-border hover:border-primary",
+          "group flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-border/50 bg-card/50 hover:bg-card hover:border-primary/20",
           (status === "failed" || status === "canceled") &&
-            "opacity-70 bg-muted/50"
+            "opacity-70 hover:opacity-100"
         )}
       >
-        <Link href={`/optimization/${id}`} className="flex flex-col flex-grow">
-          <CardHeader>
-            <div className="flex justify-between items-start gap-2">
-              <CardTitle className="text-base font-semibold line-clamp-2">
+        <Link
+          href={`/optimization/${id}`}
+          className="flex flex-col flex-grow p-5"
+        >
+          <div className="flex justify-between items-start gap-3 mb-4">
+            <div className="space-y-1.5 flex-grow min-w-0">
+              <h3 className="font-bold text-lg leading-tight truncate group-hover:text-primary transition-colors">
                 {strategy.name}
-              </CardTitle>
-              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <Badge className={cn("shrink-0", currentStatus.badgeClass)}>
-                  {currentStatus.label}
-                </Badge>
-                <Badge className={cn("shrink-0", currentType.badgeClass)}>
-                  <currentType.Icon className="h-3 w-3 mr-1" />
+              </h3>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "shrink-0 transition-colors",
+                    currentType.badgeClass
+                  )}
+                >
+                  <currentType.Icon className="mr-1 h-3 w-3" />
                   {currentType.label}
                 </Badge>
               </div>
             </div>
-          </CardHeader>
+            <Badge
+              variant="outline"
+              className={cn(
+                "shrink-0 transition-colors",
+                currentStatus.badgeClass
+              )}
+            >
+              <currentStatus.Icon
+                className={cn("mr-1 h-3 w-3", currentStatus.iconClass)}
+              />
+              {currentStatus.label}
+            </Badge>
+          </div>
 
-          <CardContent className="flex-grow space-y-4 flex flex-col justify-center">
+          <div className="flex-grow space-y-5">
             {isWfo ? (
               // --- WFO 전용 표시 ---
-              <>
-                {(status === "completed" ||
-                  status === "running" ||
-                  status === "pending") && (
-                  <div
-                    className={cn(
-                      "flex flex-col items-center justify-center text-center h-full min-h-[70px] bg-muted/30 p-3 rounded-md border border-dashed",
-                      status === "completed"
-                        ? "border-teal-500/30"
-                        : "border-border"
-                    )}
-                  >
-                    {status === "completed" ? (
-                      <BarChart className="h-6 w-6 text-teal-500 mb-2" />
-                    ) : null}
-                    <p className="text-xs font-semibold">
-                      {t("wfo.summaryTitle")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t("wfo.summaryDesc")}
-                    </p>
-                  </div>
+              <div
+                className={cn(
+                  "flex flex-col items-center justify-center text-center h-full min-h-[100px] bg-muted/30 p-4 rounded-lg border border-dashed transition-colors group-hover:bg-muted/50",
+                  status === "completed"
+                    ? "border-teal-500/30"
+                    : "border-border/50"
                 )}
-              </>
+              >
+                {status === "completed" && (
+                  <BarChart className="h-8 w-8 text-teal-500 mb-3 opacity-80" />
+                )}
+                <p className="text-sm font-semibold mb-1">
+                  {t("wfo.summaryTitle")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("wfo.summaryDesc")}
+                </p>
+              </div>
             ) : (
               // --- General 전용 표시 ---
-              <div className="flex justify-around text-center">
-                <div className="w-1/3">
+              <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-muted/30 border border-border/50 group-hover:bg-muted/50 transition-colors">
+                <div className="space-y-1 text-center">
                   <Tooltip>
-                    <TooltipTrigger className="cursor-help">
-                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                    <TooltipTrigger className="cursor-help w-full">
+                      <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground mb-1">
                         <Target className="h-3 w-3" />
                         {t("bestScore")}
                       </div>
@@ -221,7 +233,7 @@ export const OptimizationJobCard = ({
                   </Tooltip>
                   <p
                     className={cn(
-                      "text-lg font-bold",
+                      "text-base font-bold tracking-tight",
                       bestResultSummary &&
                         bestResultSummary.backtestScore !== null
                         ? bestResultSummary.backtestScore >= 0
@@ -230,22 +242,21 @@ export const OptimizationJobCard = ({
                         : "text-muted-foreground"
                     )}
                   >
-                    {bestResultSummary?.backtestScore?.toFixed(2) ?? "N/A"}
+                    {bestResultSummary?.backtestScore?.toFixed(2) ?? "-"}
                   </p>
                 </div>
-                <div className="w-1/3">
+                <div className="space-y-1 text-center border-l border-border/50">
                   <Tooltip>
-                    <TooltipTrigger className="cursor-help">
-                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                    <TooltipTrigger className="cursor-help w-full">
+                      <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground mb-1">
                         {t("bestReturn")}
-                        <HelpCircle className="h-3 w-3" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>{t("bestReturnTooltip")}</TooltipContent>
                   </Tooltip>
                   <p
                     className={cn(
-                      "text-lg font-bold",
+                      "text-base font-bold tracking-tight",
                       bestResultSummary &&
                         bestResultSummary.totalReturnPct !== null
                         ? bestResultSummary.totalReturnPct >= 0
@@ -254,74 +265,66 @@ export const OptimizationJobCard = ({
                         : "text-muted-foreground"
                     )}
                   >
-                    {bestResultSummary?.totalReturnPct?.toFixed(2) ?? "N/A"}%
+                    {bestResultSummary?.totalReturnPct?.toFixed(1) ?? "-"}%
                   </p>
                 </div>
-                <div className="w-1/3">
+                <div className="space-y-1 text-center border-l border-border/50">
                   <Tooltip>
-                    <TooltipTrigger className="cursor-help">
-                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                    <TooltipTrigger className="cursor-help w-full">
+                      <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground mb-1">
                         {t("bestMdd")}
-                        <HelpCircle className="h-3 w-3" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>{t("bestMddTooltip")}</TooltipContent>
                   </Tooltip>
-                  <p className="text-lg font-bold text-foreground">
-                    {bestResultSummary?.mddPct?.toFixed(2) ?? "N/A"}%
+                  <p className="text-base font-bold tracking-tight text-foreground">
+                    {bestResultSummary?.mddPct?.toFixed(1) ?? "-"}%
                   </p>
                 </div>
               </div>
             )}
-
-            {/* [삭제] 'running' 상태일 때 프로그레스 바 전체 블록 제거 */}
-          </CardContent>
+          </div>
         </Link>
-        <CardFooter className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            <span>
-              {t("runAt", {
-                date: format(new Date(job.createdAt), "yyyy-MM-dd HH:mm"),
-              })}
-            </span>
-          </div>
+
+        <div className="flex justify-between items-center px-5 py-3 border-t bg-muted/10 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <currentStatus.Icon
-              className={cn("h-4 w-4", currentStatus.iconClass)}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  disabled={
-                    isCanceling ||
-                    (status !== "running" && status !== "pending")
-                  }
-                  onClick={() => onCancel(id)}
-                  className="text-yellow-600 dark:text-yellow-500"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  {t("actions.cancel")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={
-                    isDeleting || status === "running" || status === "pending"
-                  }
-                  onClick={() => onDelete(id)}
-                  className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t("actions.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Clock className="h-3.5 w-3.5" />
+            <span>{format(new Date(job.createdAt), "yyyy-MM-dd HH:mm")}</span>
           </div>
-        </CardFooter>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -mr-2 hover:bg-background"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={
+                  isCanceling || (status !== "running" && status !== "pending")
+                }
+                onClick={() => onCancel(id)}
+                className="text-yellow-600 dark:text-yellow-500"
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                {t("actions.cancel")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={
+                  isDeleting || status === "running" || status === "pending"
+                }
+                onClick={() => onDelete(id)}
+                className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t("actions.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </Card>
     </TooltipProvider>
   );
