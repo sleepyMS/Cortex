@@ -94,12 +94,11 @@ export function StrategySnapshotList({
             </TableHeader>
             <TableBody>
               {sortedBacktests.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-[200px] text-center text-muted-foreground"
-                  >
-                    {t("emptyState")}
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="h-[250px] p-0">
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      {t("emptyState")}
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
