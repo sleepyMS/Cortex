@@ -1067,6 +1067,11 @@
   },
   "BacktesterPage": {
     "title": "나의 백테스트",
+    "subtitle": "백테스트 관리 및 분석",
+    "filterStrategyPlaceholder": "전략 선택",
+    "searchStrategy": "전략 검색...",
+    "noStrategyFound": "검색된 전략이 없습니다.",
+    "resetFilters": "필터 초기화",
     "createNewBacktest": "새 백테스트 생성",
     "filterStatusPlaceholder": "상태로 필터링",
     "filterStatusAll": "모든 상태",
@@ -1075,7 +1080,6 @@
     "filterStatusCompleted": "완료",
     "filterStatusFailed": "실패",
     "filterStatusCanceled": "취소됨",
-    "filterStrategyPlaceholder": "전략으로 필터링",
     "filterStrategyAll": "모든 전략",
     "fetchError": "백테스트 목록을 불러오는 중 오류가 발생했습니다.",
     "cancelSuccess": "백테스트 작업이 성공적으로 취소되었습니다.",
@@ -1109,6 +1113,7 @@
       "canceled": "취소됨"
     },
     "runAt": "{date}에 실행",
+    "period": "기간",
     "noDateInfo": "날짜 정보 없음",
     "totalReturn": "총 수익률",
     "totalReturnTooltip": "백테스팅 기간 동안의 누적 수익률입니다.",

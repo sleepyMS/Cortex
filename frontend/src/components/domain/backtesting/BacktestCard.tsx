@@ -86,35 +86,35 @@ export const BacktestCard = ({
       label: t("status.completed"),
       Icon: CheckCircle2,
       badgeClass:
-        "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+        "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20",
       iconClass: "text-emerald-500",
     },
     running: {
       label: t("status.running"),
       Icon: Loader2,
       badgeClass:
-        "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30",
+        "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20",
       iconClass: "text-blue-500 animate-spin",
     },
     pending: {
       label: t("status.pending"),
       Icon: Archive,
       badgeClass:
-        "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30",
+        "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20",
       iconClass: "text-yellow-500",
     },
     failed: {
       label: t("status.failed"),
       Icon: AlertCircle,
       badgeClass:
-        "bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-500/30",
+        "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20 hover:bg-rose-500/20",
       iconClass: "text-rose-500",
     },
     canceled: {
       label: t("status.canceled"),
       Icon: XCircle,
       badgeClass:
-        "bg-gray-500/20 text-gray-700 dark:text-gray-400 border-gray-500/30",
+        "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20",
       iconClass: "text-gray-500",
     },
   };
@@ -135,37 +135,54 @@ export const BacktestCard = ({
     <TooltipProvider delayDuration={100}>
       <Card
         className={cn(
-          "flex flex-col h-full transition-all hover:shadow-md border border-border hover:border-primary",
+          "group flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-border/50 bg-card/50 hover:bg-card hover:border-primary/20",
           (status === "failed" || status === "canceled") &&
-            "opacity-70 bg-muted/50"
+            "opacity-70 hover:opacity-100"
         )}
       >
-        <Link href={`/backtester/${id}`} className="flex flex-col flex-grow">
-          <CardHeader>
-            <div className="flex justify-between items-start gap-2">
-              <CardTitle className="text-base font-semibold line-clamp-2">
+        <Link
+          href={`/backtester/${id}`}
+          className="flex flex-col flex-grow p-5"
+        >
+          <div className="flex justify-between items-start gap-3 mb-4">
+            <div className="space-y-1.5 flex-grow min-w-0">
+              <h3 className="font-bold text-lg leading-tight truncate group-hover:text-primary transition-colors">
                 {strategy.name}
-              </CardTitle>
-              <Badge className={cn("shrink-0", currentStatus.badgeClass)}>
-                {currentStatus.label}
-              </Badge>
+              </h3>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="font-medium">{t("period")}:</span>
+                <span>{dateRangeString}</span>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="flex-grow space-y-4">
-            <div className="flex justify-around text-center">
-              <div className="w-1/2">
+            <Badge
+              variant="outline"
+              className={cn(
+                "shrink-0 transition-colors",
+                currentStatus.badgeClass
+              )}
+            >
+              <currentStatus.Icon
+                className={cn("mr-1 h-3 w-3", currentStatus.iconClass)}
+              />
+              {currentStatus.label}
+            </Badge>
+          </div>
+
+          <div className="flex-grow space-y-5">
+            <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="space-y-1 text-center">
                 <Tooltip>
-                  <TooltipTrigger className="cursor-help">
-                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                  <TooltipTrigger className="cursor-help w-full">
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
                       {t("totalReturn")}
-                      <HelpCircle className="h-3 w-3" />
+                      <HelpCircle className="h-3 w-3 opacity-50" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>{t("totalReturnTooltip")}</TooltipContent>
                 </Tooltip>
                 <p
                   className={cn(
-                    "text-lg font-bold",
+                    "text-xl font-bold tracking-tight",
                     result && result.totalReturnPct !== null
                       ? result.totalReturnPct >= 0
                         ? "text-emerald-500"
@@ -173,76 +190,75 @@ export const BacktestCard = ({
                       : "text-muted-foreground"
                   )}
                 >
-                  {result?.totalReturnPct?.toFixed(2) ?? "N/A"}%
+                  {result?.totalReturnPct?.toFixed(2) ?? "-"}%
                 </p>
               </div>
-              <div className="w-1/2">
+              <div className="space-y-1 text-center border-l border-border/50">
                 <Tooltip>
-                  <TooltipTrigger className="cursor-help">
-                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                  <TooltipTrigger className="cursor-help w-full">
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
                       {t("mddPct")}
-                      <HelpCircle className="h-3 w-3" />
+                      <HelpCircle className="h-3 w-3 opacity-50" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>{t("mddPctTooltip")}</TooltipContent>
                 </Tooltip>
-                <p className="text-lg font-bold text-foreground">
-                  {result?.mddPct?.toFixed(2) ?? "N/A"}%
+                <p className="text-xl font-bold tracking-tight text-foreground">
+                  {result?.mddPct?.toFixed(2) ?? "-"}%
                 </p>
               </div>
             </div>
 
             {/* --- 'running' 상태일 때 프로그레스 바 표시 --- */}
             {status === "running" && (
-              <div className="pt-2">
-                <Progress value={backtest.progress ?? 30} className="h-2" />
-                <p className="text-xs text-center text-blue-500 mt-1.5">
-                  {t("simulating")}
-                </p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{t("simulating")}</span>
+                  <span>{backtest.progress ?? 0}%</span>
+                </div>
+                <Progress value={backtest.progress ?? 30} className="h-1.5" />
               </div>
             )}
-          </CardContent>
+          </div>
         </Link>
-        <CardFooter className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
-          <div className="flex items-center gap-1.5">
+
+        <div className="flex justify-between items-center px-5 py-3 border-t bg-muted/10 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
             <Clock className="h-3.5 w-3.5" />
             <span>
-              {t("runAt", {
-                date: format(new Date(backtest.createdAt), "yyyy-MM-dd HH:mm"),
-              })}
+              {format(new Date(backtest.createdAt), "yyyy-MM-dd HH:mm")}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <currentStatus.Icon
-              className={cn("h-4 w-4", currentStatus.iconClass)}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  disabled={isCanceling || status !== "running"}
-                  onClick={() => onCancel(id)}
-                  className="text-yellow-600 dark:text-yellow-500"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  {t("actions.cancel")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={isDeleting}
-                  onClick={() => onDelete(id)}
-                  className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t("actions.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardFooter>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -mr-2 hover:bg-background"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={isCanceling || status !== "running"}
+                onClick={() => onCancel(id)}
+                className="text-yellow-600 dark:text-yellow-500"
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                {t("actions.cancel")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isDeleting}
+                onClick={() => onDelete(id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t("actions.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </Card>
     </TooltipProvider>
   );

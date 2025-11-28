@@ -1036,6 +1036,11 @@
   },
   "BacktesterPage": {
     "title": "My Backtests",
+    "subtitle": "Manage and analyze your backtests",
+    "filterStrategyPlaceholder": "Select Strategy",
+    "searchStrategy": "Search strategies...",
+    "noStrategyFound": "No strategies found.",
+    "resetFilters": "Reset Filters",
     "createNewBacktest": "Create New Backtest",
     "filterStatusPlaceholder": "Filter by status",
     "filterStatusAll": "All Statuses",
@@ -1044,7 +1049,6 @@
     "filterStatusCompleted": "Completed",
     "filterStatusFailed": "Failed",
     "filterStatusCanceled": "Canceled",
-    "filterStrategyPlaceholder": "Filter by strategy",
     "filterStrategyAll": "All Strategies",
     "fetchError": "An error occurred while fetching the backtest list.",
     "cancelSuccess": "The backtest job has been canceled successfully.",
@@ -1078,6 +1082,7 @@
       "canceled": "Canceled"
     },
     "runAt": "Run at {date}",
+    "period": "Period",
     "noDateInfo": "No date info",
     "totalReturn": "Total Return",
     "totalReturnTooltip": "The cumulative return over the backtesting period.",
