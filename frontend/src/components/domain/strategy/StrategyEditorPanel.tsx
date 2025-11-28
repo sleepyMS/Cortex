@@ -277,6 +277,7 @@ export function StrategyEditorPanel({
 
   useEffect(() => {
     if (!isEditMode) {
+      initialStrategyRef.current = null;
       strategyState.reset();
       formMethods.reset({
         name: "",
@@ -284,7 +285,7 @@ export function StrategyEditorPanel({
         isPublic: false,
       });
     }
-  }, [isEditMode, strategyState.reset, formMethods.reset]);
+  }, [strategyId, isEditMode, strategyState.reset, formMethods.reset]);
 
   /**
    * Cleanup function to reset Zustand state when component unmounts
