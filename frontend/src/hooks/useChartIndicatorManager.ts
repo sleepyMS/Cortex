@@ -33,6 +33,10 @@ import {
 import { LegendData } from "@/types/chart";
 import { SignalData } from "@/types/market";
 import { useIndicatorStore } from "@/store/indicatorStore";
+import {
+  CloudSeries,
+  CloudData,
+} from "@/components/domain/strategy/chart/CloudSeries";
 
 // =================================================================================
 // #region 유틸리티 및 상수 (기존과 동일)
@@ -410,6 +414,7 @@ export function useChartIndicatorManager({
 
           const lineColor = "rgba(33, 150, 243, 0.8)";
           const bbmLineColor = "rgba(255, 82, 82, 0.8)";
+          const cloudColor = "rgba(33, 150, 243, 0.15)";
 
           const bbuData = (dataToProcess[bbuKey] || []).filter(
             (d) => d.value != null
@@ -421,14 +426,60 @@ export function useChartIndicatorManager({
             (d) => d.value != null
           );
 
+          // Create cloud data from upper and lower bands
+          const cloudKey = `${baseKey}_cloud`;
+          const cloudData: CloudData[] = [];
+          const timeMap = new Map<number, { upper?: number; lower?: number }>();
+
+          bbuData.forEach((d) => {
+            const time = timeToSeconds(d.time);
+            if (!timeMap.has(time)) timeMap.set(time, {});
+            timeMap.get(time)!.upper = d.value;
+          });
+
+          bblData.forEach((d) => {
+            const time = timeToSeconds(d.time);
+            if (!timeMap.has(time)) timeMap.set(time, {});
+            timeMap.get(time)!.lower = d.value;
+          });
+
+          timeMap.forEach((values, time) => {
+            if (values.upper !== undefined && values.lower !== undefined) {
+              cloudData.push({
+                time: time as UTCTimestamp,
+                upperValue: values.upper,
+                lowerValue: values.lower,
+                color: cloudColor,
+              });
+            }
+          });
+
+          // Add cloud series
+          let cloudSeries = indicatorState.series.get(cloudKey);
+          if (!cloudSeries) {
+            console.log("[BB] Creating new CloudSeries");
+            cloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
+              cloudColor,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(cloudKey, cloudSeries);
+          }
+          console.log(
+            "[BB] Setting cloud data with",
+            cloudData.length,
+            "points"
+          );
+          console.log("[BB] First cloud point:", cloudData[0]);
+          cloudSeries.setData(cloudData as any);
+
+          // Add upper band line
           let bbuSeries = indicatorState.series.get(bbuKey) as
-            | ISeriesApi<"Area">
+            | ISeriesApi<"Line">
             | undefined;
           if (!bbuSeries) {
-            bbuSeries = mainChart.addSeries(AreaSeries, {
-              lineColor,
-              topColor: "transparent",
-              bottomColor: "transparent",
+            bbuSeries = mainChart.addSeries(LineSeries, {
+              color: lineColor,
               lineWidth: 1,
               priceLineVisible: false,
               lastValueVisible: false,
@@ -437,14 +488,13 @@ export function useChartIndicatorManager({
           }
           bbuSeries.setData(bbuData as any);
 
+          // Add lower band line
           let bblSeries = indicatorState.series.get(bblKey) as
-            | ISeriesApi<"Area">
+            | ISeriesApi<"Line">
             | undefined;
           if (!bblSeries) {
-            bblSeries = mainChart.addSeries(AreaSeries, {
-              lineColor,
-              topColor: "transparent",
-              bottomColor: "transparent",
+            bblSeries = mainChart.addSeries(LineSeries, {
+              color: lineColor,
               lineWidth: 1,
               priceLineVisible: false,
               lastValueVisible: false,
@@ -453,6 +503,7 @@ export function useChartIndicatorManager({
           }
           bblSeries.setData(bblData as any);
 
+          // Add middle line
           let bbmSeries = indicatorState.series.get(bbmKey) as
             | ISeriesApi<"Line">
             | undefined;
@@ -496,19 +547,7 @@ export function useChartIndicatorManager({
             manager.set(baseKey, indicatorState);
           }
 
-          const theme = getThemeOptions(resolvedTheme);
-          let backgroundColor =
-            resolvedTheme === "dark" ? "#171819" : "#FFFFFF";
-          if (
-            theme.layout?.background?.type === ColorType.Solid &&
-            theme.layout.background.color
-          ) {
-            backgroundColor = theme.layout.background.color;
-          }
-
-          // 볼린저 밴드와 다른 색상으로 구분 (예: 보라색 계열)
-          const fillColor = "rgba(126, 87, 194, 0.2)";
-          const lineColor = "rgba(126, 87, 194, 0.8)";
+          const cloudColor = "rgba(126, 87, 194, 0.15)";
           const kcbeLineColor = "rgba(126, 87, 194, 0.8)";
 
           const kcueData = (dataToProcess[kcueKey] || []).filter(
@@ -521,15 +560,53 @@ export function useChartIndicatorManager({
             (d) => d.value != null
           );
 
-          // 1. 상단 채널 (AreaSeries, 색 채우기)
+          // Create cloud data from upper and lower channels
+          const cloudKey = `${baseKey}_cloud`;
+          const cloudData: CloudData[] = [];
+          const timeMap = new Map<number, { upper?: number; lower?: number }>();
+
+          kcueData.forEach((d) => {
+            const time = timeToSeconds(d.time);
+            if (!timeMap.has(time)) timeMap.set(time, {});
+            timeMap.get(time)!.upper = d.value;
+          });
+
+          kcleData.forEach((d) => {
+            const time = timeToSeconds(d.time);
+            if (!timeMap.has(time)) timeMap.set(time, {});
+            timeMap.get(time)!.lower = d.value;
+          });
+
+          timeMap.forEach((values, time) => {
+            if (values.upper !== undefined && values.lower !== undefined) {
+              cloudData.push({
+                time: time as UTCTimestamp,
+                upperValue: values.upper,
+                lowerValue: values.lower,
+                color: cloudColor,
+              });
+            }
+          });
+
+          // Add cloud series
+          let cloudSeries = indicatorState.series.get(cloudKey);
+          if (!cloudSeries) {
+            cloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
+              cloudColor,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            indicatorState.series.set(cloudKey, cloudSeries);
+          }
+          cloudSeries.setData(cloudData as any);
+
+          // Add upper channel line
           let kcueSeries = indicatorState.series.get(kcueKey) as
-            | ISeriesApi<"Area">
+            | ISeriesApi<"Line">
             | undefined;
           if (!kcueSeries) {
-            kcueSeries = mainChart.addSeries(AreaSeries, {
-              lineColor: lineColor,
-              topColor: "transparent",
-              bottomColor: "transparent",
+            kcueSeries = mainChart.addSeries(LineSeries, {
+              color: kcbeLineColor,
               lineWidth: 1,
               priceLineVisible: false,
               lastValueVisible: false,
@@ -538,15 +615,13 @@ export function useChartIndicatorManager({
           }
           kcueSeries.setData(kcueData as any);
 
-          // 2. 하단 채널 (AreaSeries, 지우개 역할)
+          // Add lower channel line
           let kcleSeries = indicatorState.series.get(kcleKey) as
-            | ISeriesApi<"Area">
+            | ISeriesApi<"Line">
             | undefined;
           if (!kcleSeries) {
-            kcleSeries = mainChart.addSeries(AreaSeries, {
-              lineColor: lineColor,
-              topColor: "transparent",
-              bottomColor: "transparent",
+            kcleSeries = mainChart.addSeries(LineSeries, {
+              color: kcbeLineColor,
               lineWidth: 1,
               priceLineVisible: false,
               lastValueVisible: false,
@@ -555,7 +630,7 @@ export function useChartIndicatorManager({
           }
           kcleSeries.setData(kcleData as any);
 
-          // 3. 중간선 (LineSeries, 점선)
+          // Add middle line
           let kcbeSeries = indicatorState.series.get(kcbeKey) as
             | ISeriesApi<"Line">
             | undefined;
@@ -605,17 +680,8 @@ export function useChartIndicatorManager({
             manager.set(baseKey, indicatorState);
           }
 
-          const theme = getThemeOptions(resolvedTheme);
-          let backgroundColor =
-            resolvedTheme === "dark" ? "#171819" : "#FFFFFF";
-          if (
-            theme.layout?.background?.type === ColorType.Solid &&
-            theme.layout.background.color
-          ) {
-            backgroundColor = theme.layout.background.color;
-          }
-
-          const cloudFillColor = "rgba(76, 175, 80, 0.2)"; // 반투명 초록색 (구름대)
+          const bullishCloudColor = "rgba(76, 175, 80, 0.2)"; // Green
+          const bearishCloudColor = "rgba(239, 83, 80, 0.2)"; // Red
 
           const isaData = (dataToProcess[isaKey] || []).filter(
             (d) => d.value != null
@@ -624,57 +690,43 @@ export function useChartIndicatorManager({
             (d) => d.value != null
           );
 
-          const isaMap = new Map(isaData.map((d) => [d.time, d.value]));
-          const isbMap = new Map(isbData.map((d) => [d.time, d.value]));
+          // Create cloud data with dynamic colors
+          const cloudKey = `${baseKey}_cloud`;
+          const cloudData: CloudData[] = [];
+          const isaMap = new Map(
+            isaData.map((d) => [timeToSeconds(d.time), d.value])
+          );
+          const isbMap = new Map(
+            isbData.map((d) => [timeToSeconds(d.time), d.value])
+          );
           const allTimes = new Set([...isaMap.keys(), ...isbMap.keys()]);
-
-          const cloudTopData: LineData[] = [];
-          const cloudBottomData: LineData[] = [];
 
           allTimes.forEach((time) => {
             const a = isaMap.get(time);
             const b = isbMap.get(time);
             if (a !== undefined && b !== undefined) {
-              cloudTopData.push({ time, value: Math.max(a, b) });
-              cloudBottomData.push({ time, value: Math.min(a, b) });
+              cloudData.push({
+                time: time as UTCTimestamp,
+                upperValue: Math.max(a, b),
+                lowerValue: Math.min(a, b),
+                color: a > b ? bullishCloudColor : bearishCloudColor, // Dynamic color
+              });
             }
           });
 
-          // 1. 구름대 상단 (먼저 색칠)
-          const topKey = `${baseKey}_cloud_top`;
-          let topSeries = indicatorState.series.get(topKey) as
-            | ISeriesApi<"Area">
-            | undefined;
-          if (!topSeries) {
-            topSeries = mainChart.addSeries(AreaSeries, {
-              lineColor: "transparent",
-              topColor: "transparent",
-              bottomColor: "transparent",
+          // Add cloud series
+          let cloudSeries = indicatorState.series.get(cloudKey);
+          if (!cloudSeries) {
+            cloudSeries = mainChart.addCustomSeries(new CloudSeries(), {
+              cloudColor: bullishCloudColor, // Default color
               priceLineVisible: false,
               lastValueVisible: false,
             });
-            indicatorState.series.set(topKey, topSeries);
+            indicatorState.series.set(cloudKey, cloudSeries);
           }
-          topSeries.setData(cloudTopData as any);
+          cloudSeries.setData(cloudData as any);
 
-          // 2. 구름대 하단 (나중에 덧그려서 지우기)
-          const bottomKey = `${baseKey}_cloud_bottom`;
-          let bottomSeries = indicatorState.series.get(bottomKey) as
-            | ISeriesApi<"Area">
-            | undefined;
-          if (!bottomSeries) {
-            bottomSeries = mainChart.addSeries(AreaSeries, {
-              lineColor: "transparent",
-              topColor: "transparent",
-              bottomColor: "transparent",
-              priceLineVisible: false,
-              lastValueVisible: false,
-            });
-            indicatorState.series.set(bottomKey, bottomSeries);
-          }
-          bottomSeries.setData(cloudBottomData as any);
-
-          // 3. 실제 5개 라인을 얇은 LineSeries로 위에 다시 그립니다.
+          // Add 5 lines
           const allLines = [
             {
               key: itsKey,
@@ -697,8 +749,8 @@ export function useChartIndicatorManager({
               ),
               color: "#D2B48C",
             }, // 후행스팬
-            { key: isaKey, data: isaData, color: "rgba(76, 175, 80, 0.5)" }, // 선행스팬 A (구름대 경계선)
-            { key: isbKey, data: isbData, color: "rgba(239, 83, 80, 0.5)" }, // 선행스팬 B (구름대 경계선)
+            { key: isaKey, data: isaData, color: "rgba(76, 175, 80, 0.5)" }, // 선행스팬 A
+            { key: isbKey, data: isbData, color: "rgba(239, 83, 80, 0.5)" }, // 선행스팬 B
           ];
 
           for (const line of allLines) {
