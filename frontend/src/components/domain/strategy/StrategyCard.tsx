@@ -36,6 +36,16 @@ import {
 
 // --- UI 컴포넌트 임포트 ---
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/AlertDialog";
+import {
   Card,
   CardContent,
   CardFooter,
@@ -79,12 +89,35 @@ export function StrategyCard({
   const unlistStrategyMutation = useUnlistStrategyMutation();
 
   const [isDropdownOpen, setDropdownOpen] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   // --- 이벤트 핸들러 ---
+  const handleDeleteClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    // Capture current URL state BEFORE mutation
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentEditId = currentParams.get("edit");
+    const currentCreateMode = currentParams.get("create");
+
+    deleteStrategyMutation.mutate(strategy.id, {
+      onSuccess: () => {
+        // Only redirect if we're deleting the currently edited strategy
+        if (currentEditId === strategy.id || currentCreateMode) {
+          router.push("/strategies");
+        }
+      },
+    });
+    setShowDeleteConfirm(false);
+    setDropdownOpen(false);
+  };
+
   const handleDelete = () => {
-    if (confirm(t("confirmDelete", { strategyName: strategy.name }))) {
-      deleteStrategyMutation.mutate(strategy.id);
-    }
+    setShowDeleteConfirm(true);
     setDropdownOpen(false);
   };
 
@@ -219,45 +252,86 @@ export function StrategyCard({
     // Compact mode for split view sidebar
     if (compact) {
       return (
-        <Link href={`/strategies?edit=${strategy.id}`}>
-          <Card className="group w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card cursor-pointer">
-            <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors flex-1">
-                  {strategy.name}
-                </h3>
-                {strategy.marketplaceListing && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-teal-50 text-teal-700 border-teal-200 text-[9px] px-1 py-0 h-4 flex-shrink-0"
-                  >
-                    <Store className="h-2.5 w-2.5" />
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                {strategy.description || t("noDescription")}
-              </p>
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-1.5">
-                  {strategy.isPublic ? (
-                    <Globe className="h-3 w-3 text-blue-600" />
-                  ) : (
-                    <Lock className="h-3 w-3 text-slate-500" />
-                  )}
-                  <span className="text-[10px] text-muted-foreground">
-                    {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
-                  </span>
+        <>
+          <div className="relative group">
+            <Link href={`/strategies?edit=${strategy.id}`}>
+              <Card className="w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card cursor-pointer">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors flex-1">
+                      {strategy.name}
+                    </h3>
+                    {strategy.marketplaceListing && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-teal-50 text-teal-700 border-teal-200 text-[9px] px-1 py-0 h-4 flex-shrink-0"
+                      >
+                        <Store className="h-2.5 w-2.5" />
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {strategy.description || t("noDescription")}
+                  </p>
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-1.5">
+                      {strategy.isPublic ? (
+                        <Globe className="h-3 w-3 text-blue-600" />
+                      ) : (
+                        <Lock className="h-3 w-3 text-slate-500" />
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        {strategy.isPublic
+                          ? t("statusPublic")
+                          : t("statusPrivate")}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground tabular-nums">
+                      {displayDateString
+                        ? format(new Date(displayDateString), "MM.dd")
+                        : t("noDate")}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground tabular-nums">
-                  {displayDateString
-                    ? format(new Date(displayDateString), "MM.dd")
-                    : t("noDate")}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Link>
+              </Card>
+            </Link>
+            {/* Delete button - appears on hover, positioned at top right (or left of marketplace badge) */}
+            <button
+              onClick={handleDeleteClick}
+              className={`absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-destructive/10 text-destructive z-10 ${
+                strategy.marketplaceListing ? "right-8" : "right-2"
+              }`}
+              aria-label={t("deleteStrategy")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Delete confirmation dialog */}
+          <AlertDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("confirmDelete")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {strategy.name}을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수
+                  없습니다.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  삭제
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       );
     }
 
