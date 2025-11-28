@@ -379,6 +379,7 @@ function StrategiesPageContent() {
 
   const handleNavigateToCreate = () => {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("edit"); // ← edit 파라미터 제거
     params.set("create", "true");
     router.push(`/strategies?${params.toString()}`);
   };
@@ -400,12 +401,24 @@ function StrategiesPageContent() {
             className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
           >
             <div className="flex-shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
-              <h2 className="text-base font-semibold text-foreground">
-                {t("title")}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {strategies.length}개의 전략
-              </p>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1">
+                  <h2 className="text-base font-semibold text-foreground">
+                    {t("title")}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {strategies.length}개의 전략
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleNavigateToCreate}
+                  className="h-8 px-3 flex-shrink-0"
+                >
+                  <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                  <span className="text-xs">생성</span>
+                </Button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {isLoading ? (
