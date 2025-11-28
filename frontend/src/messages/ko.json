@@ -969,6 +969,7 @@
   },
   "StrategiesPage": {
     "title": "전략 허브",
+    "subtitle": "나만의 알고리즘 트레이딩 전략을 만들고 관리하세요",
     "createNewStrategy": "새 전략 생성",
     "searchPlaceholder": "전략 이름으로 검색...",
     "filterPlaceholder": "상태 필터",

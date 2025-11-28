@@ -938,6 +938,7 @@
   },
   "StrategiesPage": {
     "title": "Strategies Hub",
+    "subtitle": "Create and manage your own algorithmic trading strategies",
     "createNewStrategy": "Create New Strategy",
     "searchPlaceholder": "Search by strategy name...",
     "filterPlaceholder": "Filter by status",
