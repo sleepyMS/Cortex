@@ -420,7 +420,7 @@ function StrategiesPageContent() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto p-3 pb-12 space-y-2">
               {isLoading ? (
                 <LoadingSkeleton viewMode="list" />
               ) : strategies.length === 0 ? (
