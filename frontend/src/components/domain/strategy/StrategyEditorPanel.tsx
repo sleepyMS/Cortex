@@ -43,6 +43,16 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Separator } from "@/components/ui/Separator";
 import { Switch } from "@/components/ui/Switch";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/AlertDialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -198,6 +208,7 @@ export function StrategyEditorPanel({
   >("full");
   const [chartTicker, setChartTicker] = useState("BTCUSDT");
   const [chartTimeframe, setChartTimeframe] = useState("1h");
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   const formMethods = useForm<StrategyFormValues>({
     resolver: zodResolver(formSchema),
@@ -577,12 +588,15 @@ export function StrategyEditorPanel({
 
   const handleClose = () => {
     if (isDirty) {
-      if (confirm(tPage("splitView.confirmClose"))) {
-        onClose();
-      }
+      setShowCloseConfirm(true);
     } else {
       onClose();
     }
+  };
+
+  const confirmClose = () => {
+    setShowCloseConfirm(false);
+    onClose();
   };
 
   // Keyboard shortcut: Esc to close
@@ -869,6 +883,26 @@ export function StrategyEditorPanel({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Close confirmation dialog */}
+      <AlertDialog open={showCloseConfirm} onOpenChange={setShowCloseConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tPage("splitView.unsavedChanges")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tPage("splitView.confirmClose")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("form.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClose}>
+              {tPage("splitView.closeEditor")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
