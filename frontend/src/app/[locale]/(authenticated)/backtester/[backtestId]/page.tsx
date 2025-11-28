@@ -69,10 +69,7 @@ const PageHeader = ({
     }
 
     const params = new URLSearchParams({
-      strategyId: backtest.strategy.id.toString(),
-      startDate: backtest.parameters.startDate,
-      endDate: backtest.parameters.endDate,
-      initialCapital: backtest.parameters.initialCapital.toString(),
+      sourceBacktestId: backtest.id,
     });
     router.push(`/backtester/new?${params.toString()}`);
   };

@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { addDays, startOfDay } from "date-fns";
 import Link from "next/link";
@@ -161,6 +162,77 @@ export function BacktestSetupForm() {
   const watchedDateRange = watch("dateRange");
   const watchedTrailingStop = watch("trailingStopEnabled");
 
+  // --- URL 파라미터로 폼 초기화 (재실행 시) ---
+  // --- URL 파라미터로 폼 초기화 (재실행 시) ---
+  const searchParams = useSearchParams();
+  const sourceBacktestId = searchParams.get("sourceBacktestId");
+
+  // 원본 백테스트 데이터 조회
+  const { data: sourceBacktest } = useQuery({
+    queryKey: ["backtest", sourceBacktestId],
+    queryFn: async () => {
+      if (!sourceBacktestId) return null;
+      const res = await apiClient.get(`/backtests/${sourceBacktestId}`);
+      return res.data as import("@/types/backtest").Backtest;
+    },
+    enabled: !!sourceBacktestId,
+  });
+
+  // 조회된 데이터로 폼 초기화
+  useEffect(() => {
+    if (sourceBacktest && sourceBacktest.parameters) {
+      const params = sourceBacktest.parameters;
+      const execParams = params.parameters;
+
+      // overrides에서 트레일링 스탑 설정 추출
+      const overrides = execParams.overrides || [];
+      const trailingStopEnabledOverride = overrides.find(
+        (o) => o.path === "tpslLogic.trailingStopEnabled"
+      );
+      const trailingStopActivationPctOverride = overrides.find(
+        (o) => o.path === "tpslLogic.trailingStopActivationPct"
+      );
+      const trailingStopCallbackPctOverride = overrides.find(
+        (o) => o.path === "tpslLogic.trailingStopCallbackPct"
+      );
+
+      // 폼의 overrides 필드에는 트레일링 스탑 설정을 제외하고 설정
+      const filteredOverrides = overrides.filter(
+        (o) => !o.path.startsWith("tpslLogic.trailingStop")
+      );
+
+      const newValues: Partial<FormValues> = {
+        strategyId: sourceBacktest.strategyId,
+        dateRange: {
+          from: new Date(params.startDate),
+          to: new Date(params.endDate),
+        },
+        initialCapital: params.initialCapital,
+        leverage: execParams.leverage,
+        feePct: execParams.fee,
+        slippagePct: execParams.slippage,
+        overrides: filteredOverrides,
+        trailingStopEnabled: trailingStopEnabledOverride
+          ? (trailingStopEnabledOverride.value as boolean)
+          : false,
+        trailingStopActivationPct: trailingStopActivationPctOverride
+          ? (trailingStopActivationPctOverride.value as number)
+          : undefined,
+        trailingStopCallbackPct: trailingStopCallbackPctOverride
+          ? (trailingStopCallbackPctOverride.value as number)
+          : undefined,
+      };
+
+      // 기존 값과 병합하여 reset (타임아웃을 주어 초기 렌더링 이후 실행되도록 함)
+      setTimeout(() => {
+        methods.reset({
+          ...methods.getValues(),
+          ...newValues,
+        });
+      }, 0);
+    }
+  }, [sourceBacktest, methods]);
+
   // --- 신규 기능: 비용 예측 로직 ---
   const [estimation, setEstimation] = useState<CostEstimationResponse | null>(
     null
@@ -248,6 +320,17 @@ export function BacktestSetupForm() {
       return;
     }
 
+    // [수정] sourceBacktest가 존재하고 현재 선택된 전략과 동일하다면,
+    // 전략의 기본값 대신 sourceBacktest의 overrides(스냅샷)를 우선 사용합니다.
+    if (
+      sourceBacktest &&
+      sourceBacktest.strategyId === selectedStrategy.id &&
+      sourceBacktest.parameters?.parameters?.overrides
+    ) {
+      currentReplace(sourceBacktest.parameters.parameters.overrides);
+      return;
+    }
+
     const extractParamsRecursive = (
       blocks: LogicBlock[],
       pathPrefix: string
@@ -314,7 +397,7 @@ export function BacktestSetupForm() {
     }
 
     currentReplace(allParams);
-  }, [selectedStrategy]);
+  }, [selectedStrategy, sourceBacktest]);
 
   const getTpslLogicText = (tpslLogic: any) => {
     if (

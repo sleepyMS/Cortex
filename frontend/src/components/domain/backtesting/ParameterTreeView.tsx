@@ -573,7 +573,11 @@ const TpslSection = ({
   fields: any[];
   t: TFunction;
 }) => {
-  const tpslFields = fields.filter((f) => f.path.startsWith("tpslLogic"));
+  const tpslFields = fields.filter(
+    (f) =>
+      f.path.startsWith("tpslLogic") &&
+      !f.path.startsWith("tpslLogic.trailingStop")
+  );
 
   if (tpslFields.length === 0) return null;
 
