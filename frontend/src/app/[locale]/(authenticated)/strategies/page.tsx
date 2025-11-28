@@ -39,13 +39,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/Dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/Popover";
-import { Badge } from "@/components/ui/Badge";
-import { PlusCircle, List, LayoutGrid, ListFilter } from "lucide-react";
+import { PlusCircle, List, LayoutGrid } from "lucide-react";
 
 // --- Domain Components ---
 import { StrategyCard } from "@/components/domain/strategy/StrategyCard";
@@ -405,9 +399,10 @@ export default function StrategiesPage() {
       </div>
 
       {/* 2. 필터링 UI */}
-      <div className="mb-8 p-4 bg-card border rounded-xl shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-grow">
+      <div className="mb-8 space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          {/* 검색 입력창 */}
+          <div className="relative w-full lg:w-[300px]">
             <Input
               placeholder={t("searchPlaceholder")}
               value={searchTerm}
@@ -433,95 +428,43 @@ export default function StrategiesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-10 px-4 gap-2 border-dashed"
-                >
-                  <ListFilter className="h-4 w-4" />
-                  <span>{t("filterPlaceholder")}</span>
-                  {(filterStatus !== "all" || indicatorFilter !== "all") && (
-                    <Badge
-                      variant="secondary"
-                      className="ml-1 h-5 px-1.5 text-[10px]"
-                    >
-                      {(filterStatus !== "all" ? 1 : 0) +
-                        (indicatorFilter !== "all" ? 1 : 0)}
-                    </Badge>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4" align="end">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none text-sm text-muted-foreground">
-                      {t("filterPublic")}
-                    </h4>
-                    <Select
-                      value={filterStatus}
-                      onValueChange={(v: any) => setFilterStatus(v)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t("filterPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t("filterAll")}</SelectItem>
-                        <SelectItem value="public">
-                          {t("filterPublic")}
-                        </SelectItem>
-                        <SelectItem value="private">
-                          {t("filterPrivate")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            {/* 상태 필터 */}
+            <Select
+              value={filterStatus}
+              onValueChange={(v: any) => setFilterStatus(v)}
+            >
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder={t("filterPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("filterAll")}</SelectItem>
+                <SelectItem value="public">{t("filterPublic")}</SelectItem>
+                <SelectItem value="private">{t("filterPrivate")}</SelectItem>
+              </SelectContent>
+            </Select>
 
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none text-sm text-muted-foreground">
-                      {t("indicatorFilterPlaceholder")}
-                    </h4>
-                    <Select
-                      value={indicatorFilter}
-                      onValueChange={(v: any) => setIndicatorFilter(v)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue
-                          placeholder={t("indicatorFilterPlaceholder")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          {t("indicatorFilterAll")}
-                        </SelectItem>
-                        {KEY_INDICATORS.map((indicator) => (
-                          <SelectItem key={indicator} value={indicator}>
-                            {indicator}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {/* 지표 필터 */}
+            <Select
+              value={indicatorFilter}
+              onValueChange={(v: any) => setIndicatorFilter(v)}
+            >
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("indicatorFilterAll")}</SelectItem>
+                {KEY_INDICATORS.map((indicator) => (
+                  <SelectItem key={indicator} value={indicator}>
+                    {indicator}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-                  {(filterStatus !== "all" || indicatorFilter !== "all") && (
-                    <Button
-                      variant="ghost"
-                      className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        setFilterStatus("all");
-                        setIndicatorFilter("all");
-                      }}
-                    >
-                      Reset Filters
-                    </Button>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-
+            {/* 정렬 */}
             <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-              <SelectTrigger className="w-[160px] h-10 bg-background">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder={t("sortByPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -534,6 +477,20 @@ export default function StrategiesPage() {
                 <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* 필터 초기화 버튼 */}
+            {(filterStatus !== "all" || indicatorFilter !== "all") && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilterStatus("all");
+                  setIndicatorFilter("all");
+                }}
+                className="px-3"
+              >
+                Reset
+              </Button>
+            )}
           </div>
         </div>
       </div>
