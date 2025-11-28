@@ -264,7 +264,7 @@ function StrategiesPageContent() {
     }
   }, [isSuccess, strategyDetailData, form]);
 
-  // [추가] 사용자가 positionType을 변경할 때마다 경고를 띄우는 로직
+  // 사용자가 positionType을 변경할 때마다 경고를 띄우는 로직
   useEffect(() => {
     // 1. 자동 분석된 타입이 있고,
     // 2. 현재 선택된 타입이 있으며,
@@ -395,7 +395,7 @@ function StrategiesPageContent() {
           {/* Left sidebar - Strategy list (hidden on mobile) */}
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "30%", opacity: 1 }}
+            animate={{ width: "20%", opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
@@ -407,7 +407,7 @@ function StrategiesPageContent() {
                     {t("title")}
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {strategies.length}개의 전략
+                    {t("splitView.strategyCount", { count: strategies.length })}
                   </p>
                 </div>
                 <Button
@@ -416,7 +416,7 @@ function StrategiesPageContent() {
                   className="h-8 px-3 flex-shrink-0"
                 >
                   <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-                  <span className="text-xs">생성</span>
+                  <span className="text-xs">{t("splitView.createButton")}</span>
                 </Button>
               </div>
             </div>
@@ -457,7 +457,7 @@ function StrategiesPageContent() {
           {/* Right panel - Strategy editor */}
           <motion.div
             initial={{ width: "100%", opacity: 0 }}
-            animate={{ width: isSplitView ? "70%" : "100%", opacity: 1 }}
+            animate={{ width: isSplitView ? "80%" : "100%", opacity: 1 }}
             exit={{ width: "100%", opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="flex-1 overflow-y-auto"

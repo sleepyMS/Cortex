@@ -976,7 +976,9 @@
       "closeEditor": "Close Editor",
       "unsavedChanges": "You have unsaved changes",
       "keyboardShortcut": "Press Esc to close",
-      "confirmClose": "Close without saving changes?"
+      "confirmClose": "Close without saving changes?",
+      "strategyCount": "{count} strategies",
+      "createButton": "Create"
     }
   },
   "StrategyCard": {
