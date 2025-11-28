@@ -39,7 +39,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/Dialog";
-import { PlusCircle, List, LayoutGrid } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/Popover";
+import { Badge } from "@/components/ui/Badge";
+import { PlusCircle, List, LayoutGrid, ListFilter } from "lucide-react";
 
 // --- Domain Components ---
 import { StrategyCard } from "@/components/domain/strategy/StrategyCard";
@@ -357,29 +363,40 @@ export default function StrategiesPage() {
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       {/* 1. 페이지 헤더 */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-        <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-md border bg-card p-1">
+      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            {t("subtitle", {
+              defaultMessage: "Manage and analyze your trading strategies",
+            })}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center p-1 bg-muted/50 rounded-lg border">
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
+              size="sm"
               onClick={() => setViewMode("grid")}
               aria-label="Grid view"
+              className="h-9 w-9 p-0"
             >
-              <LayoutGrid className="h-4 w-4" />
+              <LayoutGrid className="h-5 w-5" />
             </Button>
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon"
+              size="sm"
               onClick={() => setViewMode("list")}
               aria-label="List view"
+              className="h-9 w-9 p-0"
             >
-              <List className="h-4 w-4" />
+              <List className="h-5 w-5" />
             </Button>
           </div>
           <Link href="/strategies/new">
-            <Button>
+            <Button className="h-10 px-4 shadow-sm">
               <PlusCircle className="mr-2 h-4 w-4" />
               {t("createNewStrategy")}
             </Button>
@@ -388,54 +405,137 @@ export default function StrategiesPage() {
       </div>
 
       {/* 2. 필터링 UI */}
-      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Input
-          placeholder={t("searchPlaceholder")}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="lg:col-span-2"
-        />
-        <Select
-          value={filterStatus}
-          onValueChange={(v: any) => setFilterStatus(v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={t("filterPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterAll")}</SelectItem>
-            <SelectItem value="public">{t("filterPublic")}</SelectItem>
-            <SelectItem value="private">{t("filterPrivate")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={indicatorFilter}
-          onValueChange={(v: any) => setIndicatorFilter(v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={t("indicatorFilterPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("indicatorFilterAll")}</SelectItem>
-            {KEY_INDICATORS.map((indicator) => (
-              <SelectItem key={indicator} value={indicator}>
-                {indicator}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-          <SelectTrigger>
-            <SelectValue placeholder={t("sortByPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="updated_at_desc">
-              {t("sortByLastUpdated")}
-            </SelectItem>
-            <SelectItem value="created_at_desc">{t("sortByNewest")}</SelectItem>
-            <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="mb-8 p-4 bg-card border rounded-xl shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-grow">
+            <Input
+              placeholder={t("searchPlaceholder")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 bg-background w-full transition-all focus:ring-2 focus:ring-primary/20"
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-search"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 px-4 gap-2 border-dashed"
+                >
+                  <ListFilter className="h-4 w-4" />
+                  <span>{t("filterPlaceholder")}</span>
+                  {(filterStatus !== "all" || indicatorFilter !== "all") && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-5 px-1.5 text-[10px]"
+                    >
+                      {(filterStatus !== "all" ? 1 : 0) +
+                        (indicatorFilter !== "all" ? 1 : 0)}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4" align="end">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none text-sm text-muted-foreground">
+                      {t("filterPublic")}
+                    </h4>
+                    <Select
+                      value={filterStatus}
+                      onValueChange={(v: any) => setFilterStatus(v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t("filterPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("filterAll")}</SelectItem>
+                        <SelectItem value="public">
+                          {t("filterPublic")}
+                        </SelectItem>
+                        <SelectItem value="private">
+                          {t("filterPrivate")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none text-sm text-muted-foreground">
+                      {t("indicatorFilterPlaceholder")}
+                    </h4>
+                    <Select
+                      value={indicatorFilter}
+                      onValueChange={(v: any) => setIndicatorFilter(v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={t("indicatorFilterPlaceholder")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          {t("indicatorFilterAll")}
+                        </SelectItem>
+                        {KEY_INDICATORS.map((indicator) => (
+                          <SelectItem key={indicator} value={indicator}>
+                            {indicator}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {(filterStatus !== "all" || indicatorFilter !== "all") && (
+                    <Button
+                      variant="ghost"
+                      className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setFilterStatus("all");
+                        setIndicatorFilter("all");
+                      }}
+                    >
+                      Reset Filters
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-[160px] h-10 bg-background">
+                <SelectValue placeholder={t("sortByPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_at_desc">
+                  {t("sortByLastUpdated")}
+                </SelectItem>
+                <SelectItem value="created_at_desc">
+                  {t("sortByNewest")}
+                </SelectItem>
+                <SelectItem value="name_asc">{t("sortByNameAsc")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* 3. 전략 목록 */}

@@ -76,7 +76,6 @@ export function StrategyCard({
   const togglePublicMutation = useTogglePublicStrategyMutation();
   const unlistStrategyMutation = useUnlistStrategyMutation();
 
-  // 2. 드롭다운의 열림/닫힘 상태를 관리할 state를 추가합니다.
   const [isDropdownOpen, setDropdownOpen] = React.useState(false);
 
   // --- 이벤트 핸들러 ---
@@ -84,7 +83,6 @@ export function StrategyCard({
     if (confirm(t("confirmDelete", { strategyName: strategy.name }))) {
       deleteStrategyMutation.mutate(strategy.id);
     }
-    // 핸들러가 끝나면 드롭다운을 닫습니다.
     setDropdownOpen(false);
   };
 
@@ -97,9 +95,7 @@ export function StrategyCard({
   };
 
   const handleListOnMarketplace = () => {
-    // 1. 부모 컴포넌트에 모달을 열어달라고 요청합니다.
     onOpenListingModal(strategy);
-    // 2. 즉시 드롭다운 메뉴를 닫습니다.
     setDropdownOpen(false);
   };
 
@@ -117,7 +113,6 @@ export function StrategyCard({
     setDropdownOpen(false);
   };
 
-  // 라우팅하는 핸들러들
   const handleNavigate = (path: string) => {
     router.push(path);
     setDropdownOpen(false);
@@ -125,39 +120,47 @@ export function StrategyCard({
 
   // --- 드롭다운 메뉴 UI ---
   const dropdownMenuContent = (
-    <DropdownMenuContent align="end">
-      <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
+    <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        {t("actions")}
+      </DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onSelect={() => handleNavigate(`/strategies/${strategy.id}`)}
+        className="cursor-pointer"
       >
-        <Edit className="mr-2 h-4 w-4" />
+        <Edit className="mr-2 h-4 w-4 text-muted-foreground" />
         {t("editStrategy")}
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={() => handleNavigate(`/backtester?strategyId=${strategy.id}`)}
+        className="cursor-pointer"
       >
-        <BarChart2 className="mr-2 h-4 w-4" />
+        <BarChart2 className="mr-2 h-4 w-4 text-muted-foreground" />
         {t("runBacktest")}
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={() =>
           handleNavigate(`/live-bots/new?strategyId=${strategy.id}`)
         }
+        className="cursor-pointer"
       >
-        <Bot className="mr-2 h-4 w-4" />
+        <Bot className="mr-2 h-4 w-4 text-muted-foreground" />
         {t("deployLiveBot")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       {strategy.marketplaceListing ? (
         <>
-          <DropdownMenuItem onSelect={handleListOnMarketplace}>
-            <ShoppingCart className="mr-2 h-4 w-4" />
+          <DropdownMenuItem
+            onSelect={handleListOnMarketplace}
+            className="cursor-pointer"
+          >
+            <ShoppingCart className="mr-2 h-4 w-4 text-muted-foreground" />
             {t("editListing")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={handleUnlistFromMarketplace}
-            className="text-amber-600 focus:text-amber-700"
+            className="text-amber-600 focus:text-amber-700 cursor-pointer focus:bg-amber-50"
             disabled={unlistStrategyMutation.isPending}
           >
             {unlistStrategyMutation.isPending ? (
@@ -169,28 +172,32 @@ export function StrategyCard({
           </DropdownMenuItem>
         </>
       ) : (
-        <DropdownMenuItem onSelect={handleListOnMarketplace}>
-          <ShoppingCart className="mr-2 h-4 w-4" />
+        <DropdownMenuItem
+          onSelect={handleListOnMarketplace}
+          className="cursor-pointer"
+        >
+          <ShoppingCart className="mr-2 h-4 w-4 text-muted-foreground" />
           {t("listOnMarket")}
         </DropdownMenuItem>
       )}
       <DropdownMenuItem
         onSelect={handleTogglePublic}
         disabled={togglePublicMutation.isPending}
+        className="cursor-pointer"
       >
         {togglePublicMutation.isPending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : strategy.isPublic ? (
-          <EyeOff className="mr-2 h-4 w-4" />
+          <EyeOff className="mr-2 h-4 w-4 text-muted-foreground" />
         ) : (
-          <Eye className="mr-2 h-4 w-4" />
+          <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
         )}
         {strategy.isPublic ? t("makePrivate") : t("makePublic")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onSelect={handleDelete}
-        className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
+        className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
         disabled={deleteStrategyMutation.isPending}
       >
         {deleteStrategyMutation.isPending ? (
@@ -208,21 +215,32 @@ export function StrategyCard({
   // --- List View 렌더링 ---
   if (viewMode === "list") {
     return (
-      <Card className="flex items-center w-full p-3 transition-all duration-200 ease-in-out border border-border hover:border-primary/50 hover:shadow-md">
+      <Card className="group flex items-center w-full p-4 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/20 hover:shadow-sm bg-card/50 hover:bg-card">
         <Link
           href={`/strategies/${strategy.id}`}
-          className="flex items-center gap-4 flex-grow truncate"
+          className="flex items-center gap-6 flex-grow truncate"
         >
-          <div className="flex-grow truncate">
-            <h3 className="text-base font-bold text-foreground truncate">
-              {strategy.name}
-            </h3>
-            <p className="text-sm text-muted-foreground truncate">
+          <div className="flex-grow truncate space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                {strategy.name}
+              </h3>
+              {strategy.marketplaceListing && (
+                <Badge
+                  variant="secondary"
+                  className="bg-teal-50 text-teal-700 border-teal-200 text-[10px] px-1.5 py-0 h-5"
+                >
+                  <Store className="mr-1 h-3 w-3" />
+                  {t("selling")}
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground truncate max-w-2xl">
               {strategy.description || t("noDescription")}
             </p>
           </div>
         </Link>
-        <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+        <div className="flex items-center gap-6 flex-shrink-0 ml-4">
           <div className="hidden xl:block">
             <StrategyPerformanceBadges
               summary={strategy.latestBacktestSummary}
@@ -231,43 +249,46 @@ export function StrategyCard({
           <div className="hidden lg:block">
             <KeyIndicatorBadges strategy={strategy} />
           </div>
-          {strategy.marketplaceListing && (
+
+          <div className="flex items-center gap-3">
             <Badge
-              variant="secondary"
-              className="hidden sm:flex bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100"
+              variant="outline"
+              className={cn(
+                "flex items-center gap-1.5 h-7 px-2.5 font-normal",
+                strategy.isPublic
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : "bg-slate-50 text-slate-600 border-slate-200"
+              )}
             >
-              <Store className="mr-1 h-3.5 w-3.5" />
-              {t("selling")}
+              {strategy.isPublic ? (
+                <Globe className="h-3.5 w-3.5" />
+              ) : (
+                <Lock className="h-3.5 w-3.5" />
+              )}
+              <span className="text-xs">
+                {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
+              </span>
             </Badge>
-          )}
-          <Badge
-            className={cn(
-              "flex items-center gap-1.5",
-              strategy.isPublic
-                ? "bg-blue-100 text-blue-800"
-                : "bg-slate-100 text-slate-800"
-            )}
-          >
-            {strategy.isPublic ? (
-              <Globe className="h-3.5 w-3.5" />
-            ) : (
-              <Lock className="h-3.5 w-3.5" />
-            )}
-          </Badge>
-          <p className="hidden sm:block text-xs text-muted-foreground w-24 text-right">
-            {t("updatedAt")}:{" "}
-            {displayDateString
-              ? format(new Date(displayDateString), "yyyy-MM-dd")
-              : t("noDate")}
-          </p>
-          <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            {dropdownMenuContent}
-          </DropdownMenu>
+
+            <p className="hidden sm:block text-xs text-muted-foreground w-24 text-right tabular-nums">
+              {displayDateString
+                ? format(new Date(displayDateString), "yyyy.MM.dd")
+                : t("noDate")}
+            </p>
+
+            <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              {dropdownMenuContent}
+            </DropdownMenu>
+          </div>
         </div>
       </Card>
     );
@@ -275,38 +296,39 @@ export function StrategyCard({
 
   // --- Grid View 렌더링 ---
   return (
-    <Card className="flex flex-col justify-between h-full transition-all duration-200 ease-in-out border border-border hover:border-primary hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring">
+    <Card className="group flex flex-col justify-between h-full transition-all duration-300 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 bg-card/50 hover:bg-card overflow-hidden">
       <Link
         href={`/strategies/${strategy.id}`}
         className="flex flex-col flex-grow h-full p-6"
       >
-        <CardHeader className="p-0 mb-4">
-          <div className="flex items-start justify-between">
-            <CardTitle className="text-xl font-bold text-foreground pr-2">
+        <CardHeader className="p-0 mb-4 space-y-2">
+          <div className="flex items-start justify-between gap-4">
+            <CardTitle className="text-xl font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
               {strategy.name}
             </CardTitle>
             <div className="flex items-center gap-2 flex-shrink-0">
               {strategy.marketplaceListing && (
                 <Badge
                   variant="secondary"
-                  className="bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100"
+                  className="bg-teal-50 text-teal-700 border-teal-200 text-[10px] px-1.5 py-0 h-5"
                 >
-                  <Store className="mr-1 h-3.5 w-3.5" />
+                  <Store className="mr-1 h-3 w-3" />
                   {t("selling")}
                 </Badge>
               )}
               <Badge
+                variant="outline"
                 className={cn(
-                  "flex items-center gap-1.5",
+                  "flex items-center gap-1.5 h-5 px-1.5 text-[10px] font-normal",
                   strategy.isPublic
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-slate-100 text-slate-800"
+                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                    : "bg-slate-50 text-slate-600 border-slate-200"
                 )}
               >
                 {strategy.isPublic ? (
-                  <Globe className="h-3.5 w-3.5" />
+                  <Globe className="h-3 w-3" />
                 ) : (
-                  <Lock className="h-3.5 w-3.5" />
+                  <Lock className="h-3 w-3" />
                 )}
                 <span>
                   {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
@@ -315,31 +337,37 @@ export function StrategyCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
+        <CardContent className="p-0 flex-grow space-y-6">
+          <p className="text-sm text-muted-foreground line-clamp-3 min-h-[60px] leading-relaxed">
             {strategy.description || t("noDescription")}
           </p>
-          <div className="mt-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-muted-foreground uppercase tracking-wider font-medium">
+              <span>Performance</span>
+            </div>
             <StrategyPerformanceBadges
               summary={strategy.latestBacktestSummary}
             />
           </div>
         </CardContent>
       </Link>
-      <CardFooter className="p-6 pt-4 flex flex-col items-start gap-4">
-        <div className="min-h-[24px]">
+      <CardFooter className="p-6 pt-4 border-t bg-muted/20 flex flex-col gap-4">
+        <div className="w-full min-h-[24px]">
           <KeyIndicatorBadges strategy={strategy} />
         </div>
-        <div className="flex items-center justify-between w-full">
-          <p className="text-xs text-muted-foreground">
-            {t("updatedAt")}:{" "}
+        <div className="flex items-center justify-between w-full pt-2">
+          <p className="text-xs text-muted-foreground tabular-nums">
             {displayDateString
-              ? format(new Date(displayDateString), "yyyy-MM-dd")
+              ? format(new Date(displayDateString), "yyyy.MM.dd")
               : t("noDate")}
           </p>
           <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground -mr-2"
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
