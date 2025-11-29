@@ -431,8 +431,7 @@ function StrategiesPageContent() {
                 strategies.map((strategy: Strategy) => (
                   <div
                     key={strategy.id}
-                    onClick={() => handleNavigateToEdit(strategy.id)}
-                    className={`cursor-pointer transition-all rounded-lg ${
+                    className={`transition-all rounded-lg ${
                       editStrategyId === strategy.id
                         ? "ring-2 ring-primary"
                         : ""
