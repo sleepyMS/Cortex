@@ -155,7 +155,34 @@ export const ParameterDistributionChart = ({
     return "#d1fae5"; // Emerald 100
   };
 
-  if (!trials || trials.length === 0) return null;
+  // 데이터가 없을 때 빈 상태 표시
+  if (!trials || trials.length === 0) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg font-semibold">
+              {t("distributionTitle")}
+            </CardTitle>
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground opacity-70" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p>{t("distributionTooltip")}</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+          </div>
+        </CardHeader>
+        <CardContent className="flex-grow flex flex-col items-center justify-center bg-muted/20 border-t border-dashed">
+          <Info className="h-10 w-10 text-muted-foreground/50 mb-2" />
+          <p className="text-sm text-muted-foreground">{t("noChartData")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-full flex flex-col">
