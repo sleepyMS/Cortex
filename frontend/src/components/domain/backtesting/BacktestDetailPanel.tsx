@@ -18,6 +18,7 @@ import {
   Share2,
   BarChartHorizontal,
   ArrowLeft,
+  X,
 } from "lucide-react";
 import { UTCTimestamp } from "lightweight-charts";
 import { useRouter } from "@/i18n/navigation";
@@ -92,12 +93,11 @@ const PageHeader = ({
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onClose}
-            className="gap-2 shrink-0"
+            className="h-8 w-8 shrink-0"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">뒤로</span>
+            <X className="h-4 w-4" />
           </Button>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-muted-foreground">
@@ -175,25 +175,81 @@ const PageHeader = ({
 // --- Loading Skeleton ---
 const LoadingSkeleton = () => (
   <div className="space-y-6">
-    {/* Summary cards skeleton */}
+    {/* Header skeleton */}
+    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b pb-4 mb-6">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3 flex-1">
+          <Skeleton className="h-8 w-8 rounded" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-20" />
+        </div>
+      </div>
+      <div className="flex gap-4">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+
+    {/* Summary cards skeleton (6 cards) */}
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-8 w-full" />
+        <div key={i} className="space-y-2 p-4 border rounded-lg">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-7 w-full" />
           <Skeleton className="h-3 w-12" />
         </div>
       ))}
     </div>
-    {/* Chart skeleton */}
-    <div className="space-y-2">
-      <Skeleton className="h-5 w-32" />
-      <Skeleton className="h-80 w-full rounded-lg" />
+
+    {/* Detailed metrics skeleton */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="space-y-2 p-3 border rounded-lg">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-6 w-full" />
+        </div>
+      ))}
     </div>
-    {/* Another chart skeleton */}
-    <div className="space-y-2">
+
+    {/* Charts skeleton (2 columns) */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-3 border rounded-lg p-4">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-[280px] w-full rounded" />
+      </div>
+      <div className="space-y-3 border rounded-lg p-4">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-[280px] w-full rounded" />
+      </div>
+    </div>
+
+    {/* Monthly performance skeleton */}
+    <div className="space-y-3 border rounded-lg p-4">
+      <Skeleton className="h-5 w-40" />
+      <Skeleton className="h-64 w-full rounded" />
+    </div>
+
+    {/* Parameters skeleton */}
+    <div className="space-y-3 border rounded-lg p-4">
       <Skeleton className="h-5 w-32" />
-      <Skeleton className="h-80 w-full rounded-lg" />
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    </div>
+
+    {/* Trade log table skeleton */}
+    <div className="space-y-3 border rounded-lg p-4">
+      <Skeleton className="h-5 w-32" />
+      <Skeleton className="h-96 w-full rounded" />
     </div>
   </div>
 );
