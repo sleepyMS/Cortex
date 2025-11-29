@@ -1102,7 +1102,8 @@
       "createButton": "첫 백테스트 생성하기"
     },
     "splitView": {
-      "backtestCount": "{count}개의 백테스트"
+      "backtestCount": "{count}개의 백테스트",
+      "createButton": "생성"
     }
   },
   "NewBacktestPage": {

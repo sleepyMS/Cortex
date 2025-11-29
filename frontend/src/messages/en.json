@@ -1071,7 +1071,8 @@
       "createButton": "Create First Backtest"
     },
     "splitView": {
-      "backtestCount": "{count} backtests"
+      "backtestCount": "{count} backtests",
+      "createButton": "Create"
     }
   },
   "NewBacktestPage": {

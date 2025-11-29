@@ -273,8 +273,11 @@ export default function BacktesterPage() {
                   </p>
                 </div>
                 <Link href="/backtester/new">
-                  <Button size="sm" variant="ghost" className="h-9 w-9 p-0">
-                    <PlusCircle className="h-5 w-5" />
+                  <Button size="sm" variant="ghost" className="gap-1.5">
+                    <PlusCircle className="h-4 w-4" />
+                    <span className="text-xs">
+                      {t("splitView.createButton")}
+                    </span>
                   </Button>
                 </Link>
               </div>
