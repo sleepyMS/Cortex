@@ -379,9 +379,7 @@ export default function OptimizationDetailPage({
                 <div className="h-[500px]">
                   {/* 필터링된 데이터를 차트에 전달 */}
                   {isTrialsLoading ? (
-                    <div className="h-full w-full flex items-center justify-center">
-                      <Spinner size="lg" />
-                    </div>
+                    <Skeleton className="h-full w-full rounded-xl" />
                   ) : (
                     <div className="h-full w-full animate-in fade-in duration-700">
                       <ParallelCoordinatesChart
@@ -402,10 +400,14 @@ export default function OptimizationDetailPage({
                     />
                   </div>
                   <div className="h-[500px]">
-                    <ParameterDistributionChart
-                      trials={filteredTrials}
-                      strategy={strategyForLabels}
-                    />
+                    {isTrialsLoading ? (
+                      <Skeleton className="h-full w-full rounded-xl" />
+                    ) : (
+                      <ParameterDistributionChart
+                        trials={filteredTrials}
+                        strategy={strategyForLabels}
+                      />
+                    )}
                   </div>
                 </div>
               </TabsContent>
