@@ -328,7 +328,14 @@ class CrossoverLogic(BaseLogicBlock):
     type: Literal["crossover"]
     main_line: Union[IndicatorValue, float, int, None] = None
     signal_line: Union[IndicatorValue, float, int, None] = None
-    cross_direction: Literal["above", "below"]
+    cross_direction: Literal["above", "below"] = "above"
+
+    @field_validator('cross_direction', mode='before')
+    @classmethod
+    def set_default_if_empty(cls, v):
+        if not v or v == "":
+            return "above"
+        return v
 
 class StateLogic(BaseLogicBlock):
     type: Literal["state"]

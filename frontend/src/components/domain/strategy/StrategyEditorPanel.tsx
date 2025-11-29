@@ -415,12 +415,22 @@ export function StrategyEditorPanel({
     setIsHubOpen(true);
   };
 
+  const handleTriggerReplaceBlock = (
+    ruleType: StrategyType,
+    blockId: string
+  ) => {
+    setCurrentTarget({ type: "replace-block", ruleType, blockId });
+    setHubSelectionMode("full");
+    setIsHubOpen(true);
+  };
+
   const handleIndicatorSelect = (
     indicator: IndicatorMetadata,
     logicType: string
   ) => {
     if (!currentTarget) return;
     const newBlock = createLogicBlock(indicator, logicType, allowedTimeframes);
+
     if (currentTarget.type === "operand") {
       const newIndicatorValue =
         (newBlock as any).operandA ||
@@ -431,6 +441,12 @@ export function StrategyEditorPanel({
         currentTarget.blockId,
         currentTarget.operandKey,
         newIndicatorValue
+      );
+    } else if (currentTarget.type === "replace-block") {
+      strategyState.updateRule(
+        currentTarget.ruleType,
+        currentTarget.blockId,
+        newBlock
       );
     } else if (currentTarget.type === "top-level") {
       strategyState.addRule(currentTarget.ruleType, newBlock, null);
@@ -829,6 +845,7 @@ export function StrategyEditorPanel({
                     onAddTopLevelRule={handleAddTopLevelRule}
                     onTriggerNestedAddRule={handleTriggerNestedAddRule}
                     onTriggerOperandHub={handleTriggerOperandHub}
+                    onTriggerReplaceBlock={handleTriggerReplaceBlock}
                     onUpdateRule={(ruleType, id, newBlock) =>
                       strategyState.updateRule(ruleType, id, newBlock)
                     }

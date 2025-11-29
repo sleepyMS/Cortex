@@ -85,6 +85,7 @@ export function RuleBlock({
   onDelete,
   onTriggerAddRule,
   onTriggerOperandHub,
+  onTriggerReplaceBlock,
 }: RuleBlockProps) {
   const t = useTranslations("RuleBlock");
   const tLogic = useTranslations("StrategyBuilder.logic");
@@ -202,7 +203,7 @@ export function RuleBlock({
     <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
         value={logic.operandA}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "operandA")}
+        onSelectIndicator={() => onTriggerReplaceBlock(logic.id)}
         onConvertToValue={() => handleUpdateField("operandA", 0)}
         onConvertToIndicator={() => handleUpdateField("operandA", null)}
         onValueChange={(val) => handleUpdateField("operandA", val)}
@@ -239,13 +240,13 @@ export function RuleBlock({
     <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
       <OperandSlot
         value={logic.mainLine}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "mainLine")}
+        onSelectIndicator={() => onTriggerReplaceBlock(logic.id)}
         onConvertToValue={() => handleUpdateField("mainLine", 0)}
         onConvertToIndicator={() => handleUpdateField("mainLine", null)}
         onValueChange={(val) => handleUpdateField("mainLine", val)}
       />
       <Select
-        value={logic.crossDirection}
+        value={logic.crossDirection || "above"}
         onValueChange={(val) => handleUpdateField("crossDirection", val)}
       >
         <SelectTrigger className="w-full md:w-28 mx-auto">
@@ -270,7 +271,7 @@ export function RuleBlock({
     <div className="flex flex-col gap-3">
       <OperandSlot
         value={logic.indicator}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onSelectIndicator={() => onTriggerReplaceBlock(logic.id)}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
         onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
@@ -333,7 +334,7 @@ export function RuleBlock({
     <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] items-center gap-2">
       <OperandSlot
         value={logic.indicator}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onSelectIndicator={() => onTriggerReplaceBlock(logic.id)}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
         onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
@@ -358,7 +359,7 @@ export function RuleBlock({
     <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] items-center gap-2">
       <OperandSlot
         value={logic.indicator}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onSelectIndicator={() => onTriggerReplaceBlock(logic.id)}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
         onValueChange={(newValue) => handleUpdateField("indicator", newValue)}
@@ -404,7 +405,7 @@ export function RuleBlock({
     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] items-center gap-2">
       <OperandSlot
         value={logic.indicator}
-        onSelectIndicator={() => onTriggerOperandHub(logic.id, "indicator")}
+        onSelectIndicator={() => onTriggerReplaceBlock(logic.id)}
         onConvertToValue={() => {}}
         onConvertToIndicator={() => {}}
         onValueChange={(newValue) => handleUpdateField("indicator", newValue)}

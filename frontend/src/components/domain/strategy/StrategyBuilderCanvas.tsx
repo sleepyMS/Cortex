@@ -38,6 +38,7 @@ interface StrategyBuilderCanvasProps {
     newBlock: LogicBlock
   ) => void;
   onDeleteRule: (ruleType: StrategyType, id: string) => void;
+  onTriggerReplaceBlock: (ruleType: StrategyType, blockId: string) => void;
 }
 
 // ... (RecursiveRuleRenderer 컴포넌트도 기존과 동일하게 유지) ...
@@ -49,6 +50,7 @@ interface RecursiveRuleRendererProps {
   onTriggerOperandHub: (blockId: string, operandKey: string) => void;
   onUpdateRule: (id: string, newBlock: LogicBlock) => void;
   onDeleteRule: (id: string) => void;
+  onTriggerReplaceBlock: (blockId: string) => void;
 }
 
 function RecursiveRuleRenderer({
@@ -79,6 +81,9 @@ function RecursiveRuleRenderer({
               onTriggerOperandHub={(blockId, operandKey) =>
                 handlers.onTriggerOperandHub(blockId, operandKey)
               }
+              onTriggerReplaceBlock={(blockId) =>
+                handlers.onTriggerReplaceBlock(blockId)
+              }
             />
             {item.children && item.children.length > 0 && (
               <div className="relative mt-4 pl-8 border-l-2 border-primary/50">
@@ -100,6 +105,9 @@ function RecursiveRuleRenderer({
                   onTriggerOperandHub={(blockId, operandKey) =>
                     handlers.onTriggerOperandHub(blockId, operandKey)
                   }
+                  onTriggerReplaceBlock={(blockId) =>
+                    handlers.onTriggerReplaceBlock(blockId)
+                  }
                 />
               </div>
             )}
@@ -120,6 +128,7 @@ export function StrategyBuilderCanvas({
   onTriggerOperandHub,
   onUpdateRule,
   onDeleteRule,
+  onTriggerReplaceBlock,
 }: StrategyBuilderCanvasProps) {
   const t = useTranslations("StrategyBuilder");
 
@@ -241,6 +250,9 @@ export function StrategyBuilderCanvas({
                   }
                   onTriggerOperandHub={(blockId, operandKey) =>
                     onTriggerOperandHub(ruleType, blockId, operandKey)
+                  }
+                  onTriggerReplaceBlock={(blockId) =>
+                    onTriggerReplaceBlock(ruleType, blockId)
                   }
                 />
               )}

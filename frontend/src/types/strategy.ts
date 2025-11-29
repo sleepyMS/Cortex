@@ -176,10 +176,17 @@ type OperandTarget = {
   operandKey: string;
 };
 
+type ReplaceBlockTarget = {
+  type: "replace-block";
+  ruleType: StrategyType;
+  blockId: string;
+};
+
 export type TargetSlot =
   | TopLevelAddTarget
   | NestedAddTarget
   | OperandTarget
+  | ReplaceBlockTarget
   | null;
 
 // LogicBlock Union의 모든 가능한 키를 추출하는 유틸리티 타입
@@ -195,6 +202,7 @@ export interface RuleBlockProps {
   onDelete: (id: string) => void;
   onTriggerAddRule: (parentId: string, as: LogicOperator) => void;
   onTriggerOperandHub: (blockId: string, operandKey: string) => void;
+  onTriggerReplaceBlock: (blockId: string) => void;
 }
 
 /**
