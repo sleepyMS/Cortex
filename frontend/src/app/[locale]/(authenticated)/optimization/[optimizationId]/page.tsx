@@ -387,6 +387,7 @@ export default function OptimizationDetailPage({
                         trials={filteredTrials}
                         hoveredTrialId={hoveredTrialId}
                         onHoverTrial={setHoveredTrialId}
+                        onTrialClick={setSelectedTrialId}
                         strategy={strategyForLabels}
                       />
                     </div>

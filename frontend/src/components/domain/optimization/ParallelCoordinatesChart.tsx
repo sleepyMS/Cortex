@@ -28,6 +28,7 @@ interface ParallelCoordinatesChartProps {
   colorMetric?: keyof TrialData["metrics"];
   hoveredTrialId?: number | null;
   onHoverTrial?: (id: number | null) => void;
+  onTrialClick?: (id: number) => void;
   strategy?: Strategy;
 }
 
@@ -120,6 +121,7 @@ export const ParallelCoordinatesChart = ({
   colorMetric = "backtestScore",
   hoveredTrialId,
   onHoverTrial,
+  onTrialClick,
   strategy,
 }: ParallelCoordinatesChartProps) => {
   const { resolvedTheme } = useTheme();
@@ -285,6 +287,7 @@ export const ParallelCoordinatesChart = ({
                       // [수정] 이벤트 핸들러 변경
                       onMouseEnter={(e) => handleMouseEnter(e, trial)}
                       onMouseMove={handleMouseMove}
+                      onClick={() => onTrialClick?.(trial.trialId)}
                     >
                       {/* [삭제] 기본 <title> 태그 삭제 */}
                     </path>
