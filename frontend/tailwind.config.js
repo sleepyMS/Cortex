@@ -38,6 +38,15 @@ module.exports = {
           600: "hsl(var(--brown-600))",
         },
       },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+      },
+      animation: {
+        fadeIn: "fadeIn 0.7s ease-in forwards",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -19,7 +19,7 @@ export type ChartDataPoint = AreaData<UTCTimestamp>;
 export type BenchmarkDataPoint = LineData<UTCTimestamp>;
 
 interface EquityChartProps {
-  pnlData: ChartDataPoint[]; // AreaData[] 대신 더 명확한 타입 사용
+  pnlData: ChartDataPoint[];
   benchmarkData?: BenchmarkDataPoint[];
   height?: number;
   dark?: boolean;

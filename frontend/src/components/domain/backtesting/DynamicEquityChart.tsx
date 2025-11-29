@@ -6,17 +6,14 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/Skeleton";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ChartDataPoint } from "./EquityChart";
 import { AreaData, UTCTimestamp } from "lightweight-charts";
 
 const EquityChartClient = dynamic(() => import("./EquityChart"), {
   ssr: false,
-  loading: () => (
-    <div className="h-96 w-full">
-      <Skeleton className="h-full w-full" />
-    </div>
-  ),
+  loading: () => <Skeleton className="h-[280px] w-full" />,
 });
 
 interface DynamicEquityChartProps {
@@ -38,7 +35,7 @@ export const DynamicEquityChart = ({
       <CardHeader>
         <CardTitle>{title || "자산 곡선 (Equity Curve)"}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="animate-fadeIn">
         <EquityChartClient
           pnlData={pnlData ?? []}
           benchmarkData={benchmarkData ?? []}

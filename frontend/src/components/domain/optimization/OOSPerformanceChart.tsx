@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { AreaData, UTCTimestamp } from "lightweight-charts";
 
 import { Skeleton } from "@/components/ui/Skeleton";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -20,16 +21,11 @@ import {
 import { Info } from "lucide-react";
 
 // 백테스팅 도메인의 EquityChart를 재사용합니다.
-// 경로가 다르므로 import 경로에 주의해야 합니다.
 const EquityChartClient = dynamic(
   () => import("@/components/domain/backtesting/EquityChart"),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-[400px] w-full">
-        <Skeleton className="h-full w-full" />
-      </div>
-    ),
+    loading: () => <Skeleton className="h-[400px] w-full" />,
   }
 );
 
@@ -69,7 +65,7 @@ export const OOSPerformanceChart = ({
           Out-of-Sample
         </Badge>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="pt-4 animate-fadeIn">
         <div className="h-[400px] w-full">
           {oosCurveData && oosCurveData.length > 0 ? (
             <EquityChartClient

@@ -6,12 +6,13 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/Skeleton";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ChartDataPoint } from "./DrawdownChart";
 
 const DrawdownChartClient = dynamic(() => import("./DrawdownChart"), {
   ssr: false,
-  loading: () => <Skeleton className="h-[200px] w-full" />, // 높이를 DrawdownChart 기본값과 맞춤
+  loading: () => <Skeleton className="h-[280px] w-full" />,
 });
 
 interface DynamicDrawdownChartProps {
@@ -30,7 +31,7 @@ export const DynamicDrawdownChart = ({
       <CardHeader>
         <CardTitle>{title || "드로우다운 곡선 (Drawdown Curve)"}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="animate-fadeIn">
         <DrawdownChartClient
           drawdownData={drawdownData ?? []}
           dark={resolvedTheme === "dark"}
