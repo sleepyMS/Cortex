@@ -281,6 +281,26 @@ export default function BacktesterPage() {
                   </Button>
                 </Link>
               </div>
+
+              {/* Strategy filter */}
+              <div className="px-2 pb-3 border-b">
+                <Select
+                  value={strategyFilter}
+                  onValueChange={setStrategyFilter}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder={t("filterByStrategy")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("allStrategies")}</SelectItem>
+                    {strategiesData?.map((strategy) => (
+                      <SelectItem key={strategy.id} value={strategy.id}>
+                        {strategy.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Scrollable backtest list */}

@@ -1073,7 +1073,9 @@
     "splitView": {
       "backtestCount": "{count} backtests",
       "createButton": "Create"
-    }
+    },
+    "filterByStrategy": "Filter by Strategy",
+    "allStrategies": "All Strategies"
   },
   "NewBacktestPage": {
     "title": "Create New Backtest",

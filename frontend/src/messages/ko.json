@@ -1104,7 +1104,9 @@
     "splitView": {
       "backtestCount": "{count}개의 백테스트",
       "createButton": "생성"
-    }
+    },
+    "filterByStrategy": "전략으로 필터링",
+    "allStrategies": "모든 전략"
   },
   "NewBacktestPage": {
     "title": "새 백테스트 생성",
