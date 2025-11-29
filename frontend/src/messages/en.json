@@ -1071,8 +1071,13 @@
       "createButton": "Create First Backtest"
     },
     "splitView": {
+      "title": "Backtests",
       "backtestCount": "{count} backtests",
-      "createButton": "Create"
+      "createButton": "Create",
+      "filterLabel": "Filter by Strategy",
+      "loadingMore": "Loading more...",
+      "emptyTitle": "No backtests found",
+      "emptyDescription": "Try adjusting your filter or create a new backtest"
     },
     "filterByStrategy": "Filter by Strategy",
     "allStrategies": "All Strategies"

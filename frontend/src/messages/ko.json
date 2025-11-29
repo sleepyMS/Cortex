@@ -1102,8 +1102,13 @@
       "createButton": "첫 백테스트 생성하기"
     },
     "splitView": {
+      "title": "백테스트",
       "backtestCount": "{count}개의 백테스트",
-      "createButton": "생성"
+      "createButton": "생성",
+      "filterLabel": "전략으로 필터링",
+      "loadingMore": "더 불러오는 중...",
+      "emptyTitle": "백테스트가 없습니다",
+      "emptyDescription": "필터를 조정하거나 새 백테스트를 생성해보세요"
     },
     "filterByStrategy": "전략으로 필터링",
     "allStrategies": "모든 전략"

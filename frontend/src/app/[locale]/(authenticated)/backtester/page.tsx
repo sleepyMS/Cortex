@@ -258,37 +258,40 @@ export default function BacktesterPage() {
         <AnimatePresence>
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "20%", opacity: 1 }}
+            animate={{ width: "320px", opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
+            className="hidden md:flex flex-col border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden h-screen sticky top-0"
           >
             {/* Sidebar header */}
-            <div className="p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h2 className="text-lg font-semibold">{t("title")}</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {t("splitView.backtestCount", { count: backtests.length })}
-                  </p>
-                </div>
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-base font-semibold">
+                  {t("splitView.title")}
+                </h2>
                 <Link href="/backtester/new">
-                  <Button size="sm" variant="ghost" className="gap-1.5">
-                    <PlusCircle className="h-4 w-4" />
-                    <span className="text-xs">
+                  <Button size="sm" className="gap-1.5 h-8">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium">
                       {t("splitView.createButton")}
                     </span>
                   </Button>
                 </Link>
               </div>
+              <p className="text-xs text-muted-foreground">
+                {t("splitView.backtestCount", { count: backtests.length })}
+              </p>
 
               {/* Strategy filter */}
-              <div className="px-2 pb-3 border-b">
+              <div className="px-4 py-3 border-b bg-muted/20">
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                  {t("splitView.filterLabel")}
+                </label>
                 <Select
                   value={strategyFilter}
                   onValueChange={setStrategyFilter}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder={t("filterByStrategy")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -304,22 +307,28 @@ export default function BacktesterPage() {
             </div>
 
             {/* Scrollable backtest list */}
-            <div className="flex-1 overflow-y-auto p-3 pb-12 space-y-2">
+            <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1.5">
               {isLoading ? (
                 <CompactLoadingSkeleton />
               ) : backtests.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  {t("empty.title")}
+                <div className="flex flex-col items-center justify-center py-16 px-4">
+                  <BarChartHorizontal className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    {t("splitView.emptyTitle")}
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center max-w-[200px]">
+                    {t("splitView.emptyDescription")}
+                  </p>
                 </div>
               ) : (
                 backtests.map((backtest: Backtest) => (
                   <div
                     key={backtest.id}
-                    className={`transition-all rounded-lg ${
-                      viewBacktestId === backtest.id
-                        ? "ring-2 ring-primary"
-                        : ""
-                    }`}
+                    className={cn(
+                      "transition-all rounded-lg",
+                      viewBacktestId === backtest.id &&
+                        "ring-2 ring-primary shadow-sm"
+                    )}
                   >
                     <BacktestCard
                       backtest={backtest}
@@ -339,9 +348,12 @@ export default function BacktesterPage() {
                 ))
               )}
               {/* Infinite scroll trigger */}
-              <div ref={ref} className="h-10 flex justify-center items-center">
+              <div ref={ref} className="h-12 flex justify-center items-center">
                 {isFetchingNextPage && (
-                  <Loader2 className="animate-spin h-5 w-5" />
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="animate-spin h-4 w-4" />
+                    <span>{t("splitView.loadingMore")}</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -351,7 +363,10 @@ export default function BacktesterPage() {
         {/* Right panel - Backtest detail */}
         <motion.div
           initial={{ width: "100%", opacity: 0 }}
-          animate={{ width: isSplitView ? "80%" : "100%", opacity: 1 }}
+          animate={{
+            width: isSplitView ? "calc(100% - 320px)" : "100%",
+            opacity: 1,
+          }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className="flex-1 overflow-y-auto"
         >
