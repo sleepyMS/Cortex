@@ -176,10 +176,7 @@ export const BacktestCard = ({
     return (
       <>
         <div className="relative group">
-          <div
-            onClick={() => router.push(`/backtester?view=${id}`)}
-            className="cursor-pointer"
-          >
+          <Link href={`/backtester?view=${id}`}>
             <Card className="w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card">
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -221,7 +218,7 @@ export const BacktestCard = ({
                 </div>
               </div>
             </Card>
-          </div>
+          </Link>
           {/* Delete button - appears on hover */}
           <button
             onClick={handleDeleteClick}
@@ -269,9 +266,9 @@ export const BacktestCard = ({
             "opacity-70 hover:opacity-100"
         )}
       >
-        <div
-          onClick={() => router.push(`/backtester?view=${id}`)}
-          className="flex flex-col flex-grow p-5 cursor-pointer"
+        <Link
+          href={`/backtester?view=${id}`}
+          className="flex flex-col flex-grow p-5"
         >
           <div className="flex justify-between items-start gap-3 mb-4">
             <div className="space-y-1.5 flex-grow min-w-0">
@@ -349,7 +346,7 @@ export const BacktestCard = ({
               </div>
             )}
           </div>
-        </div>
+        </Link>
 
         <div className="flex justify-between items-center px-5 py-3 border-t bg-muted/10 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
