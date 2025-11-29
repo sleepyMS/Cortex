@@ -1840,6 +1840,8 @@
       "exportSuccess": "{count}개의 시도 데이터를 CSV로 내보냈습니다.",
       "exportFailed": "데이터 내보내기에 실패했습니다.",
       "noChartData": "표시할 차트 데이터가 없습니다.",
+      "singleParameterTitle": "평행 좌표 플롯은 2개 이상의 파라미터가 필요합니다",
+      "singleParameterMessage": "현재 1개의 파라미터만 최적화되었습니다. 파라미터 간 관계를 시각화하려면 2개 이상의 파라미터를 최적화해야 합니다. 대신 '파라미터 분포' 차트를 참고하세요.",
       "tabs": {
         "charts": "분석 차트",
         "trials": "전체 시도 데이터"

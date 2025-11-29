@@ -1808,6 +1808,8 @@
       "exportSuccess": "Successfully exported {count} trials to CSV.",
       "exportFailed": "Failed to export data.",
       "noChartData": "No chart data available.",
+      "singleParameterTitle": "Parallel Coordinates requires 2 or more parameters",
+      "singleParameterMessage": "Only 1 parameter was optimized. To visualize relationships between parameters, you need to optimize at least 2 parameters. Please refer to the 'Parameter Distribution' chart instead.",
       "tabs": {
         "charts": "Analysis Charts",
         "trials": "All Trials Data"

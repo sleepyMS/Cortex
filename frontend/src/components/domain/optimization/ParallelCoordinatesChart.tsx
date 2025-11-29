@@ -197,6 +197,45 @@ export const ParallelCoordinatesChart = ({
     setTooltipState(null);
   }, [onHoverTrial]);
 
+  // 파라미터가 1개만 있을 때 특별 처리
+  if (dimensions.length === 1) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-2 bg-transparent">
+          <div className="flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold">
+                {t("parallelCoordinatesTitle")}
+              </CardTitle>
+              <TooltipProvider delayDuration={100}>
+                <UITooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground opacity-70" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    <p>{t("parallelCoordinatesTooltip")}</p>
+                  </TooltipContent>
+                </UITooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("parallelCoordinatesDescription")}
+          </p>
+        </CardHeader>
+        <CardContent className="flex-grow flex flex-col items-center justify-center bg-muted/20 border-t border-dashed p-6">
+          <GitCommit className="h-10 w-10 text-muted-foreground/50 mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">
+            {t("singleParameterTitle")}
+          </p>
+          <p className="text-xs text-muted-foreground text-center max-w-md">
+            {t("singleParameterMessage")}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // 데이터가 없거나 축이 없을 때 빈 상태 표시
   if (!trials || trials.length === 0 || dimensions.length === 0) {
     return (
