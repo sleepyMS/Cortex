@@ -75,6 +75,24 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+// Compact skeleton for split view sidebar
+const CompactLoadingSkeleton = () => (
+  <div className="space-y-2">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <div key={i} className="p-3 border rounded-lg space-y-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 const EmptyState = () => {
   const t = useTranslations("BacktesterPage");
   return (
@@ -265,7 +283,7 @@ export default function BacktesterPage() {
             {/* Scrollable backtest list */}
             <div className="flex-1 overflow-y-auto p-3 pb-12 space-y-2">
               {isLoading ? (
-                <LoadingSkeleton />
+                <CompactLoadingSkeleton />
               ) : backtests.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">
                   {t("empty.title")}
