@@ -1848,6 +1848,7 @@
       "importanceTooltip": "어떤 파라미터가 최적화 목표(수익률 등)에 가장 큰 영향을 미쳤는지 보여줍니다. 상위 파라미터 위주로 집중하여 전략을 개선하세요.",
       "importanceLabel": "중요도",
       "parallelCoordinatesTitle": "평행 좌표 플롯",
+      "parallelCoordinatesDescription": "각 선을 클릭하여 상세 정보를 확인하세요.",
       "parallelCoordinatesTooltip": "여러 파라미터와 성과 간의 복합적인 관계를 시각화합니다. 각 선은 하나의 시도(Trial)를 나타내며, 초록색에 가까울수록 성과가 좋은 것입니다.",
       "trialsTableTitle": "모든 시도 목록"
     },

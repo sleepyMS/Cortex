@@ -1816,6 +1816,7 @@
       "importanceTooltip": "Shows which parameters had the greatest impact on the optimization objective. Focus on the top parameters for further tuning.",
       "importanceLabel": "Importance",
       "parallelCoordinatesTitle": "Parallel Coordinates Plot",
+      "parallelCoordinatesDescription": "Click on each line to view detailed information.",
       "parallelCoordinatesTooltip": "Visualizes the relationship between multiple parameters and performance. Each line represents one trial. Green lines indicate better performance.",
       "trialsTableTitle": "All Trials"
     },

@@ -233,27 +233,35 @@ export const ParallelCoordinatesChart = ({
   return (
     <>
       <Card className="h-full flex flex-col overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-transparent">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg font-semibold">
-              {t("parallelCoordinatesTitle")}
-            </CardTitle>
-            <TooltipProvider>
-              <UITooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground opacity-70" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-sm">
-                  <p>{t("parallelCoordinatesTooltip")}</p>
-                </TooltipContent>
-              </UITooltip>
-            </TooltipProvider>
+        <CardHeader className="pb-2 bg-transparent">
+          <div className="flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold">
+                {t("parallelCoordinatesTitle")}
+              </CardTitle>
+              <TooltipProvider>
+                <UITooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground opacity-70" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    <p>{t("parallelCoordinatesTooltip")}</p>
+                  </TooltipContent>
+                </UITooltip>
+              </TooltipProvider>
+            </div>
+            {trials.length > MAX_DISPLAY_TRIALS && (
+              <Badge
+                variant="outline"
+                className="text-xs text-muted-foreground"
+              >
+                Top {MAX_DISPLAY_TRIALS} shown
+              </Badge>
+            )}
           </div>
-          {trials.length > MAX_DISPLAY_TRIALS && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              Top {MAX_DISPLAY_TRIALS} shown
-            </Badge>
-          )}
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("parallelCoordinatesDescription")}
+          </p>
         </CardHeader>
 
         <CardContent className="flex-grow min-h-0 p-0">
