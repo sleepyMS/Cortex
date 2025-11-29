@@ -104,7 +104,11 @@ export const createLogicBlock = (
         id: newBlockId,
         type: "crossover",
         mainLine: baseIndicatorValue,
-        signalLine: 0,
+        // 우측 슬롯(Signal Line)을 0 대신 좌측 지표(Main Line)의 복제본으로 초기화
+        signalLine: {
+          ...baseIndicatorValue,
+          values: { ...baseIndicatorValue.values },
+        },
         crossDirection: "above",
       };
     case "state":
