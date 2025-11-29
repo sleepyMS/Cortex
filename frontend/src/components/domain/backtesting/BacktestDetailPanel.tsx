@@ -17,7 +17,6 @@ import {
   Repeat,
   Share2,
   BarChartHorizontal,
-  X,
   ArrowLeft,
 } from "lucide-react";
 import { UTCTimestamp } from "lightweight-charts";
@@ -39,7 +38,6 @@ import { TradeLogTable } from "@/components/domain/backtesting/TradeLogTable";
 // --- UI components ---
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 interface BacktestDetailPanelProps {
@@ -88,58 +86,60 @@ const PageHeader = ({
     : null;
 
   return (
-    <Card className="mb-8">
-      <CardHeader>
-        <div className="flex flex-wrap justify-between items-start gap-4">
-          <div className="flex items-center gap-3 flex-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <p className="text-sm font-medium text-primary">
-                {tHeader("strategy")}
-              </p>
-              <CardTitle className="text-2xl font-bold text-foreground">
-                {backtest.strategy ? (
-                  <Link
-                    href={`/strategies/${backtest.strategy.id}`}
-                    className="hover:underline"
-                  >
-                    {backtest.strategy.name}
-                  </Link>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {tHeader("unknownStrategy")}
-                  </span>
-                )}
-              </CardTitle>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleRerun}>
-              <Repeat className="mr-2 h-4 w-4" />
-              {tHeader("rerun")}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleShare}
-              disabled={backtest.status !== "completed"}
-            >
-              <Share2 className="mr-2 h-4 w-4" />
-              {tHeader("share")}
-            </Button>
+    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6">
+      {/* Top row: Close button + Strategy name + Actions */}
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="gap-2 shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">뒤로</span>
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              {tHeader("strategy")}
+            </p>
+            <h1 className="text-lg font-bold text-foreground truncate">
+              {backtest.strategy ? (
+                <Link
+                  href={`/strategies/${backtest.strategy.id}`}
+                  className="hover:underline hover:text-primary transition-colors"
+                >
+                  {backtest.strategy.name}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground">
+                  {tHeader("unknownStrategy")}
+                </span>
+              )}
+            </h1>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground pt-4 border-t">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleRerun}>
+            <Repeat className="mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{tHeader("rerun")}</span>
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleShare}
+            disabled={backtest.status !== "completed"}
+          >
+            <Share2 className="mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{tHeader("share")}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Bottom row: Metadata */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <Calendar className="h-3.5 w-3.5" />
           <span>
             {startDate && isValid(startDate) && endDate && isValid(endDate) ? (
               <>
@@ -151,8 +151,8 @@ const PageHeader = ({
             )}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4" />
+        <div className="flex items-center gap-1.5">
+          <DollarSign className="h-3.5 w-3.5" />
           <span>
             {tHeader("initialCapital", {
               amount: (
@@ -162,26 +162,39 @@ const PageHeader = ({
           </span>
         </div>
         {totalTrades !== null && typeof totalTrades !== "undefined" && (
-          <div className="flex items-center gap-2">
-            <BarChartHorizontal className="h-4 w-4" />
+          <div className="flex items-center gap-1.5">
+            <BarChartHorizontal className="h-3.5 w-3.5" />
             <span>{tHeader("totalTrades", { count: totalTrades })}</span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
 // --- Loading Skeleton ---
 const LoadingSkeleton = () => (
-  <div className="space-y-8">
-    <Skeleton className="h-36 w-full" />
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+  <div className="space-y-6">
+    {/* Summary cards skeleton */}
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 w-full" />
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-3 w-12" />
+        </div>
       ))}
     </div>
-    <Skeleton className="h-96 w-full" />
+    {/* Chart skeleton */}
+    <div className="space-y-2">
+      <Skeleton className="h-5 w-32" />
+      <Skeleton className="h-80 w-full rounded-lg" />
+    </div>
+    {/* Another chart skeleton */}
+    <div className="space-y-2">
+      <Skeleton className="h-5 w-32" />
+      <Skeleton className="h-80 w-full rounded-lg" />
+    </div>
   </div>
 );
 
@@ -279,8 +292,10 @@ export function BacktestDetailPanel({
       return (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <TriangleAlert className="h-4 w-4" />
-          <AlertTitle>{t("errorTitle")}</AlertTitle>
-          <AlertDescription>
+          <AlertTitle className="text-sm font-semibold">
+            {t("errorTitle")}
+          </AlertTitle>
+          <AlertDescription className="text-sm">
             {t("errorMessage", {
               error: (error as any)?.response?.data?.detail || error.message,
             })}
@@ -293,8 +308,12 @@ export function BacktestDetailPanel({
       return (
         <Alert variant="default" className="max-w-2xl mx-auto">
           <Info className="h-4 w-4" />
-          <AlertTitle>{t("noDataTitle")}</AlertTitle>
-          <AlertDescription>{t("noDataMessage")}</AlertDescription>
+          <AlertTitle className="text-sm font-semibold">
+            {t("noDataTitle")}
+          </AlertTitle>
+          <AlertDescription className="text-sm">
+            {t("noDataMessage")}
+          </AlertDescription>
         </Alert>
       );
     }
@@ -305,12 +324,14 @@ export function BacktestDetailPanel({
       case "pending":
       case "running":
         return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] bg-card border rounded-lg p-8 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <h2 className="text-2xl font-semibold mt-6">
+          <div className="flex flex-col items-center justify-center min-h-[50vh] bg-muted/20 border border-dashed rounded-lg p-8 text-center">
+            <div className="relative">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+            <h2 className="text-lg font-semibold mt-4">
               {t("processingTitle")}
             </h2>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground max-w-sm">
               {t("processingMessage")}
             </p>
           </div>
@@ -320,26 +341,29 @@ export function BacktestDetailPanel({
           return <Alert variant="destructive">{t("noResultData")}</Alert>;
         }
         return (
-          <div className="flex flex-col space-y-8">
+          <div className="flex flex-col space-y-6">
             <BacktestResultSummary result={backtest.result} />
             <DetailedMetrics result={backtest.result} />
-            <BacktestParameters backtest={backtest} />
-            <DynamicEquityChart
-              pnlData={
-                (backtest.result.pnlCurveJson as unknown as {
-                  time: UTCTimestamp;
-                  value: number;
-                }[]) || []
-              }
-            />
-            <DynamicDrawdownChart
-              drawdownData={
-                (backtest.result.drawdownCurveJson as unknown as {
-                  time: UTCTimestamp;
-                  value: number;
-                }[]) || []
-              }
-            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DynamicEquityChart
+                pnlData={
+                  (backtest.result.pnlCurveJson as unknown as {
+                    time: UTCTimestamp;
+                    value: number;
+                  }[]) || []
+                }
+              />
+              <DynamicDrawdownChart
+                drawdownData={
+                  (backtest.result.drawdownCurveJson as unknown as {
+                    time: UTCTimestamp;
+                    value: number;
+                  }[]) || []
+                }
+              />
+            </div>
+
             <MonthlyPerformance
               pnlData={
                 (backtest.result.pnlCurveJson as unknown as {
@@ -348,6 +372,7 @@ export function BacktestDetailPanel({
                 }[]) || []
               }
             />
+            <BacktestParameters backtest={backtest} />
             <TradeLogTable tradeLogs={tradeLogs} />
           </div>
         );
@@ -356,10 +381,10 @@ export function BacktestDetailPanel({
         return (
           <Alert variant="default" className="max-w-2xl mx-auto">
             <Info className="h-4 w-4" />
-            <AlertTitle>
+            <AlertTitle className="text-sm font-semibold">
               {t("jobNotCompletedTitle", { status: backtest.status })}
             </AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="text-sm">
               {t("jobNotCompletedMessage", { status: backtest.status })}
             </AlertDescription>
           </Alert>
@@ -370,8 +395,8 @@ export function BacktestDetailPanel({
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="container mx-auto max-w-screen-xl px-4 py-8">
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex-1 px-6 py-4">
         {data?.backtest && (
           <PageHeader
             backtest={data.backtest}
