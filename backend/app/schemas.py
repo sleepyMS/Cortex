@@ -552,6 +552,21 @@ class ParameterOverride(CamelCaseModel):
     path: str
     value: Any
 
+    
+class BacktestExecutionParameters(CamelCaseModel):
+    """백테스트 실행에 필요한 모든 상세 파라미터를 그룹화"""
+    leverage: float = Field(1.0, gt=0, description="레버리지 배율")
+    fee: float = Field(0.05, ge=0, description="거래 수수료 (%)")
+    slippage: float = Field(0.01, ge=0, description="거래 슬리피지 (%)")
+    overrides: Optional[List[ParameterOverride]] = Field(None, description="전략의 기본값을 덮어쓰는 파라미터 목록")
+    tpsl_logic: Optional[TpslLogic] = None
+
+class BacktestParametersPayload(CamelCaseModel):
+    start_date: datetime
+    end_date: datetime
+    initial_capital: float
+    parameters: BacktestExecutionParameters
+
 class BacktestInList(CamelCaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -561,14 +576,7 @@ class BacktestInList(CamelCaseModel):
     completed_at: Optional[datetime] = None
     result: Optional[BacktestResultSummaryForCard] = None
     strategy: Optional[StrategySummary] = None
-    
-class BacktestExecutionParameters(CamelCaseModel):
-    """백테스트 실행에 필요한 모든 상세 파라미터를 그룹화"""
-    leverage: float = Field(1.0, gt=0, description="레버리지 배율")
-    fee: float = Field(0.05, ge=0, description="거래 수수료 (%)")
-    slippage: float = Field(0.01, ge=0, description="거래 슬리피지 (%)")
-    overrides: Optional[List[ParameterOverride]] = Field(None, description="전략의 기본값을 덮어쓰는 파라미터 목록")
-    tpsl_logic: Optional[TpslLogic] = None
+    parameters: Optional[BacktestParametersPayload] = None 
 
 class BacktestCreate(CamelCaseModel):
     strategy_id: uuid.UUID
@@ -620,12 +628,6 @@ class BacktestResultSummary(CamelCaseModel):
     backtest_score: Optional[float] = None
     score_factors: Optional[Any] = None
 
-class BacktestParametersPayload(CamelCaseModel):
-    start_date: datetime
-    end_date: datetime
-    initial_capital: float
-    # BacktestCreate에서 받았던 중첩된 parameters 객체를 그대로 포함합니다.
-    parameters: BacktestExecutionParameters
 
 class Backtest(BacktestInList):
     parameters: BacktestParametersPayload  
