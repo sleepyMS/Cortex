@@ -207,7 +207,7 @@ export const ParallelCoordinatesChart = ({
               <CardTitle className="text-lg font-semibold">
                 {t("parallelCoordinatesTitle")}
               </CardTitle>
-              <TooltipProvider>
+              <TooltipProvider delayDuration={100}>
                 <UITooltip>
                   <TooltipTrigger>
                     <Info className="h-4 w-4 text-muted-foreground opacity-70" />
@@ -263,7 +263,7 @@ export const ParallelCoordinatesChart = ({
               <CardTitle className="text-lg font-semibold">
                 {t("parallelCoordinatesTitle")}
               </CardTitle>
-              <TooltipProvider>
+              <TooltipProvider delayDuration={100}>
                 <UITooltip>
                   <TooltipTrigger>
                     <Info className="h-4 w-4 text-muted-foreground opacity-70" />

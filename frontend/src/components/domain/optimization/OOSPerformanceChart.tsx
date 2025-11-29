@@ -54,7 +54,7 @@ export const OOSPerformanceChart = ({
           <CardTitle className="text-lg font-semibold">
             {t("oosPerformanceTitle")}
           </CardTitle>
-          <TooltipProvider>
+          <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground opacity-70" />
