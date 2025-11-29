@@ -28,7 +28,7 @@ interface EquityChartProps {
 const EquityChart: React.FC<EquityChartProps> = ({
   pnlData,
   benchmarkData,
-  height = 320,
+  height = 280,
   dark = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -46,7 +46,7 @@ const EquityChart: React.FC<EquityChartProps> = ({
       layout: {
         background: {
           type: ColorType.Solid,
-          color: dark ? "#0B1221" : "#FFFFFF",
+          color: dark ? "#020817" : "#FFFFFF",
         },
         textColor: dark ? "rgba(219,222,227,0.9)" : "#191919",
       },

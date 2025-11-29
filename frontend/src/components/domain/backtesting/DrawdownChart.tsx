@@ -26,7 +26,7 @@ interface DrawdownChartProps {
 
 const getThemeOptions = (dark: boolean): DeepPartial<ChartOptions> => ({
   layout: {
-    background: { type: ColorType.Solid, color: dark ? "#0B1221" : "#FFFFFF" },
+    background: { type: ColorType.Solid, color: dark ? "#020817" : "#FFFFFF" },
     textColor: dark ? "rgba(219,222,227,0.9)" : "#191919",
   },
   grid: {
@@ -43,7 +43,7 @@ const getAreaSeriesTheme = (dark: boolean): DeepPartial<AreaSeriesOptions> => ({
 
 const DrawdownChart: React.FC<DrawdownChartProps> = ({
   drawdownData,
-  height = 200,
+  height = 280,
   dark = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
