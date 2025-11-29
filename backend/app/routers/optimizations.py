@@ -115,6 +115,19 @@ async def read_optimization_trials(
         db, job.id, page, limit, sort_by, sort_desc, min_score
     )
 
+@router.get("/{job_id}/trials/{trial_id}", response_model=schemas.TrialData)
+async def read_optimization_trial_detail(
+    job_id: uuid.UUID,
+    trial_id: int,
+    job: models.OptimizationJob = Depends(get_verified_optimization),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """특정 최적화 작업의 단일 Trial 상세 정보를 조회합니다."""
+    trial = await optimization_service.get_trial(db, job.id, trial_id)
+    if not trial:
+        raise HTTPException(status_code=404, detail="Trial not found")
+    return trial
+
 @router.post("/{job_id}/cancel", status_code=status.HTTP_200_OK)
 async def cancel_optimization(
     job_id: uuid.UUID,

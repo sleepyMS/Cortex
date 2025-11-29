@@ -25,6 +25,7 @@ import {
   CheckCircle,
   XCircle,
   Scissors,
+  Info,
 } from "lucide-react";
 
 import apiClient from "@/lib/apiClient";
@@ -61,6 +62,7 @@ interface TrialsTableProps {
   jobId: string;
   hoveredTrialId?: number | null;
   onHoverTrial?: (id: number | null) => void;
+  onTrialClick?: (trialId: number) => void;
   minScore?: number;
 }
 
@@ -68,6 +70,7 @@ export const TrialsTable = ({
   jobId,
   hoveredTrialId,
   onHoverTrial,
+  onTrialClick,
   minScore = 0,
 }: TrialsTableProps) => {
   const t = useTranslations("OptimizationDetailPage.TrialsTable");
@@ -294,6 +297,23 @@ export const TrialsTable = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{t("actions.label")}</DropdownMenuLabel>
+
+                  {/* 새로 추가: 슬라이드오버로 상세 보기 */}
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTrialClick?.(trial.trialId);
+                    }}
+                    disabled={!canViewDetails}
+                    className={cn(
+                      !canViewDetails && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <Info className="mr-2 h-4 w-4" />
+                    {t("actions.viewQuick")}
+                  </DropdownMenuItem>
+
+                  {/* 기존: 새 탭에서 전체 백테스트 보기 */}
                   <DropdownMenuItem
                     asChild
                     disabled={!canViewDetails}
@@ -302,19 +322,18 @@ export const TrialsTable = ({
                     )}
                   >
                     {canViewDetails ? (
-                      // [수정] trialId (camelCase) 사용
                       <Link
                         href={`/backtester/trial_${jobId}_${trial.trialId}`}
                         target="_blank"
                         className="flex items-center cursor-pointer"
                       >
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        {t("actions.viewDetails")}
+                        {t("actions.viewFull")}
                       </Link>
                     ) : (
                       <span className="flex items-center">
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        {t("actions.viewDetails")}
+                        {t("actions.viewFull")}
                       </span>
                     )}
                   </DropdownMenuItem>
@@ -381,15 +400,14 @@ export const TrialsTable = ({
                   data-state={row.getIsSelected() && "selected"}
                   className={cn(
                     "cursor-pointer transition-colors",
-                    // [수정] trialId (camelCase) 사용
                     hoveredTrialId === row.original.trialId &&
                       "bg-primary/10 hover:bg-primary/15",
                     row.original.state !== "COMPLETE" &&
                       "opacity-60 bg-muted/20"
                   )}
-                  // [수정] trialId (camelCase) 사용
                   onMouseEnter={() => onHoverTrial?.(row.original.trialId)}
                   onMouseLeave={() => onHoverTrial?.(null)}
+                  onClick={() => onTrialClick?.(row.original.trialId)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-2.5">

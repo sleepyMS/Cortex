@@ -45,6 +45,7 @@ import { ParameterImportanceChart } from "@/components/domain/optimization/Param
 import { ParallelCoordinatesChart } from "@/components/domain/optimization/ParallelCoordinatesChart";
 import { TrialsTable } from "@/components/domain/optimization/TrialsTable";
 import { WFOPerformanceSummary } from "@/components/domain/optimization/WFOPerformanceSummary";
+import { TrialDetailSheet } from "@/components/domain/optimization/TrialDetailSheet";
 
 interface OptimizationDetailPageProps {
   params: { optimizationId: string };
@@ -65,6 +66,8 @@ export default function OptimizationDetailPage({
   const [hoveredTrialId, setHoveredTrialId] = useState<number | null>(null);
   // 내보내기 로딩 상태
   const [isExporting, setIsExporting] = useState(false);
+  // Trial 상세 슬라이드오버 상태
+  const [selectedTrialId, setSelectedTrialId] = useState<number | null>(null);
 
   // 1. 데이터 페칭
   const {
@@ -408,6 +411,7 @@ export default function OptimizationDetailPage({
                       jobId={optimizationId}
                       hoveredTrialId={hoveredTrialId}
                       onHoverTrial={setHoveredTrialId}
+                      onTrialClick={setSelectedTrialId}
                       minScore={minScore[0]}
                     />
                   </CardContent>
@@ -417,6 +421,16 @@ export default function OptimizationDetailPage({
           </section>
         </>
       )}
+      {/* Trial 상세 슬라이드오버 */}
+      <TrialDetailSheet
+        jobId={optimizationId}
+        trialId={selectedTrialId}
+        open={selectedTrialId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTrialId(null);
+        }}
+        strategy={strategyForLabels}
+      />
     </div>
   );
 }

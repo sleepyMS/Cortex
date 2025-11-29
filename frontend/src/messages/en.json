@@ -1838,7 +1838,9 @@
       },
       "actions": {
         "label": "Actions",
-        "viewDetails": "View Details"
+        "viewDetails": "View Details",
+        "viewQuick": "Quick View",
+        "viewFull": "Full View"
       },
       "pagination": {
         "total": "Total {count} trials",
@@ -1848,6 +1850,22 @@
         "previousPage": "Previous",
         "nextPage": "Next",
         "lastPage": "Last Page"
+      }
+    },
+    "TrialDetail": {
+      "description": "View detailed information about this trial",
+      "status": "Status",
+      "keyMetrics": "Key Metrics",
+      "parameters": "Parameters",
+      "viewFullBacktest": "View Full Backtest",
+      "noData": "Unable to load data",
+      "metrics": {
+        "score": "Score",
+        "totalReturn": "Total Return",
+        "sharpe": "Sharpe Ratio",
+        "mdd": "Max Drawdown",
+        "winRate": "Win Rate",
+        "totalTrades": "Total Trades"
       }
     },
     "errorTitle": "Failed to load optimization",

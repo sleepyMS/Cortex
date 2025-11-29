@@ -1870,7 +1870,9 @@
       },
       "actions": {
         "label": "작업",
-        "viewDetails": "상세 보기"
+        "viewDetails": "상세 보기",
+        "viewQuick": "빠른 보기",
+        "viewFull": "전체 보기"
       },
       "pagination": {
         "total": "총 {count}회 시도",
@@ -1880,6 +1882,22 @@
         "previousPage": "이전",
         "nextPage": "다음",
         "lastPage": "마지막 페이지"
+      }
+    },
+    "TrialDetail": {
+      "description": "Trial의 상세 정보를 확인하세요",
+      "status": "상태",
+      "keyMetrics": "주요 지표",
+      "parameters": "파라미터",
+      "viewFullBacktest": "전체 백테스트 보기",
+      "noData": "데이터를 불러올 수 없습니다",
+      "metrics": {
+        "score": "점수",
+        "totalReturn": "총 수익률",
+        "sharpe": "샤프 비율",
+        "mdd": "최대 낙폭",
+        "winRate": "승률",
+        "totalTrades": "총 거래 수"
       }
     },
     "errorTitle": "최적화 정보 로딩 실패",
