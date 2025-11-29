@@ -179,8 +179,9 @@ export const BacktestCard = ({
           <Link href={`/backtester?view=${id}`}>
             <Card className="w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card">
               <div className="space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors flex-1">
+                {/* Top row: Strategy name + Status badge (with space for delete button) */}
+                <div className="flex items-center gap-1.5 pr-6">
+                  <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                     {strategy.name}
                   </h3>
                   <Badge
@@ -199,6 +200,7 @@ export const BacktestCard = ({
                     {currentStatus.label}
                   </Badge>
                 </div>
+                {/* Bottom row: Return percentage and date */}
                 <div className="flex items-center justify-between text-xs">
                   <span
                     className={cn(
