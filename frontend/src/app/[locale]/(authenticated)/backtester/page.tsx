@@ -14,6 +14,8 @@ import {
 } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
+import { useSearchParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/Button";
@@ -28,7 +30,13 @@ import {
   Backtest,
   BacktestCard,
 } from "@/components/domain/backtesting/BacktestCard";
-import { PlusCircle, BarChartHorizontal, ListFilter } from "lucide-react";
+import { BacktestDetailPanel } from "@/components/domain/backtesting/BacktestDetailPanel";
+import {
+  PlusCircle,
+  BarChartHorizontal,
+  ListFilter,
+  Loader2,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Strategy } from "@/types/strategy";
 import {
@@ -89,6 +97,12 @@ export default function BacktesterPage() {
   const t = useTranslations("BacktesterPage");
   const queryClient = useQueryClient();
   const { ref, inView } = useInView();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Split view state
+  const viewBacktestId = searchParams.get("view");
+  const isSplitView = !!viewBacktestId;
 
   // --- State for Filters ---
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -175,6 +189,19 @@ export default function BacktesterPage() {
 
   const backtests = data?.pages.flat() ?? [];
 
+  // Navigation handlers for split view
+  const handleNavigateToView = (backtestId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", backtestId);
+    router.push(`/backtester?${params.toString()}`);
+  };
+
+  const handleClose = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("view");
+    router.push(`/backtester?${params.toString()}`);
+  };
+
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton />;
     if (isError)
@@ -205,6 +232,100 @@ export default function BacktesterPage() {
     );
   };
 
+  // Render split view layout if viewBacktestId is present
+  if (isSplitView) {
+    return (
+      <div className="flex min-h-screen">
+        {/* Left sidebar - Backtest list */}
+        <AnimatePresence>
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "20%", opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
+          >
+            {/* Sidebar header */}
+            <div className="p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-lg font-semibold">{t("title")}</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {t("splitView.backtestCount", { count: backtests.length })}
+                  </p>
+                </div>
+                <Link href="/backtester/new">
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Scrollable backtest list */}
+            <div className="flex-1 overflow-y-auto p-3 pb-12 space-y-2">
+              {isLoading ? (
+                <LoadingSkeleton />
+              ) : backtests.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  {t("empty.title")}
+                </div>
+              ) : (
+                backtests.map((backtest: Backtest) => (
+                  <div
+                    key={backtest.id}
+                    className={`transition-all rounded-lg ${
+                      viewBacktestId === backtest.id
+                        ? "ring-2 ring-primary"
+                        : ""
+                    }`}
+                  >
+                    <BacktestCard
+                      backtest={backtest}
+                      onCancel={cancelMutation.mutate}
+                      onDelete={deleteMutation.mutate}
+                      isCanceling={
+                        cancelMutation.isPending &&
+                        cancelMutation.variables === backtest.id
+                      }
+                      isDeleting={
+                        deleteMutation.isPending &&
+                        deleteMutation.variables === backtest.id
+                      }
+                      compact={true}
+                    />
+                  </div>
+                ))
+              )}
+              {/* Infinite scroll trigger */}
+              <div ref={ref} className="h-10 flex justify-center items-center">
+                {isFetchingNextPage && (
+                  <Loader2 className="animate-spin h-5 w-5" />
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Right panel - Backtest detail */}
+        <motion.div
+          initial={{ width: "100%", opacity: 0 }}
+          animate={{ width: isSplitView ? "80%" : "100%", opacity: 1 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="flex-1 overflow-y-auto"
+        >
+          {viewBacktestId && (
+            <BacktestDetailPanel
+              backtestId={viewBacktestId}
+              onClose={handleClose}
+            />
+          )}
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Grid view (default)
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">

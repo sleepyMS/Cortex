@@ -1100,6 +1100,9 @@
       "title": "아직 실행된 백테스트가 없습니다",
       "description": "첫 백테스트를 생성하여 당신의 투자 전략을 데이터로 검증해보세요.",
       "createButton": "첫 백테스트 생성하기"
+    },
+    "splitView": {
+      "backtestCount": "{count}개의 백테스트"
     }
   },
   "NewBacktestPage": {
@@ -1132,7 +1135,11 @@
     "actions": {
       "cancel": "실행 취소",
       "delete": "기록 삭제"
-    }
+    },
+    "confirmDelete": "백테스트 삭제",
+    "deleteDescription": "{strategyName}의 백테스트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "cancelButton": "취소",
+    "deleteButton": "삭제"
   },
   "BacktestResultSummary": {
     "title": "성과 요약",

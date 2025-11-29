@@ -4,7 +4,8 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { format, isValid } from "date-fns";
 import {
   MoreVertical,
@@ -22,6 +23,16 @@ import { cn } from "@/lib/utils";
 import { Strategy } from "@/types/strategy";
 
 // --- Shadcn/ui 컴포넌트 임포트 ---
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/AlertDialog";
 import {
   Card,
   CardContent,
@@ -70,6 +81,7 @@ interface BacktestCardProps {
   onDelete: (id: string) => void;
   isCanceling: boolean;
   isDeleting: boolean;
+  compact?: boolean; // For split view sidebar
 }
 
 export const BacktestCard = ({
@@ -78,8 +90,36 @@ export const BacktestCard = ({
   onDelete,
   isCanceling,
   isDeleting,
+  compact = false,
 }: BacktestCardProps) => {
   const t = useTranslations("BacktestCard");
+  const router = useRouter();
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+
+  const handleDeleteClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    // Capture current URL state BEFORE deletion
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentViewId = currentParams.get("view");
+
+    // Delete and redirect if viewing this backtest
+    if (currentViewId === backtest.id) {
+      onDelete(backtest.id);
+      // Redirect to close split view after deletion
+      if (typeof window !== "undefined") {
+        window.location.href = "/backtester";
+      }
+    } else {
+      onDelete(backtest.id);
+    }
+
+    setShowDeleteConfirm(false);
+  };
 
   const statusConfig = {
     completed: {
@@ -131,6 +171,95 @@ export const BacktestCard = ({
       ? `${format(startDate, "yy.MM.dd")} - ${format(endDate, "yy.MM.dd")}`
       : t("noDateInfo");
 
+  // Compact mode for split view sidebar
+  if (compact) {
+    return (
+      <>
+        <div className="relative group">
+          <div
+            onClick={() => router.push(`/backtester?view=${id}`)}
+            className="cursor-pointer"
+          >
+            <Card className="w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card">
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors flex-1">
+                    {strategy.name}
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 text-[9px] px-1 py-0 h-4",
+                      currentStatus.badgeClass
+                    )}
+                  >
+                    <currentStatus.Icon
+                      className={cn(
+                        "mr-0.5 h-2.5 w-2.5",
+                        currentStatus.iconClass
+                      )}
+                    />
+                    {currentStatus.label}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      result && result.totalReturnPct !== null
+                        ? result.totalReturnPct >= 0
+                          ? "text-emerald-600"
+                          : "text-rose-600"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {result?.totalReturnPct?.toFixed(2) ?? "-"}%
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(new Date(backtest.createdAt), "MM.dd HH:mm")}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </div>
+          {/* Delete button - appears on hover */}
+          <button
+            onClick={handleDeleteClick}
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-destructive/10 text-destructive z-10"
+            aria-label={t("actions.delete")}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("confirmDelete")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("deleteDescription", { strategyName: strategy.name })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {t("deleteButton")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Full grid view
   return (
     <TooltipProvider delayDuration={100}>
       <Card
@@ -140,9 +269,9 @@ export const BacktestCard = ({
             "opacity-70 hover:opacity-100"
         )}
       >
-        <Link
-          href={`/backtester/${id}`}
-          className="flex flex-col flex-grow p-5"
+        <div
+          onClick={() => router.push(`/backtester?view=${id}`)}
+          className="flex flex-col flex-grow p-5 cursor-pointer"
         >
           <div className="flex justify-between items-start gap-3 mb-4">
             <div className="space-y-1.5 flex-grow min-w-0">
@@ -220,7 +349,7 @@ export const BacktestCard = ({
               </div>
             )}
           </div>
-        </Link>
+        </div>
 
         <div className="flex justify-between items-center px-5 py-3 border-t bg-muted/10 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
