@@ -273,8 +273,8 @@ export default function BacktesterPage() {
                   </p>
                 </div>
                 <Link href="/backtester/new">
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                    <PlusCircle className="h-4 w-4" />
+                  <Button size="sm" variant="ghost" className="h-9 w-9 p-0">
+                    <PlusCircle className="h-5 w-5" />
                   </Button>
                 </Link>
               </div>
