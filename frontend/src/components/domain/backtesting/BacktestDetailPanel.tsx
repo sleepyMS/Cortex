@@ -209,13 +209,37 @@ const LoadingSkeleton = () => (
     </div>
 
     {/* Detailed metrics skeleton */}
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="space-y-2 p-3 border rounded-lg">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-6 w-full" />
+    <div className="border rounded-lg p-6">
+      <Skeleton className="h-6 w-32 mb-6" />
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Overall Score skeleton (left side) */}
+        <div className="lg:col-span-1 flex flex-col items-center justify-center p-6 bg-muted rounded-lg">
+          <Skeleton className="h-4 w-24 mb-3" />
+          <Skeleton className="h-16 w-20 mb-2" />
+          <Skeleton className="h-5 w-12" />
         </div>
-      ))}
+        {/* Metrics table skeleton (right side) */}
+        <div className="lg:col-span-3 space-y-3">
+          {/* Table header */}
+          <div className="flex gap-4 pb-3 border-b">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-32 flex-1" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+          {/* Table rows */}
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex gap-4 items-center">
+              {i === 0 || i === 3 || i === 5 ? (
+                <Skeleton className="h-4 w-24" />
+              ) : (
+                <div className="w-24" />
+              )}
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
 
     {/* Charts skeleton (2 columns) */}
