@@ -1818,6 +1818,11 @@
       "parallelCoordinatesTitle": "Parallel Coordinates Plot",
       "parallelCoordinatesDescription": "Click on each line to view detailed information.",
       "parallelCoordinatesTooltip": "Visualizes the relationship between multiple parameters and performance. Each line represents one trial. Green lines indicate better performance.",
+      "distributionTitle": "Parameter Distribution",
+      "distributionTooltip": "Shows the frequency and average performance for each range of the selected parameter. Darker green indicates better average performance in that range.",
+      "range": "Range",
+      "count": "Count",
+      "avgScore": "Avg Score",
       "trialsTableTitle": "All Trials"
     },
     "TrialsTable": {

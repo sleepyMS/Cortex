@@ -42,6 +42,7 @@ import { BestResultCard } from "@/components/domain/optimization/BestResultCard"
 import { OOSPerformanceChart } from "@/components/domain/optimization/OOSPerformanceChart";
 import { ParameterStabilityChart } from "@/components/domain/optimization/ParameterStabilityChart";
 import { ParameterImportanceChart } from "@/components/domain/optimization/ParameterImportanceChart";
+import { ParameterDistributionChart } from "@/components/domain/optimization/ParameterDistributionChart";
 import { ParallelCoordinatesChart } from "@/components/domain/optimization/ParallelCoordinatesChart";
 import { TrialsTable } from "@/components/domain/optimization/TrialsTable";
 import { WFOPerformanceSummary } from "@/components/domain/optimization/WFOPerformanceSummary";
@@ -393,10 +394,16 @@ export default function OptimizationDetailPage({
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="h-[500px]">
                     <ParameterImportanceChart
                       data={job.parameterImportance}
+                      strategy={strategyForLabels}
+                    />
+                  </div>
+                  <div className="h-[500px]">
+                    <ParameterDistributionChart
+                      trials={filteredTrials}
                       strategy={strategyForLabels}
                     />
                   </div>

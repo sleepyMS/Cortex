@@ -1850,6 +1850,11 @@
       "parallelCoordinatesTitle": "평행 좌표 플롯",
       "parallelCoordinatesDescription": "각 선을 클릭하여 상세 정보를 확인하세요.",
       "parallelCoordinatesTooltip": "여러 파라미터와 성과 간의 복합적인 관계를 시각화합니다. 각 선은 하나의 시도(Trial)를 나타내며, 초록색에 가까울수록 성과가 좋은 것입니다.",
+      "distributionTitle": "파라미터 분포",
+      "distributionTooltip": "선택한 파라미터 값의 구간별 빈도수와 평균 성과를 보여줍니다. 진한 초록색일수록 해당 구간의 평균 성과가 좋음을 의미합니다.",
+      "range": "구간",
+      "count": "빈도수",
+      "avgScore": "평균 점수",
       "trialsTableTitle": "모든 시도 목록"
     },
     "TrialsTable": {
