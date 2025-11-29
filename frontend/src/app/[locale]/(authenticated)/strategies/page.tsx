@@ -395,7 +395,7 @@ function StrategiesPageContent() {
           {/* Left sidebar - Strategy list (hidden on mobile) */}
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "20%", opacity: 1 }}
+            animate={{ width: "320px", opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
