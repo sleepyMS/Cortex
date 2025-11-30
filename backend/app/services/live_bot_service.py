@@ -98,7 +98,7 @@ class LiveBotService:
         )
         loaded_bot = result.scalar_one()
         
-        return loaded_bot
+        return await self.update_bot_status(db, loaded_bot, "active")
 
     async def execute_bot_cycle(self, db: AsyncSession, bot: models.LiveBot) -> dict:
         """

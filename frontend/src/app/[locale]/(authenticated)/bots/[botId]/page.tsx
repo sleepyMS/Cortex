@@ -69,11 +69,13 @@ export default function BotDetailPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {bot.strategy?.name || "Bot Detail"}
+            {bot.strategy?.name || t("botDetail")}
           </h1>
           <p className="text-muted-foreground">
-            {bot.mode === "paper" ? "📄 Paper Trading" : "🔴 Live Trading"} •{" "}
-            {bot.ticker}
+            {bot.mode === "paper"
+              ? `📄 ${t("paperTrading")}`
+              : `🔴 ${t("liveTrading")}`}{" "}
+            • {bot.ticker}
           </p>
         </div>
         <Badge
@@ -86,7 +88,7 @@ export default function BotDetailPage() {
               : "bg-gray-500 hover:bg-gray-600"
           }
         >
-          {bot.status.toUpperCase()}
+          {t(`status.${bot.status}` as any)}
         </Badge>
       </div>
 
@@ -95,7 +97,7 @@ export default function BotDetailPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Current Balance
+              {t("currentBalance")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -108,7 +110,7 @@ export default function BotDetailPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total PnL
+              {t("totalPnl")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -132,7 +134,7 @@ export default function BotDetailPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Win Rate
+              {t("winRate")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -151,7 +153,7 @@ export default function BotDetailPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Max Drawdown
+              {t("maxDrawdown")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -177,30 +179,32 @@ export default function BotDetailPage() {
       {/* Strategy Details */}
       <Card>
         <CardHeader>
-          <CardTitle>Strategy Configuration</CardTitle>
+          <CardTitle>{t("strategyConfig")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Strategy</p>
+              <p className="text-sm text-muted-foreground">{t("strategy")}</p>
               <p className="font-medium">{bot.strategy?.name || "N/A"}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">
-                Execution Interval
+                {t("executionInterval")}
               </p>
               <p className="font-medium">{bot.executionInterval}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Leverage</p>
+              <p className="text-sm text-muted-foreground">{t("leverage")}</p>
               <p className="font-medium">{bot.leverage}x</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Daily Loss Limit</p>
+              <p className="text-sm text-muted-foreground">
+                {t("dailyLossLimit")}
+              </p>
               <p className="font-medium">
                 {bot.dailyMaxLossEnabled
                   ? `${bot.dailyMaxLossPct}%`
-                  : "Disabled"}
+                  : t("disabled")}
               </p>
             </div>
           </div>

@@ -155,7 +155,7 @@ export function BotListTable() {
                         : "bg-gray-500 hover:bg-gray-600"
                     }
                   >
-                    {bot.status}
+                    {tDetail(`status.${bot.status}` as any)}
                   </Badge>
                 </TableCell>
                 <TableCell className="font-medium">
