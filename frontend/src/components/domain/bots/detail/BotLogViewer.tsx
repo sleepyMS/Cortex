@@ -1,84 +1,81 @@
 "use client";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ScrollArea } from "@/components/ui/ScrollArea";
-import { useEffect, useRef } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { useTranslations } from "next-intl";
-
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  level: "INFO" | "WARN" | "ERROR" | "DEBUG";
-  message: string;
-}
+import { BotTradeLog } from "@/lib/api/bots";
 
 interface BotLogViewerProps {
-  logs: LogEntry[];
+  logs: BotTradeLog[];
 }
 
 export function BotLogViewer({ logs }: BotLogViewerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("LiveTrading.Detail");
 
-  // Auto-scroll to bottom when logs update
-  useEffect(() => {
-    if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    }
-  }, [logs]);
+  // 거래 로그를 로그 형식으로 변환
+  const formatLogEntry = (trade: BotTradeLog) => {
+    const level = trade.pnl && trade.pnl < 0 ? "WARN" : "INFO";
+    const message = `${trade.side} ${trade.quantity.toFixed(
+      4
+    )} @ $${trade.price.toFixed(2)}${
+      trade.pnl !== null && trade.pnl !== undefined
+        ? ` | PnL: $${trade.pnl.toFixed(2)}`
+        : ""
+    }${trade.reason ? ` | ${trade.reason}` : ""}`;
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "INFO":
-        return "text-blue-400";
-      case "WARN":
-        return "text-yellow-400";
-      case "ERROR":
-        return "text-red-500";
-      case "DEBUG":
-        return "text-gray-500";
-      default:
-        return "text-foreground";
-    }
+    return {
+      id: trade.id,
+      timestamp: new Date(trade.timestamp).toLocaleTimeString(),
+      level,
+      message,
+    };
   };
 
+  const logEntries = logs.map(formatLogEntry);
+
   return (
-    <div className="flex flex-col h-full rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-      <div className="p-4 border-b bg-muted/30">
-        <h3 className="font-semibold text-sm">{t("liveLogs")}</h3>
-      </div>
-      <ScrollArea
-        className="flex-1 p-4 font-mono text-xs bg-black/90 text-gray-300"
-        ref={scrollRef}
-      >
-        {logs.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            {t("waitingForLogs")}
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {logs.map((log) => (
-              <div key={log.id} className="flex gap-2">
-                <span className="text-gray-500 shrink-0">
-                  [{log.timestamp}]
-                </span>
-                <span
-                  className={`font-bold shrink-0 w-12 ${getLevelColor(
-                    log.level
-                  )}`}
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("liveLogs")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[300px] w-full rounded-md border p-4">
+          {logEntries.length > 0 ? (
+            <div className="space-y-2">
+              {logEntries.map((log) => (
+                <div
+                  key={log.id}
+                  className="flex items-start gap-2 text-sm font-mono"
                 >
-                  {log.level}
-                </span>
-                <span className="break-all">{log.message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
-    </div>
+                  <span className="text-muted-foreground shrink-0">
+                    {log.timestamp}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`shrink-0 ${
+                      log.level === "ERROR"
+                        ? "border-red-500 text-red-500"
+                        : log.level === "WARN"
+                        ? "border-yellow-500 text-yellow-500"
+                        : log.level === "DEBUG"
+                        ? "border-blue-500 text-blue-500"
+                        : "border-green-500 text-green-500"
+                    }`}
+                  >
+                    {log.level}
+                  </Badge>
+                  <span className="flex-1">{log.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              {t("waitingForLogs")}
+            </div>
+          )}
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 }

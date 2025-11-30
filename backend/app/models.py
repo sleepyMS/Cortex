@@ -407,6 +407,39 @@ class LiveBot(Base):
     execution_interval = Column(String(20), default="1h", nullable=False)
     trailing_stop_config = Column(JSON, nullable=True)
 
+    # Paper Trading & State Management Fields
+    mode = Column(String(20), default='paper', nullable=False)
+    current_balance = Column(Float, nullable=True)
+    position_size = Column(Float, default=0.0, nullable=False)
+    entry_price = Column(Float, nullable=True)
+    last_signal = Column(String(20), nullable=True)
+    
+    # 거래 페어 및 레버리지
+    ticker = Column(String(20), nullable=False, server_default="BTCUSDT")
+    leverage = Column(Float, default=1.0, nullable=False)
+    
+    # 리스크 관리
+    daily_max_loss_pct = Column(Float, nullable=True, comment="일일 최대 손실 %")
+    daily_max_loss_enabled = Column(Boolean, default=False, nullable=False)
+    daily_pnl = Column(Float, default=0.0, nullable=False, comment="오늘 누적 손익")
+    daily_pnl_reset_date = Column(Date, nullable=True, comment="마지막 리셋 날짜")
+    
+    # 성과 추적
+    total_trades = Column(Integer, default=0, nullable=False)
+    winning_trades = Column(Integer, default=0, nullable=False)
+    total_pnl = Column(Float, default=0.0, nullable=False)
+    max_drawdown = Column(Float, default=0.0, nullable=False)
+    peak_balance = Column(Float, nullable=True, comment="최고 잔고 (MDD 계산용)")
+    
+    # TP/SL 상태 저장 (재시작 시 복구용)
+    sl_price = Column(Float, nullable=True, comment="Stop Loss 가격")
+    tp_price = Column(Float, nullable=True, comment="Take Profit 가격")
+    trailing_stop_activation_price = Column(Float, nullable=True, comment="Trailing Stop 활성화 가격")
+    
+    # 에러 추적
+    last_error = Column(Text, nullable=True)
+    error_count = Column(Integer, default=0, nullable=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
@@ -415,6 +448,26 @@ class LiveBot(Base):
     api_key = relationship("ApiKey", back_populates="live_bots")
     trade_logs = relationship("TradeLog", back_populates="live_bot", cascade="all, delete-orphan")
 
+class BotPerformanceSnapshot(Base):
+    """봇 성과 일별 스냅샷 (차트 데이터용)"""
+    __tablename__ = "bot_performance_snapshots"
+    __table_args__ = (
+        UniqueConstraint('bot_id', 'snapshot_date', name='_bot_snapshot_date_uc'),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    bot_id = Column(UUID(as_uuid=True), ForeignKey("live_bots.id", ondelete="CASCADE"), nullable=False, index=True)
+    snapshot_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    
+    balance = Column(Float, nullable=False)
+    position_size = Column(Float, default=0.0, nullable=False)
+    unrealized_pnl = Column(Float, default=0.0, nullable=False)
+    realized_pnl = Column(Float, default=0.0, nullable=False)
+    total_trades = Column(Integer, default=0, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    bot = relationship("LiveBot")
 
 # ==============================================================================
 # 3. 커뮤니티 관련 모델

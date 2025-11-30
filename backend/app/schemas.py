@@ -644,13 +644,21 @@ class Backtest(BacktestInList):
     strategy: Optional[Strategy] = None 
     result: Optional[BacktestResultSummary] = None 
 
+# ==============================================================================
+# Live Bot 관련 추가 스키마
+# ==============================================================================
 class LiveBotCreate(CamelCaseModel):
     strategy_id: uuid.UUID
-    api_key_id: uuid.UUID
-    initial_capital: Optional[float] = Field(None, ge=0.0, description="Initial capital for the live bot")
+    api_key_id: Optional[uuid.UUID] = None  # Paper 모드에서는 선택적
+    initial_capital: Optional[float] = Field(None, ge=0.0, description="Initial capital for the bot")
     ticker: str = Field(..., description="Trading pair for the bot")
     execution_interval: str = Field("1h", description="Execution interval (e.g., 1m, 1h)")
     trailing_stop_config: Optional[Dict[str, Any]] = None
+    mode: str = Field("paper", description="Trading mode: 'live' or 'paper'")
+    
+    leverage: float = Field(1.0, ge=1.0, le=125.0, description="Leverage (1-125x)")
+    daily_max_loss_pct: Optional[float] = Field(None, ge=0.0, le=100.0, description="Daily max loss %")
+    daily_max_loss_enabled: bool = Field(False, description="Enable daily loss limit")
 
 class LiveBotUpdate(CamelCaseModel):
     status: Optional[Literal["active", "paused", "stopped"]] = None
@@ -661,6 +669,13 @@ class LiveBot(CamelCaseModel):
     strategy_id: uuid.UUID
     api_key_id: uuid.UUID
     status: str
+
+    mode: str
+    current_balance: Optional[float] = None
+    position_size: float = 0.0
+    entry_price: Optional[float] = None
+    last_signal: Optional[str] = None
+    
     started_at: datetime
     stopped_at: Optional[datetime] = None
     last_run_at: Optional[datetime] = None
@@ -669,6 +684,78 @@ class LiveBot(CamelCaseModel):
     trailing_stop_config: Optional[Dict[str, Any]] = None
     strategy: Optional[StrategySummary] = None
     api_key: Optional[ApiKeyResponse] = None
+    
+    ticker: str
+    leverage: float
+    daily_max_loss_pct: Optional[float] = None
+    daily_max_loss_enabled: bool
+    daily_pnl: float
+    total_trades: int
+    winning_trades: int
+    total_pnl: float
+    max_drawdown: float
+    last_error: Optional[str] = None
+    error_count: int
+
+class BotLog(CamelCaseModel):
+    """봇 로그 엔트리"""
+    id: uuid.UUID
+    bot_id: uuid.UUID
+    timestamp: datetime
+    level: str  # INFO, WARN, ERROR
+    message: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class BotTradeLogEntry(CamelCaseModel):
+    """봇 거래 로그 (TradeLog 확장)"""
+    id: uuid.UUID
+    timestamp: datetime
+    side: str
+    price: float
+    quantity: float
+    commission: Optional[float] = None
+    pnl: Optional[float] = None
+    current_balance: Optional[float] = None
+    reason: Optional[str] = None
+
+class BotAnalytics(CamelCaseModel):
+    """봇 성과 분석 데이터"""
+    bot_id: uuid.UUID
+    
+    # 기본 통계
+    total_trades: int
+    winning_trades: int
+    losing_trades: int
+    win_rate: float
+    
+    # 수익 지표
+    total_pnl: float
+    total_return_pct: float
+    daily_pnl: float
+    
+    # 리스크 지표
+    max_drawdown: float
+    sharpe_ratio: Optional[float] = None
+    profit_factor: Optional[float] = None
+    
+    # 거래 분석
+    avg_win: Optional[float] = None
+    avg_loss: Optional[float] = None
+    largest_win: Optional[float] = None
+    largest_loss: Optional[float] = None
+    
+    # 시간 분석
+    avg_holding_time: Optional[str] = None
+    total_runtime: str
+
+class BotPerformanceSnapshotResponse(CamelCaseModel):
+    """성과 스냅샷 응답"""
+    snapshot_date: datetime
+    balance: float
+    position_size: float
+    unrealized_pnl: float
+    realized_pnl: float
+    total_trades: int
 
 # ==============================================================================
 # 3. 커뮤니티 관련 스키마

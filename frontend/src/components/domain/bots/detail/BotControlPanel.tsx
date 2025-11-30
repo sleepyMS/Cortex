@@ -1,107 +1,200 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/AlertDialog";
-import { Play, Square, AlertTriangle, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { AlertCircle, Pause, Play, Trash2, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { updateBotStatus, deleteBot, panicSell, LiveBot } from "@/lib/api/bots";
+import { toast } from "sonner";
+import { useRouter } from "@/i18n/navigation";
 
 interface BotControlPanelProps {
-  status: "running" | "stopped" | "error";
-  onStart: () => void;
-  onStop: () => void;
-  onPanic: () => void;
-  onDelete: () => void;
+  bot: LiveBot;
 }
 
-export function BotControlPanel({
-  status,
-  onStart,
-  onStop,
-  onPanic,
-  onDelete,
-}: BotControlPanelProps) {
-  const [isPanicOpen, setIsPanicOpen] = useState(false);
+export function BotControlPanel({ bot }: BotControlPanelProps) {
   const t = useTranslations("LiveTrading.Detail");
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  // 상태 업데이트 Mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: (status: "active" | "paused" | "stopped") =>
+      updateBotStatus(bot.id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bot", bot.id] });
+      queryClient.invalidateQueries({ queryKey: ["bots"] });
+      toast.success("Bot status updated");
+    },
+    onError: (error: any) => {
+      toast.error("Failed to update bot", {
+        description: error.response?.data?.detail || error.message,
+      });
+    },
+  });
+
+  // 삭제 Mutation
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteBot(bot.id),
+    onSuccess: () => {
+      toast.success("Bot deleted successfully");
+      router.push("/bots");
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete bot", {
+        description: error.response?.data?.detail || error.message,
+      });
+    },
+  });
+
+  // Panic Sell Mutation
+  const panicSellMutation = useMutation({
+    mutationFn: () => panicSell(bot.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bot", bot.id] });
+      toast.success("Panic sell executed", {
+        description: "All positions have been closed",
+      });
+    },
+    onError: (error: any) => {
+      toast.error("Panic sell failed", {
+        description: error.response?.data?.detail || error.message,
+      });
+    },
+  });
+
+  const handleStartStop = () => {
+    const newStatus = bot.status === "active" ? "paused" : "active";
+    updateStatusMutation.mutate(newStatus);
+  };
+
+  const handleDelete = () => {
+    if (
+      confirm(
+        "Are you sure you want to delete this bot? This action cannot be undone."
+      )
+    ) {
+      deleteMutation.mutate();
+    }
+  };
+
+  const handlePanicSell = () => {
+    if (
+      confirm(
+        "⚠️ PANIC SELL: This will immediately close all positions and stop the bot. Are you sure?"
+      )
+    ) {
+      panicSellMutation.mutate();
+    }
+  };
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2 mr-auto">
-        <Badge
-          variant={status === "running" ? "default" : "secondary"}
-          className={`text-sm px-3 py-1 ${
-            status === "running"
-              ? "bg-green-500 hover:bg-green-600"
-              : status === "error"
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-gray-500 hover:bg-gray-600"
-          }`}
-        >
-          {status.toUpperCase()}
-        </Badge>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Status Display */}
+        <div className="p-4 rounded-lg bg-muted">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Current Status</p>
+              <p className="text-lg font-semibold capitalize">{bot.status}</p>
+            </div>
+            {bot.status === "active" ? (
+              <Play className="h-8 w-8 text-green-500" />
+            ) : bot.status === "error" ? (
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            ) : (
+              <Pause className="h-8 w-8 text-gray-500" />
+            )}
+          </div>
+          {bot.lastError && (
+            <div className="mt-2 p-2 bg-red-50 dark:bg-red-950 rounded text-xs text-red-600 dark:text-red-400">
+              <p className="font-semibold">Last Error:</p>
+              <p>{bot.lastError}</p>
+            </div>
+          )}
+        </div>
 
-      {status === "stopped" || status === "error" ? (
-        <Button
-          onClick={onStart}
-          className="bg-green-600 hover:bg-green-700 text-white gap-2"
-        >
-          <Play className="h-4 w-4" />
-          {t("startBot")}
-        </Button>
-      ) : (
-        <Button onClick={onStop} variant="secondary" className="gap-2">
-          <Square className="h-4 w-4 fill-current" />
-          {t("stopBot")}
-        </Button>
-      )}
-
-      <AlertDialog open={isPanicOpen} onOpenChange={setIsPanicOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="destructive" className="gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            {t("panicSell")}
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("panicTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("panicDesc")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                onPanic();
-                setIsPanicOpen(false);
-              }}
-              className="bg-red-600 hover:bg-red-700"
+        {/* Control Buttons */}
+        <div className="space-y-2">
+          {bot.status === "active" ? (
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={handleStartStop}
+              disabled={updateStatusMutation.isPending}
             >
-              {t("confirmPanic")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Pause className="mr-2 h-4 w-4" />
+              {t("pauseBot")}
+            </Button>
+          ) : (
+            <Button
+              className="w-full"
+              onClick={handleStartStop}
+              disabled={
+                bot.status === "error" || updateStatusMutation.isPending
+              }
+            >
+              <Play className="mr-2 h-4 w-4" />
+              {t("startBot")}
+            </Button>
+          )}
 
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onDelete}
-        className="text-muted-foreground hover:text-red-500"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    </div>
+          {bot.positionSize !== 0 && (
+            <Button
+              className="w-full"
+              variant="destructive"
+              onClick={handlePanicSell}
+              disabled={panicSellMutation.isPending}
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              {t("panicSell")}
+            </Button>
+          )}
+
+          <Button
+            className="w-full"
+            variant="outline"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {t("deleteBot")}
+          </Button>
+        </div>
+
+        {/* Position Info */}
+        {bot.positionSize !== 0 && (
+          <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950">
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+              Active Position
+            </p>
+            <div className="mt-2 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Side:</span>
+                <span className="font-medium">
+                  {bot.positionSize > 0 ? "LONG" : "SHORT"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Size:</span>
+                <span className="font-medium">
+                  {Math.abs(bot.positionSize)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Entry Price:</span>
+                <span className="font-medium">
+                  ${bot.entryPrice?.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

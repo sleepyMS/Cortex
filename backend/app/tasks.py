@@ -43,6 +43,7 @@ from .services.marketplace_service import marketplace_service
 from .services.notification_service import notification_service 
 from .services.subscription_service import subscription_service
 from .services.verification_service import verification_service
+from .services.live_bot_service import live_bot_service 
 from .gateways.toss_payments_client import TossPaymentsClient
 from .config import settings
 
@@ -571,15 +572,13 @@ async def _run_single_bot_cycle_async(bot: LiveBot) -> dict:
     [비동기 헬퍼] 한 개의 활성 봇에 대한 거래 로직을 한 번 실행하고 결과를 반환합니다.
     """
     try:
-        # TODO: 실제 자동매매 로직 구현 필요 (현재는 더미)
-        await asyncio.sleep(0.1) 
-
         async with AsyncSessionLocal() as session:
-            stmt = update(LiveBot).where(LiveBot.id == bot.id).values(last_run_at=datetime.now(timezone.utc))
-            await session.execute(stmt)
-            await session.commit()
-
-        return {"bot_id": bot.id, "status": "success"}
+            # 봇 객체를 현재 세션에 병합하여 연결 (DetachedInstanceError 방지)
+            merged_bot = await session.merge(bot)
+            # 실제 페이퍼 트레이딩 로직 실행
+            result = await live_bot_service.execute_bot_cycle(session, merged_bot)
+            return result
+            
     except Exception as e:
         logger.error(f"Bot ID {bot.id}: [ASYNC] Cycle failed: {e}", exc_info=True)
         return {"bot_id": bot.id, "status": "failed", "error": str(e)}
@@ -612,6 +611,55 @@ def run_all_active_bots():
 
     return asyncio.run(_run_all_concurrently())
 
+@celery_app.task(name="collect_bot_performance_snapshots", queue="io_bound_queue")
+def collect_bot_performance_snapshots():
+    """
+    모든 활성 봇의 성과 스냅샷을 수집합니다 (1시간마다 실행 권장).
+    차트 데이터로 사용됩니다.
+    """
+    async def _collect():
+        async with AsyncSessionLocal() as db:
+            # 활성 봇 조회
+            query = select(LiveBot).filter(
+                LiveBot.status.in_(['active', 'paused'])
+            )
+            result = await db.execute(query)
+            bots = result.scalars().all()
+            
+            if not bots:
+                logger.info("No active bots to collect snapshots")
+                return "No active bots"
+            
+            snapshot_time = datetime.now(timezone.utc)
+            
+            for bot in bots:
+                # 미실현 손익 계산 (포지션이 있는 경우)
+                unrealized_pnl = 0.0
+                if bot.position_size != 0 and bot.entry_price:
+                    # TODO: 현재가 조회하여 정확한 미실현 손익 계산
+                    # 현재는 간단히 0으로 설정
+                    unrealized_pnl = 0.0
+                
+                # 실현 손익은 total_pnl
+                realized_pnl = bot.total_pnl
+                
+                snapshot = models.BotPerformanceSnapshot(
+                    bot_id=bot.id,
+                    snapshot_date=snapshot_time,
+                    balance=bot.current_balance or bot.initial_capital,
+                    position_size=bot.position_size,
+                    unrealized_pnl=unrealized_pnl,
+                    realized_pnl=realized_pnl,
+                    total_trades=bot.total_trades
+                )
+                db.add(snapshot)
+            
+            await db.commit()
+            logger.info(f"Collected performance snapshots for {len(bots)} bots")
+            return f"Collected {len(bots)} snapshots"
+    
+    return asyncio.run(_collect())
+    
 @celery_app.task(bind=True, name="fetch_and_store_ohlcv", queue="io_bound_queue")
 def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, limit: int = 1000): # limit 기본값 1000으로 상향 권장
     """[동기] 단일 회차 OHLCV 데이터 수집 태스크 (주기적 실행용)"""
@@ -633,7 +681,7 @@ def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, 
 @celery_app.task(bind=True, name="backfill_ohlcv", queue="io_bound_queue")
 def backfill_ohlcv(self, ticker: str, timeframe: str, start_date_str: str):
     """
-    [신규] 대량의 과거 데이터를 수집하기 위한 백필 태스크.
+    대량의 과거 데이터를 수집하기 위한 백필 태스크.
     start_date_str 부터 현재까지 루프를 돌며 데이터를 모두 수집합니다.
     예: backfill_ohlcv.delay("BTCUSDT", "1h", "2020-01-01T00:00:00Z")
     """

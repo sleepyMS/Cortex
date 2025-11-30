@@ -16,6 +16,7 @@ import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 import { Loader2 } from "lucide-react";
+import { createBot, CreateBotPayload } from "@/lib/api/bots";
 
 export type WizardData = {
   mode: "live" | "paper"; // New field
@@ -142,30 +143,39 @@ export function BotWizard() {
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        mode: data.mode,
+      const payload: CreateBotPayload = {
         strategyId: data.strategyId,
-        apiKeyId: data.exchangeAccountId, // Can be null for paper trading
+        apiKeyId: data.exchangeAccountId, // Paper 모드에서는 null
         initialCapital: data.initialCapital,
-        ticker: data.selectedStrategy?.targetCoins?.[0]?.ticker || "BTCUSDT", // Fallback or select from UI if needed
+        ticker: data.selectedStrategy?.targetCoins?.[0]?.ticker || "BTCUSDT",
         executionInterval: data.executionInterval,
         trailingStopConfig: data.trailingStopConfig.enabled
           ? data.trailingStopConfig
           : null,
+        mode: data.mode,
+        leverage: data.leverage,
+        dailyMaxLossPct: data.riskSettings.dailyMaxLossEnabled
+          ? data.riskSettings.dailyMaxLoss
+          : null,
+        dailyMaxLossEnabled: data.riskSettings.dailyMaxLossEnabled,
       };
 
-      const response = await apiClient.post("/live-bots/", payload);
+      const newBot = await createBot(payload);
 
       toast.success(t("toasts.createSuccess.title"), {
         description: t("toasts.createSuccess.description"),
       });
 
-      // Redirect to the new bot's detail page
-      router.push(`/bots/${response.data.id}`);
-    } catch (error) {
+      // 새 봇의 상세 페이지로 이동
+      router.push(`/bots/${newBot.id}`);
+    } catch (error: any) {
       console.error("Failed to create bot:", error);
+
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Unknown error";
+
       toast.error(t("toasts.createError.title"), {
-        description: t("toasts.createError.description"),
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

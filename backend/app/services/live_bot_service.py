@@ -8,11 +8,17 @@ from typing import List, Optional, Literal
 from datetime import datetime, timezone
 import uuid
 import logging
+import pandas as pd
 
 from .. import models, schemas
 from ..services.plan_service import plan_service
 from ..services.strategy_service import strategy_service
 from ..services.api_key_service import api_key_service
+from ..services.market_data_service import market_data_service
+from ..services.signal_service import signal_service
+from ..services.risk_manager import risk_manager
+from ..engine.live_trading_engine import LiveTradingEngine
+from ..engine.paper_trading_engine import PaperTradingEngine
 from ..celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -25,6 +31,8 @@ class LiveBotService:
         self.plan_service = plan_service
         self.strategy_service = strategy_service
         self.api_key_service = api_key_service
+        self.market_data_service = market_data_service
+        self.signal_service = signal_service
 
     async def create_live_bot(
         self,
@@ -69,9 +77,9 @@ class LiveBotService:
             api_key_id=live_bot_create.api_key_id,
             status='initializing',
             initial_capital=live_bot_create.initial_capital,
-            ticker=live_bot_create.ticker,
             execution_interval=live_bot_create.execution_interval,
-            trailing_stop_config=live_bot_create.trailing_stop_config
+            trailing_stop_config=live_bot_create.trailing_stop_config,
+            mode=live_bot_create.mode # mode 필드 추가
         )
         db.add(db_live_bot)
         await db.flush() # ID가 생성되도록 flush
@@ -80,6 +88,221 @@ class LiveBotService:
         await db.commit() # 최종 커밋
 
         return db_live_bot
+
+    async def execute_bot_cycle(self, db: AsyncSession, bot: models.LiveBot) -> dict:
+        """
+        단일 봇의 매매 사이클(데이터 수집 -> 신호 생성 -> 주문 실행/시뮬레이션)을 실행합니다.
+        """
+        try:
+            # ========== 추가: 리스크 체크 ==========
+            # 1. 일일 손실 한도 체크
+            if not await risk_manager.check_daily_loss_limit(db, bot):
+                return {
+                    "bot_id": bot.id, 
+                    "status": "paused", 
+                    "reason": "Daily loss limit reached"
+                }
+            
+            # 2. 에러 임계값 체크
+            if not await risk_manager.check_error_threshold(db, bot):
+                return {
+                    "bot_id": bot.id, 
+                    "status": "error", 
+                    "reason": "Too many consecutive errors"
+                }
+            # ========================================
+            
+            if bot.mode == 'live':
+                # ========== Live Trading 구현 ==========
+                # 1. API 키 조회
+                if not bot.api_key:
+                    bot.api_key = await self.api_key_service.get_api_key_by_id(db, bot.api_key_id)
+                
+                if not bot.api_key or not bot.api_key.is_active:
+                    return {
+                        "bot_id": bot.id,
+                        "status": "error",
+                        "reason": "Invalid or inactive API key"
+                    }
+                
+                # 2. 전략 로드
+                if not bot.strategy:
+                    bot.strategy = await self.strategy_service.get_strategy_by_id(db, bot.strategy_id)
+                
+                # 3. 현재가 조회
+                latest_data = await self.market_data_service.get_latest_data(
+                    db, bot.ticker, bot.execution_interval, limit=1
+                )
+                
+                if latest_data.empty:
+                    return {"bot_id": bot.id, "status": "skipped", "reason": "No market data"}
+                
+                current_price = latest_data.iloc[-1]['close']
+                
+                # 4. 신호 생성 (최근 200개 캔들 기준)
+                ohlcv_df = await self.market_data_service.get_latest_data(
+                    db, bot.ticker, bot.execution_interval, limit=200
+                )
+                
+                strategy_schema = schemas.StrategyCreate.model_validate(
+                    schemas.Strategy.model_validate(bot.strategy).model_dump()
+                )
+                
+                signals_df = self.signal_service.generate_signals_from_dataframe(
+                    ohlcv_df, strategy_schema, bot.execution_interval
+                )
+                
+                last_signal = signals_df.iloc[-1]['signal'] if not signals_df.empty else 'none'
+                
+                # 5. Live Trading Engine 실행
+                engine = LiveTradingEngine(bot, bot.api_key, bot.strategy)
+                
+                try:
+                    result = await engine.execute_cycle(last_signal, current_price)
+                    
+                    # 6. 결과 처리
+                    if result['status'] == 'success':
+                        # 포지션 정보 업데이트
+                        if result['action'] in ['long_entry', 'short_entry']:
+                            bot.position_size = result['quantity'] if result['side'] == 'long' else -result['quantity']
+                            bot.entry_price = result['price']
+                        elif result['action'] in ['long_exit', 'short_exit']:
+                            bot.position_size = 0.0
+                            bot.entry_price = None
+                            
+                            # 거래 로그 저장
+                            if result.get('pnl') is not None:
+                                trade_log = models.TradeLog(
+                                    live_bot_id=bot.id,
+                                    timestamp=datetime.now(timezone.utc),
+                                    side=result['action'],
+                                    price=result['price'],
+                                    quantity=result['quantity'],
+                                    pnl=result['pnl'],
+                                    reason="Live trading signal"
+                                )
+                                db.add(trade_log)
+                                
+                                # 리스크 관리
+                                await risk_manager.update_daily_pnl(db, bot, result['pnl'])
+                                await risk_manager.update_trade_statistics(db, bot, result['pnl'])
+                        
+                        bot.last_signal = last_signal
+                        bot.last_run_at = datetime.now(timezone.utc)
+                        
+                        await risk_manager.update_drawdown(db, bot)
+                        await risk_manager.reset_error_count(db, bot)
+                        
+                        db.add(bot)
+                        await db.commit()
+                        
+                        return {"bot_id": bot.id, "status": "success", "result": result}
+                    
+                    else:
+                        return {"bot_id": bot.id, "status": result['status'], "reason": result.get('reason', 'Unknown')}
+                
+                finally:
+                    await engine.close()
+                # ========================================
+
+            # 1. 전략 로드
+            if not bot.strategy:
+                bot.strategy = await self.strategy_service.get_strategy_by_id(db, bot.strategy_id)
+
+            # 전략 데이터 검증 및 티커 추출
+            target_ticker = bot.ticker  # ========== 수정: DB에서 직접 가져오기 ==========
+            
+            strategy_schema = schemas.StrategyCreate.model_validate(
+                schemas.Strategy.model_validate(bot.strategy).model_dump()
+            )
+
+            # 2. 데이터 준비
+            limit = 200 
+            ohlcv_df = await self.market_data_service.get_latest_data(
+                db, target_ticker, bot.execution_interval, limit=limit
+            )
+            
+            if ohlcv_df.empty:
+                return {"bot_id": bot.id, "status": "skipped", "reason": "No data"}
+
+            # 3. 신호 생성
+            signals_df = self.signal_service.generate_signals_from_dataframe(
+                ohlcv_df, strategy_schema, bot.execution_interval
+            )
+            
+            # 4. 엔진 실행
+            engine = PaperTradingEngine(bot, ohlcv_df, signals_df, strategy_schema)
+            
+            # 마지막 캔들(현재 시점)에 대해 실행
+            last_timestamp = ohlcv_df.index[-1]
+            
+            # 이미 실행한 캔들인지 확인 (중복 실행 방지)
+            if bot.last_run_at and bot.last_run_at.replace(tzinfo=timezone.utc) >= last_timestamp.replace(tzinfo=timezone.utc):
+                return {"bot_id": bot.id, "status": "skipped", "reason": "Already processed this candle"}
+
+            result = engine.execute_single_step(last_timestamp)
+            
+            # 5. 상태 업데이트
+            bot.current_balance = result['current_balance']
+            bot.position_size = result['position_size']
+            bot.entry_price = result['entry_price'] if result['entry_price'] else bot.entry_price
+            bot.last_signal = result['last_signal']
+            bot.last_run_at = datetime.now(timezone.utc)
+            
+            # ========== 추가: TP/SL 상태 저장 ==========
+            if hasattr(engine, 'sl_price'):
+                bot.sl_price = engine.sl_price
+            if hasattr(engine, 'tp_price'):
+                bot.tp_price = engine.tp_price
+            # ==========================================
+            
+            db.add(bot)
+            
+            # 6. 트레이드 로그 저장 및 리스크 관리
+            if result.get('trades'):
+                for trade in result['trades']:
+                    trade_log = models.TradeLog(
+                        backtest_id=None,
+                        live_bot_id=bot.id,
+                        timestamp=trade['timestamp'],
+                        side=trade['side'],
+                        price=trade['price'],
+                        quantity=trade['quantity'],
+                        commission=trade['commission'],
+                        pnl=trade['pnl'],
+                        reason=trade['reason']
+                    )
+                    db.add(trade_log)
+                    
+                    # ========== 추가: 거래 발생 시 리스크 관리 ==========
+                    if trade['pnl'] is not None:
+                        # 일일 손익 업데이트
+                        await risk_manager.update_daily_pnl(db, bot, trade['pnl'])
+                        
+                        # 거래 통계 업데이트
+                        await risk_manager.update_trade_statistics(db, bot, trade['pnl'])
+                    # =================================================
+            
+            # ========== 추가: MDD 업데이트 ==========
+            await risk_manager.update_drawdown(db, bot)
+            # ========================================
+            
+            # ========== 추가: 성공 시 에러 카운트 리셋 ==========
+            await risk_manager.reset_error_count(db, bot)
+            # ==================================================
+            
+            await db.commit()
+            return {"bot_id": bot.id, "status": "success", "last_signal": bot.last_signal}
+
+        except Exception as e:
+            logger.error(f"Error executing bot cycle for {bot.id}: {e}", exc_info=True)
+            
+            # ========== 추가: 에러 기록 ==========
+            await risk_manager.record_error(db, bot, str(e))
+            await db.commit()
+            # ====================================
+            
+            return {"bot_id": bot.id, "status": "error", "error": str(e)}
 
     async def get_live_bots_by_user(
         self, db: AsyncSession, user_id: uuid.UUID, skip: int = 0, limit: int = 100
