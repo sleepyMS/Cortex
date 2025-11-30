@@ -33,6 +33,7 @@ export type WizardData = {
     takeProfit: number;
     stopLoss: number;
     dailyMaxLoss: number;
+    dailyMaxLossEnabled: boolean;
   };
 };
 
@@ -53,6 +54,7 @@ const INITIAL_DATA: WizardData = {
     takeProfit: 5.0,
     stopLoss: 2.0,
     dailyMaxLoss: 10.0,
+    dailyMaxLossEnabled: true,
   },
 };
 

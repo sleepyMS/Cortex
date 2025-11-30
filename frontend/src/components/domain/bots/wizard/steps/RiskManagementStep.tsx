@@ -103,13 +103,24 @@ export function RiskManagementStep({
                 onChange={(e) =>
                   handleRiskChange("dailyMaxLoss", parseFloat(e.target.value))
                 }
+                disabled={!data.riskSettings.dailyMaxLossEnabled}
                 className="pr-8 h-8"
               />
               <span className="absolute right-3 top-1.5 text-xs text-muted-foreground">
                 %
               </span>
             </div>
-            <Switch checked={true} />
+            <Switch
+              checked={data.riskSettings.dailyMaxLossEnabled}
+              onCheckedChange={(checked) =>
+                updateData({
+                  riskSettings: {
+                    ...data.riskSettings,
+                    dailyMaxLossEnabled: checked,
+                  },
+                })
+              }
+            />
           </div>
         </div>
       </div>
