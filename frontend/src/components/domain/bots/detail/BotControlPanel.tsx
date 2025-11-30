@@ -94,8 +94,12 @@ export function BotControlPanel({ bot }: BotControlPanelProps) {
           <div className="p-4 rounded-lg bg-muted">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Current Status</p>
-                <p className="text-lg font-semibold capitalize">{bot.status}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("currentStatus")}
+                </p>
+                <p className="text-lg font-semibold capitalize">
+                  {t(`status.${bot.status}` as any)}
+                </p>
               </div>
               {bot.status === "active" ? (
                 <Play className="h-8 w-8 text-green-500" />
@@ -107,7 +111,7 @@ export function BotControlPanel({ bot }: BotControlPanelProps) {
             </div>
             {bot.lastError && (
               <div className="mt-2 p-2 bg-red-50 dark:bg-red-950 rounded text-xs text-red-600 dark:text-red-400">
-                <p className="font-semibold">Last Error:</p>
+                <p className="font-semibold">{t("lastError")}</p>
                 <p>{bot.lastError}</p>
               </div>
             )}
@@ -165,23 +169,25 @@ export function BotControlPanel({ bot }: BotControlPanelProps) {
           {bot.positionSize !== 0 && (
             <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950">
               <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                Active Position
+                {t("activePosition")}
               </p>
               <div className="mt-2 space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Side:</span>
+                  <span className="text-muted-foreground">{t("side")}</span>
                   <span className="font-medium">
-                    {bot.positionSize > 0 ? "LONG" : "SHORT"}
+                    {bot.positionSize > 0 ? t("long") : t("short")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Size:</span>
+                  <span className="text-muted-foreground">{t("size")}</span>
                   <span className="font-medium">
                     {Math.abs(bot.positionSize)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Entry Price:</span>
+                  <span className="text-muted-foreground">
+                    {t("entryPrice")}
+                  </span>
                   <span className="font-medium">
                     ${bot.entryPrice?.toFixed(2)}
                   </span>

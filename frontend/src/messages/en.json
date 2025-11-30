@@ -2048,6 +2048,21 @@
     "Detail": {
       "backToBots": "Back to Bots",
       "title": "Bot Control",
+      "currentStatus": "Current Status",
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "stopped": "Stopped",
+        "error": "Error",
+        "initializing": "Initializing"
+      },
+      "lastError": "Last Error:",
+      "activePosition": "Active Position",
+      "side": "Side:",
+      "size": "Size:",
+      "entryPrice": "Entry Price:",
+      "long": "LONG",
+      "short": "SHORT",
       "start": "Start",
       "stop": "Stop",
       "panicSell": "Panic Sell",

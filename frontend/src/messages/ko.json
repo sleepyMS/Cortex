@@ -2080,6 +2080,21 @@
     "Detail": {
       "backToBots": "목록으로 돌아가기",
       "title": "봇 제어",
+      "currentStatus": "현재 상태",
+      "status": {
+        "active": "실행 중",
+        "paused": "일시 정지",
+        "stopped": "중지됨",
+        "error": "오류",
+        "initializing": "초기화 중"
+      },
+      "lastError": "마지막 오류:",
+      "activePosition": "활성 포지션",
+      "side": "포지션:",
+      "size": "크기:",
+      "entryPrice": "진입가:",
+      "long": "매수 (LONG)",
+      "short": "매도 (SHORT)",
       "start": "시작",
       "stop": "중지",
       "panicSell": "패닉 셀 (일괄 청산)",

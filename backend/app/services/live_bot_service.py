@@ -350,7 +350,9 @@ class LiveBotService:
         bot_to_update.status = new_status
         db.add(bot_to_update)
         await db.flush()
-        return bot_to_update
+        
+        # 관계 데이터(strategy, api_key)를 포함하여 다시 조회 후 반환
+        return await self.get_live_bot_with_relations(db, bot_to_update.id, bot_to_update.user_id)
 
     async def delete_live_bot(self, db: AsyncSession, bot_id: uuid.UUID) -> bool:
         """라이브 봇을 삭제합니다."""
