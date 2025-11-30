@@ -85,7 +85,7 @@ export function BotWizard() {
     // Simple validation logic per step
     switch (currentStep) {
       case 0: // Strategy
-        return !!data.strategyId;
+        return !!data.strategyId && !!data.selectedStrategy;
       case 1: // Parameters
         return true; // Add specific validation if needed
       case 2: // Exchange

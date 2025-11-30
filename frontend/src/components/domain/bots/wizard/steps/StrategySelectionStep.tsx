@@ -3,12 +3,15 @@
 import { Label } from "@/components/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
 import { WizardData } from "../BotWizard";
-import { Badge } from "@/components/ui/Badge";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
-import { Strategy } from "@/types/strategy";
+import { Strategy, StrategyInList } from "@/types/strategy";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StrategyPerformanceBadges } from "@/components/domain/strategy/StrategyPerformanceBadges";
+import { KeyIndicatorBadges } from "@/components/domain/strategy/KeyIndicatorBadges";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 interface StrategySelectionStepProps {
   data: WizardData;
@@ -21,20 +24,39 @@ export function StrategySelectionStep({
 }: StrategySelectionStepProps) {
   const t = useTranslations("LiveTrading.Wizard.Strategy");
 
-  const { data: strategies, isLoading } = useQuery<Strategy[]>({
+  // 1. Fetch the list of strategies (Summary only)
+  const { data: strategies, isLoading: isListLoading } = useQuery<
+    StrategyInList[]
+  >({
     queryKey: ["strategies"],
     queryFn: async () => (await apiClient.get("/strategies")).data,
   });
 
+  // 2. Fetch the FULL strategy details when one is selected
+  const { data: fullStrategy, isLoading: isFullStrategyLoading } =
+    useQuery<Strategy>({
+      queryKey: ["strategy", data.strategyId],
+      queryFn: async () =>
+        (await apiClient.get(`/strategies/${data.strategyId}`)).data,
+      enabled: !!data.strategyId, // Only run if an ID is selected
+    });
+
+  // 3. Update the wizard data when the full strategy is loaded
+  useEffect(() => {
+    if (fullStrategy && fullStrategy.id === data.strategyId) {
+      updateData({ selectedStrategy: fullStrategy });
+    }
+  }, [fullStrategy, data.strategyId]);
+
   const handleSelect = (strategyId: string) => {
-    const selected = strategies?.find((s) => s.id === strategyId);
+    // Optimistically set the ID, selectedStrategy will be null until fetched
     updateData({
       strategyId,
-      selectedStrategy: selected || null,
+      selectedStrategy: null, // Reset until full load
     });
   };
 
-  if (isLoading) {
+  if (isListLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/3" />
@@ -60,7 +82,7 @@ export function StrategySelectionStep({
         className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
       >
         {strategies?.map((strategy) => (
-          <div key={strategy.id}>
+          <div key={strategy.id} className="relative">
             <RadioGroupItem
               value={strategy.id}
               id={strategy.id}
@@ -68,39 +90,53 @@ export function StrategySelectionStep({
             />
             <Label
               htmlFor={strategy.id}
-              className="flex flex-col justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full transition-all"
+              className="flex flex-col justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full transition-all group"
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
                   <span
-                    className="font-semibold truncate pr-2"
+                    className="font-semibold truncate pr-2 text-base"
                     title={strategy.name}
                   >
                     {strategy.name}
                   </span>
-                  {/* Mock Risk Level - In real app, calculate or fetch */}
-                  <Badge variant="outline">Medium</Badge>
+                  {/* Loading spinner if this specific card is selected but loading */}
+                  {data.strategyId === strategy.id && isFullStrategyLoading && (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
+
+                <p className="text-xs text-muted-foreground line-clamp-2 min-h-[32px]">
                   {strategy.description || "No description available."}
                 </p>
-              </div>
-              <div className="mt-4 flex items-center justify-between text-sm">
-                <div>
-                  <span className="text-muted-foreground block text-xs">
-                    Symbol
-                  </span>
-                  <span className="font-medium">
-                    {strategy.targetCoins?.[0]?.ticker || "Any"}
-                  </span>
+
+                {/* Performance Badges */}
+                <div className="pt-1">
+                  <StrategyPerformanceBadges
+                    summary={strategy.latestBacktestSummary}
+                  />
                 </div>
-                <div className="text-right">
-                  <span className="text-muted-foreground block text-xs">
-                    Timeframe
-                  </span>
-                  <span className="font-medium">
-                    {/* Assuming timeframe is stored somewhere or just showing default */}
-                    1h
+              </div>
+
+              <div className="mt-4 pt-3 border-t flex items-center justify-between text-sm">
+                {/* Key Indicators (Mocked or if available in list) 
+                     Note: KeyIndicatorBadges requires full Strategy object usually, 
+                     but we can try to pass what we have or skip if not in list.
+                     StrategyInList doesn't have rules, so we can't show indicators here 
+                     unless we fetch them. For now, we'll skip KeyIndicatorBadges 
+                     or use a simplified version if needed. 
+                     Actually, StrategyInList doesn't have rules. 
+                     So we will just show the target coin/timeframe if available.
+                 */}
+                <div className="text-xs text-muted-foreground">
+                  {/* StrategyInList doesn't have targetCoins usually unless added. 
+                        Assuming it might not be there. If not, show nothing or placeholder.
+                        Let's check the type definition again. StrategyInList doesn't have targetCoins.
+                        So we can't show symbol/timeframe here easily without full fetch.
+                        We will rely on the Performance Badges which are the most important.
+                    */}
+                  <span className="block">
+                    Created: {new Date(strategy.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>
