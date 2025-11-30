@@ -25,16 +25,20 @@ export function ReviewStep({ data }: ReviewStepProps) {
           <h3 className="font-medium border-b pb-2">{t("strategy")}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Strategy ID</span>
-              <span className="font-medium">{data.strategyId}</span>
+              <span className="text-muted-foreground">Name</span>
+              <span className="font-medium">
+                {data.selectedStrategy?.name || "Unknown"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Symbol</span>
-              <span className="font-medium">{data.parameters.symbol}</span>
+              <span className="font-medium">
+                {data.selectedStrategy?.targetCoins?.[0]?.ticker || "Any"}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Timeframe</span>
-              <span className="font-medium">{data.parameters.timeframe}</span>
+              <span className="text-muted-foreground">Execution Interval</span>
+              <span className="font-medium">{data.executionInterval}</span>
             </div>
           </div>
         </Card>
@@ -44,22 +48,30 @@ export function ReviewStep({ data }: ReviewStepProps) {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Initial Capital</span>
-              <span className="font-medium">${data.initialCapital}</span>
+              <span className="font-medium">
+                ${data.initialCapital.toLocaleString()}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Leverage</span>
               <span className="font-medium">{data.leverage}x</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Take Profit</span>
-              <span className="font-medium text-green-500">
-                {data.riskSettings.takeProfit}%
+              <span className="text-muted-foreground">Daily Max Loss</span>
+              <span className="font-medium text-red-500">
+                {data.riskSettings.dailyMaxLoss}%
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Stop Loss</span>
-              <span className="font-medium text-red-500">
-                {data.riskSettings.stopLoss}%
+              <span className="text-muted-foreground">Trailing Stop</span>
+              <span
+                className={
+                  data.trailingStopConfig.enabled
+                    ? "text-green-500 font-medium"
+                    : "text-muted-foreground"
+                }
+              >
+                {data.trailingStopConfig.enabled ? "Enabled" : "Disabled"}
               </span>
             </div>
           </div>

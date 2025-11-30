@@ -3,48 +3,49 @@
 import { Label } from "@/components/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
 import { WizardData } from "../BotWizard";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
+import apiClient from "@/lib/apiClient";
+import { Strategy } from "@/types/strategy";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface StrategySelectionStepProps {
   data: WizardData;
   updateData: (updates: Partial<WizardData>) => void;
 }
 
-// Mock Strategies
-const STRATEGIES = [
-  {
-    id: "strat_1",
-    name: "MACD Trend Follower",
-    description: "Captures trends using MACD crossover signals.",
-    winRate: "65%",
-    return: "+120%",
-    risk: "Medium",
-  },
-  {
-    id: "strat_2",
-    name: "RSI Mean Reversion",
-    description: "Buys oversold and sells overbought conditions.",
-    winRate: "72%",
-    return: "+85%",
-    risk: "Low",
-  },
-  {
-    id: "strat_3",
-    name: "Bollinger Breakout",
-    description: "Trades volatility breakouts from Bollinger Bands.",
-    winRate: "55%",
-    return: "+150%",
-    risk: "High",
-  },
-];
-
 export function StrategySelectionStep({
   data,
   updateData,
 }: StrategySelectionStepProps) {
   const t = useTranslations("LiveTrading.Wizard.Strategy");
+
+  const { data: strategies, isLoading } = useQuery<Strategy[]>({
+    queryKey: ["strategies"],
+    queryFn: async () => (await apiClient.get("/strategies")).data,
+  });
+
+  const handleSelect = (strategyId: string) => {
+    const selected = strategies?.find((s) => s.id === strategyId);
+    updateData({
+      strategyId,
+      selectedStrategy: selected || null,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -55,10 +56,10 @@ export function StrategySelectionStep({
 
       <RadioGroup
         value={data.strategyId || ""}
-        onValueChange={(value) => updateData({ strategyId: value })}
+        onValueChange={handleSelect}
         className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
       >
-        {STRATEGIES.map((strategy) => (
+        {strategies?.map((strategy) => (
           <div key={strategy.id}>
             <RadioGroupItem
               value={strategy.id}
@@ -67,32 +68,39 @@ export function StrategySelectionStep({
             />
             <Label
               htmlFor={strategy.id}
-              className="flex flex-col justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full"
+              className="flex flex-col justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full transition-all"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">{strategy.name}</span>
-                  <Badge variant="outline">{strategy.risk}</Badge>
+                  <span
+                    className="font-semibold truncate pr-2"
+                    title={strategy.name}
+                  >
+                    {strategy.name}
+                  </span>
+                  {/* Mock Risk Level - In real app, calculate or fetch */}
+                  <Badge variant="outline">Medium</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {strategy.description}
+                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
+                  {strategy.description || "No description available."}
                 </p>
               </div>
               <div className="mt-4 flex items-center justify-between text-sm">
                 <div>
                   <span className="text-muted-foreground block text-xs">
-                    {t("winRate")}
+                    Symbol
                   </span>
-                  <span className="font-medium text-green-500">
-                    {strategy.winRate}
+                  <span className="font-medium">
+                    {strategy.targetCoins?.[0]?.ticker || "Any"}
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-muted-foreground block text-xs">
-                    {t("estReturn")}
+                    Timeframe
                   </span>
-                  <span className="font-medium text-green-500">
-                    {strategy.return}
+                  <span className="font-medium">
+                    {/* Assuming timeframe is stored somewhere or just showing default */}
+                    1h
                   </span>
                 </div>
               </div>
@@ -100,6 +108,12 @@ export function StrategySelectionStep({
           </div>
         ))}
       </RadioGroup>
+
+      {strategies?.length === 0 && (
+        <div className="text-center py-10 text-muted-foreground">
+          No strategies found. Please create a strategy first.
+        </div>
+      )}
     </div>
   );
 }

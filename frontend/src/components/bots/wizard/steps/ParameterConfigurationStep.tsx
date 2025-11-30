@@ -1,16 +1,10 @@
 "use client";
 
-import { Label } from "@/components/ui/Label";
 import { WizardData } from "../BotWizard";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/Select";
-import { Input } from "@/components/ui/Input";
 import { useTranslations } from "next-intl";
+import { StrategyParameterViewer } from "../StrategyParameterViewer";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
+import { Info } from "lucide-react";
 
 interface ParameterConfigurationStepProps {
   data: WizardData;
@@ -19,18 +13,16 @@ interface ParameterConfigurationStepProps {
 
 export function ParameterConfigurationStep({
   data,
-  updateData,
 }: ParameterConfigurationStepProps) {
   const t = useTranslations("LiveTrading.Wizard.Parameters");
 
-  const handleParameterChange = (key: string, value: any) => {
-    updateData({
-      parameters: {
-        ...data.parameters,
-        [key]: value,
-      },
-    });
-  };
+  if (!data.selectedStrategy) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        Please select a strategy first.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -39,68 +31,16 @@ export function ParameterConfigurationStep({
         <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>{t("symbol")}</Label>
-          <Select
-            value={data.parameters.symbol || ""}
-            onValueChange={(value) => handleParameterChange("symbol", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={t("selectSymbol")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
-              <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
-              <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
-              <SelectItem value="XRP/USDT">XRP/USDT</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Read-Only View</AlertTitle>
+        <AlertDescription>
+          These parameters are defined in the strategy and cannot be modified
+          here. Please verify the logic before proceeding.
+        </AlertDescription>
+      </Alert>
 
-        <div className="space-y-2">
-          <Label>{t("timeframe")}</Label>
-          <Select
-            value={data.parameters.timeframe || ""}
-            onValueChange={(value) => handleParameterChange("timeframe", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={t("selectTimeframe")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1m">1 Minute</SelectItem>
-              <SelectItem value="5m">5 Minutes</SelectItem>
-              <SelectItem value="15m">15 Minutes</SelectItem>
-              <SelectItem value="1h">1 Hour</SelectItem>
-              <SelectItem value="4h">4 Hours</SelectItem>
-              <SelectItem value="1d">1 Day</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Dynamic parameters based on strategy would go here */}
-        {/* For now, we'll add some mock strategy-specific params */}
-        <div className="space-y-2">
-          <Label>Fast Period (MACD)</Label>
-          <Input
-            type="number"
-            value={data.parameters.fastPeriod || 12}
-            onChange={(e) =>
-              handleParameterChange("fastPeriod", parseInt(e.target.value))
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Slow Period (MACD)</Label>
-          <Input
-            type="number"
-            value={data.parameters.slowPeriod || 26}
-            onChange={(e) =>
-              handleParameterChange("slowPeriod", parseInt(e.target.value))
-            }
-          />
-        </div>
-      </div>
+      <StrategyParameterViewer strategy={data.selectedStrategy} />
     </div>
   );
 }

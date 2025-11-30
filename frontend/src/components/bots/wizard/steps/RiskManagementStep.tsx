@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Switch } from "@/components/ui/Switch";
 import { Separator } from "@/components/ui/Separator";
 import { useTranslations } from "next-intl";
+import { Badge } from "@/components/ui/Badge";
 
 interface RiskManagementStepProps {
   data: WizardData;
@@ -27,6 +28,10 @@ export function RiskManagementStep({
     });
   };
 
+  // Extract TP/SL from strategy if available
+  const strategyTp = data.selectedStrategy?.tpslLogic?.takeProfitPct || "N/A";
+  const strategySl = data.selectedStrategy?.tpslLogic?.stopLossPct || "N/A";
+
   return (
     <div className="space-y-6">
       <div>
@@ -35,38 +40,30 @@ export function RiskManagementStep({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>{t("takeProfit")}</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              value={data.riskSettings.takeProfit}
-              onChange={(e) =>
-                handleRiskChange("takeProfit", parseFloat(e.target.value))
-              }
-              className="pr-8"
-            />
-            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">
-              %
+        <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+          <Label className="text-muted-foreground">{t("takeProfit")}</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-2xl font-bold text-green-500">
+              {strategyTp}%
             </span>
+            <Badge variant="outline">Strategy Default</Badge>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Defined in strategy logic. Cannot be changed here.
+          </p>
         </div>
 
-        <div className="space-y-2">
-          <Label>{t("stopLoss")}</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              value={data.riskSettings.stopLoss}
-              onChange={(e) =>
-                handleRiskChange("stopLoss", parseFloat(e.target.value))
-              }
-              className="pr-8"
-            />
-            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">
-              %
+        <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+          <Label className="text-muted-foreground">{t("stopLoss")}</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-2xl font-bold text-red-500">
+              {strategySl}%
             </span>
+            <Badge variant="outline">Strategy Default</Badge>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Defined in strategy logic. Cannot be changed here.
+          </p>
         </div>
       </div>
 

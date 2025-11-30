@@ -14,10 +14,17 @@ import { RiskManagementStep } from "./steps/RiskManagementStep";
 
 export type WizardData = {
   strategyId: string | null;
+  selectedStrategy: any | null; // Store full strategy object
   parameters: Record<string, any>;
   exchangeAccountId: string | null;
   initialCapital: number;
   leverage: number;
+  executionInterval: string; // New field
+  trailingStopConfig: {
+    enabled: boolean;
+    activationPct: number;
+    callbackPct: number;
+  };
   riskSettings: {
     takeProfit: number;
     stopLoss: number;
@@ -27,10 +34,17 @@ export type WizardData = {
 
 const INITIAL_DATA: WizardData = {
   strategyId: null,
+  selectedStrategy: null,
   parameters: {},
   exchangeAccountId: null,
   initialCapital: 1000,
   leverage: 1,
+  executionInterval: "1h",
+  trailingStopConfig: {
+    enabled: false,
+    activationPct: 2.0,
+    callbackPct: 1.0,
+  },
   riskSettings: {
     takeProfit: 5.0,
     stopLoss: 2.0,
@@ -49,10 +63,10 @@ export function BotWizard() {
 
   const steps = [
     { id: "strategy", title: t("steps.strategy") },
-    { id: "parameters", title: t("steps.parameters") },
+    { id: "review", title: t("steps.parameters") }, // Renamed to Review/Parameters
     { id: "exchange", title: t("steps.exchange") },
     { id: "risk", title: t("steps.risk") },
-    { id: "review", title: t("steps.review") },
+    { id: "final", title: t("steps.review") }, // Final Review
   ];
 
   const nextStep = () => {
