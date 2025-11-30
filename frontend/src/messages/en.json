@@ -1884,11 +1884,11 @@
   },
   "LiveTrading": {
     "Dashboard": {
-      "title": "Live Bots",
+      "title": "Live Trading Bots",
       "subtitle": "Manage your automated trading bots and monitor their performance.",
       "createNewBot": "Create New Bot",
       "yourBots": "Your Bots",
-      "noBotsTitle": "No Bots Running",
+      "noBotsTitle": "No Running Bots",
       "noBotsDesc": "You haven't created any live trading bots yet.",
       "summary": {
         "totalEquity": "Total Equity",
@@ -1920,7 +1920,9 @@
         "viewDetails": "View Details",
         "startBot": "Start Bot",
         "stopBot": "Stop Bot",
-        "delete": "Delete"
+        "delete": "Delete",
+        "emptyStateTitle": "No bots found",
+        "emptyStateDesc": "Create your first bot to get started!"
       }
     },
     "Wizard": {

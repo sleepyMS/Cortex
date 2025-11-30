@@ -1952,7 +1952,9 @@
         "viewDetails": "상세 보기",
         "startBot": "봇 시작",
         "stopBot": "봇 중지",
-        "delete": "삭제"
+        "delete": "삭제",
+        "emptyStateTitle": "봇이 없습니다",
+        "emptyStateDesc": "첫 번째 봇을 만들어 시작하세요!"
       }
     },
     "Wizard": {

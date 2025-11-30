@@ -97,7 +97,10 @@ export function BotListTable() {
   if (!bots || bots.length === 0) {
     return (
       <div className="rounded-md border p-8 text-center text-muted-foreground">
-        No bots found. Create your first bot to get started!
+        <p className="font-semibold text-foreground mb-2">
+          {t("emptyStateTitle")}
+        </p>
+        <p>{t("emptyStateDesc")}</p>
       </div>
     );
   }
