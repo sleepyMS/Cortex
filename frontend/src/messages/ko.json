@@ -2091,6 +2091,9 @@
       "cancel": "취소",
       "panicTitle": "정말 확실합니까?",
       "panicDesc": "이 작업은 시장가로 모든 포지션을 즉시 종료합니다. 시장 상황에 따라 심각한 슬리피지나 손실이 발생할 수 있습니다.",
+      "deleteTitle": "봇을 삭제하시겠습니까?",
+      "deleteDesc": "이 작업은 되돌릴 수 없습니다. 봇과 관련된 모든 데이터가 영구적으로 삭제됩니다.",
+      "confirmDelete": "삭제 확인",
       "chartTitle": "실시간 차트",
       "noPerformanceData": "아직 성과 데이터가 없습니다",
       "performance": "성과",
@@ -2100,6 +2103,18 @@
       "waitingForLogs": "로그 대기 중...",
       "recentTrades": "최근 거래",
       "noTrades": "아직 체결된 거래가 없습니다.",
+      "errors": {
+        "updateFailed": "봇 업데이트 실패",
+        "deleteFailed": "봇 삭제 실패",
+        "panicSellFailed": "패닉 셀 실패",
+        "networkError": "네트워크 오류"
+      },
+      "success": {
+        "statusUpdated": "봇 상태가 업데이트되었습니다",
+        "deleted": "봇이 삭제되었습니다",
+        "panicSellExecuted": "패닉 셀이 실행되었습니다",
+        "positionsClosed": "모든 포지션이 청산되었습니다"
+      },
       "table": {
         "time": "시간",
         "side": "매수/매도",

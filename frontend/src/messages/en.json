@@ -2059,6 +2059,9 @@
       "cancel": "Cancel",
       "panicTitle": "Are you absolutely sure?",
       "panicDesc": "This action will immediately close all positions at market price. Severe slippage or losses may occur depending on market conditions.",
+      "deleteTitle": "Delete Bot?",
+      "deleteDesc": "This action cannot be undone. All data associated with this bot will be permanently deleted.",
+      "confirmDelete": "Confirm Delete",
       "chartTitle": "Live Chart",
       "noPerformanceData": "No performance data available yet",
       "performance": "Performance",
@@ -2068,6 +2071,18 @@
       "waitingForLogs": "Waiting for logs...",
       "recentTrades": "Recent Trades",
       "noTrades": "No trades executed yet.",
+      "errors": {
+        "updateFailed": "Failed to update bot",
+        "deleteFailed": "Failed to delete bot",
+        "panicSellFailed": "Panic sell failed",
+        "networkError": "Network Error"
+      },
+      "success": {
+        "statusUpdated": "Bot status updated",
+        "deleted": "Bot deleted successfully",
+        "panicSellExecuted": "Panic sell executed",
+        "positionsClosed": "All positions have been closed"
+      },
       "table": {
         "time": "Time",
         "side": "Side",
