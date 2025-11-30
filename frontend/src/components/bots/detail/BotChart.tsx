@@ -1,6 +1,11 @@
 "use client";
 
-import { createChart, ColorType, IChartApi } from "lightweight-charts";
+import {
+  createChart,
+  ColorType,
+  IChartApi,
+  CandlestickSeries,
+} from "lightweight-charts";
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 
@@ -27,7 +32,7 @@ export function BotChart() {
 
     chartRef.current = chart;
 
-    const candleSeries = (chart as any).addCandlestickSeries({
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#22c55e",
       downColor: "#ef4444",
       borderVisible: false,
