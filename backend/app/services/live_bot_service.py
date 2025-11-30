@@ -63,12 +63,15 @@ class LiveBotService:
         if not strategy or strategy.author_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 전략을 찾을 수 없거나 권한이 없습니다.")
 
-        api_key_record = await self.api_key_service.get_api_key_by_id(db, live_bot_create.api_key_id)
-        if not api_key_record or api_key_record.user_id != user.id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 API 키를 찾을 수 없거나 권한이 없습니다.")
-        
-        if not api_key_record.is_active:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비활성화된 API 키입니다.")
+        # Paper 모드에서는 API 키가 없을 수 있음
+        api_key_record = None
+        if live_bot_create.api_key_id:
+            api_key_record = await self.api_key_service.get_api_key_by_id(db, live_bot_create.api_key_id)
+            if not api_key_record or api_key_record.user_id != user.id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택한 API 키를 찾을 수 없거나 권한이 없습니다.")
+            
+            if not api_key_record.is_active:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비활성화된 API 키입니다.")
 
         # 3. 라이브 봇 DB 레코드 생성
         db_live_bot = models.LiveBot(
@@ -82,12 +85,20 @@ class LiveBotService:
             mode=live_bot_create.mode # mode 필드 추가
         )
         db.add(db_live_bot)
-        await db.flush() # ID가 생성되도록 flush
+        await db.flush()  # ID 생성
         
-        # 4. Celery 태스크 전송 
-        await db.commit() # 최종 커밋
-
-        return db_live_bot
+        # 관계 데이터를 eager load하기 위해 다시 조회
+        result = await db.execute(
+            select(models.LiveBot)
+            .options(
+                selectinload(models.LiveBot.strategy),
+                selectinload(models.LiveBot.api_key)
+            )
+            .filter(models.LiveBot.id == db_live_bot.id)
+        )
+        loaded_bot = result.scalar_one()
+        
+        return loaded_bot
 
     async def execute_bot_cycle(self, db: AsyncSession, bot: models.LiveBot) -> dict:
         """
@@ -362,5 +373,27 @@ class LiveBotService:
         await db.delete(bot_to_delete)
         await db.flush()
         return True
+
+    async def get_live_bot_with_relations(
+        self, db: AsyncSession, bot_id: uuid.UUID, user_id: uuid.UUID
+    ) -> models.LiveBot:
+        """관계 데이터를 포함한 봇 조회"""
+        result = await db.execute(
+            select(models.LiveBot)
+            .options(
+                selectinload(models.LiveBot.strategy),
+                selectinload(models.LiveBot.api_key)
+            )
+            .filter(
+                models.LiveBot.id == bot_id,
+                models.LiveBot.user_id == user_id
+            )
+        )
+        bot = result.scalar_one_or_none()
+        
+        if not bot:
+            raise HTTPException(status_code=404, detail="Bot not found")
+        
+        return bot
 
 live_bot_service = LiveBotService()

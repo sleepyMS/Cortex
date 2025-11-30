@@ -58,7 +58,7 @@ export function BotChart({ performance }: BotChartProps) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            No performance data available yet
+            {t("noPerformanceData")}
           </div>
         )}
       </CardContent>

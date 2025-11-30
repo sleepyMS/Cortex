@@ -394,7 +394,7 @@ class LiveBot(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False)
-    api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
+    api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=True)  # Paper 모드에서는 null 가능
 
     celery_task_id = Column(String, index=True, nullable=True)
     

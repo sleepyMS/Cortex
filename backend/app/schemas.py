@@ -667,7 +667,7 @@ class LiveBot(CamelCaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     strategy_id: uuid.UUID
-    api_key_id: uuid.UUID
+    api_key_id: Optional[uuid.UUID] = None  # Paper 모드에서는 null 가능
     status: str
 
     mode: str

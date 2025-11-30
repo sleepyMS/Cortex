@@ -2060,6 +2060,7 @@
       "panicTitle": "Are you absolutely sure?",
       "panicDesc": "This action will immediately close all positions at market price. Severe slippage or losses may occur depending on market conditions.",
       "chartTitle": "Live Chart",
+      "noPerformanceData": "No performance data available yet",
       "performance": "Performance",
       "totalPnl": "Total PnL",
       "winRate": "Win Rate",

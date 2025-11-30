@@ -2092,6 +2092,7 @@
       "panicTitle": "정말 확실합니까?",
       "panicDesc": "이 작업은 시장가로 모든 포지션을 즉시 종료합니다. 시장 상황에 따라 심각한 슬리피지나 손실이 발생할 수 있습니다.",
       "chartTitle": "실시간 차트",
+      "noPerformanceData": "아직 성과 데이터가 없습니다",
       "performance": "성과",
       "totalPnl": "누적 수익",
       "winRate": "승률",
