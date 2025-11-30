@@ -1948,6 +1948,7 @@
       "subtitle": "5단계로 간편하게 자동 매매 봇을 설정하세요.",
       "backToBots": "목록으로 돌아가기",
       "steps": {
+        "mode": "모드",
         "strategy": "전략",
         "parameters": "파라미터",
         "exchange": "거래소",

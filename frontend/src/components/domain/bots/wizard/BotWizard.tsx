@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Steps } from "@/components/ui/Steps";
+import { ModeSelectionStep } from "./steps/ModeSelectionStep";
 import { StrategySelectionStep } from "./steps/StrategySelectionStep";
 import { ParameterConfigurationStep } from "./steps/ParameterConfigurationStep";
 import { ExchangeSetupStep } from "./steps/ExchangeSetupStep";
@@ -17,6 +18,7 @@ import apiClient from "@/lib/apiClient";
 import { Loader2 } from "lucide-react";
 
 export type WizardData = {
+  mode: "live" | "paper"; // New field
   strategyId: string | null;
   selectedStrategy: any | null; // Store full strategy object
   parameters: Record<string, any>;
@@ -38,11 +40,12 @@ export type WizardData = {
 };
 
 const INITIAL_DATA: WizardData = {
+  mode: "paper", // Default to paper trading
   strategyId: null,
   selectedStrategy: null,
   parameters: {},
   exchangeAccountId: null,
-  initialCapital: 1000,
+  initialCapital: 10000, // Higher default for paper trading
   leverage: 1,
   executionInterval: "1h",
   trailingStopConfig: {
@@ -68,11 +71,12 @@ export function BotWizard() {
   };
 
   const steps = [
+    { id: "mode", title: t("steps.mode") },
     { id: "strategy", title: t("steps.strategy") },
-    { id: "review", title: t("steps.parameters") }, // Renamed to Review/Parameters
+    { id: "parameters", title: t("steps.parameters") },
     { id: "exchange", title: t("steps.exchange") },
     { id: "risk", title: t("steps.risk") },
-    { id: "final", title: t("steps.review") }, // Final Review
+    { id: "review", title: t("steps.review") },
   ];
 
   const nextStep = () => {
@@ -90,13 +94,18 @@ export function BotWizard() {
   const isStepValid = () => {
     // Simple validation logic per step
     switch (currentStep) {
-      case 0: // Strategy
+      case 0: // Mode
+        return true;
+      case 1: // Strategy
         return !!data.strategyId && !!data.selectedStrategy;
-      case 1: // Parameters
+      case 2: // Parameters
         return true; // Add specific validation if needed
-      case 2: // Exchange
-        return !!data.exchangeAccountId && data.initialCapital > 0;
-      case 3: // Risk
+      case 3: // Exchange
+        if (data.mode === "live") {
+          return !!data.exchangeAccountId && data.initialCapital > 0;
+        }
+        return data.initialCapital > 0;
+      case 4: // Risk
         return true;
       default:
         return true;
@@ -106,16 +115,18 @@ export function BotWizard() {
   const renderStep = () => {
     switch (currentStep) {
       case 0:
-        return <StrategySelectionStep data={data} updateData={updateData} />;
+        return <ModeSelectionStep data={data} updateData={updateData} />;
       case 1:
+        return <StrategySelectionStep data={data} updateData={updateData} />;
+      case 2:
         return (
           <ParameterConfigurationStep data={data} updateData={updateData} />
         );
-      case 2:
-        return <ExchangeSetupStep data={data} updateData={updateData} />;
       case 3:
-        return <RiskManagementStep data={data} updateData={updateData} />;
+        return <ExchangeSetupStep data={data} updateData={updateData} />;
       case 4:
+        return <RiskManagementStep data={data} updateData={updateData} />;
+      case 5:
         return <ReviewStep data={data} />;
       default:
         return null;
@@ -126,21 +137,21 @@ export function BotWizard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateBot = async () => {
-    if (!data.strategyId || !data.exchangeAccountId) return;
+    if (!data.strategyId) return;
+    if (data.mode === "live" && !data.exchangeAccountId) return;
 
     setIsSubmitting(true);
     try {
       const payload = {
+        mode: data.mode,
         strategyId: data.strategyId,
-        apiKeyId: data.exchangeAccountId,
+        apiKeyId: data.exchangeAccountId, // Can be null for paper trading
         initialCapital: data.initialCapital,
         ticker: data.selectedStrategy?.targetCoins?.[0]?.ticker || "BTCUSDT", // Fallback or select from UI if needed
         executionInterval: data.executionInterval,
         trailingStopConfig: data.trailingStopConfig.enabled
           ? data.trailingStopConfig
           : null,
-        // Note: parameters and riskSettings are not yet supported by backend LiveBotCreate schema directly
-        // If they need to be saved, backend schema needs update or they should be part of strategy/config
       };
 
       const response = await apiClient.post("/live-bots/", payload);

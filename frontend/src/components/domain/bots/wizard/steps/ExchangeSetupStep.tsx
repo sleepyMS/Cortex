@@ -33,23 +33,23 @@ export function ExchangeSetupStep({
   const [balance, setBalance] = useState<number | null>(null);
   const [allocationPct, setAllocationPct] = useState(10); // Default 10%
 
-  // Mock fetching balance when account changes
+  // Mock fetching balance when account changes (only for Live mode)
   useEffect(() => {
-    if (data.exchangeAccountId) {
+    if (data.mode === "live" && data.exchangeAccountId) {
       // Simulate API call
       setBalance(10000); // Mock 10,000 USDT
-    } else {
+    } else if (data.mode === "live") {
       setBalance(null);
     }
-  }, [data.exchangeAccountId]);
+  }, [data.exchangeAccountId, data.mode]);
 
-  // Update initial capital based on percentage
+  // Update initial capital based on percentage (only for Live mode)
   useEffect(() => {
-    if (balance !== null) {
+    if (data.mode === "live" && balance !== null) {
       const amount = Math.floor(balance * (allocationPct / 100));
       updateData({ initialCapital: amount });
     }
-  }, [balance, allocationPct]);
+  }, [balance, allocationPct, data.mode]);
 
   return (
     <div className="space-y-8">
@@ -63,77 +63,80 @@ export function ExchangeSetupStep({
         <div className="space-y-6">
           <div className="space-y-2">
             <Label>{t("account")}</Label>
-            <Select
-              value={data.exchangeAccountId || ""}
-              onValueChange={(value) =>
-                updateData({ exchangeAccountId: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("selectAccount")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="acc_1">Binance Main (***3f8a)</SelectItem>
-                <SelectItem value="acc_2">Bybit Sub (***9k2p)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {data.exchangeAccountId && balance !== null && (
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-              <div className="flex justify-between items-center">
-                <Label className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
-                  {t("availableBalance")}
-                </Label>
-                <span className="font-mono font-medium">
-                  ${balance.toLocaleString()} USDT
+            {data.mode === "live" ? (
+              <Select
+                value={data.exchangeAccountId || ""}
+                onValueChange={(value) =>
+                  updateData({ exchangeAccountId: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("selectAccount")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="acc_1">Binance Main (***3f8a)</SelectItem>
+                  <SelectItem value="acc_2">Bybit Sub (***9k2p)</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center gap-2 p-3 border rounded-md bg-muted/50 text-muted-foreground">
+                <Wallet className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {t("virtualAccount")}
                 </span>
               </div>
+            )}
+          </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>
-                    {t("allocation")}: {allocationPct}%
-                  </span>
-                  <span className="font-bold text-primary">
-                    ${data.initialCapital.toLocaleString()}
+          {data.mode === "live" &&
+            data.exchangeAccountId &&
+            balance !== null && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="flex justify-between items-center">
+                  <Label className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />
+                    {t("availableBalance")}
+                  </Label>
+                  <span className="font-mono font-medium">
+                    ${balance.toLocaleString()} USDT
                   </span>
                 </div>
-                <Slider
-                  value={[allocationPct]}
-                  onValueChange={(vals) => setAllocationPct(vals[0])}
-                  max={100}
-                  step={1}
-                  className="py-2"
-                />
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span>
+                      {t("allocation")}: {allocationPct}%
+                    </span>
+                    <span className="font-bold text-primary">
+                      ${data.initialCapital.toLocaleString()}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[allocationPct]}
+                    onValueChange={(vals) => setAllocationPct(vals[0])}
+                    max={100}
+                    step={1}
+                    className="py-2"
+                  />
+                </div>
               </div>
+            )}
+
+          {data.mode === "paper" && (
+            <div className="space-y-2">
+              <Label>{t("initialCapital")}</Label>
+              <Input
+                type="number"
+                value={data.initialCapital}
+                onChange={(e) =>
+                  updateData({ initialCapital: parseFloat(e.target.value) })
+                }
+              />
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label>{t("leverage")}</Label>
-            <Select
-              value={data.leverage.toString()}
-              onValueChange={(value) =>
-                updateData({ leverage: parseInt(value) })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("selectLeverage")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1x (Spot)</SelectItem>
-                <SelectItem value="2">2x</SelectItem>
-                <SelectItem value="5">5x</SelectItem>
-                <SelectItem value="10">10x</SelectItem>
-                <SelectItem value="20">20x</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
-        {/* Right Column: Execution & Trailing Stop */}
+        {/* Right Column: Execution Settings */}
         <div className="space-y-6">
           <div className="space-y-2">
             <Label>{t("executionInterval")}</Label>
@@ -157,72 +160,8 @@ export function ExchangeSetupStep({
             </Select>
             <p className="text-xs text-muted-foreground">{t("intervalHelp")}</p>
           </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>{t("trailingStop")}</Label>
-              <Switch
-                checked={data.trailingStopConfig.enabled}
-                onCheckedChange={(checked) =>
-                  updateData({
-                    trailingStopConfig: {
-                      ...data.trailingStopConfig,
-                      enabled: checked,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            {data.trailingStopConfig.enabled && (
-              <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                <div className="space-y-2">
-                  <Label className="text-xs">{t("activation")}</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={data.trailingStopConfig.activationPct}
-                    onChange={(e) =>
-                      updateData({
-                        trailingStopConfig: {
-                          ...data.trailingStopConfig,
-                          activationPct: parseFloat(e.target.value),
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">{t("callback")}</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={data.trailingStopConfig.callbackPct}
-                    onChange={(e) =>
-                      updateData({
-                        trailingStopConfig: {
-                          ...data.trailingStopConfig,
-                          callbackPct: parseFloat(e.target.value),
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
-
-      {data.leverage > 1 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{t("riskWarning")}</AlertTitle>
-          <AlertDescription>{t("riskWarningDesc")}</AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 }

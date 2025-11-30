@@ -1916,6 +1916,7 @@
       "subtitle": "Configure your automated trading bot in 5 simple steps.",
       "backToBots": "Back to Bots",
       "steps": {
+        "mode": "Mode",
         "strategy": "Strategy",
         "parameters": "Parameters",
         "exchange": "Exchange",

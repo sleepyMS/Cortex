@@ -12,6 +12,7 @@ interface ReviewStepProps {
 
 export function ReviewStep({ data }: ReviewStepProps) {
   const t = useTranslations("LiveTrading.Wizard.Review");
+  const tMode = useTranslations("LiveTrading.Wizard.Mode");
 
   return (
     <div className="space-y-6">
@@ -24,6 +25,14 @@ export function ReviewStep({ data }: ReviewStepProps) {
         <Card className="p-4 space-y-4">
           <h3 className="font-medium border-b pb-2">{t("strategy")}</h3>
           <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{tMode("title")}</span>
+              <span className="font-medium text-primary">
+                {data.mode === "live"
+                  ? tMode("liveTitle")
+                  : tMode("paperTitle")}
+              </span>
+            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("name")}</span>
               <span className="font-medium">
