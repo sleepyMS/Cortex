@@ -40,7 +40,10 @@ export function ParameterConfigurationStep({
         </AlertDescription>
       </Alert>
 
-      <StrategyParameterViewer strategy={data.selectedStrategy} />
+      <StrategyParameterViewer
+        strategy={data.selectedStrategy}
+        singleColumn={true}
+      />
     </div>
   );
 }

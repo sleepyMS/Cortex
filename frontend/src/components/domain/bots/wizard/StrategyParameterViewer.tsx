@@ -19,6 +19,7 @@ type TFunction = ReturnType<typeof useTranslations>;
 
 interface StrategyParameterViewerProps {
   strategy: Strategy;
+  singleColumn?: boolean;
 }
 
 interface RuleDisplayProps {
@@ -147,7 +148,7 @@ const OperandDisplayGroup = React.memo(
     );
 
     return (
-      <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col">
+      <div className="space-y-3 p-3 bg-muted/50 rounded-lg h-full flex flex-col min-w-0">
         <h5 className="text-xs font-semibold text-muted-foreground truncate">
           {displayTitle}
         </h5>
@@ -215,7 +216,7 @@ const RuleDisplay = React.memo(
                 definitions={definitions}
                 t={t}
               />
-              <div className="flex items-center justify-center pt-8">
+              <div className="flex items-center justify-center">
                 <span className="font-bold text-lg text-primary">
                   {operator}
                 </span>
@@ -476,6 +477,7 @@ const RuleSection = ({
 
 export function StrategyParameterViewer({
   strategy,
+  singleColumn = false,
 }: StrategyParameterViewerProps) {
   const t = useTranslations("BacktestDetailPage.Parameters");
   const tRule = useTranslations("RuleBlock");
@@ -497,7 +499,11 @@ export function StrategyParameterViewer({
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-8 pt-4 border-t">
+        <div
+          className={`grid grid-cols-1 ${
+            singleColumn ? "" : "lg:grid-cols-2"
+          } gap-x-6 gap-y-8 pt-4 border-t`}
+        >
           <RuleSection
             title={t("longEntry")}
             rules={strategy.longEntryRules}

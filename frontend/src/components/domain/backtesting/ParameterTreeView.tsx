@@ -339,7 +339,7 @@ const RuleBlock = React.memo(
                 indicatorDefinitions={indicatorDefinitions}
                 t={t}
               />
-              <div className="flex items-center justify-center pt-8">
+              <div className="flex items-center justify-center">
                 <span className="font-bold text-lg text-primary">
                   {operator}
                 </span>
