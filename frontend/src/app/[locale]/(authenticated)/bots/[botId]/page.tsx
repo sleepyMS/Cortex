@@ -1,20 +1,99 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/Button";
 import { Link } from "@/i18n/navigation";
-import { ArrowLeft, Play, Square, AlertTriangle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { BotControlPanel } from "@/components/bots/detail/BotControlPanel";
+import { BotChart } from "@/components/bots/detail/BotChart";
+import { BotLogViewer } from "@/components/bots/detail/BotLogViewer";
+import { BotTradeHistory } from "@/components/bots/detail/BotTradeHistory";
+import { useState } from "react";
 
 export default function BotDetailPage({
   params,
 }: {
   params: { botId: string };
 }) {
-  // const t = useTranslations("BotDetail");
+  // Mock State
+  const [status, setStatus] = useState<"running" | "stopped" | "error">(
+    "running"
+  );
+  const [logs, setLogs] = useState([
+    {
+      id: "1",
+      timestamp: "12:00:01",
+      level: "INFO" as const,
+      message: "Bot started successfully.",
+    },
+    {
+      id: "2",
+      timestamp: "12:05:30",
+      level: "INFO" as const,
+      message: "Fetching market data for BTC/USDT...",
+    },
+    {
+      id: "3",
+      timestamp: "12:06:00",
+      level: "WARN" as const,
+      message: "High volatility detected.",
+    },
+  ]);
+  const [trades, setTrades] = useState([
+    {
+      id: "t1",
+      timestamp: "12:10:00",
+      side: "BUY" as const,
+      price: 42000,
+      amount: 0.1,
+    },
+  ]);
+
+  const handleStart = () => {
+    setStatus("running");
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        timestamp: new Date().toLocaleTimeString(),
+        level: "INFO",
+        message: "Bot started.",
+      },
+    ]);
+  };
+
+  const handleStop = () => {
+    setStatus("stopped");
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        timestamp: new Date().toLocaleTimeString(),
+        level: "INFO",
+        message: "Bot stopped.",
+      },
+    ]);
+  };
+
+  const handlePanic = () => {
+    setStatus("stopped");
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        timestamp: new Date().toLocaleTimeString(),
+        level: "WARN",
+        message: "PANIC SELL TRIGGERED. Closing all positions.",
+      },
+    ]);
+  };
+
+  const handleDelete = () => {
+    console.log("Delete bot");
+  };
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/bots"
@@ -27,59 +106,34 @@ export default function BotDetailPage({
               Bot #{params.botId}
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                Stopped
-              </span>
               <span className="text-sm text-muted-foreground">
-                Binance Futures • BTC/USDT
+                Binance Futures • BTC/USDT • MACD Strategy
               </span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Play className="h-4 w-4" />
-            Start
-          </Button>
-          <Button variant="destructive" size="sm" className="gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Panic Sell
-          </Button>
-        </div>
+        <BotControlPanel
+          status={status}
+          onStart={handleStart}
+          onStop={handleStop}
+          onPanic={handlePanic}
+          onDelete={handleDelete}
+        />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Chart Area */}
-        <div className="md:col-span-2 rounded-xl border bg-card text-card-foreground shadow-sm min-h-[400px] flex items-center justify-center">
-          <p className="text-muted-foreground">TradingView Chart Placeholder</p>
+        <div className="lg:col-span-2">
+          <BotChart />
         </div>
 
         {/* Status & Logs */}
-        <div className="space-y-6">
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <h3 className="font-semibold mb-4">Performance</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Total PnL</span>
-                <span className="font-medium text-green-500">
-                  +$0.00 (0.00%)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Win Rate</span>
-                <span className="font-medium">0%</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 h-[300px] flex flex-col">
-            <h3 className="font-semibold mb-4">Live Logs</h3>
-            <div className="flex-1 bg-muted/50 rounded-md p-4 text-xs font-mono overflow-y-auto">
-              <p className="text-muted-foreground">Waiting for logs...</p>
-            </div>
-          </div>
+        <div className="h-[450px]">
+          <BotLogViewer logs={logs} />
         </div>
       </div>
+
+      <BotTradeHistory trades={trades} />
     </div>
   );
 }
