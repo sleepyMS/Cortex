@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowLeft } from "lucide-react";
-import { BotWizard } from "@/components/bots/wizard/BotWizard";
+import { BotWizard } from "@/components/domain/bots/wizard/BotWizard";
 
 export default function NewBotPage() {
   const t = useTranslations("LiveTrading.Wizard");

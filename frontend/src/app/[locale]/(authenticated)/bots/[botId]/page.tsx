@@ -3,10 +3,10 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowLeft } from "lucide-react";
-import { BotControlPanel } from "@/components/bots/detail/BotControlPanel";
-import { BotChart } from "@/components/bots/detail/BotChart";
-import { BotLogViewer } from "@/components/bots/detail/BotLogViewer";
-import { BotTradeHistory } from "@/components/bots/detail/BotTradeHistory";
+import { BotControlPanel } from "@/components/domain/bots/detail/BotControlPanel";
+import { BotChart } from "@/components/domain/bots/detail/BotChart";
+import { BotLogViewer } from "@/components/domain/bots/detail/BotLogViewer";
+import { BotTradeHistory } from "@/components/domain/bots/detail/BotTradeHistory";
 import { useState } from "react";
 
 export default function BotDetailPage({

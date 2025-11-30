@@ -4,8 +4,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Link } from "@/i18n/navigation";
 import { Plus } from "lucide-react";
-import { BotSummaryCards } from "@/components/bots/dashboard/BotSummaryCards";
-import { BotListTable } from "@/components/bots/dashboard/BotListTable";
+import { BotSummaryCards } from "@/components/domain/bots/dashboard/BotSummaryCards";
+import { BotListTable } from "@/components/domain/bots/dashboard/BotListTable";
 
 export default function LiveBotsPage() {
   const t = useTranslations("LiveTrading.Dashboard");
