@@ -739,7 +739,8 @@
     "backtester": "백테스트",
     "optimization": "전략 최적화",
     "marketplace": "마켓플레이스",
-    "community": "커뮤니티"
+    "community": "커뮤니티",
+    "liveBots": "실전 매매"
   },
   "BacktestList": {
     "title": "백테스트 기록",

@@ -708,7 +708,8 @@
     "backtester": "Backtest",
     "optimization": "Optimization",
     "marketplace": "Marketplace",
-    "community": "Community"
+    "community": "Community",
+    "liveBots": "Live Bots"
   },
   "BacktestList": {
     "title": "Your Backtest History",
