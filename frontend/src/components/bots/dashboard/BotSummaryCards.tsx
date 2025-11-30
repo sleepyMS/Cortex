@@ -2,33 +2,36 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Activity, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function BotSummaryCards() {
+  const t = useTranslations("LiveTrading.Dashboard.summary");
+
   // Mock Data
   const stats = [
     {
-      title: "Total Equity",
+      title: t("totalEquity"),
       value: "$12,345.67",
       change: "+2.5%",
       icon: Wallet,
       trend: "up",
     },
     {
-      title: "Active Bots",
+      title: t("activeBots"),
       value: "3",
-      subtext: "Running / 5 Total",
+      subtext: t("runningOfTotal", { total: 5 }),
       icon: Activity,
       trend: "neutral",
     },
     {
-      title: "Today's PnL",
+      title: t("todaysPnl"),
       value: "+$123.45",
       change: "+1.2%",
       icon: DollarSign,
       trend: "up",
     },
     {
-      title: "Total PnL",
+      title: t("totalPnl"),
       value: "+$2,345.67",
       change: "+15.4%",
       icon: TrendingUp,
@@ -57,7 +60,7 @@ export function BotSummaryCards() {
                 </span>
               )}
               {stat.subtext && <span>{stat.subtext}</span>}
-              {stat.change && " from last month"}
+              {stat.change && ` ${t("fromLastMonth")}`}
             </p>
           </CardContent>
         </Card>

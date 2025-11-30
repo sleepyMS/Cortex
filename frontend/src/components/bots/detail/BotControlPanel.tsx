@@ -15,6 +15,7 @@ import {
 import { Play, Square, AlertTriangle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import { useTranslations } from "next-intl";
 
 interface BotControlPanelProps {
   status: "running" | "stopped" | "error";
@@ -32,6 +33,7 @@ export function BotControlPanel({
   onDelete,
 }: BotControlPanelProps) {
   const [isPanicOpen, setIsPanicOpen] = useState(false);
+  const t = useTranslations("LiveTrading.Detail");
 
   return (
     <div className="flex items-center gap-4">
@@ -56,12 +58,12 @@ export function BotControlPanel({
           className="bg-green-600 hover:bg-green-700 text-white gap-2"
         >
           <Play className="h-4 w-4" />
-          Start Bot
+          {t("startBot")}
         </Button>
       ) : (
         <Button onClick={onStop} variant="secondary" className="gap-2">
           <Square className="h-4 w-4 fill-current" />
-          Stop Bot
+          {t("stopBot")}
         </Button>
       )}
 
@@ -69,21 +71,16 @@ export function BotControlPanel({
         <AlertDialogTrigger asChild>
           <Button variant="destructive" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
-            Panic Sell
+            {t("panicSell")}
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action will{" "}
-              <strong>immediately close all open positions</strong> at market
-              price. This may result in significant slippage or loss depending
-              on market conditions.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("panicTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("panicDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 onPanic();
@@ -91,7 +88,7 @@ export function BotControlPanel({
               }}
               className="bg-red-600 hover:bg-red-700"
             >
-              Confirm Panic Sell
+              {t("confirmPanic")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

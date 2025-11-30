@@ -1913,5 +1913,121 @@
     "errorMessage": "최적화 작업 상세 정보를 불러오는 중 오류가 발생했습니다.",
     "processingTitle": "최적화 진행 중...",
     "trialsCompleted": "회 시도 완료"
+  },
+  "LiveTrading": {
+    "Dashboard": {
+      "title": "실전 매매 봇",
+      "subtitle": "자동 매매 봇을 관리하고 성과를 모니터링하세요.",
+      "createNewBot": "새 봇 만들기",
+      "yourBots": "나의 봇",
+      "noBotsTitle": "실행 중인 봇 없음",
+      "noBotsDesc": "아직 실전 매매 봇을 생성하지 않았습니다.",
+      "summary": {
+        "totalEquity": "총 자산",
+        "activeBots": "활성 봇",
+        "todaysPnl": "금일 수익",
+        "totalPnl": "누적 수익",
+        "runningOfTotal": "실행 중 / 전체 {total}개",
+        "fromLastMonth": "지난달 대비"
+      },
+      "table": {
+        "status": "상태",
+        "name": "이름",
+        "strategy": "전략",
+        "symbol": "심볼",
+        "pnl": "수익금(률)",
+        "actions": "작업",
+        "viewDetails": "상세 보기",
+        "startBot": "봇 시작",
+        "stopBot": "봇 중지",
+        "delete": "삭제"
+      }
+    },
+    "Wizard": {
+      "title": "새 봇 만들기",
+      "subtitle": "5단계로 간편하게 자동 매매 봇을 설정하세요.",
+      "backToBots": "목록으로 돌아가기",
+      "steps": {
+        "strategy": "전략",
+        "parameters": "파라미터",
+        "exchange": "거래소",
+        "risk": "리스크",
+        "review": "검토"
+      },
+      "buttons": {
+        "back": "이전",
+        "next": "다음",
+        "createBot": "봇 생성"
+      },
+      "Strategy": {
+        "title": "전략 선택",
+        "subtitle": "봇에 적용할 트레이딩 전략을 선택하세요.",
+        "winRate": "승률",
+        "estReturn": "예상 수익률"
+      },
+      "Parameters": {
+        "title": "파라미터 설정",
+        "subtitle": "이 봇 인스턴스에 대한 전략 설정을 세부 조정하세요.",
+        "symbol": "거래 심볼",
+        "timeframe": "타임프레임",
+        "selectSymbol": "심볼 선택",
+        "selectTimeframe": "타임프레임 선택"
+      },
+      "Exchange": {
+        "title": "거래소 및 자본금",
+        "subtitle": "거래소 계정을 연결하고 자본금을 할당하세요.",
+        "account": "거래소 계정 (API Key)",
+        "selectAccount": "API Key 선택",
+        "initialCapital": "초기 자본금 (USDT)",
+        "leverage": "레버리지 (x)",
+        "selectLeverage": "레버리지 선택",
+        "riskWarning": "위험 경고",
+        "riskWarningDesc": "레버리지를 사용하면 청산 위험이 증가합니다. 충분한 증거금을 확보하세요."
+      },
+      "Risk": {
+        "title": "리스크 관리",
+        "subtitle": "자본 보호를 위한 안전 장치를 설정하세요.",
+        "takeProfit": "익절가 (Take Profit %)",
+        "stopLoss": "손절가 (Stop Loss %)",
+        "safetySwitches": "안전 스위치",
+        "dailyMaxLoss": "일일 최대 손실 한도 (Kill Switch)",
+        "dailyMaxLossDesc": "일일 손실이 이 비율을 초과하면 봇을 중지합니다."
+      },
+      "Review": {
+        "title": "검토 및 생성",
+        "subtitle": "봇을 시작하기 전에 설정을 확인하세요.",
+        "strategy": "전략",
+        "capitalRisk": "자본 및 리스크",
+        "disclaimer": "면책 조항",
+        "disclaimerText": "자동 매매는 상당한 위험을 수반합니다. 실제 자금을 투입하기 전에 전략을 충분히 이해하고 테스트했는지 확인하세요."
+      }
+    },
+    "Detail": {
+      "backToBots": "목록으로 돌아가기",
+      "start": "시작",
+      "stop": "중지",
+      "panicSell": "패닉 셀 (일괄 청산)",
+      "startBot": "봇 시작",
+      "stopBot": "봇 중지",
+      "confirmPanic": "패닉 셀 확인",
+      "cancel": "취소",
+      "panicTitle": "정말 확실합니까?",
+      "panicDesc": "이 작업은 시장가로 모든 포지션을 즉시 종료합니다. 시장 상황에 따라 심각한 슬리피지나 손실이 발생할 수 있습니다.",
+      "chartTitle": "실시간 차트",
+      "performance": "성과",
+      "totalPnl": "누적 수익",
+      "winRate": "승률",
+      "liveLogs": "실시간 로그",
+      "waitingForLogs": "로그 대기 중...",
+      "recentTrades": "최근 거래",
+      "noTrades": "아직 체결된 거래가 없습니다.",
+      "table": {
+        "time": "시간",
+        "side": "매수/매도",
+        "price": "가격",
+        "amount": "수량",
+        "pnl": "수익금"
+      }
+    }
   }
 }

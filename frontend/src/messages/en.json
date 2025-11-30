@@ -1881,5 +1881,121 @@
     "errorMessage": "An error occurred while loading the optimization job details.",
     "processingTitle": "Optimization in progress...",
     "trialsCompleted": "trials completed"
+  },
+  "LiveTrading": {
+    "Dashboard": {
+      "title": "Live Bots",
+      "subtitle": "Manage your automated trading bots and monitor their performance.",
+      "createNewBot": "Create New Bot",
+      "yourBots": "Your Bots",
+      "noBotsTitle": "No Bots Running",
+      "noBotsDesc": "You haven't created any live trading bots yet.",
+      "summary": {
+        "totalEquity": "Total Equity",
+        "activeBots": "Active Bots",
+        "todaysPnl": "Today's PnL",
+        "totalPnl": "Total PnL",
+        "runningOfTotal": "Running / {total} Total",
+        "fromLastMonth": "from last month"
+      },
+      "table": {
+        "status": "Status",
+        "name": "Name",
+        "strategy": "Strategy",
+        "symbol": "Symbol",
+        "pnl": "PnL",
+        "actions": "Actions",
+        "viewDetails": "View Details",
+        "startBot": "Start Bot",
+        "stopBot": "Stop Bot",
+        "delete": "Delete"
+      }
+    },
+    "Wizard": {
+      "title": "Create New Bot",
+      "subtitle": "Configure your automated trading bot in 5 simple steps.",
+      "backToBots": "Back to Bots",
+      "steps": {
+        "strategy": "Strategy",
+        "parameters": "Parameters",
+        "exchange": "Exchange",
+        "risk": "Risk",
+        "review": "Review"
+      },
+      "buttons": {
+        "back": "Back",
+        "next": "Next",
+        "createBot": "Create Bot"
+      },
+      "Strategy": {
+        "title": "Select a Strategy",
+        "subtitle": "Choose a trading strategy to power your bot.",
+        "winRate": "Win Rate",
+        "estReturn": "Est. Return"
+      },
+      "Parameters": {
+        "title": "Configure Parameters",
+        "subtitle": "Fine-tune the strategy settings for this bot instance.",
+        "symbol": "Trading Symbol",
+        "timeframe": "Timeframe",
+        "selectSymbol": "Select symbol",
+        "selectTimeframe": "Select timeframe"
+      },
+      "Exchange": {
+        "title": "Exchange & Capital",
+        "subtitle": "Connect your exchange account and allocate capital.",
+        "account": "Exchange Account (API Key)",
+        "selectAccount": "Select an API Key",
+        "initialCapital": "Initial Capital (USDT)",
+        "leverage": "Leverage (x)",
+        "selectLeverage": "Select leverage",
+        "riskWarning": "Risk Warning",
+        "riskWarningDesc": "Trading with leverage increases the risk of liquidation. Ensure you have sufficient margin."
+      },
+      "Risk": {
+        "title": "Risk Management",
+        "subtitle": "Set safety limits to protect your capital.",
+        "takeProfit": "Take Profit (%)",
+        "stopLoss": "Stop Loss (%)",
+        "safetySwitches": "Safety Switches",
+        "dailyMaxLoss": "Daily Max Loss (Kill Switch)",
+        "dailyMaxLossDesc": "Stop the bot if daily loss exceeds this percentage."
+      },
+      "Review": {
+        "title": "Review & Create",
+        "subtitle": "Review your settings before launching the bot.",
+        "strategy": "Strategy",
+        "capitalRisk": "Capital & Risk",
+        "disclaimer": "Disclaimer",
+        "disclaimerText": "Automated trading involves significant risk. Ensure you understand the strategy and have tested it thoroughly before deploying with real capital."
+      }
+    },
+    "Detail": {
+      "backToBots": "Back to Bots",
+      "start": "Start",
+      "stop": "Stop",
+      "panicSell": "Panic Sell",
+      "startBot": "Start Bot",
+      "stopBot": "Stop Bot",
+      "confirmPanic": "Confirm Panic Sell",
+      "cancel": "Cancel",
+      "panicTitle": "Are you absolutely sure?",
+      "panicDesc": "This action will immediately close all open positions at market price. This may result in significant slippage or loss depending on market conditions.",
+      "chartTitle": "Live Chart",
+      "performance": "Performance",
+      "totalPnl": "Total PnL",
+      "winRate": "Win Rate",
+      "liveLogs": "Live Logs",
+      "waitingForLogs": "Waiting for logs...",
+      "recentTrades": "Recent Trades",
+      "noTrades": "No trades executed yet.",
+      "table": {
+        "time": "Time",
+        "side": "Side",
+        "price": "Price",
+        "amount": "Amount",
+        "pnl": "PnL"
+      }
+    }
   }
 }

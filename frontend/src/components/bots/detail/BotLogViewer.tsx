@@ -2,6 +2,7 @@
 
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 interface LogEntry {
   id: string;
@@ -16,6 +17,7 @@ interface BotLogViewerProps {
 
 export function BotLogViewer({ logs }: BotLogViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations("LiveTrading.Detail");
 
   // Auto-scroll to bottom when logs update
   useEffect(() => {
@@ -47,7 +49,7 @@ export function BotLogViewer({ logs }: BotLogViewerProps) {
   return (
     <div className="flex flex-col h-full rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
-        <h3 className="font-semibold text-sm">Live Logs</h3>
+        <h3 className="font-semibold text-sm">{t("liveLogs")}</h3>
       </div>
       <ScrollArea
         className="flex-1 p-4 font-mono text-xs bg-black/90 text-gray-300"
@@ -55,7 +57,7 @@ export function BotLogViewer({ logs }: BotLogViewerProps) {
       >
         {logs.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
-            Waiting for logs...
+            {t("waitingForLogs")}
           </div>
         ) : (
           <div className="space-y-1">

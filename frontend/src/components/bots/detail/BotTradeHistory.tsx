@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
+import { useTranslations } from "next-intl";
 
 interface Trade {
   id: string;
@@ -24,19 +25,21 @@ interface BotTradeHistoryProps {
 }
 
 export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
+  const t = useTranslations("LiveTrading.Detail");
+
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
       <div className="p-4 border-b">
-        <h3 className="font-semibold">Recent Trades</h3>
+        <h3 className="font-semibold">{t("recentTrades")}</h3>
       </div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Time</TableHead>
-            <TableHead>Side</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="text-right">PnL</TableHead>
+            <TableHead>{t("table.time")}</TableHead>
+            <TableHead>{t("table.side")}</TableHead>
+            <TableHead className="text-right">{t("table.price")}</TableHead>
+            <TableHead className="text-right">{t("table.amount")}</TableHead>
+            <TableHead className="text-right">{t("table.pnl")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -46,7 +49,7 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
                 colSpan={5}
                 className="text-center py-8 text-muted-foreground"
               >
-                No trades executed yet.
+                {t("noTrades")}
               </TableCell>
             </TableRow>
           ) : (

@@ -9,7 +9,7 @@ import { StrategySelectionStep } from "./steps/StrategySelectionStep";
 import { ParameterConfigurationStep } from "./steps/ParameterConfigurationStep";
 import { ExchangeSetupStep } from "./steps/ExchangeSetupStep";
 import { ReviewStep } from "./steps/ReviewStep";
-import { ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { RiskManagementStep } from "./steps/RiskManagementStep";
 
 export type WizardData = {
@@ -38,25 +38,25 @@ const INITIAL_DATA: WizardData = {
   },
 };
 
-const STEPS = [
-  { id: "strategy", title: "Strategy" },
-  { id: "parameters", title: "Parameters" },
-  { id: "exchange", title: "Exchange" },
-  { id: "risk", title: "Risk" },
-  { id: "review", title: "Review" },
-];
-
 export function BotWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData] = useState<WizardData>(INITIAL_DATA);
-  // const t = useTranslations("BotWizard");
+  const t = useTranslations("LiveTrading.Wizard");
 
   const updateData = (updates: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...updates }));
   };
 
+  const steps = [
+    { id: "strategy", title: t("steps.strategy") },
+    { id: "parameters", title: t("steps.parameters") },
+    { id: "exchange", title: t("steps.exchange") },
+    { id: "risk", title: t("steps.risk") },
+    { id: "review", title: t("steps.review") },
+  ];
+
   const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     }
   };
@@ -105,7 +105,7 @@ export function BotWizard() {
   return (
     <div className="space-y-8">
       <Steps
-        steps={STEPS}
+        steps={steps}
         currentStep={currentStep}
         onChange={(step: number) => {
           if (step < currentStep) {
@@ -126,16 +126,16 @@ export function BotWizard() {
           className="w-24"
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
-          Back
+          {t("buttons.back")}
         </Button>
 
-        {currentStep === STEPS.length - 1 ? (
+        {currentStep === steps.length - 1 ? (
           <Button className="w-32" onClick={() => console.log("Submit", data)}>
-            Create Bot
+            {t("buttons.createBot")}
           </Button>
         ) : (
           <Button onClick={nextStep} disabled={!isStepValid()} className="w-24">
-            Next
+            {t("buttons.next")}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         )}

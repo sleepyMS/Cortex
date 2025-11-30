@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
+import { useTranslations } from "next-intl";
 
 // Mock Data
 const BOTS = [
@@ -56,17 +57,19 @@ const BOTS = [
 ];
 
 export function BotListTable() {
+  const t = useTranslations("LiveTrading.Dashboard.table");
+
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Status</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Strategy</TableHead>
-            <TableHead>Symbol</TableHead>
-            <TableHead className="text-right">PnL</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t("status")}</TableHead>
+            <TableHead>{t("name")}</TableHead>
+            <TableHead>{t("strategy")}</TableHead>
+            <TableHead>{t("symbol")}</TableHead>
+            <TableHead className="text-right">{t("pnl")}</TableHead>
+            <TableHead className="text-right">{t("actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -118,28 +121,28 @@ export function BotListTable() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
                     <DropdownMenuItem>
                       <Link href={`/bots/${bot.id}`} className="flex w-full">
-                        View Details
+                        {t("viewDetails")}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {bot.status === "running" ? (
                       <DropdownMenuItem className="text-red-500">
                         <Square className="mr-2 h-4 w-4" />
-                        Stop Bot
+                        {t("stopBot")}
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem className="text-green-500">
                         <Play className="mr-2 h-4 w-4" />
-                        Start Bot
+                        {t("startBot")}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-red-500">
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
+                      {t("delete")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

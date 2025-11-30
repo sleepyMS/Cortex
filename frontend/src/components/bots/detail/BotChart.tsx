@@ -2,10 +2,12 @@
 
 import { createChart, ColorType, IChartApi } from "lightweight-charts";
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 export function BotChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const t = useTranslations("LiveTrading.Detail");
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -61,7 +63,7 @@ export function BotChart() {
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold">Live Chart (BTC/USDT)</h3>
+        <h3 className="font-semibold">{t("chartTitle")}</h3>
         <div className="flex gap-2">
           {/* Timeframe selectors could go here */}
           <span className="text-xs text-muted-foreground">1H</span>

@@ -1,40 +1,42 @@
 "use client";
 
+import { Label } from "@/components/ui/Label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
+import { WizardData } from "../BotWizard";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { WizardData } from "../BotWizard";
-import { CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface StrategySelectionStepProps {
   data: WizardData;
   updateData: (updates: Partial<WizardData>) => void;
 }
 
-// Mock Strategies - In real app, fetch from API
+// Mock Strategies
 const STRATEGIES = [
   {
     id: "strat_1",
     name: "MACD Trend Follower",
-    description: "Classic trend following strategy using MACD crossover.",
-    tags: ["Trend", "Low Risk"],
-    winRate: 65,
-    return: 120,
+    description: "Captures trends using MACD crossover signals.",
+    winRate: "65%",
+    return: "+120%",
+    risk: "Medium",
   },
   {
     id: "strat_2",
     name: "RSI Mean Reversion",
-    description: "Buy oversold and sell overbought conditions.",
-    tags: ["Reversion", "Medium Risk"],
-    winRate: 58,
-    return: 150,
+    description: "Buys oversold and sells overbought conditions.",
+    winRate: "72%",
+    return: "+85%",
+    risk: "Low",
   },
   {
     id: "strat_3",
     name: "Bollinger Breakout",
-    description: "Catch volatility breakouts from Bollinger Bands.",
-    tags: ["Volatility", "High Risk"],
-    winRate: 45,
-    return: 210,
+    description: "Trades volatility breakouts from Bollinger Bands.",
+    winRate: "55%",
+    return: "+150%",
+    risk: "High",
   },
 ];
 
@@ -42,70 +44,62 @@ export function StrategySelectionStep({
   data,
   updateData,
 }: StrategySelectionStepProps) {
+  const t = useTranslations("LiveTrading.Wizard.Strategy");
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Select a Strategy</h2>
-        <p className="text-muted-foreground">
-          Choose a trading strategy to power your bot.
-        </p>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {STRATEGIES.map((strategy) => {
-          const isSelected = data.strategyId === strategy.id;
-          return (
-            <div
-              key={strategy.id}
-              className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all hover:border-primary/50 ${
-                isSelected
-                  ? "border-primary bg-primary/5"
-                  : "border-transparent bg-muted/50"
-              }`}
-              onClick={() => updateData({ strategyId: strategy.id })}
+      <RadioGroup
+        value={data.strategyId || ""}
+        onValueChange={(value) => updateData({ strategyId: value })}
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      >
+        {STRATEGIES.map((strategy) => (
+          <div key={strategy.id}>
+            <RadioGroupItem
+              value={strategy.id}
+              id={strategy.id}
+              className="peer sr-only"
+            />
+            <Label
+              htmlFor={strategy.id}
+              className="flex flex-col justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full"
             >
-              {isSelected && (
-                <div className="absolute top-3 right-3 text-primary">
-                  <CheckCircle2 className="h-5 w-5" />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{strategy.name}</span>
+                  <Badge variant="outline">{strategy.risk}</Badge>
                 </div>
-              )}
-              <div className="mb-2">
-                <h3 className="font-semibold">{strategy.name}</h3>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {strategy.tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="text-[10px] px-1 py-0 h-5"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  {strategy.description}
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                {strategy.description}
-              </p>
-              <div className="flex items-center justify-between text-sm">
+              <div className="mt-4 flex items-center justify-between text-sm">
                 <div>
                   <span className="text-muted-foreground block text-xs">
-                    Win Rate
+                    {t("winRate")}
                   </span>
-                  <span className="font-medium">{strategy.winRate}%</span>
+                  <span className="font-medium text-green-500">
+                    {strategy.winRate}
+                  </span>
                 </div>
                 <div className="text-right">
                   <span className="text-muted-foreground block text-xs">
-                    Est. Return
+                    {t("estReturn")}
                   </span>
                   <span className="font-medium text-green-500">
-                    +{strategy.return}%
+                    {strategy.return}
                   </span>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            </Label>
+          </div>
+        ))}
+      </RadioGroup>
     </div>
   );
 }

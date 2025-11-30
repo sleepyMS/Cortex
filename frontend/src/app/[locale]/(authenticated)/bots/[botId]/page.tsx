@@ -14,6 +14,8 @@ export default function BotDetailPage({
 }: {
   params: { botId: string };
 }) {
+  const t = useTranslations("LiveTrading.Detail");
+
   // Mock State
   const [status, setStatus] = useState<"running" | "stopped" | "error">(
     "running"

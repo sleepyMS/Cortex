@@ -1,7 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/Label";
-import { Input } from "@/components/ui/Input";
+import { WizardData } from "../BotWizard";
 import {
   Select,
   SelectContent,
@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
-import { WizardData } from "../BotWizard";
+import { Input } from "@/components/ui/Input";
+import { useTranslations } from "next-intl";
 
 interface ParameterConfigurationStepProps {
   data: WizardData;
@@ -20,7 +21,9 @@ export function ParameterConfigurationStep({
   data,
   updateData,
 }: ParameterConfigurationStepProps) {
-  const handleParamChange = (key: string, value: any) => {
+  const t = useTranslations("LiveTrading.Wizard.Parameters");
+
+  const handleParameterChange = (key: string, value: any) => {
     updateData({
       parameters: {
         ...data.parameters,
@@ -32,40 +35,40 @@ export function ParameterConfigurationStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Configure Parameters</h2>
-        <p className="text-muted-foreground">
-          Fine-tune the strategy settings for this bot instance.
-        </p>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <Label>Trading Symbol</Label>
+          <Label>{t("symbol")}</Label>
           <Select
-            value={data.parameters.symbol || "BTC/USDT"}
-            onValueChange={(val) => handleParamChange("symbol", val)}
+            value={data.parameters.symbol || ""}
+            onValueChange={(value) => handleParameterChange("symbol", value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select symbol" />
+              <SelectValue placeholder={t("selectSymbol")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
               <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
               <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
+              <SelectItem value="XRP/USDT">XRP/USDT</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <Label>Timeframe</Label>
+          <Label>{t("timeframe")}</Label>
           <Select
-            value={data.parameters.timeframe || "1h"}
-            onValueChange={(val) => handleParamChange("timeframe", val)}
+            value={data.parameters.timeframe || ""}
+            onValueChange={(value) => handleParameterChange("timeframe", value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select timeframe" />
+              <SelectValue placeholder={t("selectTimeframe")} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="1m">1 Minute</SelectItem>
               <SelectItem value="5m">5 Minutes</SelectItem>
               <SelectItem value="15m">15 Minutes</SelectItem>
               <SelectItem value="1h">1 Hour</SelectItem>
@@ -75,36 +78,25 @@ export function ParameterConfigurationStep({
           </Select>
         </div>
 
-        {/* Dynamic Parameters based on Strategy - Mocked for now */}
+        {/* Dynamic parameters based on strategy would go here */}
+        {/* For now, we'll add some mock strategy-specific params */}
         <div className="space-y-2">
           <Label>Fast Period (MACD)</Label>
           <Input
             type="number"
             value={data.parameters.fastPeriod || 12}
             onChange={(e) =>
-              handleParamChange("fastPeriod", parseInt(e.target.value))
+              handleParameterChange("fastPeriod", parseInt(e.target.value))
             }
           />
         </div>
-
         <div className="space-y-2">
           <Label>Slow Period (MACD)</Label>
           <Input
             type="number"
             value={data.parameters.slowPeriod || 26}
             onChange={(e) =>
-              handleParamChange("slowPeriod", parseInt(e.target.value))
-            }
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Signal Period</Label>
-          <Input
-            type="number"
-            value={data.parameters.signalPeriod || 9}
-            onChange={(e) =>
-              handleParamChange("signalPeriod", parseInt(e.target.value))
+              handleParameterChange("slowPeriod", parseInt(e.target.value))
             }
           />
         </div>
