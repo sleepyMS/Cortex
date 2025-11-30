@@ -488,6 +488,7 @@ class BacktestResultSummaryForCard(CamelCaseModel):
     avg_profit_loss_ratio: Optional[float] = None
     ulcer_index: Optional[float] = None
     longest_flat_days: Optional[int] = None
+    backtest_score: Optional[float] = None
     avg_holding_period_days: Optional[float] = None
     k_ratio: Optional[float] = None
 
@@ -506,6 +507,7 @@ class StrategyInList(StrategyResponseBase):
     """'목록' 조회를 위한 가벼운 응답 스키마"""
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
     marketplace_listing: Optional[MarketplaceListing] = None
+    target_coins: List[TargetCoin] = Field(default_factory=list) 
 
 class Strategy(StrategyResponseBase):
     """'상세' 조회를 위한 완전한 응답 스키마"""
@@ -647,6 +649,8 @@ class LiveBotCreate(CamelCaseModel):
     api_key_id: uuid.UUID
     initial_capital: Optional[float] = Field(None, ge=0.0, description="Initial capital for the live bot")
     ticker: str = Field(..., description="Trading pair for the bot")
+    execution_interval: str = Field("1h", description="Execution interval (e.g., 1m, 1h)")
+    trailing_stop_config: Optional[Dict[str, Any]] = None
 
 class LiveBotUpdate(CamelCaseModel):
     status: Optional[Literal["active", "paused", "stopped"]] = None
@@ -661,6 +665,8 @@ class LiveBot(CamelCaseModel):
     stopped_at: Optional[datetime] = None
     last_run_at: Optional[datetime] = None
     initial_capital: Optional[float] = None
+    execution_interval: str
+    trailing_stop_config: Optional[Dict[str, Any]] = None
     strategy: Optional[StrategySummary] = None
     api_key: Optional[ApiKeyResponse] = None
 

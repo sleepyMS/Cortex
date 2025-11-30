@@ -70,7 +70,8 @@ class LiveBotService:
             status='initializing',
             initial_capital=live_bot_create.initial_capital,
             ticker=live_bot_create.ticker,
-            timeframe=strategy.target_coins[0].timeframe if strategy.target_coins else "1h" # 예시
+            execution_interval=live_bot_create.execution_interval,
+            trailing_stop_config=live_bot_create.trailing_stop_config
         )
         db.add(db_live_bot)
         await db.flush() # ID가 생성되도록 flush

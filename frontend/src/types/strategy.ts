@@ -139,6 +139,7 @@ export interface BacktestResultSummaryForCard {
   totalReturnPct: number | null;
   winRatePct: number | null;
   mddPct: number | null;
+  backtestScore: number | null;
   // 필요에 따라 백엔드 스키마와 맞춰 필드 추가 가능
 }
 
@@ -219,6 +220,7 @@ export interface StrategyInList {
   updatedAt: string | null;
   latestBacktestSummary: BacktestResultSummaryForCard | null;
   marketplaceListing: MarketplaceListing | null;
+  targetCoins: TargetCoin[];
 }
 
 /**

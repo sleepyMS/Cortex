@@ -164,6 +164,7 @@ class StrategyService:
                 models.BacktestResult.total_return_pct, models.BacktestResult.win_rate_pct,
                 models.BacktestResult.mdd_pct, models.BacktestResult.sharpe_ratio,
                 models.BacktestResult.profit_factor, models.BacktestResult.sortino_ratio,
+                models.BacktestResult.backtest_score,
                 func.row_number().over(
                     partition_by=models.Backtest.strategy_id,
                     order_by=models.Backtest.created_at.desc()
@@ -206,6 +207,7 @@ class StrategyService:
             latest_backtest_subquery.c.sharpe_ratio,
             latest_backtest_subquery.c.profit_factor,
             latest_backtest_subquery.c.sortino_ratio,
+            latest_backtest_subquery.c.backtest_score,
             marketplace_info_subquery.c.product_id,
             marketplace_info_subquery.c.price,
             marketplace_info_subquery.c.category,

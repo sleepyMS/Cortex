@@ -403,6 +403,10 @@ class LiveBot(Base):
     stopped_at = Column(DateTime(timezone=True), nullable=True)
     last_run_at = Column(DateTime(timezone=True), nullable=True)
     initial_capital = Column(Float, nullable=True)
+    
+    execution_interval = Column(String(20), default="1h", nullable=False)
+    trailing_stop_config = Column(JSON, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 

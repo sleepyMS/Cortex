@@ -11,6 +11,10 @@ import { ExchangeSetupStep } from "./steps/ExchangeSetupStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { RiskManagementStep } from "./steps/RiskManagementStep";
+import { useRouter } from "@/i18n/navigation";
+import { toast } from "sonner";
+import apiClient from "@/lib/apiClient";
+import { Loader2 } from "lucide-react";
 
 export type WizardData = {
   strategyId: string | null;
@@ -116,6 +120,45 @@ export function BotWizard() {
     }
   };
 
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateBot = async () => {
+    if (!data.strategyId || !data.exchangeAccountId) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        strategyId: data.strategyId,
+        apiKeyId: data.exchangeAccountId,
+        initialCapital: data.initialCapital,
+        ticker: data.selectedStrategy?.targetCoins?.[0]?.ticker || "BTCUSDT", // Fallback or select from UI if needed
+        executionInterval: data.executionInterval,
+        trailingStopConfig: data.trailingStopConfig.enabled
+          ? data.trailingStopConfig
+          : null,
+        // Note: parameters and riskSettings are not yet supported by backend LiveBotCreate schema directly
+        // If they need to be saved, backend schema needs update or they should be part of strategy/config
+      };
+
+      const response = await apiClient.post("/live-bots/", payload);
+
+      toast.success(t("toasts.createSuccess.title"), {
+        description: t("toasts.createSuccess.description"),
+      });
+
+      // Redirect to the new bot's detail page
+      router.push(`/bots/${response.data.id}`);
+    } catch (error) {
+      console.error("Failed to create bot:", error);
+      toast.error(t("toasts.createError.title"), {
+        description: t("toasts.createError.description"),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <Steps
@@ -144,7 +187,14 @@ export function BotWizard() {
         </Button>
 
         {currentStep === steps.length - 1 ? (
-          <Button className="w-32" onClick={() => console.log("Submit", data)}>
+          <Button
+            className="w-32"
+            onClick={handleCreateBot}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
             {t("buttons.createBot")}
           </Button>
         ) : (

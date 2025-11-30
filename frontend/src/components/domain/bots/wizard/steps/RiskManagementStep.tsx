@@ -28,10 +28,6 @@ export function RiskManagementStep({
     });
   };
 
-  // Extract TP/SL from strategy if available
-  const strategyTp = data.selectedStrategy?.tpslLogic?.takeProfitPct || "N/A";
-  const strategySl = data.selectedStrategy?.tpslLogic?.stopLossPct || "N/A";
-
   return (
     <div className="space-y-6">
       <div>
@@ -40,26 +36,46 @@ export function RiskManagementStep({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Take Profit Section */}
         <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
           <Label className="text-muted-foreground">{t("takeProfit")}</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-2xl font-bold text-green-500">
-              {strategyTp}%
-            </span>
-            <Badge variant="outline">Strategy Default</Badge>
+          <div className="flex flex-col gap-1 mt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-green-500">
+                {data.selectedStrategy?.tpslLogic?.atrTakeProfitMultiplier
+                  ? `${data.selectedStrategy.tpslLogic.atrTakeProfitMultiplier}x ATR`
+                  : `${data.selectedStrategy?.tpslLogic?.takeProfitPct || 0}%`}
+              </span>
+              <Badge variant="outline">Strategy Default</Badge>
+            </div>
+            {data.selectedStrategy?.tpslLogic?.atrTakeProfitMultiplier && (
+              <span className="text-xs text-muted-foreground">
+                Period: {data.selectedStrategy.tpslLogic.atrPeriod}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Defined in strategy logic. Cannot be changed here.
           </p>
         </div>
 
+        {/* Stop Loss Section */}
         <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
           <Label className="text-muted-foreground">{t("stopLoss")}</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-2xl font-bold text-red-500">
-              {strategySl}%
-            </span>
-            <Badge variant="outline">Strategy Default</Badge>
+          <div className="flex flex-col gap-1 mt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-red-500">
+                {data.selectedStrategy?.tpslLogic?.atrStopLossMultiplier
+                  ? `${data.selectedStrategy.tpslLogic.atrStopLossMultiplier}x ATR`
+                  : `${data.selectedStrategy?.tpslLogic?.stopLossPct || 0}%`}
+              </span>
+              <Badge variant="outline">Strategy Default</Badge>
+            </div>
+            {data.selectedStrategy?.tpslLogic?.atrStopLossMultiplier && (
+              <span className="text-xs text-muted-foreground">
+                Period: {data.selectedStrategy.tpslLogic.atrPeriod}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Defined in strategy logic. Cannot be changed here.

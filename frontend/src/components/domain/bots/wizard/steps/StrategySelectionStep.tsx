@@ -8,10 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
 import { Strategy, StrategyInList } from "@/types/strategy";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { StrategyPerformanceBadges } from "@/components/domain/strategy/StrategyPerformanceBadges";
-import { KeyIndicatorBadges } from "@/components/domain/strategy/KeyIndicatorBadges";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StrategySelectionStepProps {
   data: WizardData;
@@ -110,34 +109,75 @@ export function StrategySelectionStep({
                   {strategy.description || "No description available."}
                 </p>
 
-                {/* Performance Badges */}
-                <div className="pt-1">
-                  <StrategyPerformanceBadges
-                    summary={strategy.latestBacktestSummary}
-                  />
+                {/* Performance Metrics */}
+                <div className="pt-2 grid grid-cols-3 gap-2 text-center">
+                  <div className="flex flex-col bg-muted/50 p-2 rounded-lg">
+                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                      Score
+                    </span>
+                    <span className="font-bold text-sm text-primary">
+                      {strategy.latestBacktestSummary?.backtestScore
+                        ? Math.round(
+                            strategy.latestBacktestSummary.backtestScore
+                          )
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-muted/50 p-2 rounded-lg">
+                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                      Return
+                    </span>
+                    <span
+                      className={cn(
+                        "font-bold text-sm",
+                        (strategy.latestBacktestSummary?.totalReturnPct || 0) >=
+                          0
+                          ? "text-green-500"
+                          : "text-red-500"
+                      )}
+                    >
+                      {strategy.latestBacktestSummary?.totalReturnPct
+                        ? `${strategy.latestBacktestSummary.totalReturnPct.toFixed(
+                            1
+                          )}%`
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-muted/50 p-2 rounded-lg">
+                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                      MDD
+                    </span>
+                    <span className="font-bold text-sm text-red-500">
+                      {strategy.latestBacktestSummary?.mddPct
+                        ? `${strategy.latestBacktestSummary.mddPct.toFixed(1)}%`
+                        : "-"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-sm">
-                {/* Key Indicators (Mocked or if available in list) 
-                     Note: KeyIndicatorBadges requires full Strategy object usually, 
-                     but we can try to pass what we have or skip if not in list.
-                     StrategyInList doesn't have rules, so we can't show indicators here 
-                     unless we fetch them. For now, we'll skip KeyIndicatorBadges 
-                     or use a simplified version if needed. 
-                     Actually, StrategyInList doesn't have rules. 
-                     So we will just show the target coin/timeframe if available.
-                 */}
-                <div className="text-xs text-muted-foreground">
-                  {/* StrategyInList doesn't have targetCoins usually unless added. 
-                        Assuming it might not be there. If not, show nothing or placeholder.
-                        Let's check the type definition again. StrategyInList doesn't have targetCoins.
-                        So we can't show symbol/timeframe here easily without full fetch.
-                        We will rely on the Performance Badges which are the most important.
-                    */}
-                  <span className="block">
-                    Created: {new Date(strategy.createdAt).toLocaleDateString()}
-                  </span>
+                <div className="flex items-center gap-4 w-full">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                      Symbol
+                    </span>
+                    <span className="font-semibold text-sm">
+                      {strategy.targetCoins && strategy.targetCoins.length > 0
+                        ? strategy.targetCoins[0].ticker
+                        : "Any"}
+                    </span>
+                  </div>
+
+                  {/* Timeframe is not directly available in StrategyInList, but we can show created date or just omit it if not critical */}
+                  <div className="flex flex-col text-right ml-auto">
+                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                      Created
+                    </span>
+                    <span className="font-medium text-sm">
+                      {new Date(strategy.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </Label>
