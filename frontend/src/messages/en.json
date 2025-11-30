@@ -1927,9 +1927,27 @@
         "next": "Next",
         "createBot": "Create Bot"
       },
+      "toasts": {
+        "createSuccess": {
+          "title": "Bot Created",
+          "description": "Your bot has been successfully created and deployed."
+        },
+        "createError": {
+          "title": "Creation Failed",
+          "description": "Failed to create the bot. Please try again."
+        }
+      },
       "Strategy": {
-        "title": "Select a Strategy",
-        "subtitle": "Choose a trading strategy to power your bot.",
+        "title": "Select Strategy",
+        "subtitle": "Choose a strategy to deploy.",
+        "noDescription": "No description available.",
+        "score": "Score",
+        "return": "Return",
+        "mdd": "MDD",
+        "symbol": "Symbol",
+        "any": "Any",
+        "created": "Created",
+        "noStrategies": "No strategies found. Please create a strategy first.",
         "winRate": "Win Rate",
         "estReturn": "Est. Return"
       },
@@ -1939,35 +1957,68 @@
         "symbol": "Trading Symbol",
         "timeframe": "Timeframe",
         "selectSymbol": "Select symbol",
-        "selectTimeframe": "Select timeframe"
+        "selectTimeframe": "Select timeframe",
+        "selectStrategyFirst": "Please select a strategy first.",
+        "readOnlyTitle": "Read-Only View",
+        "readOnlyDesc": "These parameters are defined in the strategy and cannot be modified here. Please verify the logic before proceeding."
       },
       "Exchange": {
-        "title": "Exchange & Capital",
-        "subtitle": "Connect your exchange account and allocate capital.",
-        "account": "Exchange Account (API Key)",
-        "selectAccount": "Select an API Key",
-        "initialCapital": "Initial Capital (USDT)",
-        "leverage": "Leverage (x)",
+        "title": "Exchange Setup",
+        "subtitle": "Configure your exchange account and execution settings.",
+        "account": "Exchange Account",
+        "selectAccount": "Select an account",
+        "availableBalance": "Available Balance",
+        "allocation": "Allocation",
+        "leverage": "Leverage",
         "selectLeverage": "Select leverage",
+        "executionInterval": "Bot Execution Interval",
+        "selectInterval": "Select interval",
+        "intervalHelp": "How often the bot checks for new signals.",
+        "intervals": {
+          "1m": "1 Minute",
+          "5m": "5 Minutes",
+          "15m": "15 Minutes",
+          "1h": "1 Hour",
+          "4h": "4 Hours",
+          "1d": "1 Day"
+        },
+        "trailingStop": "Trailing Stop",
+        "activation": "Activation (%)",
+        "callback": "Callback (%)",
         "riskWarning": "Risk Warning",
-        "riskWarningDesc": "Trading with leverage increases the risk of liquidation. Ensure you have sufficient margin."
+        "riskWarningDesc": "Using leverage increases the risk of liquidation. Please trade responsibly.",
+        "initialCapital": "Initial Capital (USDT)"
       },
       "Risk": {
         "title": "Risk Management",
-        "subtitle": "Set safety limits to protect your capital.",
-        "takeProfit": "Take Profit (%)",
-        "stopLoss": "Stop Loss (%)",
+        "subtitle": "Set your risk parameters.",
+        "takeProfit": "Take Profit",
+        "stopLoss": "Stop Loss",
+        "strategyDefault": "Strategy Default",
+        "period": "Period",
+        "definedInStrategy": "Defined in strategy logic. Cannot be changed here.",
         "safetySwitches": "Safety Switches",
-        "dailyMaxLoss": "Daily Max Loss (Kill Switch)",
-        "dailyMaxLossDesc": "Stop the bot if daily loss exceeds this percentage."
+        "dailyMaxLoss": "Daily Max Loss",
+        "dailyMaxLossDesc": "Stop trading if daily loss exceeds this percentage."
       },
       "Review": {
-        "title": "Review & Create",
-        "subtitle": "Review your settings before launching the bot.",
-        "strategy": "Strategy",
+        "title": "Review & Deploy",
+        "subtitle": "Review your settings before deploying the bot.",
+        "strategy": "Strategy Configuration",
         "capitalRisk": "Capital & Risk",
+        "name": "Name",
+        "unknown": "Unknown",
+        "symbol": "Symbol",
+        "any": "Any",
+        "executionInterval": "Execution Interval",
+        "initialCapital": "Initial Capital",
+        "leverage": "Leverage",
+        "dailyMaxLoss": "Daily Max Loss",
+        "trailingStop": "Trailing Stop",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
         "disclaimer": "Disclaimer",
-        "disclaimerText": "Automated trading involves significant risk. Ensure you understand the strategy and have tested it thoroughly before deploying with real capital."
+        "disclaimerText": "Past performance is not indicative of future results. Please trade responsibly."
       }
     },
     "Detail": {

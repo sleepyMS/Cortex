@@ -106,14 +106,14 @@ export function StrategySelectionStep({
                 </div>
 
                 <p className="text-xs text-muted-foreground line-clamp-2 min-h-[32px]">
-                  {strategy.description || "No description available."}
+                  {strategy.description || t("noDescription")}
                 </p>
 
                 {/* Performance Metrics */}
                 <div className="pt-2 grid grid-cols-3 gap-2 text-center">
                   <div className="flex flex-col bg-muted/50 p-2 rounded-lg">
                     <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                      Score
+                      {t("score")}
                     </span>
                     <span className="font-bold text-sm text-primary">
                       {strategy.latestBacktestSummary?.backtestScore
@@ -125,7 +125,7 @@ export function StrategySelectionStep({
                   </div>
                   <div className="flex flex-col bg-muted/50 p-2 rounded-lg">
                     <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                      Return
+                      {t("return")}
                     </span>
                     <span
                       className={cn(
@@ -145,7 +145,7 @@ export function StrategySelectionStep({
                   </div>
                   <div className="flex flex-col bg-muted/50 p-2 rounded-lg">
                     <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                      MDD
+                      {t("mdd")}
                     </span>
                     <span className="font-bold text-sm text-red-500">
                       {strategy.latestBacktestSummary?.mddPct
@@ -160,19 +160,19 @@ export function StrategySelectionStep({
                 <div className="flex items-center gap-4 w-full">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                      Symbol
+                      {t("symbol")}
                     </span>
                     <span className="font-semibold text-sm">
                       {strategy.targetCoins && strategy.targetCoins.length > 0
                         ? strategy.targetCoins[0].ticker
-                        : "Any"}
+                        : t("any")}
                     </span>
                   </div>
 
                   {/* Timeframe is not directly available in StrategyInList, but we can show created date or just omit it if not critical */}
                   <div className="flex flex-col text-right ml-auto">
                     <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                      Created
+                      {t("created")}
                     </span>
                     <span className="font-medium text-sm">
                       {new Date(strategy.createdAt).toLocaleDateString()}
@@ -187,7 +187,7 @@ export function StrategySelectionStep({
 
       {strategies?.length === 0 && (
         <div className="text-center py-10 text-muted-foreground">
-          No strategies found. Please create a strategy first.
+          {t("noStrategies")}
         </div>
       )}
     </div>

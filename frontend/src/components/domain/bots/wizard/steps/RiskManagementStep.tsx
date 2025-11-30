@@ -46,16 +46,16 @@ export function RiskManagementStep({
                   ? `${data.selectedStrategy.tpslLogic.atrTakeProfitMultiplier}x ATR`
                   : `${data.selectedStrategy?.tpslLogic?.takeProfitPct || 0}%`}
               </span>
-              <Badge variant="outline">Strategy Default</Badge>
+              <Badge variant="outline">{t("strategyDefault")}</Badge>
             </div>
             {data.selectedStrategy?.tpslLogic?.atrTakeProfitMultiplier && (
               <span className="text-xs text-muted-foreground">
-                Period: {data.selectedStrategy.tpslLogic.atrPeriod}
+                {t("period")}: {data.selectedStrategy.tpslLogic.atrPeriod}
               </span>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Defined in strategy logic. Cannot be changed here.
+            {t("definedInStrategy")}
           </p>
         </div>
 
@@ -69,16 +69,16 @@ export function RiskManagementStep({
                   ? `${data.selectedStrategy.tpslLogic.atrStopLossMultiplier}x ATR`
                   : `${data.selectedStrategy?.tpslLogic?.stopLossPct || 0}%`}
               </span>
-              <Badge variant="outline">Strategy Default</Badge>
+              <Badge variant="outline">{t("strategyDefault")}</Badge>
             </div>
             {data.selectedStrategy?.tpslLogic?.atrStopLossMultiplier && (
               <span className="text-xs text-muted-foreground">
-                Period: {data.selectedStrategy.tpslLogic.atrPeriod}
+                {t("period")}: {data.selectedStrategy.tpslLogic.atrPeriod}
               </span>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Defined in strategy logic. Cannot be changed here.
+            {t("definedInStrategy")}
           </p>
         </div>
       </div>

@@ -84,7 +84,7 @@ export function ExchangeSetupStep({
               <div className="flex justify-between items-center">
                 <Label className="flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
-                  Available Balance
+                  {t("availableBalance")}
                 </Label>
                 <span className="font-mono font-medium">
                   ${balance.toLocaleString()} USDT
@@ -93,7 +93,9 @@ export function ExchangeSetupStep({
 
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>Allocation: {allocationPct}%</span>
+                  <span>
+                    {t("allocation")}: {allocationPct}%
+                  </span>
                   <span className="font-bold text-primary">
                     ${data.initialCapital.toLocaleString()}
                   </span>
@@ -134,7 +136,7 @@ export function ExchangeSetupStep({
         {/* Right Column: Execution & Trailing Stop */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label>Bot Execution Interval</Label>
+            <Label>{t("executionInterval")}</Label>
             <Select
               value={data.executionInterval}
               onValueChange={(value) =>
@@ -142,27 +144,25 @@ export function ExchangeSetupStep({
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select interval" />
+                <SelectValue placeholder={t("selectInterval")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1m">1 Minute</SelectItem>
-                <SelectItem value="5m">5 Minutes</SelectItem>
-                <SelectItem value="15m">15 Minutes</SelectItem>
-                <SelectItem value="1h">1 Hour</SelectItem>
-                <SelectItem value="4h">4 Hours</SelectItem>
-                <SelectItem value="1d">1 Day</SelectItem>
+                <SelectItem value="1m">{t("intervals.1m")}</SelectItem>
+                <SelectItem value="5m">{t("intervals.5m")}</SelectItem>
+                <SelectItem value="15m">{t("intervals.15m")}</SelectItem>
+                <SelectItem value="1h">{t("intervals.1h")}</SelectItem>
+                <SelectItem value="4h">{t("intervals.4h")}</SelectItem>
+                <SelectItem value="1d">{t("intervals.1d")}</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              How often the bot checks for new signals.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("intervalHelp")}</p>
           </div>
 
           <Separator />
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Trailing Stop</Label>
+              <Label>{t("trailingStop")}</Label>
               <Switch
                 checked={data.trailingStopConfig.enabled}
                 onCheckedChange={(checked) =>
@@ -179,7 +179,7 @@ export function ExchangeSetupStep({
             {data.trailingStopConfig.enabled && (
               <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="space-y-2">
-                  <Label className="text-xs">Activation (%)</Label>
+                  <Label className="text-xs">{t("activation")}</Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -195,7 +195,7 @@ export function ExchangeSetupStep({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Callback (%)</Label>
+                  <Label className="text-xs">{t("callback")}</Label>
                   <Input
                     type="number"
                     step="0.1"

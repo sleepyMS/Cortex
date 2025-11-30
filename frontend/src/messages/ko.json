@@ -1959,9 +1959,27 @@
         "next": "다음",
         "createBot": "봇 생성"
       },
+      "toasts": {
+        "createSuccess": {
+          "title": "봇 생성 완료",
+          "description": "봇이 성공적으로 생성되어 배포되었습니다."
+        },
+        "createError": {
+          "title": "생성 실패",
+          "description": "봇 생성에 실패했습니다. 다시 시도해주세요."
+        }
+      },
       "Strategy": {
         "title": "전략 선택",
-        "subtitle": "봇에 적용할 트레이딩 전략을 선택하세요.",
+        "subtitle": "배포할 전략을 선택하세요.",
+        "noDescription": "설명이 없습니다.",
+        "score": "점수",
+        "return": "수익률",
+        "mdd": "MDD",
+        "symbol": "심볼",
+        "any": "전체",
+        "created": "생성일",
+        "noStrategies": "전략이 없습니다. 먼저 전략을 생성해주세요.",
         "winRate": "승률",
         "estReturn": "예상 수익률"
       },
@@ -1971,35 +1989,68 @@
         "symbol": "거래 심볼",
         "timeframe": "타임프레임",
         "selectSymbol": "심볼 선택",
-        "selectTimeframe": "타임프레임 선택"
+        "selectTimeframe": "타임프레임 선택",
+        "selectStrategyFirst": "먼저 전략을 선택해주세요.",
+        "readOnlyTitle": "읽기 전용",
+        "readOnlyDesc": "이 파라미터들은 전략에 정의되어 있어 여기서 수정할 수 없습니다. 진행하기 전에 로직을 확인해주세요."
       },
       "Exchange": {
-        "title": "거래소 및 자본금",
-        "subtitle": "거래소 계정을 연결하고 자본금을 할당하세요.",
-        "account": "거래소 계정 (API Key)",
-        "selectAccount": "API Key 선택",
-        "initialCapital": "초기 자본금 (USDT)",
-        "leverage": "레버리지 (x)",
+        "title": "거래소 설정",
+        "subtitle": "거래소 계정과 실행 설정을 구성하세요.",
+        "account": "거래소 계정",
+        "selectAccount": "계정 선택",
+        "availableBalance": "사용 가능 잔액",
+        "allocation": "할당량",
+        "leverage": "레버리지",
         "selectLeverage": "레버리지 선택",
+        "executionInterval": "봇 실행 간격",
+        "selectInterval": "간격 선택",
+        "intervalHelp": "봇이 새로운 신호를 확인하는 빈도입니다.",
+        "intervals": {
+          "1m": "1분",
+          "5m": "5분",
+          "15m": "15분",
+          "1h": "1시간",
+          "4h": "4시간",
+          "1d": "1일"
+        },
+        "trailingStop": "트레일링 스탑",
+        "activation": "발동 (%)",
+        "callback": "콜백 (%)",
         "riskWarning": "위험 경고",
-        "riskWarningDesc": "레버리지를 사용하면 청산 위험이 증가합니다. 충분한 증거금을 확보하세요."
+        "riskWarningDesc": "레버리지를 사용하면 청산 위험이 증가합니다. 신중하게 거래하세요.",
+        "initialCapital": "초기 자본금 (USDT)"
       },
       "Risk": {
         "title": "리스크 관리",
-        "subtitle": "자본 보호를 위한 안전 장치를 설정하세요.",
-        "takeProfit": "익절가 (Take Profit %)",
-        "stopLoss": "손절가 (Stop Loss %)",
-        "safetySwitches": "안전 스위치",
-        "dailyMaxLoss": "일일 최대 손실 한도 (Kill Switch)",
-        "dailyMaxLossDesc": "일일 손실이 이 비율을 초과하면 봇을 중지합니다."
+        "subtitle": "리스크 파라미터를 설정하세요.",
+        "takeProfit": "익절가",
+        "stopLoss": "손절가",
+        "strategyDefault": "전략 기본값",
+        "period": "기간",
+        "definedInStrategy": "전략 로직에 정의됨. 여기서 변경할 수 없습니다.",
+        "safetySwitches": "안전 장치",
+        "dailyMaxLoss": "일일 최대 손실",
+        "dailyMaxLossDesc": "일일 손실이 이 비율을 초과하면 거래를 중단합니다."
       },
       "Review": {
-        "title": "검토 및 생성",
-        "subtitle": "봇을 시작하기 전에 설정을 확인하세요.",
-        "strategy": "전략",
+        "title": "검토 및 배포",
+        "subtitle": "봇을 배포하기 전에 설정을 검토하세요.",
+        "strategy": "전략 구성",
         "capitalRisk": "자본 및 리스크",
+        "name": "이름",
+        "unknown": "알 수 없음",
+        "symbol": "심볼",
+        "any": "전체",
+        "executionInterval": "실행 간격",
+        "initialCapital": "초기 자본",
+        "leverage": "레버리지",
+        "dailyMaxLoss": "일일 최대 손실",
+        "trailingStop": "트레일링 스탑",
+        "enabled": "활성화됨",
+        "disabled": "비활성화됨",
         "disclaimer": "면책 조항",
-        "disclaimerText": "자동 매매는 상당한 위험을 수반합니다. 실제 자금을 투입하기 전에 전략을 충분히 이해하고 테스트했는지 확인하세요."
+        "disclaimerText": "과거의 성과가 미래의 결과를 보장하지 않습니다. 신중하게 거래하세요."
       }
     },
     "Detail": {

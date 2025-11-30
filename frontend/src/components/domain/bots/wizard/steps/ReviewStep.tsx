@@ -25,19 +25,21 @@ export function ReviewStep({ data }: ReviewStepProps) {
           <h3 className="font-medium border-b pb-2">{t("strategy")}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Name</span>
+              <span className="text-muted-foreground">{t("name")}</span>
               <span className="font-medium">
-                {data.selectedStrategy?.name || "Unknown"}
+                {data.selectedStrategy?.name || t("unknown")}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Symbol</span>
+              <span className="text-muted-foreground">{t("symbol")}</span>
               <span className="font-medium">
-                {data.selectedStrategy?.targetCoins?.[0]?.ticker || "Any"}
+                {data.selectedStrategy?.targetCoins?.[0]?.ticker || t("any")}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Execution Interval</span>
+              <span className="text-muted-foreground">
+                {t("executionInterval")}
+              </span>
               <span className="font-medium">{data.executionInterval}</span>
             </div>
           </div>
@@ -47,23 +49,25 @@ export function ReviewStep({ data }: ReviewStepProps) {
           <h3 className="font-medium border-b pb-2">{t("capitalRisk")}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Initial Capital</span>
+              <span className="text-muted-foreground">
+                {t("initialCapital")}
+              </span>
               <span className="font-medium">
                 ${data.initialCapital.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Leverage</span>
+              <span className="text-muted-foreground">{t("leverage")}</span>
               <span className="font-medium">{data.leverage}x</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Daily Max Loss</span>
+              <span className="text-muted-foreground">{t("dailyMaxLoss")}</span>
               <span className="font-medium text-red-500">
                 {data.riskSettings.dailyMaxLoss}%
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Trailing Stop</span>
+              <span className="text-muted-foreground">{t("trailingStop")}</span>
               <span
                 className={
                   data.trailingStopConfig.enabled
@@ -71,7 +75,7 @@ export function ReviewStep({ data }: ReviewStepProps) {
                     : "text-muted-foreground"
                 }
               >
-                {data.trailingStopConfig.enabled ? "Enabled" : "Disabled"}
+                {data.trailingStopConfig.enabled ? t("enabled") : t("disabled")}
               </span>
             </div>
           </div>

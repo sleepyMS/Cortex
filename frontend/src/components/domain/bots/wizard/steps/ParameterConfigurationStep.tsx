@@ -19,7 +19,7 @@ export function ParameterConfigurationStep({
   if (!data.selectedStrategy) {
     return (
       <div className="text-center py-10 text-muted-foreground">
-        Please select a strategy first.
+        {t("selectStrategyFirst")}
       </div>
     );
   }
@@ -33,11 +33,8 @@ export function ParameterConfigurationStep({
 
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Read-Only View</AlertTitle>
-        <AlertDescription>
-          These parameters are defined in the strategy and cannot be modified
-          here. Please verify the logic before proceeding.
-        </AlertDescription>
+        <AlertTitle>{t("readOnlyTitle")}</AlertTitle>
+        <AlertDescription>{t("readOnlyDesc")}</AlertDescription>
       </Alert>
 
       <StrategyParameterViewer
