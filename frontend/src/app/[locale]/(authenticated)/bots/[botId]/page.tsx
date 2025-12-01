@@ -1,7 +1,8 @@
 "use client";
 
 import { ActivePositionCard } from "@/components/domain/bots/detail/ActivePositionCard";
-import { BotChart } from "@/components/domain/bots/detail/BotChart";
+import { BalanceChart } from "@/components/domain/bots/detail/BalanceChart";
+import DynamicPriceCandlestickChart from "@/components/domain/bots/detail/DynamicPriceCandlestickChart";
 import {
   BotLogViewer,
   SystemLog,
@@ -20,6 +21,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useParams } from "next/navigation";
 import { BotHeader } from "@/components/domain/bots/detail/BotHeader";
 import { PerformanceHero } from "@/components/domain/bots/detail/PerformanceHero";
+import apiClient from "@/lib/apiClient";
+import { CandlestickData, UTCTimestamp } from "lightweight-charts";
+import { OHLCVData } from "@/types/market";
 
 export default function BotDetailPage() {
   const t = useTranslations("LiveTrading.Detail");
@@ -151,6 +155,20 @@ export default function BotDetailPage() {
     refetchInterval: 60000,
   });
 
+  // Fetch OHLCV data for price chart
+  const { data: ohlcvData } = useQuery({
+    queryKey: ["ohlcv", bot?.ticker, "5m"],
+    queryFn: async () => {
+      if (!bot?.ticker) return [];
+      const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
+        params: { ticker: bot.ticker, timeframe: "5m", limit: 500 },
+      });
+      return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
+    },
+    enabled: !!bot?.ticker,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
   const estimatedUnrealizedPnl =
     bot &&
     bot.positionSize !== 0 &&
@@ -189,10 +207,11 @@ export default function BotDetailPage() {
 
       {/* Main Content Grid */}
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-        {/* Left Column: Chart + Active Position */}
+        {/* Left Column: Price Chart + Active Position */}
         <div className="space-y-8">
-          <BotChart
-            performance={performance || []}
+          <DynamicPriceCandlestickChart
+            ticker={botWithPnl.ticker}
+            ohlcvData={ohlcvData || []}
             entryPrice={
               botWithPnl.positionSize !== 0 ? botWithPnl.entryPrice : undefined
             }
@@ -250,6 +269,13 @@ export default function BotDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Balance Chart Section */}
+      <BalanceChart
+        performance={performance || []}
+        currentBalance={botWithPnl.currentBalance}
+        initialCapital={botWithPnl.initialCapital}
+      />
 
       {/* Bottom Section: Trade History Full Width */}
       <BotTradeHistory trades={mockLogs || []} />

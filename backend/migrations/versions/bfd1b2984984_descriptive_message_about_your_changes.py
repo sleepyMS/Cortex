@@ -1,8 +1,8 @@
 """Descriptive message about your changes
 
-Revision ID: ca8c1abe5839
+Revision ID: bfd1b2984984
 Revises: 
-Create Date: 2025-11-21 19:36:13.179786
+Create Date: 2025-12-01 22:32:06.748105
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'ca8c1abe5839'
+revision: str = 'bfd1b2984984'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -299,13 +299,36 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('strategy_id', sa.UUID(), nullable=False),
-    sa.Column('api_key_id', sa.UUID(), nullable=False),
+    sa.Column('api_key_id', sa.UUID(), nullable=True),
     sa.Column('celery_task_id', sa.String(), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('stopped_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('last_run_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('initial_capital', sa.Float(), nullable=True),
+    sa.Column('execution_interval', sa.String(length=20), nullable=False),
+    sa.Column('trailing_stop_config', sa.JSON(), nullable=True),
+    sa.Column('mode', sa.String(length=20), nullable=False),
+    sa.Column('current_balance', sa.Float(), nullable=True),
+    sa.Column('position_size', sa.Float(), nullable=False),
+    sa.Column('entry_price', sa.Float(), nullable=True),
+    sa.Column('last_signal', sa.String(length=20), nullable=True),
+    sa.Column('ticker', sa.String(length=20), server_default='BTCUSDT', nullable=False),
+    sa.Column('leverage', sa.Float(), nullable=False),
+    sa.Column('daily_max_loss_pct', sa.Float(), nullable=True, comment='일일 최대 손실 %'),
+    sa.Column('daily_max_loss_enabled', sa.Boolean(), nullable=False),
+    sa.Column('daily_pnl', sa.Float(), nullable=False, comment='오늘 누적 손익'),
+    sa.Column('daily_pnl_reset_date', sa.Date(), nullable=True, comment='마지막 리셋 날짜'),
+    sa.Column('total_trades', sa.Integer(), nullable=False),
+    sa.Column('winning_trades', sa.Integer(), nullable=False),
+    sa.Column('total_pnl', sa.Float(), nullable=False),
+    sa.Column('max_drawdown', sa.Float(), nullable=False),
+    sa.Column('peak_balance', sa.Float(), nullable=True, comment='최고 잔고 (MDD 계산용)'),
+    sa.Column('sl_price', sa.Float(), nullable=True, comment='Stop Loss 가격'),
+    sa.Column('tp_price', sa.Float(), nullable=True, comment='Take Profit 가격'),
+    sa.Column('trailing_stop_activation_price', sa.Float(), nullable=True, comment='Trailing Stop 활성화 가격'),
+    sa.Column('last_error', sa.Text(), nullable=True),
+    sa.Column('error_count', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['api_key_id'], ['api_keys.id'], ),
@@ -364,6 +387,22 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('backtest_id')
     )
+    op.create_table('bot_performance_snapshots',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('bot_id', sa.UUID(), nullable=False),
+    sa.Column('snapshot_date', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('balance', sa.Float(), nullable=False),
+    sa.Column('position_size', sa.Float(), nullable=False),
+    sa.Column('unrealized_pnl', sa.Float(), nullable=False),
+    sa.Column('realized_pnl', sa.Float(), nullable=False),
+    sa.Column('total_trades', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['bot_id'], ['live_bots.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('bot_id', 'snapshot_date', name='_bot_snapshot_date_uc')
+    )
+    op.create_index(op.f('ix_bot_performance_snapshots_bot_id'), 'bot_performance_snapshots', ['bot_id'], unique=False)
+    op.create_index(op.f('ix_bot_performance_snapshots_snapshot_date'), 'bot_performance_snapshots', ['snapshot_date'], unique=False)
     op.create_table('community_posts',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('author_id', sa.UUID(), nullable=False),
@@ -509,6 +548,9 @@ def downgrade() -> None:
     op.drop_table('marketplace_products')
     op.drop_index(op.f('ix_community_posts_created_at'), table_name='community_posts')
     op.drop_table('community_posts')
+    op.drop_index(op.f('ix_bot_performance_snapshots_snapshot_date'), table_name='bot_performance_snapshots')
+    op.drop_index(op.f('ix_bot_performance_snapshots_bot_id'), table_name='bot_performance_snapshots')
+    op.drop_table('bot_performance_snapshots')
     op.drop_table('backtest_results')
     op.drop_index(op.f('ix_optimization_jobs_user_id'), table_name='optimization_jobs')
     op.drop_index(op.f('ix_optimization_jobs_status'), table_name='optimization_jobs')

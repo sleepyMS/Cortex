@@ -11,25 +11,48 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { TrendingUp } from "lucide-react";
 
 interface BotChartProps {
   performance: BotPerformanceSnapshot[];
   entryPrice?: number | null;
+  currentBalance?: number | null;
+  initialCapital?: number | null;
 }
 
-export function BotChart({ performance, entryPrice }: BotChartProps) {
+export function BalanceChart({
+  performance,
+  entryPrice,
+  currentBalance,
+  initialCapital,
+}: BotChartProps) {
   const t = useTranslations("LiveTrading.Detail");
 
-  const chartData = performance.map((snapshot) => ({
+  // If no performance data but we have current balance, create a single data point
+  let chartData = performance.map((snapshot) => ({
     date: new Date(snapshot.snapshotDate).toLocaleDateString(),
     balance: snapshot.balance,
     pnl: snapshot.realizedPnl,
   }));
 
+  // Fallback: if no performance data but bot has started, show current state
+  if (chartData.length === 0 && currentBalance != null) {
+    chartData = [
+      {
+        date: new Date().toLocaleDateString(),
+        balance: currentBalance,
+        pnl: currentBalance - (initialCapital ?? currentBalance),
+      },
+    ];
+  }
+
   return (
     <Card className="h-full border-2">
       <CardHeader className="pb-4">
-        <CardTitle className="text-lg">{t("chartTitle")}</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />
+          Balance Chart
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {chartData.length > 0 ? (
@@ -55,7 +78,7 @@ export function BotChart({ performance, entryPrice }: BotChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `$${value}`}
+                tickFormatter={(value) => `$${value.toLocaleString()}`}
               />
               <Tooltip
                 contentStyle={{
@@ -63,13 +86,21 @@ export function BotChart({ performance, entryPrice }: BotChartProps) {
                   border: "none",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                 }}
+                formatter={(value: number) => [
+                  `$${value.toLocaleString()}`,
+                  "Balance",
+                ]}
               />
               <Line
                 type="monotone"
                 dataKey="balance"
                 stroke="#2563eb"
                 strokeWidth={3}
-                dot={false}
+                dot={
+                  chartData.length === 1
+                    ? { r: 8, strokeWidth: 0, fill: "#2563eb" }
+                    : false
+                }
                 activeDot={{ r: 6, strokeWidth: 0 }}
                 name="Balance"
               />
@@ -90,9 +121,13 @@ export function BotChart({ performance, entryPrice }: BotChartProps) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[500px] flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+            <div className="rounded-full bg-muted p-4 mb-4">
+              <TrendingUp className="h-8 w-8 text-muted-foreground" />
+            </div>
             <p className="text-lg font-medium">{t("noPerformanceData")}</p>
-            <p className="text-sm mt-2">
-              Performance data will appear once the bot starts trading
+            <p className="text-sm mt-2 text-center max-w-sm">
+              Chart will display once the bot starts running and balance data is
+              collected
             </p>
           </div>
         )}
