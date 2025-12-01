@@ -7,6 +7,7 @@ Cortex 프로젝트의 모든 Celery 백그라운드 작업을 정의합니다.
 """
 
 import asyncio
+import threading
 import time
 import uuid
 import json
@@ -22,7 +23,7 @@ import pandas as pd
 import numpy as np
 from celery.utils.log import get_task_logger
 from sqlalchemy import select, text, update
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.dialects.postgresql import insert
 
 # --- 모듈 임포트 ---
@@ -36,6 +37,7 @@ from .models import (
 from . import models, schemas
 from .engine.backtesting_engine import BacktestingEngine
 from .utils.communication import WebSocketManager
+from .utils.async_utils import run_async
 from .event_bus import publish_event
 from .services.market_data_service import market_data_service
 from .services.signal_service import signal_service
@@ -294,6 +296,13 @@ def run_optimization(self, job_id: str):
                     "job_id": job_uuid, "trial_id": t.number, "params": t.params,
                     "metrics": t.user_attrs.get("metrics"), "state": state
                 })
+                
+            # 저장 전에 job이 여전히 존재하는지 확인
+            job_check = session.query(OptimizationJob).filter(OptimizationJob.id == job_uuid).one_or_none()
+            if not job_check:
+                logger.warning(f"Optimization job {job_id} was cancelled. Skipping trial save.")
+                return "Job was cancelled"
+
             session.bulk_insert_mappings(OptimizationTrial, trial_objects)
             
             best = main_study.best_trial
@@ -567,49 +576,73 @@ def run_backtest(self, backtest_id: str):
 # Part 2: I/O-Bound Tasks (기존 태스크들)
 # ==============================================================================
 
-async def _run_single_bot_cycle_async(bot: LiveBot) -> dict:
+# 기존 함수를 아래 내용으로 완전히 교체해주세요.
+
+async def _run_single_bot_cycle_async(bot_id: uuid.UUID) -> dict:
     """
     [비동기 헬퍼] 한 개의 활성 봇에 대한 거래 로직을 한 번 실행하고 결과를 반환합니다.
+    MissingGreenlet 에러 방지를 위해 ID로 새로 조회하여 세션에 연결합니다.
     """
     try:
         async with AsyncSessionLocal() as session:
-            # 봇 객체를 현재 세션에 병합하여 연결 (DetachedInstanceError 방지)
-            merged_bot = await session.merge(bot)
+            # 봇 객체를 관계 데이터와 함께 새로 조회 (Eager Loading)
+            result = await session.execute(
+                select(LiveBot)
+                .options(
+                    selectinload(LiveBot.strategy).selectinload(models.Strategy.backtests),
+                    selectinload(LiveBot.api_key)
+                )
+                .filter(LiveBot.id == bot_id)
+            )
+            bot = result.scalar_one_or_none()
+            
+            if not bot:
+                return {"bot_id": str(bot_id), "status": "error", "error": "Bot not found"}
+
             # 실제 페이퍼 트레이딩 로직 실행
-            result = await live_bot_service.execute_bot_cycle(session, merged_bot)
+            result = await live_bot_service.execute_bot_cycle(session, bot)
             return result
             
     except Exception as e:
-        logger.error(f"Bot ID {bot.id}: [ASYNC] Cycle failed: {e}", exc_info=True)
-        return {"bot_id": bot.id, "status": "failed", "error": str(e)}
+        logger.error(f"Bot ID {bot_id}: [ASYNC] Cycle failed: {e}", exc_info=True)
+        return {"bot_id": str(bot_id), "status": "failed", "error": str(e)}
+
+# 기존 함수를 아래 내용으로 완전히 교체해주세요.
 
 @celery_app.task(name="run_all_active_bots", queue="io_bound_queue")
 def run_all_active_bots():
     """[하이브리드 디스패처] 모든 활성 봇 동시 실행"""
     async def _run_all_concurrently():
-        bots_to_run = []
+        bot_ids = []
         with SyncSessionLocal() as session:
+            # 1. 실행할 봇 ID 목록 조회 (가볍게)
             result = session.execute(
-                select(LiveBot)
-                .options(joinedload(LiveBot.strategy), joinedload(LiveBot.api_key))
+                select(LiveBot.id, LiveBot.status)
                 .filter(LiveBot.status.in_(['active', 'initializing']))
             )
-            bots_to_run = result.scalars().all()
+            rows = result.all()
             
-            if not bots_to_run: return "No active bots."
+            if not rows: return "No active bots."
             
-            for bot in bots_to_run:
-                if bot.status == 'initializing':
-                    bot.status = 'active'
-                    session.add(bot)
+            # 2. initializing 상태인 봇 active로 변경
+            for row in rows:
+                bot_id, status = row
+                bot_ids.append(bot_id)
+                if status == 'initializing':
+                    session.execute(
+                        update(LiveBot)
+                        .where(LiveBot.id == bot_id)
+                        .values(status='active')
+                    )
             session.commit()
 
-        bot_tasks = [_run_single_bot_cycle_async(bot) for bot in bots_to_run]
+        # 3. 각 봇에 대해 비동기 태스크 실행 (ID 전달)
+        bot_tasks = [_run_single_bot_cycle_async(bot_id) for bot_id in bot_ids]
         results = await asyncio.gather(*bot_tasks, return_exceptions=True)
         success_count = sum(1 for r in results if isinstance(r, dict) and r.get("status") == "success")
-        return f"Processed {len(bots_to_run)} bots. Success: {success_count}"
+        return f"Processed {len(bot_ids)} bots. Success: {success_count}"
 
-    return asyncio.run(_run_all_concurrently())
+    return run_async(_run_all_concurrently())
 
 @celery_app.task(name="collect_bot_performance_snapshots", queue="io_bound_queue")
 def collect_bot_performance_snapshots():
@@ -658,7 +691,7 @@ def collect_bot_performance_snapshots():
             logger.info(f"Collected performance snapshots for {len(bots)} bots")
             return f"Collected {len(bots)} snapshots"
     
-    return asyncio.run(_collect())
+    return run_async(_collect())
     
 @celery_app.task(bind=True, name="fetch_and_store_ohlcv", queue="io_bound_queue")
 def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, limit: int = 1000): # limit 기본값 1000으로 상향 권장
@@ -745,7 +778,7 @@ def fulfill_order_task(self, payload: dict):
                 await session.rollback()
                 logger.error(f"Critical error fulfilling order {order_id}: {e}", exc_info=True)
                 raise e 
-    try: return asyncio.run(_fulfill())
+    try: return run_async(_fulfill())
     except Exception as exc: raise self.retry(exc=exc, countdown=10, max_retries=3)
 
 # --- 알림 및 기타 이벤트 태스크 ---
@@ -753,7 +786,7 @@ def fulfill_order_task(self, payload: dict):
 @celery_app.task(name="send_purchase_notification_task", queue="io_bound_queue", bind=True)
 def send_purchase_notification_task(self, payload: dict):
     async def _send(): await notification_service.send_purchase_confirmation(payload)
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="send_backtest_notification_task", queue="io_bound_queue", bind=True)
@@ -762,7 +795,7 @@ def send_backtest_notification_task(self, event_name: str, payload: dict):
         async with AsyncSessionLocal() as session:
             if event_name == "backtest.completed":
                 await notification_service.send_backtest_completed_notification(session, payload.get("backtest_id"))
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="handle_recurring_payment_success_task", queue="io_bound_queue", bind=True)
@@ -770,7 +803,7 @@ def handle_recurring_payment_success_task(self, payload: dict):
     async def _process():
         async with AsyncSessionLocal() as session:
             await subscription_service.activate_or_update_subscription(session, payload.get("customer_key"), payload.get("payment_data"))
-    try: return asyncio.run(_process())
+    try: return run_async(_process())
     except Exception as exc: raise self.retry(exc=exc, countdown=10, max_retries=3)
 
 @celery_app.task(name="handle_recurring_payment_failure_task", queue="io_bound_queue", bind=True)
@@ -778,32 +811,32 @@ def handle_recurring_payment_failure_task(self, payload: dict):
     async def _process():
         async with AsyncSessionLocal() as session:
             await subscription_service.handle_subscription_payment_failure(session, payload.get("customer_key"), payload.get("failure_data"))
-    try: return asyncio.run(_process())
+    try: return run_async(_process())
     except Exception as exc: raise self.retry(exc=exc, countdown=10, max_retries=3)
 
 @celery_app.task(name="send_verification_email_task", queue="io_bound_queue", bind=True)
 def send_verification_email_task(self, payload: dict):
     temp_user = models.User(id=uuid.UUID(payload.get("user_id")), email=payload.get("email"), username=payload.get("username"))
     async def _send(): await verification_service.send_prepared_verification_email(temp_user, payload.get("token_string"), payload.get("base_url"))
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="send_subscription_created_task", queue="io_bound_queue", bind=True)
 def send_subscription_created_task(self, payload: dict):
     async def _send(): await notification_service.send_subscription_created_email(payload)
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="send_subscription_renewed_task", queue="io_bound_queue", bind=True)
 def send_subscription_renewed_task(self, payload: dict):
     async def _send(): await notification_service.send_subscription_renewed_email(payload)
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="send_subscription_failed_task", queue="io_bound_queue", bind=True)
 def send_subscription_failed_task(self, payload: dict):
     async def _send(): await notification_service.send_subscription_failed_email(payload)
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="send_optimization_notification_task", queue="io_bound_queue", bind=True)
@@ -814,7 +847,7 @@ def send_optimization_notification_task(self, event_name: str, payload: dict):
                 await notification_service.send_optimization_completed_notification(session, payload.get("job_id"))
             elif event_name == "optimization.failed":
                 await notification_service.send_optimization_failed_notification(session, payload.get("job_id"), payload.get("error_message"))
-    try: return asyncio.run(_send())
+    try: return run_async(_send())
     except Exception as exc: raise self.retry(exc=exc, countdown=60, max_retries=3)
 
 @celery_app.task(name="dispatch_event", queue="io_bound_queue")
@@ -861,7 +894,7 @@ def process_daily_recurring_payments():
             return results
     
     try:
-        return asyncio.run(_process_recurring())
+        return run_async(_process_recurring())
     except Exception as e:
         logger.error(f"Error in process_daily_recurring_payments: {e}", exc_info=True)
         raise

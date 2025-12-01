@@ -1,13 +1,9 @@
+
 # file: backend/app/celery_app.py
 
 import os
 import uuid
 from celery import Celery, Task
-
-import nest_asyncio
-# nest_asyncio를 적용하여 중첩 이벤트 루프를 허용합니다.
-# 이 코드는 Celery 앱이 임포트되는 시점에 한 번만 실행되면 됩니다.
-nest_asyncio.apply()
 
 from .config import settings
 from app.database import SyncSessionLocal

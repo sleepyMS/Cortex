@@ -84,57 +84,8 @@ class BacktestingEngine:
         for timestamp, group in self.data.groupby(level=0, sort=False):
             current_row_count += len(group)
             
-            # 그룹 내 마지막 행을 해당 타임스탬프의 대표 OHLCV 값으로 사용
-            row_for_ohlc = group.iloc[-1]
-
-            # --- 1. 청산 조건 우선 확인 (포지션 보유 시) ---
-            exit_reason, exit_price = None, None
-            if self.position_type:
-                # 우선순위 1: Stop Loss
-                if self.sl_price:
-                    if self.position_type == 'long' and row_for_ohlc['low'] <= self.sl_price:
-                        exit_reason, exit_price = "Stop Loss", self.sl_price
-                    elif self.position_type == 'short' and row_for_ohlc['high'] >= self.sl_price:
-                        exit_reason, exit_price = "Stop Loss", self.sl_price
-                
-                # 우선순위 2: Take Profit
-                if not exit_reason and self.tp_price:
-                    if self.position_type == 'long' and row_for_ohlc['high'] >= self.tp_price:
-                        exit_reason, exit_price = "Take Profit", self.tp_price
-                    elif self.position_type == 'short' and row_for_ohlc['low'] <= self.tp_price:
-                        exit_reason, exit_price = "Take Profit", self.tp_price
-
-                # 우선순위 3: Exit Signal (그룹 내 모든 신호 확인)
-                if not exit_reason:
-                    for _, signal_row in group.iterrows():
-                        signal = signal_row.get('signal')
-                        if signal == 'long_exit' and self.position_type == 'long':
-                            exit_reason, exit_price = "Signal", row_for_ohlc['close']
-                            break 
-                        elif signal == 'short_exit' and self.position_type == 'short':
-                            exit_reason, exit_price = "Signal", row_for_ohlc['close']
-                            break
-
-            # --- 2. 결정된 행동 실행 ---
-            if exit_reason and exit_price:
-                # 청산 실행
-                self._execute_trade(timestamp, exit_price, 'sell' if self.position_type == 'long' else 'buy', is_entry=False, reason=exit_reason)
-            
-            # 포지션이 없고, 진입 신호가 있을 경우
-            if self.position_size == 0:
-                for _, signal_row in group.iterrows():
-                    signal = signal_row.get('signal')
-                    if signal == 'long_entry':
-                        self._execute_trade(timestamp, row_for_ohlc['close'], 'buy', is_entry=True, reason="Signal")
-                        break
-                    elif signal == 'short_entry':
-                        self._execute_trade(timestamp, row_for_ohlc['close'], 'sell', is_entry=True, reason="Signal")
-                        break
-
-            # --- 3. 후처리 ---
-            self._update_equity(timestamp, row_for_ohlc['close'])
-            if self.position_type:
-                self._update_trailing_stop(row_for_ohlc)
+            # [수정됨] 핵심 로직을 분리된 메서드로 호출
+            self.process_single_step(timestamp, group)
 
             # [핵심] 일정 주기(예: 매일, 또는 데이터의 1% 진행 시마다) 중간 보고
             # 여기서는 약 24개 캔들(1시간봉 기준 하루)마다 보고한다고 가정
@@ -159,6 +110,63 @@ class BacktestingEngine:
         final_summary = self._calculate_summary_stats()
         final_summary["is_intermediate"] = False
         yield final_summary
+
+    def process_single_step(self, timestamp, group):
+        """
+        단일 타임스텝에 대한 시뮬레이션 로직을 수행합니다.
+        PaperTradingEngine에서도 이 메서드를 호출하여 상태를 업데이트합니다.
+        """
+        # 그룹 내 마지막 행을 해당 타임스탬프의 대표 OHLCV 값으로 사용
+        row_for_ohlc = group.iloc[-1]
+
+        # --- 1. 청산 조건 우선 확인 (포지션 보유 시) ---
+        exit_reason, exit_price = None, None
+        if self.position_type:
+            # 우선순위 1: Stop Loss
+            if self.sl_price:
+                if self.position_type == 'long' and row_for_ohlc['low'] <= self.sl_price:
+                    exit_reason, exit_price = "Stop Loss", self.sl_price
+                elif self.position_type == 'short' and row_for_ohlc['high'] >= self.sl_price:
+                    exit_reason, exit_price = "Stop Loss", self.sl_price
+            
+            # 우선순위 2: Take Profit
+            if not exit_reason and self.tp_price:
+                if self.position_type == 'long' and row_for_ohlc['high'] >= self.tp_price:
+                    exit_reason, exit_price = "Take Profit", self.tp_price
+                elif self.position_type == 'short' and row_for_ohlc['low'] <= self.tp_price:
+                    exit_reason, exit_price = "Take Profit", self.tp_price
+
+            # 우선순위 3: Exit Signal (그룹 내 모든 신호 확인)
+            if not exit_reason:
+                for _, signal_row in group.iterrows():
+                    signal = signal_row.get('signal')
+                    if signal == 'long_exit' and self.position_type == 'long':
+                        exit_reason, exit_price = "Signal", row_for_ohlc['close']
+                        break 
+                    elif signal == 'short_exit' and self.position_type == 'short':
+                        exit_reason, exit_price = "Signal", row_for_ohlc['close']
+                        break
+
+        # --- 2. 결정된 행동 실행 ---
+        if exit_reason and exit_price:
+            # 청산 실행
+            self._execute_trade(timestamp, exit_price, 'sell' if self.position_type == 'long' else 'buy', is_entry=False, reason=exit_reason)
+        
+        # 포지션이 없고, 진입 신호가 있을 경우
+        if self.position_size == 0:
+            for _, signal_row in group.iterrows():
+                signal = signal_row.get('signal')
+                if signal == 'long_entry':
+                    self._execute_trade(timestamp, row_for_ohlc['close'], 'buy', is_entry=True, reason="Signal")
+                    break
+                elif signal == 'short_entry':
+                    self._execute_trade(timestamp, row_for_ohlc['close'], 'sell', is_entry=True, reason="Signal")
+                    break
+
+        # --- 3. 후처리 ---
+        self._update_equity(timestamp, row_for_ohlc['close'])
+        if self.position_type:
+            self._update_trailing_stop(row_for_ohlc)
 
     def run(self) -> Tuple[Dict, List[Dict]]:
         """

@@ -1,7 +1,10 @@
 import pandas as pd
+import logging
 from typing import Dict, Any, Optional
 from .. import schemas, models
 from .backtesting_engine import BacktestingEngine
+
+logger = logging.getLogger(__name__)
 
 class PaperTradingEngine(BacktestingEngine):
     """
@@ -58,15 +61,15 @@ class PaperTradingEngine(BacktestingEngine):
         # 아니면 전략 파라미터의 고정 %가 있다면 그것으로 복구 가능.
         if self.position_type:
             # ========== DB에서 먼저 복구 시도 ==========
-            if bot.sl_price:
-                self.sl_price = bot.sl_price
+            if live_bot.sl_price:
+                self.sl_price = live_bot.sl_price
                 logger.info(f"Restored SL price from DB: {self.sl_price}")
             elif self.tpsl_logic.stop_loss_pct:
                 # 고정 % 방식이라면 복구 가능
                 self.sl_price = self.entry_price * (1 - self.tpsl_logic.stop_loss_pct / 100) if self.position_type == 'long' else self.entry_price * (1 + self.tpsl_logic.stop_loss_pct / 100)
             
-            if bot.tp_price:
-                self.tp_price = bot.tp_price
+            if live_bot.tp_price:
+                self.tp_price = live_bot.tp_price
                 logger.info(f"Restored TP price from DB: {self.tp_price}")
             elif self.tpsl_logic.take_profit_pct:
                 self.tp_price = self.entry_price * (1 + self.tpsl_logic.take_profit_pct / 100) if self.position_type == 'long' else self.entry_price * (1 - self.tpsl_logic.take_profit_pct / 100)

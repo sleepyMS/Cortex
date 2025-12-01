@@ -160,51 +160,31 @@ export default function BotDetailPage() {
     refetchInterval: 60000,
   });
 
-  // TEMPORARY: Mock system logs for preview
-  const mockSystemLogs: SystemLog[] = [
-    {
-      id: "sys-1",
-      timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-      level: "SUCCESS",
-      message: "Trade executed successfully",
-      details: "BUY 0.0234 BTC @ $42,150.50",
-    },
-    {
-      id: "sys-2",
-      timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-      level: "INFO",
-      message: "Signal analysis completed",
-      details: "RSI: 32.5, MACD: Bullish crossover detected",
-    },
-    {
-      id: "sys-3",
-      timestamp: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-      level: "WARN",
-      message: "Stop loss triggered",
-      details: "Position closed at $42,050.25 | Loss: -$45.20",
-    },
-    {
-      id: "sys-4",
-      timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-      level: "INFO",
-      message: "Bot cycle executed",
-      details: "Execution interval: 5m | Next run: 21:15:00",
-    },
-    {
-      id: "sys-5",
-      timestamp: new Date(Date.now() - 1000 * 60 * 50).toISOString(),
-      level: "SUCCESS",
-      message: "Bot started successfully",
-      details: "Strategy: RSI + MACD | Mode: Paper Trading",
-    },
-    {
-      id: "sys-6",
-      timestamp: new Date(Date.now() - 1000 * 60 * 55).toISOString(),
-      level: "INFO",
-      message: "Bot initialized",
-      details: "Initial capital: $10,000 | Leverage: 3x",
-    },
-  ];
+  // Transform trade logs to system logs
+  const systemLogs: SystemLog[] = useMemo(() => {
+    if (!tradeLogs) return [];
+
+    return tradeLogs.map((log) => {
+      const pnlText =
+        log.pnl != null
+          ? `${log.pnl >= 0 ? "+" : ""}$${log.pnl.toFixed(2)}`
+          : "N/A";
+
+      const priceText =
+        log.price != null ? `$${log.price.toLocaleString()}` : "N/A";
+
+      return {
+        id: log.id,
+        timestamp: log.timestamp,
+        level: log.side === "BUY" ? "SUCCESS" : "INFO",
+        message: `${log.side} order executed`,
+        details: `${log.side} ${log.quantity} ${bot?.ticker?.replace(
+          "USDT",
+          ""
+        )} @ ${priceText} | PnL: ${pnlText}`,
+      };
+    });
+  }, [tradeLogs, bot?.ticker]);
 
   const estimatedUnrealizedPnl =
     bot &&
@@ -267,7 +247,7 @@ export default function BotDetailPage() {
       {/* Logs and Strategy Settings Grid (7:3) */}
       <div className="grid gap-8 lg:grid-cols-[7fr_3fr]">
         {/* Left: System Logs (70%) */}
-        <BotLogViewer logs={mockSystemLogs} />
+        <BotLogViewer logs={systemLogs} />
 
         {/* Right: Strategy Configuration (30%) */}
         <Card>

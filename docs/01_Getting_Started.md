@@ -84,6 +84,7 @@ cd backend
 celery -A app.celery_app worker -l info -Q cpu_bound_queue -P solo
 # 실제 리눅스 등의 서버에 올릴때는 -P solo 옵션을 제거하여 Celery의 기본 프로세스 기반 워커를 사용합니다.
 # celery -A backend.app.celery_app worker -l info -Q cpu_bound_queue -c 4
+# celery -A app.celery_app worker -l info -Q cpu_bound_queue -P prefork --concurrency=2
 
 # 5. Celery Beat 실행 (별도 터미널에서)
 cd backend

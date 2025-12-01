@@ -28,8 +28,8 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=0),  # 매시 정각
     },
     # --- 자동매매 봇 관리를 위한 스케줄 추가 ---
-    # 'run-all-active-bots-every-minute': {
-    #     'task': 'run_all_active_bots',
-    #     'schedule': crontab(minute='*'),
-    # },
+    'run-all-active-bots-every-minute': {
+        'task': 'run_all_active_bots',
+        'schedule': crontab(minute='*'),
+    },
 }

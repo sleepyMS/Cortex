@@ -5,6 +5,14 @@ from typing import AsyncGenerator
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+# file: backend/app/database.py
+
+from typing import AsyncGenerator
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -16,7 +24,8 @@ class Base(DeclarativeBase):
 async_engine = create_async_engine(
     settings.DB.DATABASE_URL, # settings 객체를 직접 사용
     pool_pre_ping=True,
-    pool_recycle=3600,
+    # pool_recycle=3600,
+    poolclass=NullPool,
     connect_args={"server_settings": {"timezone": "utc"}}
 )
 

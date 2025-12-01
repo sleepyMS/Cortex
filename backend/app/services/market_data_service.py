@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 import logging
-
+from ..utils.async_utils import run_async
 from ..database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class MarketDataService:
                 return df.loc[mask]
 
         try:
-            return asyncio.run(_fetch_and_filter())
+            return run_async(_fetch_and_filter())
         except Exception as e:
             logger.error(f"Error in asyncio.run for historical data fetch: {e}", exc_info=True)
             return pd.DataFrame()

@@ -81,15 +81,46 @@ export function BalanceChart({
                 tickFormatter={(value) => `$${value.toLocaleString()}`}
               />
               <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "none",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="rounded-lg border bg-background p-3 shadow-md text-sm max-w-[280px]">
+                        <p className="font-semibold mb-2 text-foreground">
+                          {data.date}
+                        </p>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              Balance:
+                            </span>
+                            <span className="font-mono font-bold text-primary">
+                              ${data.balance.toLocaleString()}
+                            </span>
+                          </div>
+                          {data.pnl != null && (
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-muted-foreground">
+                                PnL:
+                              </span>
+                              <span
+                                className={`font-mono font-semibold ${
+                                  data.pnl >= 0
+                                    ? "text-green-500"
+                                    : "text-red-500"
+                                }`}
+                              >
+                                {data.pnl >= 0 ? "+" : ""}$
+                                {data.pnl.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
                 }}
-                formatter={(value: number) => [
-                  `$${value.toLocaleString()}`,
-                  "Balance",
-                ]}
               />
               <Line
                 type="monotone"

@@ -156,7 +156,7 @@ class LiveBotService:
                 )
                 
                 strategy_schema = schemas.StrategyCreate.model_validate(
-                    schemas.Strategy.model_validate(bot.strategy).model_dump()
+                    schemas.Strategy.model_validate(bot.strategy).model_dump(exclude={'backtests'})
                 )
                 
                 signals_df = self.signal_service.generate_signals_from_dataframe(
@@ -224,7 +224,7 @@ class LiveBotService:
             target_ticker = bot.ticker  # ========== 수정: DB에서 직접 가져오기 ==========
             
             strategy_schema = schemas.StrategyCreate.model_validate(
-                schemas.Strategy.model_validate(bot.strategy).model_dump()
+                schemas.Strategy.model_validate(bot.strategy).model_dump(exclude={'backtests'})
             )
 
             # 2. 데이터 준비
