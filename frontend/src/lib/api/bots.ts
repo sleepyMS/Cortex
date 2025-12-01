@@ -2,6 +2,7 @@
 
 import apiClient from "@/lib/apiClient";
 import { UUID } from "crypto";
+import { Strategy } from "@/types/strategy";
 
 // ============ Types ============
 
@@ -26,6 +27,7 @@ export interface LiveBot {
   id: string;
   userId: string;
   strategyId: string;
+  strategy?: Strategy; // Added strategy field
   apiKeyId: string;
   status: string;
   mode: string;
@@ -50,10 +52,6 @@ export interface LiveBot {
   maxDrawdown: number;
   lastError: string | null;
   errorCount: number;
-  strategy?: {
-    id: string;
-    name: string;
-  };
   apiKey?: {
     id: string;
     exchange: string;

@@ -383,7 +383,7 @@ class LiveBotService:
         result = await db.execute(
             select(models.LiveBot)
             .options(
-                selectinload(models.LiveBot.strategy),
+                selectinload(models.LiveBot.strategy).selectinload(models.Strategy.backtests),
                 selectinload(models.LiveBot.api_key)
             )
             .filter(

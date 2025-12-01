@@ -2,7 +2,7 @@
 
 import { ActivePositionCard } from "@/components/domain/bots/detail/ActivePositionCard";
 import { BalanceChart } from "@/components/domain/bots/detail/BalanceChart";
-import DynamicPriceCandlestickChart from "@/components/domain/bots/detail/DynamicPriceCandlestickChart";
+import DynamicStrategyChart from "@/components/domain/strategy/DynamicStrategyChart";
 import {
   BotLogViewer,
   SystemLog,
@@ -24,6 +24,8 @@ import { PerformanceHero } from "@/components/domain/bots/detail/PerformanceHero
 import apiClient from "@/lib/apiClient";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
 import { OHLCVData } from "@/types/market";
+import { parseRulesForIndicators } from "@/lib/strategyUtils";
+import { useMemo } from "react";
 
 export default function BotDetailPage() {
   const t = useTranslations("LiveTrading.Detail");
@@ -169,6 +171,56 @@ export default function BotDetailPage() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  // Prepare rules for StrategyChart
+  const strategyRules = useMemo(() => {
+    if (!bot?.strategy) {
+      return {
+        longEntry: null,
+        longExit: null,
+        shortEntry: null,
+        shortExit: null,
+      };
+    }
+    return {
+      longEntry: bot.strategy.longEntryRules,
+      longExit: bot.strategy.longExitRules,
+      shortEntry: bot.strategy.shortEntryRules,
+      shortExit: bot.strategy.shortExitRules,
+    };
+  }, [bot?.strategy]);
+
+  // Extract indicator configs
+  const indicatorConfigs = useMemo(
+    () =>
+      parseRulesForIndicators({
+        longEntry: strategyRules.longEntry,
+        longExit: strategyRules.longExit,
+        shortEntry: strategyRules.shortEntry,
+        shortExit: strategyRules.shortExit,
+      }),
+    [strategyRules]
+  );
+
+  // Fetch indicator data
+  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
+    queryKey: ["indicators", bot?.ticker, "5m", indicatorConfigs],
+    queryFn: async ({ signal }) => {
+      if (indicatorConfigs.length === 0 || !bot?.ticker) return null;
+      const { data } = await apiClient.post(
+        "/strategies/calculate-indicators",
+        {
+          ticker: bot.ticker,
+          timeframe: "5m",
+          indicators: indicatorConfigs,
+        },
+        { signal }
+      );
+      return data.results;
+    },
+    enabled: !!bot?.ticker && indicatorConfigs.length > 0,
+    refetchInterval: 60000,
+  });
+
   const estimatedUnrealizedPnl =
     bot &&
     bot.positionSize !== 0 &&
@@ -205,69 +257,74 @@ export default function BotDetailPage() {
       {/* Performance Hero */}
       <PerformanceHero bot={botWithPnl} />
 
-      {/* Main Content Grid */}
-      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-        {/* Left Column: Price Chart + Active Position */}
-        <div className="space-y-8">
-          <DynamicPriceCandlestickChart
-            ticker={botWithPnl.ticker}
+      {/* Full Width Price Chart */}
+      <Card className="border-2 overflow-hidden">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            {botWithPnl.ticker} - 5m
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <DynamicStrategyChart
+            rules={strategyRules}
             ohlcvData={ohlcvData || []}
-            entryPrice={
-              botWithPnl.positionSize !== 0 ? botWithPnl.entryPrice : undefined
-            }
+            indicatorData={indicatorData || {}}
+            isLoadingIndicators={isLoadingIndicators}
+            isLoadingSignals={false}
           />
+        </CardContent>
+      </Card>
 
-          {/* Active Position Card (only shows if position exists) */}
-          <ActivePositionCard bot={botWithPnl} />
-        </div>
+      {/* Active Position Card (only shows if position exists) */}
+      <ActivePositionCard bot={botWithPnl} />
 
-        {/* Right Column: System Logs */}
-        <div className="space-y-8">
-          <BotLogViewer logs={mockSystemLogs} />
+      {/* Logs and Strategy Settings Grid (7:3) */}
+      <div className="grid gap-8 lg:grid-cols-[7fr_3fr]">
+        {/* Left: System Logs (70%) */}
+        <BotLogViewer logs={mockSystemLogs} />
 
-          {/* Strategy Config */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("strategyConfig")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm text-muted-foreground">
-                    {t("strategy")}
-                  </span>
-                  <span className="font-medium">
-                    {botWithPnl.strategy?.name || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm text-muted-foreground">
-                    {t("executionInterval")}
-                  </span>
-                  <span className="font-medium">
-                    {botWithPnl.executionInterval}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm text-muted-foreground">
-                    {t("leverage")}
-                  </span>
-                  <span className="font-medium">{botWithPnl.leverage}x</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm text-muted-foreground">
-                    {t("dailyLossLimit")}
-                  </span>
-                  <span className="font-medium">
-                    {botWithPnl.dailyMaxLossEnabled
-                      ? `${botWithPnl.dailyMaxLossPct}%`
-                      : t("disabled")}
-                  </span>
-                </div>
+        {/* Right: Strategy Configuration (30%) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("strategyConfig")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">
+                  {t("strategy")}
+                </span>
+                <span className="font-medium">
+                  {botWithPnl.strategy?.name || "N/A"}
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">
+                  {t("executionInterval")}
+                </span>
+                <span className="font-medium">
+                  {botWithPnl.executionInterval}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">
+                  {t("leverage")}
+                </span>
+                <span className="font-medium">{botWithPnl.leverage}x</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-muted-foreground">
+                  {t("dailyLossLimit")}
+                </span>
+                <span className="font-medium">
+                  {botWithPnl.dailyMaxLossEnabled
+                    ? `${botWithPnl.dailyMaxLossPct}%`
+                    : t("disabled")}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Balance Chart Section */}

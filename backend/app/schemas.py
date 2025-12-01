@@ -522,6 +522,18 @@ class Strategy(StrategyResponseBase):
     marketplace_listing: Optional[MarketplaceListing] = None
     backtests: List[BacktestHistoryItem] = Field(default_factory=list)
 
+class StrategyForBot(StrategyResponseBase):
+    """봇에서 사용할 전략 스키마 (backtests 제외)"""
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    target_coins: List[TargetCoin] = Field(default_factory=list)
+    paid_feature_level: PlanType = PlanType.BASIC
+    latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
+    marketplace_listing: Optional[MarketplaceListing] = None
+
 class BacktestInCreateResponse(CamelCaseModel):
     """
     POST /backtests/ 요청 성공 시 반환되는 응답 스키마.
@@ -682,7 +694,7 @@ class LiveBot(CamelCaseModel):
     initial_capital: Optional[float] = None
     execution_interval: str
     trailing_stop_config: Optional[Dict[str, Any]] = None
-    strategy: Optional[StrategySummary] = None
+    strategy: Optional[StrategyForBot] = None
     api_key: Optional[ApiKeyResponse] = None
     
     ticker: str
