@@ -11,4 +11,4 @@
 from app.tasks import backfill_ohlcv
 
 # Celery 워커가 실행 중인 상태에서 아래 코드를 실행
-backfill_ohlcv.delay("BTCUSDT", "1h", "2020-01-01T00:00:00Z")
+backfill_ohlcv.delay("BTCUSDT", "5m", "2025-01-01T00:00:00Z")

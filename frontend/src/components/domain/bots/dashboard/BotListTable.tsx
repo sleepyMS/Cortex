@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { Link } from "@/i18n/navigation";
-import { MoreHorizontal, Play, Square, Trash2 } from "lucide-react";
+import { MoreHorizontal, Play, Plus, Square, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,7 @@ import {
 
 export function BotListTable() {
   const t = useTranslations("LiveTrading.Dashboard.table");
+  const tDashboard = useTranslations("LiveTrading.Dashboard");
   const tDetail = useTranslations("LiveTrading.Detail");
   const queryClient = useQueryClient();
 
@@ -118,11 +119,17 @@ export function BotListTable() {
 
   if (!bots || bots.length === 0) {
     return (
-      <div className="rounded-md border p-8 text-center text-muted-foreground">
+      <div className="rounded-md border border-dashed p-12 text-center text-muted-foreground flex flex-col items-center justify-center">
         <p className="font-semibold text-foreground mb-2">
           {t("emptyStateTitle")}
         </p>
-        <p>{t("emptyStateDesc")}</p>
+        <p className="mb-6">{t("emptyStateDesc")}</p>
+        <Link href="/bots/new">
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            {tDashboard("createNewBot")}
+          </Button>
+        </Link>
       </div>
     );
   }
