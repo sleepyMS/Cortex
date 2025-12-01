@@ -1,22 +1,25 @@
 // file: frontend/src/components/domain/backtesting/DrawdownChart.tsx
 
-import React, { useEffect, useRef } from "react";
-import {
-  createChart,
-  ColorType,
-  PriceScaleMode,
-  LineStyle,
-  AreaSeries,
-  type IChartApi,
-  type ISeriesApi,
-  type AreaData,
-  type UTCTimestamp,
-  type DeepPartial,
-  type ChartOptions,
-  type AreaSeriesOptions,
-} from "lightweight-charts";
+"use client";
 
-export type ChartDataPoint = AreaData<UTCTimestamp>;
+import React, { useMemo } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
+import { useTheme } from "next-themes";
+import { UTCTimestamp } from "lightweight-charts";
+
+export interface ChartDataPoint {
+  time: UTCTimestamp;
+  value: number;
+}
 
 interface DrawdownChartProps {
   drawdownData: ChartDataPoint[];
@@ -24,98 +27,104 @@ interface DrawdownChartProps {
   dark?: boolean;
 }
 
-const getThemeOptions = (dark: boolean): DeepPartial<ChartOptions> => ({
-  layout: {
-    background: { type: ColorType.Solid, color: dark ? "#020817" : "#FFFFFF" },
-    textColor: dark ? "rgba(219,222,227,0.9)" : "#191919",
-  },
-  grid: {
-    vertLines: { color: dark ? "rgba(42,46,57,0.3)" : "rgba(197,203,206,0.3)" },
-    horzLines: { color: dark ? "rgba(42,46,57,0.3)" : "rgba(197,203,206,0.3)" },
-  },
-});
-
-const getAreaSeriesTheme = (dark: boolean): DeepPartial<AreaSeriesOptions> => ({
-  lineColor: dark ? "rgba(244, 63, 94, 1)" : "#EF4444",
-  topColor: dark ? "rgba(244, 63, 94, 0.4)" : "rgba(239, 68, 68, 0.4)",
-  bottomColor: dark ? "rgba(244, 63, 94, 0.0)" : "rgba(239, 68, 68, 0.0)",
-});
-
 const DrawdownChart: React.FC<DrawdownChartProps> = ({
   drawdownData,
   height = 280,
   dark = false,
 }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const areaRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const { resolvedTheme } = useTheme();
+  const isDark = dark || resolvedTheme === "dark";
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+  // Transform data for Recharts
+  const chartData = useMemo(() => {
+    if (!drawdownData || drawdownData.length === 0) return [];
 
-    const chart = createChart(containerRef.current, {
-      height,
-      ...getThemeOptions(dark), // 초기 테마 적용
-      rightPriceScale: { borderVisible: false },
-      timeScale: {
-        rightOffset: 8,
-        barSpacing: 6,
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      crosshair: {
-        vertLine: { style: LineStyle.Dashed },
-        horzLine: { style: LineStyle.Dashed },
-      },
-    });
-    chartRef.current = chart;
-
-    const areaSeries = chart.addSeries(AreaSeries, {
-      ...getAreaSeriesTheme(dark), // 초기 테마 적용
-      priceLineVisible: false,
-      lastValueVisible: true,
-      title: "Drawdown",
-      priceFormat: {
-        type: "custom",
-        formatter: (price: number) => `${price.toFixed(2)}%`,
-      },
-    });
-
-    areaRef.current = areaSeries;
-
-    const ro = new ResizeObserver(() => {
-      if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth });
-      }
-    });
-    ro.observe(containerRef.current);
-
-    return () => {
-      ro.disconnect();
-      chart.remove();
-      chartRef.current = null;
-    };
-  }, [height]);
-
-  useEffect(() => {
-    if (!chartRef.current) return;
-    chartRef.current.applyOptions(getThemeOptions(dark));
-    areaRef.current?.applyOptions(getAreaSeriesTheme(dark));
-  }, [dark]);
-
-  useEffect(() => {
-    if (areaRef.current && drawdownData) {
-      areaRef.current.setData(drawdownData);
-      chartRef.current?.timeScale().fitContent();
-    }
+    return drawdownData.map((point) => ({
+      date: new Date(point.time * 1000).toLocaleDateString(),
+      timestamp: point.time,
+      drawdown: point.value,
+      drawdownPct: point.value.toFixed(2), // Already in decimal format
+    }));
   }, [drawdownData]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height }}
-      aria-label="drawdown-chart"
-    />
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart
+        data={chartData}
+        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+      >
+        <defs>
+          <linearGradient id="colorDrawdown" x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="5%"
+              stopColor={isDark ? "#ef4444" : "#dc2626"}
+              stopOpacity={0.4}
+            />
+            <stop
+              offset="95%"
+              stopColor={isDark ? "#ef4444" : "#dc2626"}
+              stopOpacity={0}
+            />
+          </linearGradient>
+        </defs>
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke={isDark ? "rgba(42,46,57,0.3)" : "rgba(197,203,206,0.3)"}
+        />
+        <XAxis
+          dataKey="date"
+          stroke={isDark ? "#9ca3af" : "#6b7280"}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          stroke={isDark ? "#9ca3af" : "#6b7280"}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => `${value.toFixed(0)}%`}
+        />
+        <Tooltip
+          content={({ active, payload }) => {
+            if (active && payload && payload.length) {
+              const data = payload[0].payload;
+              return (
+                <div className="rounded-lg border bg-background p-3 shadow-md text-sm max-w-[280px]">
+                  <p className="font-semibold mb-2 text-foreground">
+                    {data.date}
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Drawdown:</span>
+                      <span className="font-mono font-bold text-red-500">
+                        {data.drawdownPct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          }}
+        />
+        <ReferenceLine
+          y={0}
+          stroke={isDark ? "#4b5563" : "#d1d5db"}
+          strokeDasharray="3 3"
+        />
+        <Area
+          type="monotone"
+          dataKey="drawdown"
+          stroke={isDark ? "#ef4444" : "#dc2626"}
+          strokeWidth={2}
+          fillOpacity={1}
+          fill="url(#colorDrawdown)"
+          name="Drawdown"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 };
 
