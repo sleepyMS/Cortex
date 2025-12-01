@@ -1,24 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { AlertCircle, Pause, Play, Trash2, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateBotStatus, deleteBot, panicSell, LiveBot } from "@/lib/api/bots";
-import { toast } from "sonner";
-import { useRouter } from "@/i18n/navigation";
-import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/AlertDialog";
+import { LiveBot } from "@/lib/api/bots";
 
 interface BotControlPanelProps {
   bot: LiveBot;
@@ -26,218 +10,84 @@ interface BotControlPanelProps {
 
 export function BotControlPanel({ bot }: BotControlPanelProps) {
   const t = useTranslations("LiveTrading.Detail");
-  const queryClient = useQueryClient();
-  const router = useRouter();
 
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [panicSellDialogOpen, setPanicSellDialogOpen] = useState(false);
-
-  // 상태 업데이트 Mutation
-  const updateStatusMutation = useMutation({
-    mutationFn: (status: "active" | "paused" | "stopped") =>
-      updateBotStatus(bot.id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bot", bot.id] });
-      queryClient.invalidateQueries({ queryKey: ["bots"] });
-      toast.success(t("success.statusUpdated"));
-    },
-    onError: (error: any) => {
-      toast.error(t("errors.updateFailed"), {
-        description: error.response?.data?.detail || error.message,
-      });
-    },
-  });
-
-  // 삭제 Mutation
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteBot(bot.id),
-    onSuccess: () => {
-      toast.success(t("success.deleted"));
-      router.push("/bots");
-    },
-    onError: (error: any) => {
-      toast.error(t("errors.deleteFailed"), {
-        description: error.response?.data?.detail || error.message,
-      });
-    },
-  });
-
-  // Panic Sell Mutation
-  const panicSellMutation = useMutation({
-    mutationFn: () => panicSell(bot.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bot", bot.id] });
-      toast.success(t("success.panicSellExecuted"), {
-        description: t("success.positionsClosed"),
-      });
-    },
-    onError: (error: any) => {
-      toast.error(t("errors.panicSellFailed"), {
-        description: error.response?.data?.detail || error.message,
-      });
-    },
-  });
-
-  const handleStartStop = () => {
-    const newStatus = bot.status === "active" ? "paused" : "active";
-    updateStatusMutation.mutate(newStatus);
-  };
-
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("title")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Status Display */}
-          <div className="p-4 rounded-lg bg-muted">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {t("currentStatus")}
-                </p>
-                <p className="text-lg font-semibold capitalize">
-                  {t(`status.${bot.status}` as any)}
-                </p>
-              </div>
-              {bot.status === "active" ? (
-                <Play className="h-8 w-8 text-green-500" />
-              ) : bot.status === "error" ? (
-                <AlertCircle className="h-8 w-8 text-red-500" />
-              ) : (
-                <Pause className="h-8 w-8 text-gray-500" />
-              )}
-            </div>
-            {bot.lastError && (
-              <div className="mt-2 p-2 bg-red-50 dark:bg-red-950 rounded text-xs text-red-600 dark:text-red-400">
-                <p className="font-semibold">{t("lastError")}</p>
-                <p>{bot.lastError}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Control Buttons */}
-          <div className="space-y-2">
-            {bot.status === "active" ? (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={handleStartStop}
-                disabled={updateStatusMutation.isPending}
-              >
-                <Pause className="mr-2 h-4 w-4" />
-                {t("pauseBot")}
-              </Button>
-            ) : (
-              <Button
-                className="w-full"
-                onClick={handleStartStop}
-                disabled={
-                  bot.status === "error" || updateStatusMutation.isPending
-                }
-              >
-                <Play className="mr-2 h-4 w-4" />
-                {t("startBot")}
-              </Button>
-            )}
-
-            {bot.positionSize !== 0 && (
-              <Button
-                className="w-full"
-                variant="destructive"
-                onClick={() => setPanicSellDialogOpen(true)}
-                disabled={panicSellMutation.isPending}
-              >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                {t("panicSell")}
-              </Button>
-            )}
-
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={deleteMutation.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {t("deleteBot")}
-            </Button>
-          </div>
-
-          {/* Position Info */}
-          {bot.positionSize !== 0 && (
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950">
-              <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                {t("activePosition")}
-              </p>
-              <div className="mt-2 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("side")}</span>
-                  <span className="font-medium">
-                    {bot.positionSize > 0 ? t("long") : t("short")}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("size")}</span>
-                  <span className="font-medium">
-                    {Math.abs(bot.positionSize)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {t("entryPrice")}
-                  </span>
-                  <span className="font-medium">
-                    ${bot.entryPrice?.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+  if (bot.positionSize === 0) {
+    return (
+      <Card className="h-full border-dashed bg-muted/30">
+        <CardContent className="h-full flex flex-col items-center justify-center p-6 text-muted-foreground">
+          <p className="font-medium">{t("activePosition")}</p>
+          <p className="text-sm mt-1">No open positions</p>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("deleteDesc")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMutation.mutate()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {t("confirmDelete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  const pnlColor =
+    (bot.unrealizedPnl || 0) >= 0 ? "text-green-500" : "text-red-500";
+  const pnlBg = (bot.unrealizedPnl || 0) >= 0 ? "bg-green-500" : "bg-red-500";
+  const pnlPercent =
+    bot.initialCapital > 0
+      ? (((bot.unrealizedPnl || 0) / bot.initialCapital) * 100).toFixed(2)
+      : "0.00";
 
-      {/* Panic Sell Confirmation Dialog */}
-      <AlertDialog
-        open={panicSellDialogOpen}
-        onOpenChange={setPanicSellDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("panicTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("panicDesc")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => panicSellMutation.mutate()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {t("confirmPanic")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+  return (
+    <Card className="h-full overflow-hidden">
+      <CardHeader className="bg-muted/30 pb-4">
+        <CardTitle className="text-base font-medium flex items-center justify-between">
+          <span>{t("activePosition")}</span>
+          <span
+            className={`text-sm px-2 py-0.5 rounded-full ${
+              bot.positionSize > 0
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+            }`}
+          >
+            {bot.positionSize > 0 ? t("long") : t("short")}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="p-6 space-y-6">
+          {/* Main PnL Display */}
+          <div className="text-center space-y-1">
+            <p className="text-sm text-muted-foreground">Unrealized PnL</p>
+            <div className={`text-3xl font-bold ${pnlColor}`}>
+              {(bot.unrealizedPnl || 0) >= 0 ? "+" : "-"}$
+              {Math.abs(bot.unrealizedPnl || 0).toFixed(2)}
+            </div>
+            <div className={`text-sm font-medium ${pnlColor}`}>
+              ({(bot.unrealizedPnl || 0) >= 0 ? "+" : ""}
+              {pnlPercent}%)
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+            <div
+              className={`h-full ${pnlBg} transition-all duration-500`}
+              style={{
+                width: `${Math.min(Math.abs(Number(pnlPercent)) * 5, 100)}%`,
+              }} // Visual scaling
+            />
+          </div>
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                {t("size")}
+              </p>
+              <p className="font-mono text-lg">{Math.abs(bot.positionSize)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                {t("entryPrice")}
+              </p>
+              <p className="font-mono text-lg">${bot.entryPrice?.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
-import { BotControlPanel } from "@/components/domain/bots/detail/BotControlPanel";
+import { ActivePositionCard } from "@/components/domain/bots/detail/ActivePositionCard";
 import { BotChart } from "@/components/domain/bots/detail/BotChart";
-import { BotLogViewer } from "@/components/domain/bots/detail/BotLogViewer";
+import {
+  BotLogViewer,
+  SystemLog,
+} from "@/components/domain/bots/detail/BotLogViewer";
 import { BotTradeHistory } from "@/components/domain/bots/detail/BotTradeHistory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,200 +18,241 @@ import {
 } from "@/lib/api/bots";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useParams } from "next/navigation";
+import { BotHeader } from "@/components/domain/bots/detail/BotHeader";
+import { PerformanceHero } from "@/components/domain/bots/detail/PerformanceHero";
 
 export default function BotDetailPage() {
   const t = useTranslations("LiveTrading.Detail");
   const params = useParams();
   const botId = params.botId as string;
 
-  // 봇 상세 정보 조회
   const { data: bot, isLoading: isBotLoading } = useQuery({
     queryKey: ["bot", botId],
     queryFn: () => getBot(botId),
-    refetchInterval: 5000, // 5초마다 갱신
+    refetchInterval: 5000,
   });
 
-  // 봇 로그 조회
   const { data: logs } = useQuery({
     queryKey: ["bot-logs", botId],
     queryFn: () => getBotLogs(botId, { limit: 50 }),
     refetchInterval: 10000,
   });
 
-  // 봇 분석 데이터 조회
-  const { data: analytics } = useQuery({
-    queryKey: ["bot-analytics", botId],
-    queryFn: () => getBotAnalytics(botId),
-    refetchInterval: 30000, // 30초마다 갱신
-  });
+  // TEMPORARY: Mock data for preview
+  const mockLogs =
+    logs && logs.length > 0
+      ? logs
+      : ([
+          {
+            id: "1",
+            timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+            side: "LONG_ENTRY",
+            price: 42150.5,
+            quantity: 0.0234,
+            pnl: null,
+            reason: "RSI oversold + MACD crossover",
+          },
+          {
+            id: "2",
+            timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+            side: "LONG_EXIT",
+            price: 42350.25,
+            quantity: 0.0234,
+            pnl: 125.3,
+            reason: "Take profit target reached",
+          },
+          {
+            id: "3",
+            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+            side: "SHORT_ENTRY",
+            price: 41980.0,
+            quantity: 0.025,
+            pnl: null,
+            reason: "Bearish divergence detected",
+          },
+          {
+            id: "4",
+            timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+            side: "SHORT_EXIT",
+            price: 41750.75,
+            quantity: 0.025,
+            pnl: 220.5,
+            reason: "Take profit target reached",
+          },
+          {
+            id: "5",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+            side: "LONG_ENTRY",
+            price: 41850.3,
+            quantity: 0.022,
+            pnl: null,
+            reason: "Support level bounce",
+          },
+          {
+            id: "6",
+            timestamp: new Date(Date.now() - 1000 * 60 * 75).toISOString(),
+            side: "LONG_EXIT",
+            price: 41800.0,
+            quantity: 0.022,
+            pnl: -45.2,
+            reason: "Stop loss triggered",
+          },
+        ] as any);
 
-  // 봇 성과 히스토리 조회
+  // TEMPORARY: Mock system logs for preview
+  const mockSystemLogs: SystemLog[] = [
+    {
+      id: "sys-1",
+      timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
+      level: "SUCCESS",
+      message: "Trade executed successfully",
+      details: "BUY 0.0234 BTC @ $42,150.50",
+    },
+    {
+      id: "sys-2",
+      timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+      level: "INFO",
+      message: "Signal analysis completed",
+      details: "RSI: 32.5, MACD: Bullish crossover detected",
+    },
+    {
+      id: "sys-3",
+      timestamp: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
+      level: "WARN",
+      message: "Stop loss triggered",
+      details: "Position closed at $42,050.25 | Loss: -$45.20",
+    },
+    {
+      id: "sys-4",
+      timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+      level: "INFO",
+      message: "Bot cycle executed",
+      details: "Execution interval: 5m | Next run: 21:15:00",
+    },
+    {
+      id: "sys-5",
+      timestamp: new Date(Date.now() - 1000 * 60 * 50).toISOString(),
+      level: "SUCCESS",
+      message: "Bot started successfully",
+      details: "Strategy: RSI + MACD | Mode: Paper Trading",
+    },
+    {
+      id: "sys-6",
+      timestamp: new Date(Date.now() - 1000 * 60 * 55).toISOString(),
+      level: "INFO",
+      message: "Bot initialized",
+      details: "Initial capital: $10,000 | Leverage: 3x",
+    },
+  ];
+
   const { data: performance } = useQuery({
     queryKey: ["bot-performance", botId],
-    queryFn: () => getBotPerformance(botId, 7), // 최근 7일
-    refetchInterval: 60000, // 1분마다 갱신
+    queryFn: () => getBotPerformance(botId, 7),
+    refetchInterval: 60000,
   });
 
-  if (isBotLoading || !bot) {
+  const estimatedUnrealizedPnl =
+    bot &&
+    bot.positionSize !== 0 &&
+    bot.entryPrice &&
+    performance &&
+    performance.length > 0
+      ? performance[performance.length - 1].balance -
+        bot.initialCapital -
+        bot.totalPnl
+      : 0;
+
+  const botWithPnl = bot
+    ? { ...bot, unrealizedPnl: bot.unrealizedPnl ?? estimatedUnrealizedPnl }
+    : null;
+
+  if (isBotLoading || !botWithPnl) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
+      <div className="container mx-auto p-8 space-y-8 max-w-7xl">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+          <Skeleton className="h-[500px]" />
+          <Skeleton className="h-[500px]" />
         </div>
-        <Skeleton className="h-96" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-8 space-y-8 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {bot.strategy?.name || t("botDetail")}
-          </h1>
-          <p className="text-muted-foreground">
-            {bot.mode === "paper"
-              ? `📄 ${t("paperTrading")}`
-              : `🔴 ${t("liveTrading")}`}{" "}
-            • {bot.ticker}
-          </p>
+      <BotHeader bot={botWithPnl} />
+
+      {/* Performance Hero */}
+      <PerformanceHero bot={botWithPnl} />
+
+      {/* Main Content Grid */}
+      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+        {/* Left Column: Chart + Active Position */}
+        <div className="space-y-8">
+          <BotChart
+            performance={performance || []}
+            entryPrice={
+              botWithPnl.positionSize !== 0 ? botWithPnl.entryPrice : undefined
+            }
+          />
+
+          {/* Active Position Card (only shows if position exists) */}
+          <ActivePositionCard bot={botWithPnl} />
         </div>
-        <Badge
-          variant={bot.status === "active" ? "default" : "secondary"}
-          className={
-            bot.status === "active"
-              ? "bg-green-500 hover:bg-green-600"
-              : bot.status === "error"
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-gray-500 hover:bg-gray-600"
-          }
-        >
-          {t(`status.${bot.status}` as any)}
-        </Badge>
+
+        {/* Right Column: System Logs */}
+        <div className="space-y-8">
+          <BotLogViewer logs={mockSystemLogs} />
+
+          {/* Strategy Config */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("strategyConfig")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-sm text-muted-foreground">
+                    {t("strategy")}
+                  </span>
+                  <span className="font-medium">
+                    {botWithPnl.strategy?.name || "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-sm text-muted-foreground">
+                    {t("executionInterval")}
+                  </span>
+                  <span className="font-medium">
+                    {botWithPnl.executionInterval}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-sm text-muted-foreground">
+                    {t("leverage")}
+                  </span>
+                  <span className="font-medium">{botWithPnl.leverage}x</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-muted-foreground">
+                    {t("dailyLossLimit")}
+                  </span>
+                  <span className="font-medium">
+                    {botWithPnl.dailyMaxLossEnabled
+                      ? `${botWithPnl.dailyMaxLossPct}%`
+                      : t("disabled")}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Bot Info Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("currentBalance")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${(bot.currentBalance || bot.initialCapital).toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("totalPnl")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold ${
-                bot.totalPnl >= 0 ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              ${Math.abs(bot.totalPnl).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {bot.totalPnl >= 0 ? "+" : ""}
-              {bot.initialCapital > 0
-                ? ((bot.totalPnl / bot.initialCapital) * 100).toFixed(2)
-                : "0.00"}
-              %
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("winRate")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {bot.totalTrades > 0
-                ? ((bot.winningTrades / bot.totalTrades) * 100).toFixed(1)
-                : "0.0"}
-              %
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {bot.winningTrades}/{bot.totalTrades} trades
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("maxDrawdown")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">
-              {bot.maxDrawdown.toFixed(2)}%
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Control Panel and Chart */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <BotControlPanel bot={bot} />
-        <BotChart performance={performance || []} />
-      </div>
-
-      {/* Trade History and Logs */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <BotTradeHistory trades={logs || []} />
-        <BotLogViewer logs={logs || []} />
-      </div>
-
-      {/* Strategy Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("strategyConfig")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">{t("strategy")}</p>
-              <p className="font-medium">{bot.strategy?.name || "N/A"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {t("executionInterval")}
-              </p>
-              <p className="font-medium">{bot.executionInterval}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t("leverage")}</p>
-              <p className="font-medium">{bot.leverage}x</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {t("dailyLossLimit")}
-              </p>
-              <p className="font-medium">
-                {bot.dailyMaxLossEnabled
-                  ? `${bot.dailyMaxLossPct}%`
-                  : t("disabled")}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Bottom Section: Trade History Full Width */}
+      <BotTradeHistory trades={mockLogs || []} />
     </div>
   );
 }

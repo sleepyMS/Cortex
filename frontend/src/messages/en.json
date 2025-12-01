@@ -2093,11 +2093,26 @@
       "chartTitle": "Live Chart",
       "noPerformanceData": "No performance data available yet",
       "performance": "Performance",
-
       "liveLogs": "Live Logs",
       "waitingForLogs": "Waiting for logs...",
       "recentTrades": "Recent Trades",
       "noTrades": "No trades executed yet.",
+      "types": {
+        "longEntry": "Long Entry",
+        "longExit": "Long Exit",
+        "shortEntry": "Short Entry",
+        "shortExit": "Short Exit",
+        "buy": "Buy",
+        "sell": "Sell"
+      },
+      "table": {
+        "time": "Time",
+        "side": "Type",
+        "price": "Price",
+        "amount": "Amount",
+        "pnl": "PnL",
+        "reason": "Reason"
+      },
       "errors": {
         "updateFailed": "Failed to update bot",
         "deleteFailed": "Failed to delete bot",
@@ -2109,13 +2124,6 @@
         "deleted": "Bot deleted successfully",
         "panicSellExecuted": "Panic sell executed",
         "positionsClosed": "All positions have been closed"
-      },
-      "table": {
-        "time": "Time",
-        "side": "Side",
-        "price": "Price",
-        "amount": "Amount",
-        "pnl": "PnL"
       }
     }
   }

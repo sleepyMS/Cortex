@@ -186,7 +186,7 @@ class LiveBotService:
                                 trade_log = models.TradeLog(
                                     live_bot_id=bot.id,
                                     timestamp=datetime.now(timezone.utc),
-                                    side=result['action'],
+                                    side=result['action'].upper(),
                                     price=result['price'],
                                     quantity=result['quantity'],
                                     pnl=result['pnl'],

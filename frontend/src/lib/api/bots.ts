@@ -59,6 +59,7 @@ export interface LiveBot {
     exchange: string;
     apiKeyPreview: string | null;
   };
+  unrealizedPnl?: number; // Optional as it might be calculated on frontend or backend
 }
 
 export interface BotTradeLog {

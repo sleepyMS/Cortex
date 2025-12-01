@@ -2130,6 +2130,22 @@
       "waitingForLogs": "로그 대기 중...",
       "recentTrades": "최근 거래",
       "noTrades": "아직 체결된 거래가 없습니다.",
+      "types": {
+        "longEntry": "롱 진입",
+        "longExit": "롱 청산",
+        "shortEntry": "숏 진입",
+        "shortExit": "숏 청산",
+        "buy": "매수",
+        "sell": "매도"
+      },
+      "table": {
+        "time": "시간",
+        "side": "유형",
+        "price": "가격",
+        "amount": "수량",
+        "pnl": "손익",
+        "reason": "사유"
+      },
       "errors": {
         "updateFailed": "봇 업데이트 실패",
         "deleteFailed": "봇 삭제 실패",
@@ -2141,13 +2157,6 @@
         "deleted": "봇이 삭제되었습니다",
         "panicSellExecuted": "패닉 셀이 실행되었습니다",
         "positionsClosed": "모든 포지션이 청산되었습니다"
-      },
-      "table": {
-        "time": "시간",
-        "side": "매수/매도",
-        "price": "가격",
-        "amount": "수량",
-        "pnl": "수익금"
       }
     }
   }
