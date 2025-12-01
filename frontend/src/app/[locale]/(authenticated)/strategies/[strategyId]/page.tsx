@@ -422,6 +422,15 @@ export default function StrategyEditorPage({
     setIsHubOpen(true);
   };
 
+  const handleTriggerReplaceBlock = (
+    ruleType: StrategyType,
+    blockId: string
+  ) => {
+    setCurrentTarget({ type: "replace-block", ruleType, blockId });
+    setHubSelectionMode("full");
+    setIsHubOpen(true);
+  };
+
   const handleIndicatorSelect = (
     indicator: IndicatorMetadata,
     logicType: string
@@ -447,6 +456,12 @@ export default function StrategyEditorPage({
         newBlock,
         currentTarget.parentId,
         currentTarget.as
+      );
+    } else if (currentTarget.type === "replace-block") {
+      strategyState.updateRule(
+        currentTarget.ruleType,
+        currentTarget.blockId,
+        newBlock
       );
     }
     setIsHubOpen(false);
@@ -740,20 +755,31 @@ export default function StrategyEditorPage({
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="flex items-center p-1 rounded-md bg-muted">
-                      {["15m", "1h", "4h", "1d"].map((tf) => (
-                        <Button
-                          key={tf}
-                          type="button"
-                          variant={chartTimeframe === tf ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => setChartTimeframe(tf)}
-                          className="h-8 px-3"
-                        >
-                          {tf}
-                        </Button>
-                      ))}
-                    </div>
+                    <Select
+                      value={chartTimeframe}
+                      onValueChange={setChartTimeframe}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Timeframe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "1m",
+                          "5m",
+                          "15m",
+                          "30m",
+                          "1h",
+                          "4h",
+                          "1d",
+                          "1w",
+                          "1M",
+                        ].map((tf) => (
+                          <SelectItem key={tf} value={tf}>
+                            {tf}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -803,6 +829,7 @@ export default function StrategyEditorPage({
                   onDeleteRule={(ruleType, id) =>
                     strategyState.deleteRule(ruleType, id)
                   }
+                  onTriggerReplaceBlock={handleTriggerReplaceBlock}
                 />
               </div>
             </div>

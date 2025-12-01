@@ -11,18 +11,13 @@ import { BotTradeHistory } from "@/components/domain/bots/detail/BotTradeHistory
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import {
-  getBot,
-  getBotLogs,
-  getBotAnalytics,
-  getBotPerformance,
-} from "@/lib/api/bots";
+import { getBot, getBotLogs, getBotPerformance } from "@/lib/api/bots";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useParams } from "next/navigation";
 import { BotHeader } from "@/components/domain/bots/detail/BotHeader";
 import { PerformanceHero } from "@/components/domain/bots/detail/PerformanceHero";
 import apiClient from "@/lib/apiClient";
-import { CandlestickData, UTCTimestamp } from "lightweight-charts";
+import { UTCTimestamp } from "lightweight-charts";
 import { OHLCVData } from "@/types/market";
 import { parseRulesForIndicators } from "@/lib/strategyUtils";
 import { useMemo } from "react";
@@ -38,72 +33,132 @@ export default function BotDetailPage() {
     refetchInterval: 5000,
   });
 
-  const { data: logs } = useQuery({
+  // Fetch trade logs
+  const { data: tradeLogs } = useQuery({
     queryKey: ["bot-logs", botId],
-    queryFn: () => getBotLogs(botId, { limit: 50 }),
-    refetchInterval: 10000,
+    queryFn: () => getBotLogs(botId as string, { limit: 100 }),
+    refetchInterval: 30000,
   });
 
-  // TEMPORARY: Mock data for preview
-  const mockLogs =
-    logs && logs.length > 0
-      ? logs
-      : ([
-          {
-            id: "1",
-            timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            side: "LONG_ENTRY",
-            price: 42150.5,
-            quantity: 0.0234,
-            pnl: null,
-            reason: "RSI oversold + MACD crossover",
-          },
-          {
-            id: "2",
-            timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-            side: "LONG_EXIT",
-            price: 42350.25,
-            quantity: 0.0234,
-            pnl: 125.3,
-            reason: "Take profit target reached",
-          },
-          {
-            id: "3",
-            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            side: "SHORT_ENTRY",
-            price: 41980.0,
-            quantity: 0.025,
-            pnl: null,
-            reason: "Bearish divergence detected",
-          },
-          {
-            id: "4",
-            timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-            side: "SHORT_EXIT",
-            price: 41750.75,
-            quantity: 0.025,
-            pnl: 220.5,
-            reason: "Take profit target reached",
-          },
-          {
-            id: "5",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-            side: "LONG_ENTRY",
-            price: 41850.3,
-            quantity: 0.022,
-            pnl: null,
-            reason: "Support level bounce",
-          },
-          {
-            id: "6",
-            timestamp: new Date(Date.now() - 1000 * 60 * 75).toISOString(),
-            side: "LONG_EXIT",
-            price: 41800.0,
-            quantity: 0.022,
-            pnl: -45.2,
-            reason: "Stop loss triggered",
-          },
-        ] as any);
+  const { data: performance } = useQuery({
+    queryKey: ["bot-performance", botId],
+    queryFn: () => getBotPerformance(botId, 7),
+    refetchInterval: 60000,
+  });
+
+  // Fetch OHLCV data for price chart
+  const { data: ohlcvData } = useQuery({
+    queryKey: ["ohlcv", bot?.ticker, bot?.executionInterval],
+    queryFn: async () => {
+      if (!bot?.ticker || !bot?.executionInterval) return [];
+      const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
+        params: {
+          ticker: bot.ticker,
+          timeframe: bot.executionInterval,
+          limit: 500,
+        },
+      });
+      return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
+    },
+    enabled: !!bot?.ticker && !!bot?.executionInterval,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Transform trade logs to signal data for chart markers
+  const signalData = useMemo(() => {
+    if (!tradeLogs || !ohlcvData || ohlcvData.length === 0)
+      return { signals: [] };
+
+    // Create a sorted array of candle times
+    const candleTimes = ohlcvData
+      .map((d) => d.time as number)
+      .sort((a, b) => a - b);
+
+    const signals = tradeLogs.map((log) => {
+      const tradeTime = Math.floor(new Date(log.timestamp).getTime() / 1000);
+
+      // Find the latest candle time that is less than or equal to the trade time
+      let matchedTime = candleTimes[0];
+      for (let i = candleTimes.length - 1; i >= 0; i--) {
+        if (candleTimes[i] <= tradeTime) {
+          matchedTime = candleTimes[i];
+          break;
+        }
+      }
+
+      return {
+        time: matchedTime as UTCTimestamp,
+        signalType: log.side.toLowerCase() as
+          | "long_entry"
+          | "long_exit"
+          | "short_entry"
+          | "short_exit",
+      };
+    });
+
+    return { signals };
+  }, [tradeLogs, ohlcvData]);
+
+  // Prepare rules for StrategyChart
+  const strategyRules = useMemo(() => {
+    if (!bot?.strategy) {
+      return {
+        longEntry: null,
+        longExit: null,
+        shortEntry: null,
+        shortExit: null,
+      };
+    }
+    return {
+      longEntry: bot.strategy.longEntryRules,
+      longExit: bot.strategy.longExitRules,
+      shortEntry: bot.strategy.shortEntryRules,
+      shortExit: bot.strategy.shortExitRules,
+    };
+  }, [bot?.strategy]);
+
+  // Extract indicator configs
+  const indicatorConfigs = useMemo(
+    () =>
+      parseRulesForIndicators({
+        longEntry: strategyRules.longEntry,
+        longExit: strategyRules.longExit,
+        shortEntry: strategyRules.shortEntry,
+        shortExit: strategyRules.shortExit,
+      }),
+    [strategyRules]
+  );
+
+  // Fetch indicator data
+  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
+    queryKey: [
+      "indicators",
+      bot?.ticker,
+      bot?.executionInterval,
+      indicatorConfigs,
+    ],
+    queryFn: async ({ signal }) => {
+      if (
+        indicatorConfigs.length === 0 ||
+        !bot?.ticker ||
+        !bot?.executionInterval
+      )
+        return null;
+      const { data } = await apiClient.post(
+        "/strategies/calculate-indicators",
+        {
+          ticker: bot.ticker,
+          timeframe: bot.executionInterval,
+          indicators: indicatorConfigs,
+        },
+        { signal }
+      );
+      return data.results;
+    },
+    enabled:
+      !!bot?.ticker && !!bot?.executionInterval && indicatorConfigs.length > 0,
+    refetchInterval: 60000,
+  });
 
   // TEMPORARY: Mock system logs for preview
   const mockSystemLogs: SystemLog[] = [
@@ -151,76 +206,6 @@ export default function BotDetailPage() {
     },
   ];
 
-  const { data: performance } = useQuery({
-    queryKey: ["bot-performance", botId],
-    queryFn: () => getBotPerformance(botId, 7),
-    refetchInterval: 60000,
-  });
-
-  // Fetch OHLCV data for price chart
-  const { data: ohlcvData } = useQuery({
-    queryKey: ["ohlcv", bot?.ticker, "5m"],
-    queryFn: async () => {
-      if (!bot?.ticker) return [];
-      const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
-        params: { ticker: bot.ticker, timeframe: "5m", limit: 500 },
-      });
-      return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
-    },
-    enabled: !!bot?.ticker,
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
-
-  // Prepare rules for StrategyChart
-  const strategyRules = useMemo(() => {
-    if (!bot?.strategy) {
-      return {
-        longEntry: null,
-        longExit: null,
-        shortEntry: null,
-        shortExit: null,
-      };
-    }
-    return {
-      longEntry: bot.strategy.longEntryRules,
-      longExit: bot.strategy.longExitRules,
-      shortEntry: bot.strategy.shortEntryRules,
-      shortExit: bot.strategy.shortExitRules,
-    };
-  }, [bot?.strategy]);
-
-  // Extract indicator configs
-  const indicatorConfigs = useMemo(
-    () =>
-      parseRulesForIndicators({
-        longEntry: strategyRules.longEntry,
-        longExit: strategyRules.longExit,
-        shortEntry: strategyRules.shortEntry,
-        shortExit: strategyRules.shortExit,
-      }),
-    [strategyRules]
-  );
-
-  // Fetch indicator data
-  const { data: indicatorData, isLoading: isLoadingIndicators } = useQuery({
-    queryKey: ["indicators", bot?.ticker, "5m", indicatorConfigs],
-    queryFn: async ({ signal }) => {
-      if (indicatorConfigs.length === 0 || !bot?.ticker) return null;
-      const { data } = await apiClient.post(
-        "/strategies/calculate-indicators",
-        {
-          ticker: bot.ticker,
-          timeframe: "5m",
-          indicators: indicatorConfigs,
-        },
-        { signal }
-      );
-      return data.results;
-    },
-    enabled: !!bot?.ticker && indicatorConfigs.length > 0,
-    refetchInterval: 60000,
-  });
-
   const estimatedUnrealizedPnl =
     bot &&
     bot.positionSize !== 0 &&
@@ -261,7 +246,7 @@ export default function BotDetailPage() {
       <Card className="border-2 overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            {botWithPnl.ticker} - 5m
+            {botWithPnl.ticker} - {botWithPnl.executionInterval}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -270,6 +255,7 @@ export default function BotDetailPage() {
             ohlcvData={ohlcvData || []}
             indicatorData={indicatorData || {}}
             isLoadingIndicators={isLoadingIndicators}
+            signalData={signalData}
             isLoadingSignals={false}
           />
         </CardContent>
@@ -335,7 +321,7 @@ export default function BotDetailPage() {
       />
 
       {/* Bottom Section: Trade History Full Width */}
-      <BotTradeHistory trades={mockLogs || []} />
+      <BotTradeHistory trades={tradeLogs || []} />
     </div>
   );
 }

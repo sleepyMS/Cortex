@@ -9,6 +9,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/6'),
         'args': ('BTCUSDT', '1h'),
     },
+    'fetch-btc-usdt-5m-every-5-mins': {
+        'task': 'fetch_and_store_ohlcv',
+        'schedule': crontab(minute='*/5'),
+        'args': ('BTCUSDT', '5m'),
+    },
     'fetch-btc-usdt-15m-every-15-mins': {
         'task': 'fetch_and_store_ohlcv',
         'schedule': crontab(minute='*/5'),
