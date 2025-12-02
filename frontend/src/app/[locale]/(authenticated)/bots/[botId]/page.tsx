@@ -167,7 +167,7 @@ export default function BotDetailPage() {
     return tradeLogs.map((log) => ({
       id: log.id,
       timestamp: log.timestamp,
-      side: log.side, // ✅ side 필드 그대로 전달
+      side: log.side,
       price: log.price,
       quantity: log.quantity,
       pnl: log.pnl,

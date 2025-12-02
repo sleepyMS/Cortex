@@ -84,15 +84,42 @@ export function BotLogViewer({ logs }: BotLogViewerProps) {
 
   const formatLogMessage = (log: any) => {
     if (isSystemLog(log.side)) {
-      return log.reason || log.side.replace("BOT_", "").toLowerCase();
+      // 시스템 로그는 다국어 키로 변환
+      // BOT_DEPLOYED -> botDeployed, BOT_PAUSED -> botPaused
+      const eventName = log.side
+        .replace("BOT_", "")
+        .split("_")
+        .map((word: string, index: number) =>
+          index === 0
+            ? word.toLowerCase()
+            : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join("");
+
+      const translationKey = `systemLogs.bot${eventName
+        .charAt(0)
+        .toUpperCase()}${eventName.slice(1)}`;
+      return (
+        t(translationKey as any) ||
+        log.reason ||
+        log.side.replace("BOT_", "").toLowerCase()
+      );
     } else {
+      // 거래 로그는 다국어 적용
       const pnlText =
         log.pnl !== null && log.pnl !== undefined
           ? `PnL: ${log.pnl >= 0 ? "+" : ""}$${log.pnl.toFixed(2)}`
           : "PnL: N/A";
       const price = log.price?.toLocaleString() || "0";
       const quantity = log.quantity || 0;
-      return `${log.side} ${quantity} BTC @ $${price} | ${pnlText}`;
+
+      // 거래 타입 번역 (LONG_ENTRY -> longEntry)
+      const tradeTypeKey = log.side
+        .toLowerCase()
+        .replace(/_(.)/g, (_: string, letter: string) => letter.toUpperCase());
+      const tradeType = t(`types.${tradeTypeKey}` as any) || log.side;
+
+      return `${tradeType} ${quantity} BTC @ $${price} | ${pnlText}`;
     }
   };
 
