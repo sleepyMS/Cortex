@@ -675,12 +675,12 @@ def collect_bot_performance_snapshots():
                     try:
                         # 현재가 조회
                         from app.services.market_data_service import market_data_service
-                        latest_candle = await market_data_service.get_latest_ohlcv(
-                            db, bot.ticker, bot.execution_interval
+                        df = await market_data_service.get_latest_data(
+                            db, bot.ticker, bot.execution_interval, limit=1
                         )
                         
-                        if latest_candle:
-                            current_price = latest_candle.close
+                        if not df.empty:
+                            current_price = df.iloc[-1]['close']
                             
                             # 미실현 손익 계산
                             if bot.position_size > 0:  # Long position
@@ -697,6 +697,8 @@ def collect_bot_performance_snapshots():
                 equity = bot.current_balance or bot.initial_capital
                 if bot.position_size != 0 and current_price > 0:
                      equity = bot.current_balance + (abs(bot.position_size) * current_price)
+
+                logger.info(f"[Snapshot] Bot {bot.id}: Pos={bot.position_size}, Price={current_price}, Balance={bot.current_balance}, Equity={equity}")
 
                 # 실현 손익은 total_pnl
                 realized_pnl = bot.total_pnl

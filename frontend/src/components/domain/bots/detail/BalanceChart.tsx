@@ -30,7 +30,12 @@ export function BalanceChart({
 
   // If no performance data but we have current balance, create a single data point
   let chartData = performance.map((snapshot) => ({
-    date: new Date(snapshot.snapshotDate).toLocaleDateString(),
+    date: new Date(snapshot.snapshotDate).toLocaleString(undefined, {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
     balance: snapshot.balance,
     pnl: snapshot.realizedPnl,
   }));
@@ -46,7 +51,12 @@ export function BalanceChart({
       // No snapshots at all - show current state
       chartData = [
         {
-          date: now.toLocaleDateString(),
+          date: now.toLocaleString(undefined, {
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
           balance: currentBalance,
           pnl: currentBalance - initialCapital,
         },
@@ -93,6 +103,7 @@ export function BalanceChart({
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `$${value.toLocaleString()}`}
+                domain={["auto", "auto"]}
               />
               <Tooltip
                 content={({ active, payload }) => {

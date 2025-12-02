@@ -25,7 +25,7 @@ celery_app.conf.beat_schedule = {
     },
     'collect-bot-snapshots-hourly': {
         'task': 'collect_bot_performance_snapshots',
-        'schedule': crontab(minute='*/5'), 
+        'schedule': crontab(minute='*'), 
     },
     # 'collect-bot-snapshots-hourly': {
     #     'task': 'collect_bot_performance_snapshots',
