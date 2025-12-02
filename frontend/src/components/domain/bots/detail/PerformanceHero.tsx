@@ -34,6 +34,14 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
       ? ((bot.winningTrades / bot.totalTrades) * 100).toFixed(1)
       : "0.0";
 
+  // Calculate position value (unrealized PnL)
+  const positionValue =
+    bot.equity && bot.currentBalance ? bot.equity - bot.currentBalance : 0;
+
+  // Total equity should be currentBalance + positionValue
+  const totalEquity =
+    (bot.currentBalance ?? bot.initialCapital) + positionValue;
+
   return (
     <Card className={`border-none shadow-sm ${bgTint}`}>
       <CardContent className="p-8">
@@ -47,12 +55,7 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
                 {t("totalEquity")}
               </p>
               <div className="text-5xl font-bold tracking-tight">
-                $
-                {(
-                  bot.equity ??
-                  bot.currentBalance ??
-                  bot.initialCapital
-                ).toFixed(2)}
+                ${totalEquity.toFixed(2)}
               </div>
             </div>
 
@@ -73,24 +76,20 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span>{t("unrealizedPnl")}:</span>
+                  <span>{t("positionValue")}:</span>
                   <span
                     className={`font-mono ${
-                      bot.equity &&
-                      bot.currentBalance &&
-                      bot.equity - bot.currentBalance >= 0
+                      positionValue >= 0
                         ? "text-green-500"
-                        : bot.equity &&
-                          bot.currentBalance &&
-                          bot.equity - bot.currentBalance < 0
+                        : positionValue < 0
                         ? "text-red-500"
                         : "text-muted-foreground"
                     }`}
                   >
-                    {bot.equity && bot.currentBalance
-                      ? `${bot.equity - bot.currentBalance >= 0 ? "+" : ""}$${(
-                          bot.equity - bot.currentBalance
-                        ).toFixed(2)}`
+                    {positionValue !== 0
+                      ? `${
+                          positionValue >= 0 ? "+" : ""
+                        }$${positionValue.toFixed(2)}`
                       : "$0.00"}
                   </span>
                 </div>

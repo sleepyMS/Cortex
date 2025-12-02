@@ -2100,7 +2100,7 @@
       "totalEquity": "Total Equity",
       "cash": "Cash",
       "position": "Position",
-      "unrealizedPnl": "Unrealized PnL",
+      "positionValue": "Position Value",
       "types": {
         "longEntry": "Long Entry",
         "longExit": "Long Exit",

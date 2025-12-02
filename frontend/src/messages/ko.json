@@ -2132,7 +2132,7 @@
       "totalEquity": "총 자산",
       "cash": "현금",
       "position": "포지션",
-      "unrealizedPnl": "미실현 손익",
+      "positionValue": "포지션 평가 금액",
       "types": {
         "longEntry": "롱 진입",
         "longExit": "롱 청산",
