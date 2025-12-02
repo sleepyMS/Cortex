@@ -410,6 +410,7 @@ class LiveBot(Base):
     # Paper Trading & State Management Fields
     mode = Column(String(20), default='paper', nullable=False)
     current_balance = Column(Float, nullable=True)
+    equity = Column(Float, nullable=True, comment="총 자산 (현금 + 미실현 손익)")
     position_size = Column(Float, default=0.0, nullable=False)
     entry_price = Column(Float, nullable=True)
     last_signal = Column(String(20), nullable=True)

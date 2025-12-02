@@ -19,7 +19,7 @@ router = APIRouter(prefix="/live-bots", tags=["Live Bots"])
 get_verified_live_bot = create_owner_verifier(models.LiveBot, path_param_name="live_bot_id")
 
 @router.post("/", response_model=schemas.LiveBot, status_code=status.HTTP_201_CREATED, summary="Deploy and start a new live bot")
-@limiter.limit("10/hour")
+@limiter.limit("20/hour")
 async def create_live_bot(
     live_bot_create: schemas.LiveBotCreate,
     request: Request,

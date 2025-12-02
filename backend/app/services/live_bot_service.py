@@ -100,6 +100,32 @@ class LiveBotService:
         
         return await self.update_bot_status(db, loaded_bot, "active")
 
+    async def _calculate_equity(self, db: AsyncSession, bot: models.LiveBot) -> float:
+        """봇의 총 자산(equity) 계산"""
+        equity = bot.current_balance or bot.initial_capital
+        
+        if bot.position_size != 0 and bot.entry_price:
+            try:
+                from app.services.market_data_service import market_data_service
+                df = await market_data_service.get_latest_data(  
+                    db, bot.ticker, bot.execution_interval, limit=1
+                )
+                
+                if not df.empty:  
+                    current_price = df.iloc[-1]['close']  
+                    
+                    # 미실현 손익 계산
+                    if bot.position_size > 0:  # Long
+                        unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size) * bot.leverage
+                    else:  # Short
+                        unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size) * bot.leverage
+                    
+                    equity = bot.current_balance + unrealized_pnl
+            except Exception as e:
+                logger.warning(f"Failed to calculate equity for bot {bot.id}: {e}")
+        
+        return equity
+
     async def execute_bot_cycle(self, db: AsyncSession, bot: models.LiveBot) -> dict:
         """
         단일 봇의 매매 사이클(데이터 수집 -> 신호 생성 -> 주문 실행/시뮬레이션)을 실행합니다.
@@ -260,7 +286,11 @@ class LiveBotService:
             bot.last_signal = result['last_signal']
             bot.last_run_at = datetime.now(timezone.utc)
             
-            # ========== 추가: TP/SL 상태 저장 ==========
+            # ========== Equity 계산 및 저장 ==========
+            bot.equity = await self._calculate_equity(db, bot)
+            # ==============================================
+
+            # ========== TP/SL 상태 저장 ==========
             if hasattr(engine, 'sl_price'):
                 bot.sl_price = engine.sl_price
             if hasattr(engine, 'tp_price'):
@@ -397,35 +427,9 @@ class LiveBotService:
             raise HTTPException(status_code=404, detail="Bot not found")
         
         # === Equity 계산 (총 자산) ===
-        equity = bot.current_balance or bot.initial_capital
-        
-        if bot.position_size != 0 and bot.entry_price:
-            try:
-                from app.services.market_data_service import market_data_service
-                latest_candle = await market_data_service.get_latest_ohlcv(
-                    db, bot.ticker, bot.execution_interval
-                )
-                
-                if latest_candle:
-                    current_price = latest_candle.close
-                    
-                    # 포지션 가치
-                    position_value = abs(bot.position_size) * current_price
-                    
-                    # 미실현 손익
-                    if bot.position_size > 0:  # Long
-                        unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size) * bot.leverage
-                    else:  # Short
-                        unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size) * bot.leverage
-                    
-                    # Equity = 현금 + 포지션 가치 + 미실현 손익
-                    equity = bot.current_balance + position_value + unrealized_pnl
-            except Exception as e:
-                logger.warning(f"Failed to calculate equity for bot {bot_id}: {e}")
-        
+        equity = await self._calculate_equity(db, bot)
         # 동적 속성으로 추가 (DB에 저장 안 함)
         bot.equity = equity
-        
         return bot
 
 live_bot_service = LiveBotService()

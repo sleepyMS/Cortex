@@ -57,25 +57,25 @@ class RiskManager:
     
     async def update_drawdown(self, db: AsyncSession, bot: models.LiveBot):
         """최대 낙폭(MDD) 업데이트"""
-        if bot.current_balance is None:
+        if bot.equity is None:
             return
         
-        current_balance = bot.current_balance
+        current_equity = bot.equity
         
         # 최고점 갱신
-        if bot.peak_balance is None or current_balance > bot.peak_balance:
-            bot.peak_balance = current_balance
-            logger.debug(f"Bot {bot.id}: New peak balance: {bot.peak_balance:.2f}")
+        if bot.peak_balance is None or current_equity > bot.peak_balance:
+            bot.peak_balance = current_equity
+            logger.debug(f"Bot {bot.id}: New peak equity: {bot.peak_balance:.2f}")
         
         # MDD 계산
         if bot.peak_balance and bot.peak_balance > 0:
-            drawdown = ((bot.peak_balance - current_balance) / bot.peak_balance) * 100
+            drawdown = ((bot.peak_balance - current_equity) / bot.peak_balance) * 100
             if drawdown > bot.max_drawdown:
                 bot.max_drawdown = drawdown
                 logger.info(f"Bot {bot.id}: New max drawdown: {bot.max_drawdown:.2f}%")
         
         db.add(bot)
-    
+        
     async def update_trade_statistics(
         self, 
         db: AsyncSession, 

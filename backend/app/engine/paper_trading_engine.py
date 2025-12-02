@@ -83,20 +83,26 @@ class PaperTradingEngine(BacktestingEngine):
         if timestamp not in self.data.index:
             raise ValueError(f"Timestamp {timestamp} not found in data.")
 
-        # 해당 타임스탬프의 데이터 그룹 가져오기 (BacktestingEngine 로직과 동일하게 처리)
-        # self.data는 이미 ohlcv와 signal이 join된 상태
-        # groupby를 사용하여 원본 로직과 동일한 형태의 입력을 만듦
-        # (사실 인덱스가 유니크하다면 group은 1개 행일 것임)
+        # 해당 타임스탬프의 데이터 그룹 가져오기
         group = self.data.loc[[timestamp]]
         
         # 1스텝 실행
         self.process_single_step(timestamp, group)
         
+        # 현재가 가져오기
+        current_price = group.iloc[-1]['close']
+        
+        # Equity 계산 (총 자산 = 현금 + 포지션 평가 금액)
+        equity = self.balance
+        if self.position_type:
+            position_value = abs(self.position_size) * current_price
+            equity += position_value
+        
         # 업데이트된 상태 반환
         return {
-            "current_balance": self.balance,
+            "current_balance": equity,  # ✅ 총 자산(equity) 반환
             "position_size": self.position_size,
             "entry_price": self.entry_price if self.position_type else None,
-            "last_signal": group.iloc[-1].get('signal'), # 현재 캔들의 시그널
-            "trades": self.trade_logs # 이번 스텝에서 발생한 트레이드 로그 (있다면)
+            "last_signal": group.iloc[-1].get('signal'),
+            "trades": self.trade_logs
         }
