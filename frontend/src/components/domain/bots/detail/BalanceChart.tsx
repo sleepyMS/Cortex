@@ -80,7 +80,7 @@ export function BalanceChart({
       </CardHeader>
       <CardContent>
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={500}>
+          <ResponsiveContainer width="100%" height={330}>
             <LineChart
               data={chartData}
               margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
@@ -176,7 +176,7 @@ export function BalanceChart({
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[500px] flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+          <div className="h-[350px] flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
             <div className="rounded-full bg-muted p-4 mb-4">
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
             </div>

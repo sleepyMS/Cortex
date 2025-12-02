@@ -245,8 +245,18 @@ export default function BotDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Active Position Card (only shows if position exists) */}
-      <ActivePositionCard bot={botWithPnl} />
+      {/* Balance Chart and Active Position Grid (7:3) */}
+      <div className="grid gap-8 lg:grid-cols-[7fr_3fr]">
+        {/* Left: Balance Chart (70%) */}
+        <BalanceChart
+          performance={performance || []}
+          currentBalance={botWithPnl.equity ?? botWithPnl.currentBalance}
+          initialCapital={botWithPnl.initialCapital}
+        />
+
+        {/* Right: Active Position (30%) */}
+        <ActivePositionCard bot={botWithPnl} />
+      </div>
 
       {/* Logs and Strategy Settings Grid (7:3) */}
       <div className="grid gap-8 lg:grid-cols-[7fr_3fr]">
@@ -296,13 +306,6 @@ export default function BotDetailPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Balance Chart Section */}
-      <BalanceChart
-        performance={performance || []}
-        currentBalance={botWithPnl.equity ?? botWithPnl.currentBalance}
-        initialCapital={botWithPnl.initialCapital}
-      />
 
       {/* Bottom Section: Trade History Full Width */}
       <BotTradeHistory trades={tradeLogs || []} />

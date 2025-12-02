@@ -2090,6 +2090,8 @@
       },
       "lastError": "마지막 오류:",
       "activePosition": "활성 포지션",
+      "noActivePosition": "활성 포지션 없음",
+      "noActivePositionDescription": "현재 보유 중인 포지션이 없습니다. 전략 조건이 충족되면 자동으로 진입합니다.",
       "side": "포지션:",
       "size": "크기:",
       "entryPrice": "진입가:",

@@ -2058,6 +2058,8 @@
       },
       "lastError": "Last Error:",
       "activePosition": "Active Position",
+      "noActivePosition": "No active position",
+      "noActivePositionDescription": "No positions currently held. Automatically enters when the strategy conditions are met.",
       "side": "Side:",
       "size": "Size:",
       "entryPrice": "Entry Price:",

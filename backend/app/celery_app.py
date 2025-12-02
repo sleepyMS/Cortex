@@ -1,9 +1,16 @@
-
 # file: backend/app/celery_app.py
 
 import os
+import sys
 import uuid
 from celery import Celery, Task
+
+if "eventlet" in sys.argv:
+    try:
+        import eventlet
+        eventlet.monkey_patch()
+    except ImportError:
+        pass
 
 try:
     from eventlet import tpool
