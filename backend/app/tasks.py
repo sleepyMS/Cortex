@@ -666,8 +666,11 @@ def collect_bot_performance_snapshots():
             snapshot_time = datetime.now(timezone.utc)
             
             for bot in bots:
-                # 미실현 손익 계산 (포지션이 있는 경우)
+                # 변수 초기화
                 unrealized_pnl = 0.0
+                current_price = 0.0
+                
+                # 미실현 손익 및 현재가 조회
                 if bot.position_size != 0 and bot.entry_price:
                     try:
                         # 현재가 조회
@@ -687,14 +690,21 @@ def collect_bot_performance_snapshots():
                     except Exception as e:
                         logger.warning(f"Failed to calculate unrealized PnL for bot {bot.id}: {e}")
                         unrealized_pnl = 0.0
-                
+
+                # 총 자산(Equity) 계산
+                # 포지션이 있으면: 현금 + (수량 * 현재가)
+                # 포지션이 없으면: 현금 그대로
+                equity = bot.current_balance or bot.initial_capital
+                if bot.position_size != 0 and current_price > 0:
+                     equity = bot.current_balance + (abs(bot.position_size) * current_price)
+
                 # 실현 손익은 total_pnl
                 realized_pnl = bot.total_pnl
                 
                 snapshot = models.BotPerformanceSnapshot(
                     bot_id=bot.id,
                     snapshot_date=snapshot_time,
-                    balance=bot.current_balance or bot.initial_capital,
+                    balance=equity,
                     position_size=bot.position_size,
                     unrealized_pnl=unrealized_pnl,
                     realized_pnl=realized_pnl,

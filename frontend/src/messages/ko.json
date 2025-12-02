@@ -2133,6 +2133,8 @@
       "cash": "현금",
       "position": "포지션",
       "positionValue": "포지션 평가 금액",
+      "unrealizedPnL": "포지션 평가 손익",
+      "totalAssetChart": "총 자산 차트",
       "types": {
         "longEntry": "롱 진입",
         "longExit": "롱 청산",

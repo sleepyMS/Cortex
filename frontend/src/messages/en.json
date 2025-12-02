@@ -2101,6 +2101,8 @@
       "cash": "Cash",
       "position": "Position",
       "positionValue": "Position Value",
+      "unrealizedPnL": "Unrealized PnL",
+      "totalAssetChart": "Total Asset Chart",
       "types": {
         "longEntry": "Long Entry",
         "longExit": "Long Exit",

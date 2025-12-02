@@ -100,7 +100,7 @@ class PaperTradingEngine(BacktestingEngine):
         
         # 업데이트된 상태 반환
         return {
-            "current_balance": equity,  # ✅ 총 자산(equity) 반환
+            "current_balance": self.balance,
             "position_size": self.position_size,
             "entry_price": self.entry_price if self.position_type else None,
             "last_signal": group.iloc[-1].get('signal'),

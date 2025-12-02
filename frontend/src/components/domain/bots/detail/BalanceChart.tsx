@@ -52,21 +52,11 @@ export function BalanceChart({
         },
       ];
     } else {
-      // Check if last snapshot is older than 1 hour
-      const lastSnapshotDate = new Date(
-        performance[performance.length - 1].snapshotDate
-      );
-      const hoursSinceLastSnapshot =
-        (now.getTime() - lastSnapshotDate.getTime()) / (1000 * 60 * 60);
-
-      if (hoursSinceLastSnapshot >= 0.5) {
-        // Add current balance as the latest point
-        chartData.push({
-          date: now.toLocaleDateString() + " (Now)",
-          balance: currentBalance,
-          pnl: currentBalance - initialCapital,
-        });
-      }
+      chartData.push({
+        date: "Now",
+        balance: currentBalance,
+        pnl: currentBalance - initialCapital,
+      });
     }
   }
 
@@ -75,7 +65,7 @@ export function BalanceChart({
       <CardHeader className="pb-4">
         <CardTitle className="text-lg flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          Balance Chart
+          {t("totalAssetChart")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -157,7 +147,7 @@ export function BalanceChart({
                     : false
                 }
                 activeDot={{ r: 6, strokeWidth: 0 }}
-                name="Balance"
+                name={t("totalEquity")}
               />
               {entryPrice && (
                 <ReferenceLine

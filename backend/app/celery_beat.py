@@ -25,8 +25,12 @@ celery_app.conf.beat_schedule = {
     },
     'collect-bot-snapshots-hourly': {
         'task': 'collect_bot_performance_snapshots',
-        'schedule': crontab(minute=0),  # 매시 정각
+        'schedule': crontab(minute='*/5'), 
     },
+    # 'collect-bot-snapshots-hourly': {
+    #     'task': 'collect_bot_performance_snapshots',
+    #     'schedule': crontab(minute=0),  # 매시 정각
+    # },
     # --- 자동매매 봇 관리를 위한 스케줄 추가 ---
     'run-all-active-bots-every-minute': {
         'task': 'run_all_active_bots',

@@ -186,16 +186,20 @@ export default function BotDetailPage() {
     });
   }, [tradeLogs, bot?.ticker]);
 
-  const estimatedUnrealizedPnl =
-    bot &&
-    bot.positionSize !== 0 &&
-    bot.entryPrice &&
-    performance &&
-    performance.length > 0
-      ? performance[performance.length - 1].balance -
-        bot.initialCapital -
-        bot.totalPnl
-      : 0;
+  // 차트 데이터(ohlcvData)의 현재가를 사용하여 정확한 미실현 손익 계산
+  const estimatedUnrealizedPnl = useMemo(() => {
+    if (
+      !bot ||
+      bot.positionSize === 0 ||
+      !bot.entryPrice ||
+      !ohlcvData ||
+      ohlcvData.length === 0
+    ) {
+      return 0;
+    }
+    const currentPrice = ohlcvData[ohlcvData.length - 1].close;
+    return (currentPrice - bot.entryPrice) * bot.positionSize;
+  }, [bot, ohlcvData]);
 
   const botWithPnl = bot
     ? { ...bot, unrealizedPnl: bot.unrealizedPnl ?? estimatedUnrealizedPnl }
@@ -296,7 +300,7 @@ export default function BotDetailPage() {
       {/* Balance Chart Section */}
       <BalanceChart
         performance={performance || []}
-        currentBalance={botWithPnl.currentBalance}
+        currentBalance={botWithPnl.equity ?? botWithPnl.currentBalance}
         initialCapital={botWithPnl.initialCapital}
       />
 

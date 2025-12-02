@@ -34,13 +34,21 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
       ? ((bot.winningTrades / bot.totalTrades) * 100).toFixed(1)
       : "0.0";
 
-  // Calculate position value (unrealized PnL)
-  const positionValue =
-    bot.equity && bot.currentBalance ? bot.equity - bot.currentBalance : 0;
+  // 백엔드에서 받은 값
+  const cash = bot.currentBalance ?? bot.initialCapital; // 현금
+  const totalEquity = bot.equity ?? cash; // 총 자산
 
-  // Total equity should be currentBalance + positionValue
-  const totalEquity =
-    (bot.currentBalance ?? bot.initialCapital) + positionValue;
+  // 포지션 평가 금액 계산
+  const positionValue = totalEquity - cash;
+
+  // 미실현 손익 계산 (포지션이 있을 때만)
+  let unrealizedPnL = 0;
+  if (bot.positionSize && bot.entryPrice && bot.positionSize !== 0) {
+    // 여기서 현재가를 알아야 하는데... 이건 별도로 계산 필요
+    // 일단은 positionValue - (abs(positionSize) * entryPrice)로 근사
+    const positionCost = Math.abs(bot.positionSize) * bot.entryPrice;
+    unrealizedPnL = positionValue - positionCost;
+  }
 
   return (
     <Card className={`border-none shadow-sm ${bgTint}`}>
@@ -68,6 +76,8 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
                     ${(bot.currentBalance ?? bot.initialCapital).toFixed(2)}
                   </span>
                 </div>
+
+                {/* 현금 */}
                 <div className="flex items-center gap-2">
                   <span>{t("position")}:</span>
                   <span className="font-mono">
@@ -75,6 +85,8 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
                     {bot.ticker.replace("USDT", "")}
                   </span>
                 </div>
+
+                {/* 포지션 평가 금액 */}
                 <div className="flex items-center gap-2">
                   <span>{t("positionValue")}:</span>
                   <span
@@ -87,10 +99,20 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
                     }`}
                   >
                     {positionValue !== 0
-                      ? `${
-                          positionValue >= 0 ? "+" : ""
-                        }$${positionValue.toFixed(2)}`
+                      ? `$${positionValue.toFixed(2)}`
                       : "$0.00"}
+                  </span>
+                </div>
+
+                {/* 포지션 평가 손익 */}
+                <div className="flex items-center gap-2">
+                  <span>{t("unrealizedPnL")}:</span>
+                  <span
+                    className={`font-mono ${
+                      unrealizedPnL >= 0 ? "text-green-500" : "text-red-500"
+                    }`}
+                  >
+                    {unrealizedPnL >= 0 ? "+" : "-"}${unrealizedPnL.toFixed(2)}
                   </span>
                 </div>
               </div>
