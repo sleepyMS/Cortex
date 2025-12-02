@@ -164,27 +164,16 @@ export default function BotDetailPage() {
   const systemLogs: SystemLog[] = useMemo(() => {
     if (!tradeLogs) return [];
 
-    return tradeLogs.map((log) => {
-      const pnlText =
-        log.pnl != null
-          ? `${log.pnl >= 0 ? "+" : ""}$${log.pnl.toFixed(2)}`
-          : "N/A";
-
-      const priceText =
-        log.price != null ? `$${log.price.toLocaleString()}` : "N/A";
-
-      return {
-        id: log.id,
-        timestamp: log.timestamp,
-        level: log.side === "BUY" ? "SUCCESS" : "INFO",
-        message: `${log.side} order executed`,
-        details: `${log.side} ${log.quantity} ${bot?.ticker?.replace(
-          "USDT",
-          ""
-        )} @ ${priceText} | PnL: ${pnlText}`,
-      };
-    });
-  }, [tradeLogs, bot?.ticker]);
+    return tradeLogs.map((log) => ({
+      id: log.id,
+      timestamp: log.timestamp,
+      side: log.side, // ✅ side 필드 그대로 전달
+      price: log.price,
+      quantity: log.quantity,
+      pnl: log.pnl,
+      reason: log.reason,
+    }));
+  }, [tradeLogs]);
 
   // 차트 데이터(ohlcvData)의 현재가를 사용하여 정확한 미실현 손익 계산
   const estimatedUnrealizedPnl = useMemo(() => {

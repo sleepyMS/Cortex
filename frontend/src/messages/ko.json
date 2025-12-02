@@ -2129,6 +2129,12 @@
       "performance": "성과",
       "liveLogs": "실시간 로그",
       "waitingForLogs": "로그 대기 중...",
+      "systemLogs": {
+        "botDeployed": "봇이 배포되었습니다",
+        "botPaused": "봇이 일시정지되었습니다",
+        "botResumed": "봇이 재시작되었습니다",
+        "botStopped": "봇이 중지되었습니다"
+      },
       "recentTrades": "최근 거래",
       "noTrades": "아직 체결된 거래가 없습니다.",
       "totalEquity": "총 자산",

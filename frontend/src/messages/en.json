@@ -2097,6 +2097,12 @@
       "performance": "Performance",
       "liveLogs": "Live Logs",
       "waitingForLogs": "Waiting for logs...",
+      "systemLogs": {
+        "botDeployed": "Bot has been deployed",
+        "botPaused": "Bot has been paused",
+        "botResumed": "Bot has been resumed",
+        "botStopped": "Bot has been stopped"
+      },
       "recentTrades": "Recent Trades",
       "noTrades": "No trades executed yet.",
       "totalEquity": "Total Equity",

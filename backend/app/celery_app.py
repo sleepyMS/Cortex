@@ -8,7 +8,7 @@ from celery import Celery, Task
 if "eventlet" in sys.argv:
     try:
         import eventlet
-        eventlet.monkey_patch()
+        eventlet.monkey_patch(thread=False)
     except ImportError:
         pass
 

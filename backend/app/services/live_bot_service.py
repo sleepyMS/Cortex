@@ -98,6 +98,20 @@ class LiveBotService:
         )
         loaded_bot = result.scalar_one()
         
+        # 시스템 로그: 봇 배포 이벤트
+        deploy_log = models.TradeLog(
+            live_bot_id=loaded_bot.id,
+            timestamp=datetime.now(timezone.utc),
+            side="BOT_DEPLOYED",
+            price=0.0,
+            quantity=0.0,
+            commission=0.0,
+            pnl=0.0,
+            current_balance=live_bot_create.initial_capital or 0.0,
+            reason=f"Bot deployed: {live_bot_create.mode} mode"
+        )
+        db.add(deploy_log)
+        
         return await self.update_bot_status(db, loaded_bot, "active")
 
     async def _calculate_equity(self, db: AsyncSession, bot: models.LiveBot) -> float:
@@ -363,13 +377,55 @@ class LiveBotService:
         
         if bot_to_update.status in ['stopped', 'error']:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"'{bot_to_update.status}' 상태의 봇은 제어할 수 없습니다.")
-        
+
+        if new_status == "paused":
+            # 시스템 로그: 봇 일시정지 이벤트
+            pause_log = models.TradeLog(
+                live_bot_id=bot_to_update.id,
+                timestamp=datetime.now(timezone.utc),
+                side="BOT_PAUSED",
+                price=0.0,
+                quantity=0.0,
+                commission=0.0,
+                pnl=0.0,
+                current_balance=bot_to_update.current_balance or 0.0,
+                reason="Bot paused by user"
+            )
+            db.add(pause_log)
+        elif new_status == "active" and bot_to_update.status == "paused":
+            # 시스템 로그: 봇 재시작 이벤트
+            resume_log = models.TradeLog(
+                live_bot_id=bot_to_update.id,
+                timestamp=datetime.now(timezone.utc),
+                side="BOT_RESUMED",
+                price=0.0,
+                quantity=0.0,
+                commission=0.0,
+                pnl=0.0,
+                current_balance=bot_to_update.current_balance or 0.0,
+                reason="Bot resumed by user"
+            )
+            db.add(resume_log)    
         if new_status == "stopped":
             if bot_to_update.celery_task_id:
                 # Celery 태스크를 중지시키는 핵심 로직
                 celery_app.control.revoke(str(bot_to_update.celery_task_id), terminate=True)
                 bot_to_update.stopped_at = datetime.now(timezone.utc)
                 logger.info(f"LiveBot ID {bot_to_update.id} (Task ID: {bot_to_update.celery_task_id}) received 'stop' command.")
+
+                # 시스템 로그: 봇 중지 이벤트
+                stop_log = models.TradeLog(
+                    live_bot_id=bot_to_update.id,
+                    timestamp=datetime.now(timezone.utc),
+                    side="BOT_STOPPED",
+                    price=0.0,
+                    quantity=0.0,
+                    commission=0.0,
+                    pnl=0.0,
+                    current_balance=bot_to_update.current_balance or 0.0,
+                    reason="Bot manually stopped by user"
+                )
+                db.add(stop_log)
             else:
                 # Task ID가 없는 경우
                 logger.warning(f"LiveBot ID {bot_to_update.id} has no Celery Task ID but was marked as stopped.")
