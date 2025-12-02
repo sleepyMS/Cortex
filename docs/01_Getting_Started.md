@@ -77,7 +77,7 @@ docker-compose up -d
 # 실제 배포시에는 eventlet과 같은 다중 비동기로 변경
 cd backend
 .\venv\Scripts\activate
-celery -A app.celery_app worker -l info -Q io_bound_queue -P eventlet -c 1000
+celery -A app.celery_app worker -l info -Q io_bound_queue -P eventlet -c 100
 
 cd backend
 .\venv\Scripts\activate
@@ -89,6 +89,43 @@ celery -A app.celery_app worker -l info -Q cpu_bound_queue -P solo
 # 5. Celery Beat 실행 (별도 터미널에서)
 cd backend
 .\venv\Scripts\activate
+celery -A app.celery_app beat -l info
+
+
+# 정리
+# Windows (현재 개발 환경)
+# I/O Worker
+celery -A app.celery_app worker -l info -Q io_bound_queue -P eventlet -c 100
+
+# CPU Worker
+celery -A app.celery_app worker -l info -Q cpu_bound_queue -P solo
+
+#Linux/Ubuntu (배포 환경)
+# I/O Worker (동일)
+celery -A app.celery_app worker -l info -Q io_bound_queue -P eventlet -c 100
+
+# CPU Worker (prefork 권장)
+celery -A app.celery_app worker -l info -Q cpu_bound_queue -P prefork --concurrency=4
+
+
+# Linux/Ubuntu (Production)
+# I/O Worker (Eventlet)
+celery -A app.celery_app worker \
+  -l info \
+  -Q io_bound_queue \
+  -P eventlet \
+  -c 100 \
+  --max-tasks-per-child=1000
+
+# CPU Worker (Prefork - 멀티코어 활용)
+celery -A app.celery_app worker \
+  -l info \
+  -Q cpu_bound_queue \
+  -P prefork \
+  --concurrency=4 \
+  --max-tasks-per-child=100
+
+# Beat Scheduler
 celery -A app.celery_app beat -l info
 ```
 

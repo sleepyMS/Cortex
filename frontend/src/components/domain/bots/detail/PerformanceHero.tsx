@@ -39,17 +39,63 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
       <CardContent className="p-8">
         {/* Row 1: Main Balance + Mode Info */}
         <div className="flex items-start justify-between mb-8 pb-6 border-b">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              {t("currentBalance")}
-            </p>
-            <div className="text-5xl font-bold tracking-tight">
-              ${(bot.currentBalance || bot.initialCapital).toFixed(2)}
+          <div className="flex items-start gap-8">
+            {/* Left: Main Equity Display */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                {t("totalEquity")}
+              </p>
+              <div className="text-5xl font-bold tracking-tight">
+                $
+                {(
+                  bot.equity ??
+                  bot.currentBalance ??
+                  bot.initialCapital
+                ).toFixed(2)}
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Initial: ${bot.initialCapital.toFixed(2)}
-            </p>
+
+            {/* Right: Breakdown Details */}
+            <div className="flex-1 flex items-center">
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>{t("cash")}:</span>
+                  <span className="font-mono">
+                    ${(bot.currentBalance ?? bot.initialCapital).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>{t("position")}:</span>
+                  <span className="font-mono">
+                    {Math.abs(bot.positionSize).toFixed(4)}{" "}
+                    {bot.ticker.replace("USDT", "")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>{t("unrealizedPnl")}:</span>
+                  <span
+                    className={`font-mono ${
+                      bot.equity &&
+                      bot.currentBalance &&
+                      bot.equity - bot.currentBalance >= 0
+                        ? "text-green-500"
+                        : bot.equity &&
+                          bot.currentBalance &&
+                          bot.equity - bot.currentBalance < 0
+                        ? "text-red-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {bot.equity && bot.currentBalance
+                      ? `${bot.equity - bot.currentBalance >= 0 ? "+" : ""}$${(
+                          bot.equity - bot.currentBalance
+                        ).toFixed(2)}`
+                      : "$0.00"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Mode & Exchange Info */}

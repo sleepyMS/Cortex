@@ -35,15 +35,39 @@ export function BalanceChart({
     pnl: snapshot.realizedPnl,
   }));
 
-  // Fallback: if no performance data but bot has started, show current state
-  if (chartData.length === 0 && currentBalance != null) {
-    chartData = [
-      {
-        date: new Date().toLocaleDateString(),
-        balance: currentBalance,
-        pnl: currentBalance - (initialCapital ?? currentBalance),
-      },
-    ];
+  // Append current balance as the latest point if:
+  // 1. We have current balance data
+  // 2. Either no snapshots exist OR last snapshot is older than 1 hour
+  if (currentBalance != null && initialCapital != null) {
+    const now = new Date();
+    const lastSnapshot = chartData[chartData.length - 1];
+
+    if (!lastSnapshot) {
+      // No snapshots at all - show current state
+      chartData = [
+        {
+          date: now.toLocaleDateString(),
+          balance: currentBalance,
+          pnl: currentBalance - initialCapital,
+        },
+      ];
+    } else {
+      // Check if last snapshot is older than 1 hour
+      const lastSnapshotDate = new Date(
+        performance[performance.length - 1].snapshotDate
+      );
+      const hoursSinceLastSnapshot =
+        (now.getTime() - lastSnapshotDate.getTime()) / (1000 * 60 * 60);
+
+      if (hoursSinceLastSnapshot >= 0.5) {
+        // Add current balance as the latest point
+        chartData.push({
+          date: now.toLocaleDateString() + " (Now)",
+          balance: currentBalance,
+          pnl: currentBalance - initialCapital,
+        });
+      }
+    }
   }
 
   return (

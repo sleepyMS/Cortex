@@ -669,9 +669,24 @@ def collect_bot_performance_snapshots():
                 # 미실현 손익 계산 (포지션이 있는 경우)
                 unrealized_pnl = 0.0
                 if bot.position_size != 0 and bot.entry_price:
-                    # TODO: 현재가 조회하여 정확한 미실현 손익 계산
-                    # 현재는 간단히 0으로 설정
-                    unrealized_pnl = 0.0
+                    try:
+                        # 현재가 조회
+                        from app.services.market_data_service import market_data_service
+                        latest_candle = await market_data_service.get_latest_ohlcv(
+                            db, bot.ticker, bot.execution_interval
+                        )
+                        
+                        if latest_candle:
+                            current_price = latest_candle.close
+                            
+                            # 미실현 손익 계산
+                            if bot.position_size > 0:  # Long position
+                                unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size) * bot.leverage
+                            else:  # Short position
+                                unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size) * bot.leverage
+                    except Exception as e:
+                        logger.warning(f"Failed to calculate unrealized PnL for bot {bot.id}: {e}")
+                        unrealized_pnl = 0.0
                 
                 # 실현 손익은 total_pnl
                 realized_pnl = bot.total_pnl

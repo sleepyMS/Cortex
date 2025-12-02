@@ -396,6 +396,36 @@ class LiveBotService:
         if not bot:
             raise HTTPException(status_code=404, detail="Bot not found")
         
+        # === Equity 계산 (총 자산) ===
+        equity = bot.current_balance or bot.initial_capital
+        
+        if bot.position_size != 0 and bot.entry_price:
+            try:
+                from app.services.market_data_service import market_data_service
+                latest_candle = await market_data_service.get_latest_ohlcv(
+                    db, bot.ticker, bot.execution_interval
+                )
+                
+                if latest_candle:
+                    current_price = latest_candle.close
+                    
+                    # 포지션 가치
+                    position_value = abs(bot.position_size) * current_price
+                    
+                    # 미실현 손익
+                    if bot.position_size > 0:  # Long
+                        unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size) * bot.leverage
+                    else:  # Short
+                        unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size) * bot.leverage
+                    
+                    # Equity = 현금 + 포지션 가치 + 미실현 손익
+                    equity = bot.current_balance + position_value + unrealized_pnl
+            except Exception as e:
+                logger.warning(f"Failed to calculate equity for bot {bot_id}: {e}")
+        
+        # 동적 속성으로 추가 (DB에 저장 안 함)
+        bot.equity = equity
+        
         return bot
 
 live_bot_service = LiveBotService()

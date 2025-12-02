@@ -32,6 +32,7 @@ export interface LiveBot {
   status: string;
   mode: string;
   currentBalance: number | null;
+  equity?: number | null;
   positionSize: number;
   entryPrice: number | null;
   lastSignal: string | null;

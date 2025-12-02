@@ -5,6 +5,12 @@ import os
 import uuid
 from celery import Celery, Task
 
+try:
+    from eventlet import tpool
+    tpool.set_num_threads(100)  # 기본 20 → 100
+except ImportError:
+    pass  # Eventlet 없으면 무시 (solo worker 등)
+
 from .config import settings
 from app.database import SyncSessionLocal
 from app.models import Backtest

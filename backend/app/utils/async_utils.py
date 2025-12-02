@@ -1,33 +1,24 @@
+# async_utils.py
+import eventlet
+from eventlet import tpool
 import asyncio
-import threading
 from typing import TypeVar, Awaitable
 
 T = TypeVar("T")
 
 def run_async(coro: Awaitable[T]) -> T:
     """
-    별도의 스레드에서 asyncio 루프를 실행하여 Eventlet과의 충돌을 원천 차단합니다.
-    이 함수는 Celery Worker (Eventlet/Solo) 환경에서 안전하게 비동기 코드를 동기적으로 실행할 때 사용합니다.
+    Eventlet 환경에서 asyncio 코루틴을 안전하게 실행합니다.
+    별도의 OS 스레드 풀에서 asyncio를 실행하여 Eventlet과의 충돌을 방지합니다.
     """
-    result = []
-    error = []
-    
-    def target():
-        # 새 스레드에서 새 루프 생성
+    def _run_in_thread():
+        # 완전히 새로운 OS 스레드에서 asyncio 실행
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            res = loop.run_until_complete(coro)
-            result.append(res)
-        except Exception as e:
-            error.append(e)
+            return loop.run_until_complete(coro)
         finally:
             loop.close()
-            
-    t = threading.Thread(target=target)
-    t.start()
-    t.join()
     
-    if error:
-        raise error[0]
-    return result[0]
+    # Eventlet의 스레드 풀에서 실행 (greenlet과 분리)
+    return tpool.execute(_run_in_thread)

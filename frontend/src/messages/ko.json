@@ -2125,11 +2125,14 @@
       "chartTitle": "실시간 차트",
       "noPerformanceData": "아직 성과 데이터가 없습니다",
       "performance": "성과",
-
       "liveLogs": "실시간 로그",
       "waitingForLogs": "로그 대기 중...",
       "recentTrades": "최근 거래",
       "noTrades": "아직 체결된 거래가 없습니다.",
+      "totalEquity": "총 자산",
+      "cash": "현금",
+      "position": "포지션",
+      "unrealizedPnl": "미실현 손익",
       "types": {
         "longEntry": "롱 진입",
         "longExit": "롱 청산",

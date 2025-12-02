@@ -684,6 +684,7 @@ class LiveBot(CamelCaseModel):
 
     mode: str
     current_balance: Optional[float] = None
+    equity: Optional[float] = None
     position_size: float = 0.0
     entry_price: Optional[float] = None
     last_signal: Optional[str] = None
