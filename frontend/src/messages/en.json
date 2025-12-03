@@ -2138,7 +2138,32 @@
         "deleted": "Bot deleted successfully",
         "panicSellExecuted": "Panic sell executed",
         "positionsClosed": "All positions have been closed"
-      }
+      },
+      "pnlLabel": "PnL",
+      "pnlNA": "PnL: N/A",
+      "tradeFormat": "{quantity} BTC @ ${price}",
+      "waitingSystemEvents": "$ waiting for system events...",
+      "noOpenPositions": "No open positions",
+      "unrealizedPnl": "Unrealized PnL",
+      "performanceIndicator": "Performance Indicator",
+      "totalTradesCount": "Total {count} trades",
+      "rowsPerPage": "Rows per page",
+      "pageOf": "Page {current} of {total}",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "tradeHistoryHint": "Trade history will appear here once your bot starts executing trades",
+      "unknownStrategy": "Unknown Strategy",
+      "paperMode": "📄 Paper",
+      "liveMode": "🔴 Live",
+      "notAvailable": "N/A",
+      "openMenu": "Open menu",
+      "bots": "Bots",
+      "tradingMode": "Trading Mode",
+      "paperTradingMode": "Paper Trading",
+      "liveTradingMode": "Live Trading",
+      "exchange": "Exchange",
+      "tradesCount": "{winning} / {total} trades",
+      "riskLevel": "Risk Level"
     }
   }
 }

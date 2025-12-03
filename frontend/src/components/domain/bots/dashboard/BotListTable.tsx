@@ -167,13 +167,17 @@ export function BotListTable() {
                 </TableCell>
                 <TableCell className="font-medium">
                   <Link href={`/bots/${bot.id}`} className="hover:underline">
-                    {bot.strategy?.name || "Unknown Strategy"}
+                    {bot.strategy?.name || tDetail("unknownStrategy")}
                   </Link>
                   <div className="text-xs text-muted-foreground">
-                    {bot.mode === "paper" ? "📄 Paper" : "🔴 Live"}
+                    {bot.mode === "paper"
+                      ? tDetail("paperMode")
+                      : tDetail("liveMode")}
                   </div>
                 </TableCell>
-                <TableCell>{bot.strategy?.name || "N/A"}</TableCell>
+                <TableCell>
+                  {bot.strategy?.name || tDetail("notAvailable")}
+                </TableCell>
                 <TableCell>{bot.ticker}</TableCell>
                 <TableCell className="text-right">
                   <div
@@ -199,7 +203,7 @@ export function BotListTable() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{tDetail("openMenu")}</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

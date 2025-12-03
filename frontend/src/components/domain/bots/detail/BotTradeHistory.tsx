@@ -295,11 +295,13 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
             {/* Pagination */}
             <div className="flex items-center justify-between space-x-2 py-4">
               <span className="text-sm text-muted-foreground">
-                Total {table.getFilteredRowModel().rows.length} trades
+                {t("totalTradesCount", {
+                  count: table.getFilteredRowModel().rows.length,
+                })}
               </span>
               <div className="flex items-center space-x-6 lg:space-x-8">
                 <div className="flex items-center space-x-2">
-                  <p className="text-sm font-medium">Rows per page</p>
+                  <p className="text-sm font-medium">{t("rowsPerPage")}</p>
                   <Select
                     value={`${table.getState().pagination.pageSize}`}
                     onValueChange={(value) => table.setPageSize(Number(value))}
@@ -319,8 +321,10 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
                   </Select>
                 </div>
                 <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                  Page {table.getState().pagination.pageIndex + 1} of{" "}
-                  {table.getPageCount()}
+                  {t("pageOf", {
+                    current: table.getState().pagination.pageIndex + 1,
+                    total: table.getPageCount(),
+                  })}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button
@@ -329,7 +333,7 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                   >
-                    <span className="sr-only">Previous page</span>
+                    <span className="sr-only">{t("previousPage")}</span>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <Button
@@ -338,7 +342,7 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                   >
-                    <span className="sr-only">Next page</span>
+                    <span className="sr-only">{t("nextPage")}</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -354,8 +358,7 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
               {t("noTrades")}
             </p>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Trade history will appear here once your bot starts executing
-              trades
+              {t("tradeHistoryHint")}
             </p>
           </div>
         )}

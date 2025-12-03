@@ -108,8 +108,8 @@ export function BotLogViewer({ logs }: BotLogViewerProps) {
       // 거래 로그는 다국어 적용
       const pnlText =
         log.pnl !== null && log.pnl !== undefined
-          ? `PnL: ${log.pnl >= 0 ? "+" : ""}$${log.pnl.toFixed(2)}`
-          : "PnL: N/A";
+          ? `${t("pnlLabel")}: ${log.pnl >= 0 ? "+" : ""}$${log.pnl.toFixed(2)}`
+          : t("pnlNA");
       const price = log.price?.toLocaleString() || "0";
       const quantity = log.quantity || 0;
 
@@ -224,7 +224,7 @@ export function BotLogViewer({ logs }: BotLogViewerProps) {
                   isDark ? "text-slate-500" : "text-gray-500"
                 }`}
               >
-                $ waiting for system events...
+                {t("waitingSystemEvents")}
               </p>
             </div>
           )}

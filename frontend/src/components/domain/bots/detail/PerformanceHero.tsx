@@ -122,15 +122,17 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
           {/* Mode & Exchange Info */}
           <div className="text-right space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Trading Mode
+              {t("tradingMode")}
             </p>
             <p className="text-sm font-medium">
-              {bot.mode === "paper" ? "Paper Trading" : "Live Trading"}
+              {bot.mode === "paper"
+                ? t("paperTradingMode")
+                : t("liveTradingMode")}
             </p>
             {bot.apiKey && (
               <>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mt-2">
-                  Exchange
+                  {t("exchange")}
                 </p>
                 <p className="text-sm font-medium">{bot.apiKey.exchange}</p>
               </>
@@ -170,7 +172,10 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
             </p>
             <div className="text-2xl font-bold">{winRate}%</div>
             <p className="text-sm text-muted-foreground">
-              {bot.winningTrades} / {bot.totalTrades} trades
+              {t("tradesCount", {
+                winning: bot.winningTrades,
+                total: bot.totalTrades,
+              })}
             </p>
           </div>
 
@@ -183,7 +188,7 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
             <div className="text-2xl font-bold text-red-500">
               {bot.maxDrawdown.toFixed(2)}%
             </div>
-            <p className="text-sm text-muted-foreground">Risk Level</p>
+            <p className="text-sm text-muted-foreground">{t("riskLevel")}</p>
           </div>
         </div>
       </CardContent>

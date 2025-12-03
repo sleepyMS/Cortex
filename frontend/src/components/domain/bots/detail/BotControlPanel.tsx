@@ -16,7 +16,7 @@ export function BotControlPanel({ bot }: BotControlPanelProps) {
       <Card className="h-full border-dashed bg-muted/30">
         <CardContent className="h-full flex flex-col items-center justify-center p-6 text-muted-foreground">
           <p className="font-medium">{t("activePosition")}</p>
-          <p className="text-sm mt-1">No open positions</p>
+          <p className="text-sm mt-1">{t("noOpenPositions")}</p>
         </CardContent>
       </Card>
     );
@@ -50,7 +50,9 @@ export function BotControlPanel({ bot }: BotControlPanelProps) {
         <div className="p-6 space-y-6">
           {/* Main PnL Display */}
           <div className="text-center space-y-1">
-            <p className="text-sm text-muted-foreground">Unrealized PnL</p>
+            <p className="text-sm text-muted-foreground">
+              {t("unrealizedPnl")}
+            </p>
             <div className={`text-3xl font-bold ${pnlColor}`}>
               {(bot.unrealizedPnl || 0) >= 0 ? "+" : "-"}$
               {Math.abs(bot.unrealizedPnl || 0).toFixed(2)}

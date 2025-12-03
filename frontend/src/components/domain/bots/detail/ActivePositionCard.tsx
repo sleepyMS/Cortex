@@ -45,7 +45,7 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
             {/* Main PnL Display */}
             <div className="text-center space-y-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                Unrealized PnL
+                {t("unrealizedPnl")}
               </p>
               <div
                 className={`text-4xl font-bold ${pnlColor} flex items-center justify-center gap-2`}
@@ -78,7 +78,7 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
                 />
               </div>
               <p className="text-xs text-center text-muted-foreground">
-                Performance Indicator
+                {t("performanceIndicator")}
               </p>
             </div>
 

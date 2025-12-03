@@ -2170,7 +2170,32 @@
         "deleted": "봇이 삭제되었습니다",
         "panicSellExecuted": "패닉 셀이 실행되었습니다",
         "positionsClosed": "모든 포지션이 청산되었습니다"
-      }
+      },
+      "pnlLabel": "손익",
+      "pnlNA": "손익: 해당없음",
+      "tradeFormat": "{quantity} BTC @ ${price}",
+      "waitingSystemEvents": "$ 시스템 이벤트 대기 중...",
+      "noOpenPositions": "열린 포지션 없음",
+      "unrealizedPnl": "미실현 손익",
+      "performanceIndicator": "성과 지표",
+      "totalTradesCount": "총 {count}개 거래",
+      "rowsPerPage": "페이지 당 행",
+      "pageOf": "{total} 중 {current} 페이지",
+      "previousPage": "이전 페이지",
+      "nextPage": "다음 페이지",
+      "tradeHistoryHint": "봇이 거래를 시작하면 거래 내역이 여기에 표시됩니다",
+      "unknownStrategy": "알 수 없는 전략",
+      "paperMode": "📄 모의 투자",
+      "liveMode": "🔴 실전 투자",
+      "notAvailable": "해당없음",
+      "openMenu": "메뉴 열기",
+      "bots": "봇",
+      "tradingMode": "트레이딩 모드",
+      "paperTradingMode": "모의 투자",
+      "liveTradingMode": "실전 투자",
+      "exchange": "거래소",
+      "tradesCount": "{winning}승 / {total}회 거래",
+      "riskLevel": "위험 수준"
     }
   }
 }

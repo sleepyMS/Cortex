@@ -90,7 +90,7 @@ export function BotHeader({ bot }: BotHeaderProps) {
             href="/bots"
             className="hover:text-foreground transition-colors"
           >
-            Bots
+            {t("bots")}
           </Link>
           <ChevronRight className="h-4 w-4 mx-1" />
           <span className="font-medium text-foreground">
