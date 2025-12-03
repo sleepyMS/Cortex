@@ -50,10 +50,11 @@ def collect_bot_performance_snapshots_sync():
                         current_price = df.iloc[-1]['close']
                         
                         # 미실현 손익 계산
+                        # 미실현 손익 계산
                         if bot.position_size > 0:  # Long position
-                            unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size) * bot.leverage
+                            unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size)
                         else:  # Short position
-                            unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size) * bot.leverage
+                            unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size)
                 except Exception as e:
                     logger.warning(f"Failed to calculate unrealized PnL for bot {bot.id}: {e}")
                     unrealized_pnl = 0.0
@@ -61,7 +62,9 @@ def collect_bot_performance_snapshots_sync():
             # 총 자산(Equity) 계산
             equity = bot.current_balance or bot.initial_capital
             if bot.position_size != 0 and current_price > 0:
-                 equity = bot.current_balance + (abs(bot.position_size) * current_price)
+                 # Equity = Balance + Invested Capital + Unrealized PnL
+                 invested_capital = abs(bot.position_size) * bot.entry_price
+                 equity = bot.current_balance + invested_capital + unrealized_pnl
 
             logger.info(f"[Snapshot] Bot {bot.id}: Pos={bot.position_size}, Price={current_price}, Balance={bot.current_balance}, Equity={equity}")
 

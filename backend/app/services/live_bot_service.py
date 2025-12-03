@@ -128,10 +128,16 @@ class LiveBotService:
                 if not df.empty:  
                     current_price = df.iloc[-1]['close']  
                     
-                    # 총 자산 = 현금(current_balance) + 포지션 현재 가치
-                    position_value = abs(bot.position_size) * current_price
+                    # Equity = Balance + Invested Capital + Unrealized PnL
+                    invested_capital = abs(bot.position_size) * bot.entry_price
                     
-                    equity = bot.current_balance + position_value
+                    # 미실현 손익 계산 (롱/숏 구분)
+                    if bot.position_size > 0:
+                        unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size)
+                    else:
+                        unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size)
+                    
+                    equity = bot.current_balance + invested_capital + unrealized_pnl
             except Exception as e:
                 logger.warning(f"Failed to calculate equity for bot {bot.id}: {e}")
         

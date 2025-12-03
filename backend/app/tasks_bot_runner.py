@@ -106,7 +106,10 @@ def _run_single_bot_cycle_sync(bot_id: uuid.UUID) -> dict:
                         )
                         if not current_df.empty:
                             current_price = current_df.iloc[-1]['close']
-                            equity = bot.current_balance + (abs(bot.position_size) * current_price)
+                            # Equity = Balance + Invested Capital + Unrealized PnL
+                            invested_capital = abs(bot.position_size) * bot.entry_price
+                            unrealized_pnl = (current_price - bot.entry_price) * bot.position_size
+                            equity = bot.current_balance + invested_capital + unrealized_pnl
                     except Exception as e:
                         logger.warning(f"Failed to calculate equity for bot {bot.id}: {e}")
                 

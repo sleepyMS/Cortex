@@ -38,16 +38,16 @@ export function PerformanceHero({ bot }: PerformanceHeroProps) {
   const cash = bot.currentBalance ?? bot.initialCapital; // 현금
   const totalEquity = bot.equity ?? cash; // 총 자산
 
-  // 포지션 평가 금액 계산
-  const positionValue = totalEquity - cash;
+  // 미실현 손익 (Backend or Parent calculated)
+  const unrealizedPnL = bot.unrealizedPnl || 0;
 
-  // 미실현 손익 계산 (포지션이 있을 때만)
-  let unrealizedPnL = 0;
+  // 포지션 평가 금액 (Market Value) 계산
+  let positionValue = 0;
   if (bot.positionSize && bot.entryPrice && bot.positionSize !== 0) {
-    // 여기서 현재가를 알아야 하는데... 이건 별도로 계산 필요
-    // 일단은 positionValue - (abs(positionSize) * entryPrice)로 근사
-    const positionCost = Math.abs(bot.positionSize) * bot.entryPrice;
-    unrealizedPnL = positionValue - positionCost;
+    // PnL = (Current - Entry) * Size
+    // Current = (PnL / Size) + Entry
+    const currentPrice = unrealizedPnL / bot.positionSize + bot.entryPrice;
+    positionValue = currentPrice * Math.abs(bot.positionSize);
   }
 
   return (
