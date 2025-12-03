@@ -154,7 +154,47 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error in asyncio.run for historical data fetch: {e}", exc_info=True)
             return pd.DataFrame()
+
+    def get_latest_data_sync(self, db: Session, ticker: str, timeframe: str, limit: int = 1000) -> pd.DataFrame:
+        """
+        [진짜 동기 버전] Eventlet 환경에서 최신 데이터를 조회합니다.
+        run_async를 사용하지 않고 순수 동기 SQL로 구현합니다.
+        """
+        if timeframe not in ALLOWED_TIMEFRAMES:
+            logger.error(f"Unsupported timeframe: {timeframe}")
+            return pd.DataFrame()
+
+        table_name = f"ohlcv_{timeframe}"
         
+        sql_query = text(f"""
+            SELECT time, "open", high, low, "close", volume
+            FROM {table_name}
+            WHERE ticker = :ticker
+            ORDER BY time DESC
+            LIMIT :limit
+        """)
+        
+        try:
+            result = db.execute(sql_query, {"ticker": ticker, "limit": limit})
+            rows = result.mappings().all()
+            
+            if not rows:
+                logger.warning(f"No data found for {ticker} in {table_name}.")
+                return pd.DataFrame()
+            
+            df = pd.DataFrame(rows)
+            df['time'] = pd.to_datetime(df['time'])
+            df = df.set_index('time')
+            
+            # 시간 오름차순 정렬
+            df = df.sort_index(ascending=True)
+            df = df[~df.index.duplicated(keep='last')]
+            
+            return df
+        except Exception as e:
+            logger.error(f"Error fetching OHLCV data for {ticker} ({timeframe}): {e}", exc_info=True)
+            return pd.DataFrame()
+
     def save_ohlcv_data_sync(self, db: Session, ticker: str, timeframe: str, ohlcv_data: List[list]):
         """
         [동기] 수집한 OHLCV 데이터를 DB에 저장(Upsert)합니다.

@@ -979,9 +979,12 @@ export function useChartIndicatorManager({
               shape = "arrowUp";
               text = "S-Exit";
               break;
+            default:
+              return null;
           }
           return { time: signal.time, position, color, shape, text };
-        });
+        })
+        .filter((marker) => marker !== null);
 
       let psarMarkers: SeriesMarker<Time>[] = [];
       if (indicatorData) {

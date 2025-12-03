@@ -65,6 +65,7 @@ export function BotHeader({ bot }: BotHeaderProps) {
     mutationFn: () => panicSell(bot.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bot", bot.id] });
+      queryClient.invalidateQueries({ queryKey: ["botLogs", bot.id] }); // 로그 데이터도 새로고침
       toast.success(t("success.panicSellExecuted"), {
         description: t("success.positionsClosed"),
       });

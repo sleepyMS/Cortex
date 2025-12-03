@@ -217,20 +217,69 @@ async def panic_sell(
     # Paper 모드: 포지션만 강제 청산
     if live_bot.mode == 'paper':
         if live_bot.position_size != 0:
-            # 현재 가격으로 강제 청산 (간단한 구현)
-            # 실제로는 market_data_service에서 현재가를 가져와야 함
+            # 현재 가격 조회
+            from ..services.market_data_service import market_data_service
+            
+            try:
+                latest_data = await market_data_service.get_latest_data(
+                    db, live_bot.ticker, live_bot.execution_interval, limit=1
+                )
+                current_price = latest_data.iloc[-1]['close'] if not latest_data.empty else 0.0
+            except Exception as e:
+                logger.error(f"Failed to get current price for panic sell: {e}")
+                current_price = live_bot.entry_price or 0.0
+            
+            # 포지션 방향 확인
+            position_side = "LONG" if live_bot.position_size > 0 else "SHORT"
+            exit_side = "LONG_EXIT" if live_bot.position_size > 0 else "SHORT_EXIT"
+            quantity = abs(live_bot.position_size)
+            
+            # PnL 계산
+            if live_bot.entry_price:
+                if live_bot.position_size > 0:  # LONG
+                    pnl = (current_price - live_bot.entry_price) * quantity
+                else:  # SHORT
+                    pnl = (live_bot.entry_price - current_price) * quantity
+            else:
+                pnl = 0.0
+            
+            # 거래 로그 생성
+            trade_log = models.TradeLog(
+                live_bot_id=live_bot.id,
+                timestamp=datetime.now(timezone.utc),
+                side=exit_side,
+                price=current_price,
+                quantity=quantity,
+                commission=0.0,
+                pnl=pnl,
+                current_balance=live_bot.current_balance + pnl if live_bot.current_balance else live_bot.initial_capital + pnl,
+                reason="Panic sell - Emergency position close"
+            )
+            db.add(trade_log)
+            
+            # 포지션 청산
             live_bot.position_size = 0.0
             live_bot.entry_price = None
             live_bot.sl_price = None
             live_bot.tp_price = None
             
-            logger.warning(f"PANIC SELL executed for bot {live_bot_id} (Paper mode)")
+            # 잔액 업데이트
+            if live_bot.current_balance:
+                live_bot.current_balance += pnl
+            else:
+                live_bot.current_balance = live_bot.initial_capital + pnl
+            
+            # 총 PnL 업데이트
+            live_bot.total_pnl += pnl
+            
+            logger.warning(f"PANIC SELL executed for bot {live_bot_id} (Paper mode): {exit_side} {quantity} @ {current_price}, PnL: {pnl}")
         
         live_bot.status = 'stopped'
         live_bot.stopped_at = datetime.now(timezone.utc)
         live_bot.last_error = "Panic sell triggered by user"
         
         db.add(live_bot)
+        await db.commit()
         
         return {
             "status": "success",

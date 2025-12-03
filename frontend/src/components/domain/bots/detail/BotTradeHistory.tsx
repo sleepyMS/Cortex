@@ -50,6 +50,17 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
   const format = useFormatter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
+  // 시스템 이벤트 필터링: 실제 거래만 표시
+  const actualTrades = React.useMemo(() => {
+    const systemEvents = [
+      "BOT_DEPLOYED",
+      "BOT_PAUSED",
+      "BOT_RESUMED",
+      "BOT_STOPPED",
+    ];
+    return trades.filter((trade) => !systemEvents.includes(trade.side));
+  }, [trades]);
+
   const columns: ColumnDef<BotTradeLog>[] = React.useMemo(
     () => [
       {
@@ -218,7 +229,7 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
   );
 
   const table = useReactTable({
-    data: trades,
+    data: actualTrades,
     columns,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -241,7 +252,7 @@ export function BotTradeHistory({ trades }: BotTradeHistoryProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {trades.length > 0 ? (
+        {actualTrades.length > 0 ? (
           <>
             <div className="rounded-md border">
               <Table>

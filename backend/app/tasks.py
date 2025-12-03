@@ -578,71 +578,13 @@ def run_backtest(self, backtest_id: str):
 
 # 기존 함수를 아래 내용으로 완전히 교체해주세요.
 
-async def _run_single_bot_cycle_async(bot_id: uuid.UUID) -> dict:
-    """
-    [비동기 헬퍼] 한 개의 활성 봇에 대한 거래 로직을 한 번 실행하고 결과를 반환합니다.
-    MissingGreenlet 에러 방지를 위해 ID로 새로 조회하여 세션에 연결합니다.
-    """
-    try:
-        async with AsyncSessionLocal() as session:
-            # 봇 객체를 관계 데이터와 함께 새로 조회 (Eager Loading)
-            result = await session.execute(
-                select(LiveBot)
-                .options(
-                    selectinload(LiveBot.strategy).selectinload(models.Strategy.backtests),
-                    selectinload(LiveBot.api_key)
-                )
-                .filter(LiveBot.id == bot_id)
-            )
-            bot = result.scalar_one_or_none()
-            
-            if not bot:
-                return {"bot_id": str(bot_id), "status": "error", "error": "Bot not found"}
-
-            # 실제 페이퍼 트레이딩 로직 실행
-            result = await live_bot_service.execute_bot_cycle(session, bot)
-            return result
-            
-    except Exception as e:
-        logger.error(f"Bot ID {bot_id}: [ASYNC] Cycle failed: {e}", exc_info=True)
-        return {"bot_id": str(bot_id), "status": "failed", "error": str(e)}
-
-# 기존 함수를 아래 내용으로 완전히 교체해주세요.
 
 @celery_app.task(name="run_all_active_bots", queue="io_bound_queue")
 def run_all_active_bots():
-    """[하이브리드 디스패처] 모든 활성 봇 동시 실행"""
-    async def _run_all_concurrently():
-        bot_ids = []
-        with SyncSessionLocal() as session:
-            # 1. 실행할 봇 ID 목록 조회 (가볍게)
-            result = session.execute(
-                select(LiveBot.id, LiveBot.status)
-                .filter(LiveBot.status.in_(['active', 'initializing']))
-            )
-            rows = result.all()
-            
-            if not rows: return "No active bots."
-            
-            # 2. initializing 상태인 봇 active로 변경
-            for row in rows:
-                bot_id, status = row
-                bot_ids.append(bot_id)
-                if status == 'initializing':
-                    session.execute(
-                        update(LiveBot)
-                        .where(LiveBot.id == bot_id)
-                        .values(status='active')
-                    )
-            session.commit()
+    """[하이브리드 디스패처] 모든 활성 봇 동시 실행 - eventlet 호환 버전"""
+    from .tasks_bot_runner import run_all_active_bots_sync
+    return run_all_active_bots_sync()
 
-        # 3. 각 봇에 대해 비동기 태스크 실행 (ID 전달)
-        bot_tasks = [_run_single_bot_cycle_async(bot_id) for bot_id in bot_ids]
-        results = await asyncio.gather(*bot_tasks, return_exceptions=True)
-        success_count = sum(1 for r in results if isinstance(r, dict) and r.get("status") == "success")
-        return f"Processed {len(bot_ids)} bots. Success: {success_count}"
-
-    return run_async(_run_all_concurrently())
 
 @celery_app.task(name="collect_bot_performance_snapshots", queue="io_bound_queue")
 def collect_bot_performance_snapshots():
@@ -650,76 +592,9 @@ def collect_bot_performance_snapshots():
     모든 활성 봇의 성과 스냅샷을 수집합니다 (1시간마다 실행 권장).
     차트 데이터로 사용됩니다.
     """
-    async def _collect():
-        async with AsyncSessionLocal() as db:
-            # 활성 봇 조회
-            query = select(LiveBot).filter(
-                LiveBot.status.in_(['active', 'paused'])
-            )
-            result = await db.execute(query)
-            bots = result.scalars().all()
-            
-            if not bots:
-                logger.info("No active bots to collect snapshots")
-                return "No active bots"
-            
-            snapshot_time = datetime.now(timezone.utc)
-            
-            for bot in bots:
-                # 변수 초기화
-                unrealized_pnl = 0.0
-                current_price = 0.0
-                
-                # 미실현 손익 및 현재가 조회
-                if bot.position_size != 0 and bot.entry_price:
-                    try:
-                        # 현재가 조회
-                        from app.services.market_data_service import market_data_service
-                        df = await market_data_service.get_latest_data(
-                            db, bot.ticker, bot.execution_interval, limit=1
-                        )
-                        
-                        if not df.empty:
-                            current_price = df.iloc[-1]['close']
-                            
-                            # 미실현 손익 계산
-                            if bot.position_size > 0:  # Long position
-                                unrealized_pnl = (current_price - bot.entry_price) * abs(bot.position_size) * bot.leverage
-                            else:  # Short position
-                                unrealized_pnl = (bot.entry_price - current_price) * abs(bot.position_size) * bot.leverage
-                    except Exception as e:
-                        logger.warning(f"Failed to calculate unrealized PnL for bot {bot.id}: {e}")
-                        unrealized_pnl = 0.0
+    from .tasks_snapshot import collect_bot_performance_snapshots_sync
+    return collect_bot_performance_snapshots_sync()
 
-                # 총 자산(Equity) 계산
-                # 포지션이 있으면: 현금 + (수량 * 현재가)
-                # 포지션이 없으면: 현금 그대로
-                equity = bot.current_balance or bot.initial_capital
-                if bot.position_size != 0 and current_price > 0:
-                     equity = bot.current_balance + (abs(bot.position_size) * current_price)
-
-                logger.info(f"[Snapshot] Bot {bot.id}: Pos={bot.position_size}, Price={current_price}, Balance={bot.current_balance}, Equity={equity}")
-
-                # 실현 손익은 total_pnl
-                realized_pnl = bot.total_pnl
-                
-                snapshot = models.BotPerformanceSnapshot(
-                    bot_id=bot.id,
-                    snapshot_date=snapshot_time,
-                    balance=equity,
-                    position_size=bot.position_size,
-                    unrealized_pnl=unrealized_pnl,
-                    realized_pnl=realized_pnl,
-                    total_trades=bot.total_trades
-                )
-                db.add(snapshot)
-            
-            await db.commit()
-            logger.info(f"Collected performance snapshots for {len(bots)} bots")
-            return f"Collected {len(bots)} snapshots"
-    
-    return run_async(_collect())
-    
 @celery_app.task(bind=True, name="fetch_and_store_ohlcv", queue="io_bound_queue")
 def fetch_and_store_ohlcv(self, ticker: str, timeframe: str, since: int = None, limit: int = 1000): # limit 기본값 1000으로 상향 권장
     """[동기] 단일 회차 OHLCV 데이터 수집 태스크 (주기적 실행용)"""
