@@ -48,7 +48,7 @@ export default function RootLayout({
         <Providers locale={locale} messages={messages} timeZone={timeZone}>
           <Header />
           <PageWrapper>
-            <main className="flex-grow">{children}</main>
+            <main className="flex-grow flex flex-col">{children}</main>
           </PageWrapper>
           <Footer />
         </Providers>

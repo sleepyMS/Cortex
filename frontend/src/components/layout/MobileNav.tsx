@@ -48,6 +48,8 @@ import {
   Moon,
   Globe,
   Check,
+  Github,
+  Twitter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -449,6 +451,28 @@ export function MobileNav() {
               />
             </div>
           )}
+
+          {/* 하단 법률 링크 */}
+          <div className="border-t px-4 py-4 mt-auto">
+            <div className="flex gap-3 text-xs text-muted-foreground">
+              <SheetClose asChild>
+                <Link
+                  href="/terms"
+                  className="hover:text-foreground transition-colors"
+                >
+                  이용약관
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  href="/privacy"
+                  className="hover:text-foreground transition-colors"
+                >
+                  개인정보처리방침
+                </Link>
+              </SheetClose>
+            </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -76,7 +76,7 @@ export default function AuthLayout({
   ); // 큰 블롭 5개
 
   return (
-    <div className="relative flex min-h-[calc(100vh-80px)] w-full items-center justify-center overflow-hidden">
+    <div className="relative flex h-[calc(100dvh-4rem)] w-full items-center justify-center overflow-hidden">
       {/* `@keyframes float`는 globals.css에 정의되어 있습니다. */}
 
       {/* 안정적인 그라데이션 배경 및 미묘한 패턴 */}
@@ -93,14 +93,13 @@ export default function AuthLayout({
 
         {/* 은은하게 움직이는 파스텔톤 동그라미들 */}
         {floatingCircles}
-        {/* 은은하게 움직이는 블러 처리된 블롭들 (안개 효과) */}
         {floatingBlobs}
       </div>
 
-      {/* Main Content Grid - 헤더/푸터와 동일한 max-w-5xl 및 중앙 정렬 */}
-      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-16 max-w-5xl">
+      {/* Desktop: 기존 2열 그리드 레이아웃 */}
+      <div className="hidden md:grid container mx-auto grid-cols-2 items-center gap-16 max-w-5xl">
         {/* Left Side: Branding/Quote */}
-        <div className="hidden md:flex flex-col gap-4 text-left">
+        <div className="flex flex-col gap-4 text-left">
           <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tighter text-foreground">
             {t.rich("title", { br: () => <br /> })}
           </h1>
@@ -109,9 +108,28 @@ export default function AuthLayout({
           </p>
         </div>
 
-        {/* Right Side: Form (children) */}
-        <div className="flex justify-center md:justify-start">
-          <div className="w-full max-w-sm rounded-xl border border-border/40 bg-background/80 p-6 sm:p-7 shadow-2xl backdrop-blur-lg">
+        {/* Right Side: Form (children) - 카드 스타일 유지 */}
+        <div className="flex justify-start">
+          <div className="w-full max-w-sm rounded-xl border border-border/40 bg-background/80 p-7 shadow-2xl backdrop-blur-lg">
+            {children}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile: 프리미엄 풀스크린 레이아웃 */}
+      <div className="flex md:hidden flex-col justify-center items-center w-full h-[calc(100dvh-4rem)] relative">
+        {/* 프로스트 글래스 오버레이 - 배경 애니메이션을 은은하게 블러 처리 */}
+        <div className="absolute inset-0 backdrop-blur-md bg-background/40"></div>
+
+        {/* 상단 그라데이션 페이드 - 고급스러운 느낌 */}
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background/60 to-transparent"></div>
+
+        {/* 하단 그라데이션 페이드 */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background/60 to-transparent"></div>
+
+        {/* 폼 컨테이너 - 유리 카드 효과 */}
+        <div className="relative z-10 w-full max-w-md px-3 py-10">
+          <div className="rounded-2xl border border-white/10 bg-background/50 backdrop-blur-xl p-6 shadow-2xl">
             {children}
           </div>
         </div>

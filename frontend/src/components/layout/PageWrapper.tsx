@@ -19,7 +19,7 @@ export function PageWrapper({ children, className }: PageWrapperProps) {
   return (
     <div
       className={clsx(
-        "w-full flex-grow", // 변경됨: container, mx-auto, max-w-5xl, px-4 제거
+        "w-full flex-grow flex flex-col", // flex flex-col 추가: flex 체인 완성
         className
       )}
     >

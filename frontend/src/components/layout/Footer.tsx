@@ -15,7 +15,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear(); // 클라이언트에서 현재 연도 가져옴
 
   return (
-    <footer className="w-full border-t border-border/40 bg-background">
+    <footer className="hidden md:block w-full border-t border-border/40 bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div className="flex flex-col gap-4">
@@ -59,25 +59,6 @@ const Footer = () => {
                 {t("privacyLink")}
               </Link>
             </div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex items-center justify-end border-t border-border/40 pt-4">
-          <div className="flex gap-2">
-            <a
-              href="https://github.com/sleepyMS/Cortex"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <IconButton aria-label="GitHub">
-                <Github className="h-5 w-5" />
-              </IconButton>
-            </a>
-            <a href="#" target="_blank" rel="noopener noreferrer">
-              <IconButton aria-label="Twitter">
-                <Twitter className="h-5 w-5" />
-              </IconButton>
-            </a>
           </div>
         </div>
       </div>
