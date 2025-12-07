@@ -4,9 +4,10 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { useTheme } from "next-themes";
@@ -121,6 +122,8 @@ export function MobileNav() {
   const { theme, setTheme } = useTheme();
   const currentLocale = useLocale();
   const hasHydrated = useHasHydrated();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const handleLogout = () => {
     logout();
@@ -133,18 +136,12 @@ export function MobileNav() {
     setTheme(theme === "light" ? "dark" : "light");
   };
 
-  const handleLocaleChange = (newLocale: string) => {
-    const currentPathWithoutLocale = window.location.pathname.replace(
-      /^\/(en|ko)/,
-      ""
-    );
-    const targetPath =
-      currentPathWithoutLocale === "" ? "/" : currentPathWithoutLocale;
-    const newUrl =
-      newLocale === "ko" && currentLocale === "ko"
-        ? `${window.location.origin}${targetPath}`
-        : `${window.location.origin}/${newLocale}${targetPath}`;
-    window.location.href = newUrl;
+  const handleLocaleChange = (newLocale: (typeof locales)[number]) => {
+    // 쿼리 스트링을 유지하면서 언어 전환
+    const queryString = searchParams.toString();
+    const fullPath = queryString ? `${pathname}?${queryString}` : pathname;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    router.replace(fullPath as any, { locale: newLocale });
   };
 
   // 인증 상태 확인 중이면 렌더링하지 않음
