@@ -1,6 +1,6 @@
 // file: frontend/src/components/domain/LanguageSwitcher.tsx
 
-"use client"; // 클라이언트 컴포넌트임을 명시
+"use client";
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -14,18 +14,16 @@ import {
 } from "@/components/ui/Popover";
 import { ChevronDown } from "lucide-react";
 import { locales } from "i18n";
-
-type Locale = (typeof locales)[number];
+import { localeConfig, type Locale } from "@/i18n/config";
 
 const LanguageSwitcher = () => {
   const t = useTranslations("Header");
-  const currentLocale = useLocale(); // 현재 활성화된 로케일
+  const currentLocale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const handleLocaleChange = (newLocale: Locale) => {
-    // 쿼리 스트링을 유지하면서 언어 전환
     const queryString = searchParams.toString();
     const fullPath = queryString ? `${pathname}?${queryString}` : pathname;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,25 +34,22 @@ const LanguageSwitcher = () => {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="capitalize">
-          {currentLocale} <ChevronDown className="ml-1 h-4 w-4" />{" "}
-          {/* locale 대신 currentLocale */}
+          {localeConfig[currentLocale].flag} {currentLocale.toUpperCase()}
+          <ChevronDown className="ml-1 h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Button
-          variant="ghost"
-          className="w-full justify-start"
-          onClick={() => handleLocaleChange("ko")}
-        >
-          {t("langKorean")}
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start"
-          onClick={() => handleLocaleChange("en")}
-        >
-          {t("langEnglish")}
-        </Button>
+      <PopoverContent className="w-auto p-1">
+        {locales.map((locale) => (
+          <Button
+            key={locale}
+            variant={currentLocale === locale ? "secondary" : "ghost"}
+            className="w-full justify-start gap-2"
+            onClick={() => handleLocaleChange(locale)}
+          >
+            <span>{localeConfig[locale].flag}</span>
+            <span>{localeConfig[locale].nativeName}</span>
+          </Button>
+        ))}
       </PopoverContent>
     </Popover>
   );

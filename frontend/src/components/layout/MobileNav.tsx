@@ -14,6 +14,7 @@ import { useTheme } from "next-themes";
 import { useHasHydrated } from "@/hooks/useHasHydrated";
 import { toast } from "sonner";
 import { locales } from "i18n";
+import { localeConfig, type Locale } from "@/i18n/config";
 
 import {
   Sheet,
@@ -278,34 +279,23 @@ export function MobileNav() {
                     <span className="text-sm text-muted-foreground">언어</span>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleLocaleChange("ko")}
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        currentLocale === "ko"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80"
-                      )}
-                    >
-                      {currentLocale === "ko" && (
-                        <Check className="h-3.5 w-3.5" />
-                      )}
-                      한국어
-                    </button>
-                    <button
-                      onClick={() => handleLocaleChange("en")}
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        currentLocale === "en"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80"
-                      )}
-                    >
-                      {currentLocale === "en" && (
-                        <Check className="h-3.5 w-3.5" />
-                      )}
-                      English
-                    </button>
+                    {locales.map((locale) => (
+                      <button
+                        key={locale}
+                        onClick={() => handleLocaleChange(locale)}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          currentLocale === locale
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-muted/80"
+                        )}
+                      >
+                        {currentLocale === locale && (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        {localeConfig[locale].nativeName}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -375,34 +365,23 @@ export function MobileNav() {
                     <span className="text-sm text-muted-foreground">언어</span>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleLocaleChange("ko")}
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        currentLocale === "ko"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80"
-                      )}
-                    >
-                      {currentLocale === "ko" && (
-                        <Check className="h-3.5 w-3.5" />
-                      )}
-                      한국어
-                    </button>
-                    <button
-                      onClick={() => handleLocaleChange("en")}
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        currentLocale === "en"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80"
-                      )}
-                    >
-                      {currentLocale === "en" && (
-                        <Check className="h-3.5 w-3.5" />
-                      )}
-                      English
-                    </button>
+                    {locales.map((locale) => (
+                      <button
+                        key={locale}
+                        onClick={() => handleLocaleChange(locale)}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          currentLocale === locale
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-muted/80"
+                        )}
+                      >
+                        {currentLocale === locale && (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        {localeConfig[locale].nativeName}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
