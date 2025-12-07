@@ -4,7 +4,7 @@ import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title="개인정보처리방침" lastUpdated="2024년 12월 8일">
+    <LegalPageLayout title="개인정보처리방침" lastUpdated="2025년 12월 8일">
       {/* 서문 */}
       <section id="intro">
         <p>
@@ -465,7 +465,7 @@ export default function PrivacyPage() {
       <section id="addendum">
         <h2>부칙</h2>
         <ol>
-          <li>이 개인정보처리방침은 2024년 12월 8일부터 시행됩니다.</li>
+          <li>이 개인정보처리방침은 2025년 12월 8일부터 시행됩니다.</li>
         </ol>
       </section>
     </LegalPageLayout>

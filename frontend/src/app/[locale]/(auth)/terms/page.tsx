@@ -4,7 +4,7 @@ import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
 
 export default function TermsPage() {
   return (
-    <LegalPageLayout title="이용약관" lastUpdated="2024년 12월 8일">
+    <LegalPageLayout title="이용약관" lastUpdated="2025년 12월 8일">
       {/* 제1조 목적 */}
       <section id="article-1">
         <h2>제1조 (목적)</h2>
@@ -367,7 +367,7 @@ export default function TermsPage() {
       <section id="addendum">
         <h2>부칙</h2>
         <ol>
-          <li>이 약관은 2024년 12월 8일부터 시행됩니다.</li>
+          <li>이 약관은 2025년 12월 8일부터 시행됩니다.</li>
         </ol>
       </section>
 
@@ -382,7 +382,7 @@ export default function TermsPage() {
             <strong>상호:</strong> [회사명]
           </li>
           <li>
-            <strong>대표자:</strong> [대표자명]
+            <strong>대표자:</strong> 최민석
           </li>
           <li>
             <strong>사업자등록번호:</strong> [000-00-00000]
