@@ -129,7 +129,8 @@ def _run_single_bot_cycle_sync(bot_id: uuid.UUID) -> dict:
                         trade_log = models.TradeLog(
                             backtest_id=None,
                             live_bot_id=bot.id,
-                            timestamp=trade['timestamp'],
+                            # Paper Trading이라도 실시간 봇이므로 '체결 시간'은 현재 시간으로 기록
+                            timestamp=datetime.now(timezone.utc),
                             side=trade['side'],
                             price=trade['price'],
                             quantity=trade['quantity'],
