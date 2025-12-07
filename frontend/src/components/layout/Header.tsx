@@ -15,6 +15,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Sun, Moon, Coins } from "lucide-react";
 import LanguageSwitcher from "@/components/domain/LanguageSwitcher";
 import { UserActions } from "@/components/domain/UserActions";
+import { MobileNav } from "@/components/layout/MobileNav";
 
 import {
   Tooltip,
@@ -40,7 +41,10 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         {/* 좌측 로고 및 네비게이션 */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          {/* 모바일 햄버거 메뉴 */}
+          <MobileNav />
+
           <Link href="/" aria-label="Go to homepage">
             <Logo />
           </Link>
@@ -72,12 +76,15 @@ export function Header() {
 
         {/* 우측 아이콘 및 사용자 메뉴 */}
         <div className="flex items-center gap-4">
-          <LanguageSwitcher />
+          {/* 모바일에서 숨김 - MobileNav에서 접근 가능 */}
+          <div className="hidden md:block">
+            <LanguageSwitcher />
+          </div>
 
           {isAuthInitialized && user && creditBalance && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger asChild className="hidden md:block">
                   <Link href="/dashboard?tab=credits">
                     <div
                       className={cn(
@@ -100,8 +107,13 @@ export function Header() {
           )}
 
           <UserActions />
+          {/* 테마 토글 - 모바일에서 숨김, MobileNav에서 접근 가능 */}
           {hasHydrated && (
-            <IconButton onClick={toggleTheme} aria-label={t("toggleTheme")}>
+            <IconButton
+              onClick={toggleTheme}
+              aria-label={t("toggleTheme")}
+              className="hidden md:flex"
+            >
               {theme === "dark" ? (
                 <Sun key="sun" className="h-5 w-5 theme-icon-animate" />
               ) : (
