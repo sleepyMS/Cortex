@@ -10,7 +10,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useFormatter, useTranslations } from "next-intl"; // [수정] useFormatter와 useTranslations만 사용합니다.
+import { useFormatter, useTranslations } from "next-intl";
+import { formatDateToKST } from "@/lib/dateUtils";
 import {
   ArrowUpDown,
   ChevronLeft,
@@ -80,7 +81,7 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
         ),
         cell: ({ row }) => (
           <div className="text-left font-mono">
-            {format.dateTime(new Date(row.getValue("timestamp")), "short")}
+            {formatDateToKST(new Date(row.getValue("timestamp")), "datetime")}
           </div>
         ),
       },

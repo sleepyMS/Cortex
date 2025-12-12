@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { useTheme } from "next-themes";
 import { UTCTimestamp } from "lightweight-charts";
+import { formatChartDate } from "@/lib/dateUtils";
 
 export interface ChartDataPoint {
   time: UTCTimestamp;
@@ -49,7 +50,7 @@ const EquityChart: React.FC<EquityChartProps> = ({
     );
 
     return pnlData.map((point) => ({
-      date: new Date(point.time * 1000).toLocaleDateString(),
+      date: formatChartDate(point.time as number),
       timestamp: point.time,
       pnl: point.value,
       benchmark: benchmarkMap.get(point.time) || null,

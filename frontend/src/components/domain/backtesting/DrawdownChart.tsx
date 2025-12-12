@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { useTheme } from "next-themes";
 import { UTCTimestamp } from "lightweight-charts";
+import { formatChartDate } from "@/lib/dateUtils";
 
 export interface ChartDataPoint {
   time: UTCTimestamp;
@@ -40,7 +41,7 @@ const DrawdownChart: React.FC<DrawdownChartProps> = ({
     if (!drawdownData || drawdownData.length === 0) return [];
 
     return drawdownData.map((point) => ({
-      date: new Date(point.time * 1000).toLocaleDateString(),
+      date: formatChartDate(point.time as number),
       timestamp: point.time,
       drawdown: point.value,
       drawdownPct: point.value.toFixed(2), // Already in decimal format
