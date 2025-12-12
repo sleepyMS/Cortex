@@ -56,11 +56,44 @@ import {
 } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 
-export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
-  // [수정] t 함수 하나로 모든 번역을 관리합니다.
+// --- [성능 최적화] 서버 사이드 페이지네이션 + 정렬 지원 ---
+interface ServerPagination {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: number;
+  sortBy: string;
+  sortOrder: "asc" | "desc";
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+  onSortChange: (sortBy: string, sortOrder: "asc" | "desc") => void;
+}
+
+interface TradeLogTableProps {
+  tradeLogs: TradeLog[];
+  pagination?: ServerPagination; // 서버 사이드 페이지네이션 (optional)
+}
+
+export const TradeLogTable = ({
+  tradeLogs,
+  pagination,
+}: TradeLogTableProps) => {
   const t = useTranslations("BacktestDetailPage.TradeLogTable");
   const format = useFormatter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
+  // 서버 사이드 페이지네이션 사용 여부
+  const isServerPaginated = !!pagination;
+
+  // 서버 사이드 정렬 핸들러
+  const handleServerSort = (field: string) => {
+    if (!pagination) return;
+    const newOrder =
+      pagination.sortBy === field && pagination.sortOrder === "desc"
+        ? "asc"
+        : "desc";
+    pagination.onSortChange(field, newOrder);
+  };
 
   const columns: ColumnDef<TradeLog>[] = React.useMemo(
     () => [
@@ -70,9 +103,13 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
           <div className="text-left">
             <Button
               variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
+              onClick={() => {
+                if (isServerPaginated) {
+                  handleServerSort("timestamp");
+                } else {
+                  column.toggleSorting(column.getIsSorted() === "asc");
+                }
+              }}
             >
               {t("headers.timestamp")}
               <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -221,7 +258,7 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
         },
       },
     ],
-    [t, format]
+    [t, format, isServerPaginated, handleServerSort]
   );
 
   const table = useReactTable({
@@ -232,6 +269,11 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     state: { sorting },
+    // 서버 사이드 페이지네이션 시 필수 설정
+    ...(isServerPaginated && {
+      manualPagination: true,
+      pageCount: pagination.totalPages,
+    }),
   });
 
   return (
@@ -293,19 +335,36 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
           <div className="flex items-center justify-between space-x-2 p-2">
             <span className="text-sm text-muted-foreground">
               {t("totalTrades", {
-                total: table.getFilteredRowModel().rows.length,
+                total: isServerPaginated
+                  ? pagination.total
+                  : table.getFilteredRowModel().rows.length,
               })}
             </span>
             <div className="flex items-center space-x-6 lg:space-x-8">
+              {/* 페이지당 행 수 선택 - 서버/클라이언트 모두 지원 */}
               <div className="flex items-center space-x-2">
                 <p className="text-sm font-medium">{t("rowsPerPage")}</p>
                 <Select
-                  value={`${table.getState().pagination.pageSize}`}
-                  onValueChange={(value) => table.setPageSize(Number(value))}
+                  value={`${
+                    isServerPaginated
+                      ? pagination.limit
+                      : table.getState().pagination.pageSize
+                  }`}
+                  onValueChange={(value) => {
+                    if (isServerPaginated) {
+                      pagination.onLimitChange(Number(value));
+                    } else {
+                      table.setPageSize(Number(value));
+                    }
+                  }}
                 >
                   <SelectTrigger className="h-8 w-[70px]">
                     <SelectValue
-                      placeholder={table.getState().pagination.pageSize}
+                      placeholder={
+                        isServerPaginated
+                          ? pagination.limit
+                          : table.getState().pagination.pageSize
+                      }
                     />
                   </SelectTrigger>
                   <SelectContent side="top">
@@ -319,8 +378,12 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
               </div>
               <div className="flex w-[100px] items-center justify-center text-sm font-medium">
                 {t("pageInfo", {
-                  page: table.getState().pagination.pageIndex + 1,
-                  totalPages: table.getPageCount(),
+                  page: isServerPaginated
+                    ? pagination.page
+                    : table.getState().pagination.pageIndex + 1,
+                  totalPages: isServerPaginated
+                    ? pagination.totalPages
+                    : table.getPageCount(),
                 })}
               </div>
               <div className="flex items-center space-x-2">
@@ -329,8 +392,16 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
                     <Button
                       variant="outline"
                       className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => table.setPageIndex(0)}
-                      disabled={!table.getCanPreviousPage()}
+                      onClick={() =>
+                        isServerPaginated
+                          ? pagination.onPageChange(1)
+                          : table.setPageIndex(0)
+                      }
+                      disabled={
+                        isServerPaginated
+                          ? pagination.page <= 1
+                          : !table.getCanPreviousPage()
+                      }
                     >
                       <span className="sr-only">
                         {t("pagination.firstPage")}
@@ -346,8 +417,16 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0"
-                      onClick={() => table.previousPage()}
-                      disabled={!table.getCanPreviousPage()}
+                      onClick={() =>
+                        isServerPaginated
+                          ? pagination.onPageChange(pagination.page - 1)
+                          : table.previousPage()
+                      }
+                      disabled={
+                        isServerPaginated
+                          ? pagination.page <= 1
+                          : !table.getCanPreviousPage()
+                      }
                     >
                       <span className="sr-only">
                         {t("pagination.previousPage")}
@@ -365,8 +444,16 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0"
-                      onClick={() => table.nextPage()}
-                      disabled={!table.getCanNextPage()}
+                      onClick={() =>
+                        isServerPaginated
+                          ? pagination.onPageChange(pagination.page + 1)
+                          : table.nextPage()
+                      }
+                      disabled={
+                        isServerPaginated
+                          ? pagination.page >= pagination.totalPages
+                          : !table.getCanNextPage()
+                      }
                     >
                       <span className="sr-only">
                         {t("pagination.nextPage")}
@@ -383,9 +470,15 @@ export const TradeLogTable = ({ tradeLogs }: { tradeLogs: TradeLog[] }) => {
                       variant="outline"
                       className="hidden h-8 w-8 p-0 lg:flex"
                       onClick={() =>
-                        table.setPageIndex(table.getPageCount() - 1)
+                        isServerPaginated
+                          ? pagination.onPageChange(pagination.totalPages)
+                          : table.setPageIndex(table.getPageCount() - 1)
                       }
-                      disabled={!table.getCanNextPage()}
+                      disabled={
+                        isServerPaginated
+                          ? pagination.page >= pagination.totalPages
+                          : !table.getCanNextPage()
+                      }
                     >
                       <span className="sr-only">
                         {t("pagination.lastPage")}

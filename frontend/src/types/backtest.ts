@@ -116,3 +116,26 @@ export type BacktestInList = Omit<
 > & {
   result: BacktestResultSummaryForCard | null;
 };
+
+// --- [성능 최적화] 차트 데이터 분리를 위한 타입 ---
+
+/**
+ * 백테스트 차트 데이터만 포함하는 타입
+ * GET /backtests/{id}/charts 응답에 대응
+ */
+export interface BacktestChartData {
+  pnlCurveJson: { time: number; value: number }[];
+  drawdownCurveJson: { time: number; value: number }[];
+}
+
+/**
+ * 페이지네이션된 거래 로그 응답 타입
+ * GET /backtests/{id}/trade_logs 응답에 대응
+ */
+export interface PaginatedTradeLogs {
+  items: TradeLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

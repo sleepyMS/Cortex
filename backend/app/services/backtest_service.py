@@ -228,6 +228,76 @@ class BacktestService:
         result = await db.execute(query)
         return result.scalars().all()
 
+    # --- [성능 최적화] 신규 메서드 ---
+
+    async def get_chart_data_for_backtest(
+        self, db: AsyncSession, backtest_id: uuid.UUID, user_id: uuid.UUID
+    ) -> Optional[dict]:
+        """
+        백테스트의 차트 데이터(pnlCurveJson, drawdownCurveJson)만 반환합니다.
+        소유권 검증 포함.
+        """
+        # 결과 테이블에서 차트 데이터만 조회
+        query = select(models.Backtest).options(
+            joinedload(models.Backtest.result)
+        ).filter(models.Backtest.id == backtest_id)
+        
+        backtest = await db.scalar(query)
+
+        if not backtest:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="백테스트를 찾을 수 없습니다.")
+        if backtest.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 백테스트에 접근할 권한이 없습니다.")
+        
+        if not backtest.result:
+            return {"pnl_curve_json": [], "drawdown_curve_json": []}
+        
+        return {
+            "pnl_curve_json": backtest.result.pnl_curve_json or [],
+            "drawdown_curve_json": backtest.result.drawdown_curve_json or []
+        }
+
+    async def get_trade_logs_paginated(
+        self, db: AsyncSession, backtest_id: uuid.UUID, page: int, limit: int,
+        sort_by: str = "timestamp", sort_order: str = "desc"
+    ) -> dict:
+        """페이지네이션+정렬된 거래 기록을 반환합니다."""
+        # 전체 개수 조회
+        count_query = select(func.count()).select_from(models.TradeLog).filter(
+            models.TradeLog.backtest_id == backtest_id
+        )
+        total = await db.scalar(count_query)
+        
+        # 정렬 필드 결정
+        sort_column = models.TradeLog.timestamp  # 기본값
+        if sort_by == "pnl":
+            sort_column = models.TradeLog.pnl
+        
+        # 정렬 방향 적용
+        if sort_order == "asc":
+            order_clause = sort_column.asc()
+        else:
+            order_clause = sort_column.desc()
+        
+        # 페이지 데이터 조회
+        offset = (page - 1) * limit
+        query = select(models.TradeLog).filter(
+            models.TradeLog.backtest_id == backtest_id
+        ).order_by(order_clause).offset(offset).limit(limit)
+        
+        result = await db.execute(query)
+        items = result.scalars().all()
+        
+        total_pages = (total + limit - 1) // limit if total else 0
+        
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages
+        }
+
     async def cancel_backtest_job(self, db: AsyncSession, backtest_to_cancel: models.Backtest):
         """진행 중인 백테스팅 작업을 취소합니다."""
         if backtest_to_cancel.status not in [BacktestStatus.PENDING, BacktestStatus.RUNNING]:

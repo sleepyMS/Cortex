@@ -650,6 +650,60 @@ class BacktestResultSummary(CamelCaseModel):
     score_factors: Optional[Any] = None
 
 
+# --- [성능 최적화] 차트 데이터 분리를 위한 새 스키마 ---
+
+class BacktestResultCore(CamelCaseModel):
+    """BacktestResultSummary에서 무거운 차트 데이터를 제외한 핵심 지표만 포함"""
+    total_return_pct: Optional[float] = None
+    mdd_pct: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    win_rate_pct: Optional[float] = None
+    # pnl_curve_json 제외
+    # drawdown_curve_json 제외
+    trade_summary_json: Optional[Dict[str, Any]] = None
+    executed_at: Optional[datetime] = None
+
+    profit_factor: Optional[float] = None
+    sortino_ratio: Optional[float] = None
+    cagr_pct: Optional[float] = None
+    total_trades: Optional[int] = None
+    winning_trades: Optional[int] = None
+    losing_trades: Optional[int] = None
+    
+    calmar_ratio: Optional[float] = None
+    avg_profit_loss_ratio: Optional[float] = None
+    ulcer_index: Optional[float] = None
+    longest_flat_days: Optional[int] = None
+    avg_holding_period_days: Optional[float] = None
+    k_ratio: Optional[float] = None
+
+    backtest_score: Optional[float] = None
+    score_factors: Optional[Any] = None
+
+
+class BacktestChartData(CamelCaseModel):
+    """차트 렌더링에 필요한 데이터만 포함 (별도 API로 제공)"""
+    pnl_curve_json: List[Dict[str, Any]] = Field(default_factory=list)
+    drawdown_curve_json: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class BacktestCore(BacktestInList):
+    """차트 데이터를 제외한 백테스트 핵심 정보 (빠른 초기 로딩용)"""
+    parameters: BacktestParametersPayload  
+    strategy_snapshot: Optional[Dict[str, Any]] = None
+    strategy: Optional[Strategy] = None 
+    result: Optional[BacktestResultCore] = None  # 차트 데이터 제외된 버전
+
+
+class PaginatedTradeLogs(CamelCaseModel):
+    """서버 사이드 페이지네이션을 위한 거래 로그 응답"""
+    items: List[TradeLogEntry] = Field(default_factory=list)
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+
 class Backtest(BacktestInList):
     parameters: BacktestParametersPayload  
     strategy_snapshot: Optional[Dict[str, Any]] = None

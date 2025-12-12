@@ -20,7 +20,21 @@ export function Providers({
   messages: AbstractIntlMessages;
   timeZone: string;
 }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            // 5분 동안 캐시된 데이터를 "신선한" 것으로 간주 → 언어 변경 시 재요청 방지
+            staleTime: 5 * 60 * 1000,
+            // 30분 동안 캐시 유지 (가비지 컬렉션 방지)
+            gcTime: 30 * 60 * 1000,
+            // 창 포커스 시 자동 재요청 비활성화
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
 
   useReAuth();
 

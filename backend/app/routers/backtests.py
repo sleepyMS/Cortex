@@ -109,7 +109,8 @@ async def get_backtests(
     logger.info(f"User {current_user.email} fetched {len(backtests)} backtest records.")
     return backtests
 
-@router.get("/{backtest_id}", response_model=schemas.Backtest, summary="Get details and result of a specific backtest")
+# --- [성능 최적화] 차트 데이터 제외한 핵심 정보만 반환 ---
+@router.get("/{backtest_id}", response_model=schemas.BacktestCore, summary="Get core details of a specific backtest (without chart data)")
 async def get_backtest_by_id(
     backtest_id: uuid.UUID, 
     db: AsyncSession = Depends(get_async_db),
@@ -117,26 +118,61 @@ async def get_backtest_by_id(
 ):
     """
     특정 ID의 백테스팅 작업 상세 정보 및 결과를 조회합니다.
-    (소유권 검증 및 모든 연관 데이터 Eager Loading 포함)
+    차트 데이터(pnlCurveJson, drawdownCurveJson)는 제외됩니다.
+    차트 데이터는 별도 /charts 엔드포인트에서 조회하세요.
     """
     backtest = await backtest_service.get_backtest_by_id_for_user(
         db, backtest_id=backtest_id, user_id=current_user.id
     )
-    # 이제 라우터에는 소유권 검증 코드가 없습니다.
     logger.info(f"User (ID: {backtest.user_id}) accessed backtest: {backtest.id}.")
     return backtest
 
-@router.get("/{backtest_id}/trade_logs", response_model=List[schemas.TradeLogEntry], summary="Get trade logs for a specific backtest")
-async def get_backtest_trade_logs(
-    backtest: models.Backtest = Depends(get_verified_backtest),
-    db: AsyncSession = Depends(get_async_db)
+# --- [성능 최적화] 차트 데이터 전용 엔드포인트 ---
+@router.get(
+    "/{backtest_id}/charts", 
+    response_model=schemas.BacktestChartData,
+    response_model_by_alias=True,
+    summary="Get chart data for a specific backtest"
+)
+async def get_backtest_charts(
+    backtest_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    특정 백테스트의 상세 거래 기록 목록을 조회합니다. (소유권 자동 검증)
+    백테스트의 차트 데이터(PnL 곡선, 드로우다운 곡선)만 조회합니다.
+    성능 최적화를 위해 핵심 정보와 분리하여 제공합니다.
     """
-    trade_logs = await backtest_service.get_trade_logs_for_backtest(db, backtest.id)
-    logger.info(f"User (ID: {backtest.user_id}) fetched {len(trade_logs)} trade logs for backtest {backtest.id}.")
-    return trade_logs
+    chart_data = await backtest_service.get_chart_data_for_backtest(
+        db, backtest_id=backtest_id, user_id=current_user.id
+    )
+    logger.info(f"User (ID: {current_user.id}) fetched chart data for backtest {backtest_id}.")
+    return chart_data
+
+
+# --- [성능 최적화] 페이지네이션 + 정렬 지원 거래 로그 엔드포인트 ---
+@router.get(
+    "/{backtest_id}/trade_logs", 
+    response_model=schemas.PaginatedTradeLogs,
+    response_model_by_alias=True,
+    summary="Get paginated and sorted trade logs for a specific backtest"
+)
+async def get_backtest_trade_logs(
+    backtest: models.Backtest = Depends(get_verified_backtest),
+    db: AsyncSession = Depends(get_async_db),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(10, ge=1, le=200, description="Number of items per page"),
+    sort_by: str = Query("timestamp", description="Sort field: timestamp, pnl"),
+    sort_order: str = Query("desc", description="Sort order: asc, desc")
+):
+    """
+    특정 백테스트의 상세 거래 기록을 페이지네이션+정렬하여 조회합니다. (소유권 자동 검증)
+    """
+    result = await backtest_service.get_trade_logs_paginated(
+        db, backtest.id, page, limit, sort_by, sort_order
+    )
+    logger.info(f"User (ID: {backtest.user_id}) fetched page {page} of trade logs (sort: {sort_by} {sort_order}) for backtest {backtest.id}.")
+    return result
 
 @router.post("/{backtest_id}/cancel", status_code=status.HTTP_202_ACCEPTED, summary="Request to cancel a running backtest job")
 async def cancel_backtest(
