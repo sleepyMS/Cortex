@@ -1,4 +1,4 @@
-// file: frontend/src/app/[locale]/backtester/page.tsx
+// file: frontend/src/app/[locale]/(authenticated)/backtester/page.tsx
 
 "use client";
 
@@ -14,28 +14,18 @@ import {
 } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
-import { useSearchParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/Button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/Select";
-import {
   Backtest,
   BacktestCard,
 } from "@/components/domain/backtesting/BacktestCard";
-import { BacktestDetailPanel } from "@/components/domain/backtesting/BacktestDetailPanel";
 import {
   PlusCircle,
   BarChartHorizontal,
-  ListFilter,
-  Loader2,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Strategy } from "@/types/strategy";
@@ -44,7 +34,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/Popover";
-import { Badge } from "@/components/ui/Badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import {
   Command,
@@ -54,7 +43,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/Command";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LoadingSkeleton = () => (
@@ -69,24 +57,6 @@ const LoadingSkeleton = () => (
         <div className="flex justify-between items-center pt-4">
           <Skeleton className="h-5 w-1/4" />
           <Skeleton className="h-8 w-8 rounded-full" />
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-// Compact skeleton for split view sidebar
-const CompactLoadingSkeleton = () => (
-  <div className="space-y-2">
-    {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="p-3 border rounded-lg space-y-2">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-4 w-16" />
-        </div>
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-3 w-20" />
         </div>
       </div>
     ))}
@@ -115,12 +85,6 @@ export default function BacktesterPage() {
   const t = useTranslations("BacktesterPage");
   const queryClient = useQueryClient();
   const { ref, inView } = useInView();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  // Split view state
-  const viewBacktestId = searchParams.get("view");
-  const isSplitView = !!viewBacktestId;
 
   // --- State for Filters ---
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -158,13 +122,12 @@ export default function BacktesterPage() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length > 0 ? allPages.length : undefined,
     initialPageParam: 0,
-    // 실시간 상태 업데이트를 위한 폴링 로직 ▼▼▼
     refetchInterval: (query) => {
       const data = query.state.data;
       const hasActiveJob = data?.pages
         .flat()
         .some((bt) => bt.status === "running" || bt.status === "pending");
-      return hasActiveJob ? 5000 : false; // 활성 작업이 있을 때만 5초마다 폴링
+      return hasActiveJob ? 5000 : false;
     },
   });
 
@@ -207,19 +170,6 @@ export default function BacktesterPage() {
 
   const backtests = data?.pages.flat() ?? [];
 
-  // Navigation handlers for split view
-  const handleNavigateToView = (backtestId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", backtestId);
-    router.push(`/backtester?${params.toString()}`);
-  };
-
-  const handleClose = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("view");
-    router.push(`/backtester?${params.toString()}`);
-  };
-
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton />;
     if (isError)
@@ -250,138 +200,6 @@ export default function BacktesterPage() {
     );
   };
 
-  // Render split view layout if viewBacktestId is present
-  if (isSplitView) {
-    return (
-      <div className="flex min-h-screen">
-        {/* Left sidebar - Backtest list */}
-        <AnimatePresence>
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "320px", opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="hidden md:flex flex-col border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden h-screen sticky top-0"
-          >
-            {/* Sidebar header */}
-            <div className="p-4 border-b">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-base font-semibold">
-                  {t("splitView.title")}
-                </h2>
-                <Link href="/backtester/new">
-                  <Button size="sm" className="gap-1.5 h-8">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">
-                      {t("splitView.createButton")}
-                    </span>
-                  </Button>
-                </Link>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("splitView.backtestCount", { count: backtests.length })}
-              </p>
-
-              {/* Strategy filter */}
-              <div className="px-4 py-3 border-b bg-muted/20">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                  {t("splitView.filterLabel")}
-                </label>
-                <Select
-                  value={strategyFilter}
-                  onValueChange={setStrategyFilter}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder={t("filterByStrategy")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("allStrategies")}</SelectItem>
-                    {strategiesData?.map((strategy) => (
-                      <SelectItem key={strategy.id} value={strategy.id}>
-                        {strategy.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Scrollable backtest list */}
-            <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1.5">
-              {isLoading ? (
-                <CompactLoadingSkeleton />
-              ) : backtests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-4">
-                  <BarChartHorizontal className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="text-sm font-medium text-foreground mb-1">
-                    {t("splitView.emptyTitle")}
-                  </p>
-                  <p className="text-xs text-muted-foreground text-center max-w-[200px]">
-                    {t("splitView.emptyDescription")}
-                  </p>
-                </div>
-              ) : (
-                backtests.map((backtest: Backtest) => (
-                  <div
-                    key={backtest.id}
-                    className={cn(
-                      "transition-all rounded-lg",
-                      viewBacktestId === backtest.id &&
-                        "ring-2 ring-primary shadow-sm"
-                    )}
-                  >
-                    <BacktestCard
-                      backtest={backtest}
-                      onCancel={cancelMutation.mutate}
-                      onDelete={deleteMutation.mutate}
-                      isCanceling={
-                        cancelMutation.isPending &&
-                        cancelMutation.variables === backtest.id
-                      }
-                      isDeleting={
-                        deleteMutation.isPending &&
-                        deleteMutation.variables === backtest.id
-                      }
-                      compact={true}
-                    />
-                  </div>
-                ))
-              )}
-              {/* Infinite scroll trigger */}
-              <div ref={ref} className="h-12 flex justify-center items-center">
-                {isFetchingNextPage && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="animate-spin h-4 w-4" />
-                    <span>{t("splitView.loadingMore")}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Right panel - Backtest detail */}
-        <motion.div
-          initial={{ width: "100%", opacity: 0 }}
-          animate={{
-            width: isSplitView ? "calc(100% - 320px)" : "100%",
-            opacity: 1,
-          }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="flex-1 overflow-y-auto"
-        >
-          {viewBacktestId && (
-            <BacktestDetailPanel
-              backtestId={viewBacktestId}
-              onClose={handleClose}
-            />
-          )}
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Grid view (default)
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">

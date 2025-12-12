@@ -176,7 +176,7 @@ export const BacktestCard = ({
     return (
       <>
         <div className="relative group">
-          <Link href={`/backtester?view=${id}`}>
+          <Link href={`/backtester/${id}`}>
             <Card className="w-full p-3 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-sm bg-card/30 hover:bg-card">
               <div className="space-y-2">
                 {/* Top row: Strategy name + Status badge (with space for delete button) */}
@@ -269,7 +269,7 @@ export const BacktestCard = ({
         )}
       >
         <Link
-          href={`/backtester?view=${id}`}
+          href={`/backtester/${id}`}
           className="flex flex-col flex-grow p-5"
         >
           <div className="flex justify-between items-start gap-3 mb-4">
