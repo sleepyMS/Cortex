@@ -84,14 +84,24 @@ class AuthService:
 
         token_record = await user_service.get_refresh_token_by_jti(db, jti)
 
-        if not token_record or token_record.is_revoked or \
-           token_record.expires_at < datetime.now(timezone.utc) or \
-           not security.verify_refresh_token_secret(secret, token_record.hashed_token):
-            #    not security.verify_password(secret, token_record.hashed_token): # 해싱 함수 재사용
-            
-            if token_record and token_record.user_id:
-                await user_service.revoke_all_refresh_tokens(db, token_record.user_id)
-            
+        # 상세 검증 및 로깅
+        if not token_record:
+            logger.warning(f"Refresh token failed: JTI '{jti}' not found in database.")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증에 실패했습니다. 다시 로그인해주세요.")
+        
+        if token_record.is_revoked:
+            logger.warning(f"Refresh token failed: JTI '{jti}' is already revoked. User ID: {token_record.user_id}")
+            await user_service.revoke_all_refresh_tokens(db, token_record.user_id)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증에 실패했습니다. 다시 로그인해주세요.")
+        
+        if token_record.expires_at < datetime.now(timezone.utc):
+            logger.warning(f"Refresh token failed: JTI '{jti}' has expired. Expired at: {token_record.expires_at}. User ID: {token_record.user_id}")
+            await user_service.revoke_all_refresh_tokens(db, token_record.user_id)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증에 실패했습니다. 다시 로그인해주세요.")
+        
+        if not security.verify_refresh_token_secret(secret, token_record.hashed_token):
+            logger.warning(f"Refresh token failed: Invalid secret for JTI '{jti}'. Possible token tampering. User ID: {token_record.user_id}")
+            await user_service.revoke_all_refresh_tokens(db, token_record.user_id)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증에 실패했습니다. 다시 로그인해주세요.")
 
         token_record.is_revoked = True
