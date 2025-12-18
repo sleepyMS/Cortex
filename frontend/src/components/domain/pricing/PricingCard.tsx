@@ -230,8 +230,11 @@ export const PricingCard = ({
       </div>
 
       <Button
+        variant={isPro ? "primary" : "secondary"}
         onClick={handleSubscribeClick}
-        className={`w-full mt-10 text-lg font-semibold ${buttonStyle}`}
+        className={`w-full mt-10 text-lg font-semibold ${
+          !isPro ? buttonStyle : ""
+        }`}
         disabled={
           checkoutMutation.isPending ||
           changePlanMutation.isPending ||
