@@ -1,17 +1,33 @@
+// frontend/src/components/ui/Alert.tsx
+// 2025 Premium SaaS Alert Component
+
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-
 import { cn } from "@/lib/utils";
 
-// Alert 컴포넌트의 스타일 변형(variants) 정의
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
+        default:
+          "bg-background text-foreground border-border [&>svg]:text-foreground",
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "border-destructive/30 bg-destructive/5 text-destructive [&>svg]:text-destructive",
+        success:
+          "border-success/30 bg-success/5 text-success [&>svg]:text-success",
+        warning:
+          "border-warning/30 bg-warning/5 text-warning [&>svg]:text-warning",
+        info: "border-info/30 bg-info/5 text-info [&>svg]:text-info",
+        // Filled variants - more prominent
+        "destructive-filled":
+          "border-transparent bg-destructive text-destructive-foreground [&>svg]:text-destructive-foreground",
+        "success-filled":
+          "border-transparent bg-success text-success-foreground [&>svg]:text-success-foreground",
+        "warning-filled":
+          "border-transparent bg-warning text-warning-foreground [&>svg]:text-warning-foreground",
+        "info-filled":
+          "border-transparent bg-info text-info-foreground [&>svg]:text-info-foreground",
       },
     },
     defaultVariants: {
@@ -20,7 +36,6 @@ const alertVariants = cva(
   }
 );
 
-// 기본 Alert 컴포넌트
 const Alert = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
@@ -34,27 +49,25 @@ const Alert = React.forwardRef<
 ));
 Alert.displayName = "Alert";
 
-// Alert의 제목 부분
 const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <h5
     ref={ref}
-    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
+    className={cn("mb-1 font-semibold leading-none tracking-tight", className)}
     {...props}
   />
 ));
 AlertTitle.displayName = "AlertTitle";
 
-// Alert의 설명(본문) 부분
 const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm [&_p]:leading-relaxed", className)}
+    className={cn("text-sm [&_p]:leading-relaxed opacity-90", className)}
     {...props}
   />
 ));

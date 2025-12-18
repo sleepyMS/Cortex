@@ -1,4 +1,5 @@
 /* frontend/src/app/globals.css */
+/* 2025 Premium SaaS Design System */
 
 @tailwind base;
 @tailwind components;
@@ -6,91 +7,134 @@
 
 @layer base {
   :root {
-    /* * 라이트 모드: 순백색 대신 부드러운 라벤더 그레이 톤으로 변경 
-     */
-    --background: 250 20% 98%;
-    --foreground: 240 10% 15%;
+    /* ========================================
+       LIGHT MODE - Soft Lavender Gray Tone
+       ======================================== */
+    --background: 240 20% 98%;
+    --foreground: 240 10% 12%;
 
-    --card: 250 20% 100%;
-    --card-foreground: 240 10% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 12%;
 
-    --popover: 250 20% 100%;
-    --popover-foreground: 240 10% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 12%;
 
-    --primary: 259 92% 66%;
-    --primary-foreground: 259 92% 98%;
-    --primary-rgb: 116, 12, 238;
+    /* Primary - Keep distinctive purple for FinTech identity */
+    --primary: 259 85% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 259 85% 68%;
+    --primary-dark: 259 85% 48%;
+    --primary-rgb: 124, 58, 237;
 
-    --secondary: 250 15% 95%;
-    --secondary-foreground: 240 5.9% 10%;
+    /* Secondary - Subtle warm neutral */
+    --secondary: 240 10% 96%;
+    --secondary-foreground: 240 10% 15%;
 
-    --muted: 250 15% 95%;
-    --muted-foreground: 240 4% 46%;
+    /* Muted - For subtle backgrounds and text */
+    --muted: 240 10% 94%;
+    --muted-foreground: 240 5% 45%;
 
+    /* Accent - Slightly warmer for visual interest */
     --accent: 250 15% 92%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent-foreground: 240 10% 12%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    /* Semantic Colors */
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 250 10% 90%;
-    --input: 250 10% 92%;
-    --ring: 259 92% 66%;
+    /* UI Elements */
+    --border: 240 10% 90%;
+    --input: 240 10% 94%;
+    --ring: 259 85% 58%;
+    --radius: 0.625rem;
 
-    --radius: 0.75rem;
+    /* Surface Layers for depth */
+    --surface-1: 240 10% 97%;
+    --surface-2: 240 10% 95%;
+    --surface-3: 240 10% 92%;
 
+    /* Tier Colors */
     --basic-primary: 30 60% 50%;
     --basic-secondary: 30 60% 95%;
-    --trader-primary: 38 90% 65%;
-    --trader-secondary: 38 90% 90%;
-    --pro-primary: 259 92% 66%;
-    --pro-secondary: 259 92% 95%;
+    --trader-primary: 38 90% 50%;
+    --trader-secondary: 38 90% 92%;
+    --pro-primary: 259 85% 58%;
+    --pro-secondary: 259 85% 95%;
 
     --brown-500: 32 37% 55%;
     --brown-600: 32 37% 45%;
   }
 
   .dark {
-    /* * 다크 모드: 칠흑 같은 검정 대신 깊고 푸른 '우주' 톤으로 변경 
-     */
-    --background: 240 6% 13%; /* 어두운 배경을 조금 더 밝게 */
-    --foreground: 240 5% 96%;
+    /* ========================================
+       DARK MODE - Deep Space with Warmth
+       2025 Trend: Avoid pure black, use soft deep tones
+       ======================================== */
+    --background: 240 10% 9%;
+    --foreground: 0 0% 95%;
 
-    --card: 240 6% 16%; /* 카드 배경을 더 밝게 하여 깊이감 부여 */
-    --card-foreground: 240 5% 96%;
+    /* Layered cards for depth - subtle elevation */
+    --card: 240 10% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 240 6% 11%; /* 팝오버 배경도 함께 조정 */
-    --popover-foreground: 240 5% 96%;
+    --popover: 240 10% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 259 92% 66%;
-    --primary-foreground: 259 92% 98%;
-    --primary-rgb: 116, 12, 238;
+    /* Primary - Slightly brighter for dark mode visibility */
+    --primary: 259 85% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 259 85% 72%;
+    --primary-dark: 259 85% 55%;
+    --primary-rgb: 139, 92, 246;
 
-    --secondary: 240 5% 18%;
-    --secondary-foreground: 240 5% 98%;
+    /* Secondary */
+    --secondary: 240 8% 18%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 240 5% 18%;
-    --muted-foreground: 240 5% 65%;
+    /* Muted */
+    --muted: 240 8% 16%;
+    --muted-foreground: 240 5% 60%;
 
-    --accent: 240 5% 22%;
-    --accent-foreground: 240 5% 98%;
+    /* Accent */
+    --accent: 240 8% 20%;
+    --accent-foreground: 0 0% 95%;
 
-    --destructive: 0 72% 51%; /* HSL(색상, 채도, 밝기) - 밝기를 높여 가독성 확보 */
-    --destructive-foreground: 0 0% 98%;
+    /* Semantic Colors - Adjusted for dark mode visibility */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
+    --info: 199 89% 55%;
+    --info-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 20%; /* 경계선이 조금 더 잘 보이도록 조정 */
-    --input: 240 5% 20%; /* 입력 필드 배경도 함께 조정 */
-    --ring: 259 92% 66%;
+    /* UI Elements */
+    --border: 240 8% 18%;
+    --input: 240 8% 16%;
+    --ring: 259 85% 65%;
 
-    --basic-primary: 30 60% 40%;
+    /* Surface Layers for depth */
+    --surface-1: 240 10% 14%;
+    --surface-2: 240 10% 18%;
+    --surface-3: 240 10% 22%;
+
+    /* Tier Colors - Dark mode adjustments */
+    --basic-primary: 30 60% 45%;
     --basic-secondary: 30 60% 15%;
-    --trader-primary: 45 100% 70%;
-    --trader-secondary: 45 100% 20%;
-    --pro-primary: 259 92% 66%;
-    --pro-secondary: 259 92% 20%;
+    --trader-primary: 38 90% 55%;
+    --trader-secondary: 38 90% 18%;
+    --pro-primary: 259 85% 65%;
+    --pro-secondary: 259 85% 18%;
 
-    --brown-500: 32 37% 55%; /* 다크 모드에 맞는 HSL 값으로 조정 */
-    --brown-600: 32 37% 45%; /* 다크 모드에 맞는 HSL 값으로 조정 */
+    --brown-500: 32 37% 55%;
+    --brown-600: 32 37% 48%;
   }
 }
 
@@ -99,8 +143,10 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
+
+  /* Base utility classes */
   .bg-background {
     background-color: hsl(var(--background));
   }
@@ -167,11 +213,127 @@
   .ring-ring {
     --tw-ring-color: hsl(var(--ring));
   }
-  .border-primary {
-    border-color: hsl(var(--primary));
+
+  /* Semantic color utilities */
+  .bg-success {
+    background-color: hsl(var(--success));
+  }
+  .text-success {
+    color: hsl(var(--success));
+  }
+  .bg-warning {
+    background-color: hsl(var(--warning));
+  }
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+  .bg-info {
+    background-color: hsl(var(--info));
+  }
+  .text-info {
+    color: hsl(var(--info));
   }
 }
 
+/* ========================================
+   GRADIENT UTILITIES
+   2025 Trend: Subtle, sophisticated gradients
+   ======================================== */
+@layer utilities {
+  /* Primary gradient - for CTA buttons and highlights */
+  .gradient-primary {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary-light)),
+      hsl(var(--primary-dark))
+    );
+  }
+
+  /* Subtle radial gradient - for page backgrounds */
+  .gradient-radial-subtle {
+    background: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      hsl(var(--primary) / 0.08),
+      transparent
+    );
+  }
+
+  /* Mesh gradient - modern SaaS aesthetic */
+  .gradient-mesh {
+    background: radial-gradient(
+        at 20% 0%,
+        hsl(var(--primary) / 0.06) 0px,
+        transparent 50%
+      ),
+      radial-gradient(at 80% 20%, hsl(259 85% 75% / 0.04) 0px, transparent 50%),
+      radial-gradient(at 0% 60%, hsl(199 89% 60% / 0.03) 0px, transparent 50%);
+  }
+
+  /* Text gradient */
+  .text-gradient-primary {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary-light)),
+      hsl(var(--primary))
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shimmer effect for loading states */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+/* ========================================
+   GLASSMORPHISM UTILITIES
+   2025 Trend: Subtle, functional glass effects
+   ======================================== */
+@layer utilities {
+  /* Light glass effect */
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Strong glass effect */
+  .glass-strong {
+    background: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Glass with border */
+  .glass-border {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Glow effect for interactive elements */
+  .glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+  }
+
+  .glow-lg {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.25);
+  }
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
 @keyframes float {
   0% {
     transform: translate(0, 0) scale(1);
@@ -201,11 +363,23 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .theme-icon-animate {
   animation: icon-rotate-scale-in 0.35s ease-in-out;
 }
 
-/* Custom Scrollbar Styles */
+/* ========================================
+   CUSTOM SCROLLBAR
+   2025 Trend: Minimal, unobtrusive scrollbars
+   ======================================== */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
@@ -224,6 +398,7 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 3px;
+  transition: background 0.2s;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {

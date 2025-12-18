@@ -1,4 +1,5 @@
-// file: frontend/src/components/ui/Button.tsx (수정 제안)
+// file: frontend/src/components/ui/Button.tsx
+// 2025 Premium SaaS Button Component
 
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
@@ -6,30 +7,42 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { clsx } from "clsx";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  // Base styles - enhanced with smooth transitions
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
   {
     variants: {
       variant: {
-        // [Primary] 가장 중요한 CTA 버튼 (바이올렛 테마 적용)
-        // bg-violet-600 대신 bg-primary 사용
-        primary: "bg-primary text-primary-foreground hover:bg-primary/90", // dark:bg-violet-500 대신 dark:bg-primary/90 사용 (이미 CSS 변수에 Dark Mode 정의됨)
-        // [Secondary] 보조 버튼
+        // [Primary] Main CTA - with gradient and glow effect
+        primary:
+          "bg-gradient-to-r from-primary to-primary-dark text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.25)] hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.35)] hover:brightness-105 backdrop-blur-sm",
+        // [Secondary] Secondary action
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:shadow",
+        // [Outline] Bordered button
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        // [Ghost] 배경 없이 텍스트만 있는 버튼 (테마/언어 전환 등에 사용)
+          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground hover:shadow",
+        // [Ghost] Minimal button
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        // [Destructive] 삭제 등 위험한 작업 버튼
+        // [Destructive] Danger actions
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 hover:shadow-lg",
+        // [Link] Text link style
         link: "text-primary underline-offset-4 hover:underline",
+        // [Gradient] Premium CTA with stronger gradient and glow
+        gradient:
+          "bg-gradient-to-r from-primary via-primary to-primary-dark text-primary-foreground shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.4)] hover:brightness-110 backdrop-blur-sm",
+        // [Glass] Glassmorphism style
+        glass:
+          "bg-background/50 backdrop-blur-sm border border-border/50 text-foreground hover:bg-background/70 hover:border-border",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10", // IconButton을 위한 사이즈
+        sm: "h-9 rounded-md px-3 text-xs",
+        lg: "h-11 rounded-lg px-8 text-base",
+        xl: "h-12 rounded-xl px-10 text-base font-semibold",
+        icon: "h-10 w-10",
+        "icon-sm": "h-8 w-8",
+        "icon-lg": "h-12 w-12",
       },
     },
     defaultVariants: {
