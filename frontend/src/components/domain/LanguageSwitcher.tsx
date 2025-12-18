@@ -47,8 +47,8 @@ const LanguageSwitcher = () => {
             return (
               <button
                 key={locale}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 transition-colors text-left group hover:bg-accent ${
-                  isSelected ? "bg-violet-500/10" : ""
+                className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 transition-colors text-left group ${
+                  isSelected ? "bg-violet-500/10" : "hover:bg-accent"
                 }`}
                 onClick={() => handleLocaleChange(locale)}
               >
