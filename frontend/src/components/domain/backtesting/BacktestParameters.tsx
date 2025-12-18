@@ -294,30 +294,32 @@ const RuleDisplay = React.memo(
           );
 
           return (
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-stretch gap-4">
-              <OperandDisplayGroup
-                operand={(block as any)[leftKey]}
-                operandKey={leftKey}
-                title={leftTitle}
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
-              <div className="flex items-center justify-center">
-                <span className="font-bold text-lg text-primary">
-                  {operator}
-                </span>
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-4 min-w-max sm:min-w-0">
+                <OperandDisplayGroup
+                  operand={(block as any)[leftKey]}
+                  operandKey={leftKey}
+                  title={leftTitle}
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
+                />
+                <div className="flex items-center justify-center">
+                  <span className="font-bold text-lg text-primary">
+                    {operator}
+                  </span>
+                </div>
+                <OperandDisplayGroup
+                  operand={(block as any)[rightKey]}
+                  operandKey={rightKey}
+                  title={rightTitle}
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
+                />
               </div>
-              <OperandDisplayGroup
-                operand={(block as any)[rightKey]}
-                operandKey={rightKey}
-                title={rightTitle}
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
             </div>
           );
         }
@@ -325,34 +327,36 @@ const RuleDisplay = React.memo(
         // 지표 + 값 + 값 (3단 분리)
         case "state": {
           return (
-            <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-4">
-              <OperandDisplayGroup
-                operand={block.indicator}
-                operandKey="indicator"
-                title="operandTitles.indicator"
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
-              <OperandDisplayGroup
-                operand={block.lowerBound}
-                operandKey="lowerBound"
-                title="operandTitles.min"
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
-              <OperandDisplayGroup
-                operand={block.upperBound}
-                operandKey="upperBound"
-                title="operandTitles.max"
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-3 items-stretch gap-4 min-w-max sm:min-w-0">
+                <OperandDisplayGroup
+                  operand={block.indicator}
+                  operandKey="indicator"
+                  title="operandTitles.indicator"
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
+                />
+                <OperandDisplayGroup
+                  operand={block.lowerBound}
+                  operandKey="lowerBound"
+                  title="operandTitles.min"
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
+                />
+                <OperandDisplayGroup
+                  operand={block.upperBound}
+                  operandKey="upperBound"
+                  title="operandTitles.max"
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
+                />
+              </div>
             </div>
           );
         }
@@ -371,27 +375,29 @@ const RuleDisplay = React.memo(
           };
 
           return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
-              <OperandDisplayGroup
-                operand={(block as any).indicator}
-                operandKey="indicator"
-                title="operandTitles.indicator"
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
-              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
-                <ReadOnlyLogicDisplay
-                  label={tRule("channelZoneLabel")}
-                  value={tRule(
-                    channelZoneMap[block.channelZone] || block.channelZone
-                  )}
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-2 items-stretch gap-4 min-w-max sm:min-w-0">
+                <OperandDisplayGroup
+                  operand={(block as any).indicator}
+                  operandKey="indicator"
+                  title="operandTitles.indicator"
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
                 />
-                <ReadOnlyLogicDisplay
-                  label={tRule("actionLabel")}
-                  value={tRule(actionMap[block.action] || block.action)}
-                />
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={tRule("channelZoneLabel")}
+                    value={tRule(
+                      channelZoneMap[block.channelZone] || block.channelZone
+                    )}
+                  />
+                  <ReadOnlyLogicDisplay
+                    label={tRule("actionLabel")}
+                    value={tRule(actionMap[block.action] || block.action)}
+                  />
+                </div>
               </div>
             </div>
           );
@@ -405,21 +411,23 @@ const RuleDisplay = React.memo(
             none: "noneSignal",
           };
           return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
-              <OperandDisplayGroup
-                operand={(block as any).indicator}
-                operandKey="indicator"
-                title="operandTitles.indicator"
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
-              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
-                <ReadOnlyLogicDisplay
-                  label={tRule("signalLabel")}
-                  value={tRule(signalMap[block.signal] || block.signal)}
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-2 items-stretch gap-4 min-w-max sm:min-w-0">
+                <OperandDisplayGroup
+                  operand={(block as any).indicator}
+                  operandKey="indicator"
+                  title="operandTitles.indicator"
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
                 />
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={tRule("signalLabel")}
+                    value={tRule(signalMap[block.signal] || block.signal)}
+                  />
+                </div>
               </div>
             </div>
           );
@@ -434,23 +442,25 @@ const RuleDisplay = React.memo(
             hidden_bearish: "hiddenBearish",
           };
           return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4">
-              <OperandDisplayGroup
-                operand={(block as any).indicator}
-                operandKey="indicator"
-                title="operandTitles.indicator"
-                currentBlockPath={currentBlockPath}
-                overriddenPaths={overriddenPaths}
-                definitions={definitions}
-                t={t}
-              />
-              <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
-                <ReadOnlyLogicDisplay
-                  label={tRule("divergenceTypeLabel")}
-                  value={tRule(
-                    divTypeMap[block.divergenceType] || block.divergenceType
-                  )}
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-2 items-stretch gap-4 min-w-max sm:min-w-0">
+                <OperandDisplayGroup
+                  operand={(block as any).indicator}
+                  operandKey="indicator"
+                  title="operandTitles.indicator"
+                  currentBlockPath={currentBlockPath}
+                  overriddenPaths={overriddenPaths}
+                  definitions={definitions}
+                  t={t}
                 />
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={tRule("divergenceTypeLabel")}
+                    value={tRule(
+                      divTypeMap[block.divergenceType] || block.divergenceType
+                    )}
+                  />
+                </div>
               </div>
             </div>
           );
@@ -755,42 +765,50 @@ export const BacktestParameters = ({ backtest }: BacktestParametersProps) => {
           )}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-8 pt-4 border-t">
-          <RuleSection
-            title={t("longEntry")}
-            rules={snapshot.longEntryRules}
-            definitions={indicatorDefinitions}
-            overriddenPaths={overriddenPaths}
-            pathPrefix="longEntryRules"
-            t={t}
-            tRule={tRule}
-          />
-          <RuleSection
-            title={t("longExit")}
-            rules={snapshot.longExitRules}
-            definitions={indicatorDefinitions}
-            overriddenPaths={overriddenPaths}
-            pathPrefix="longExitRules"
-            t={t}
-            tRule={tRule}
-          />
-          <RuleSection
-            title={t("shortEntry")}
-            rules={snapshot.shortEntryRules}
-            definitions={indicatorDefinitions}
-            overriddenPaths={overriddenPaths}
-            pathPrefix="shortEntryRules"
-            t={t}
-            tRule={tRule}
-          />
-          <RuleSection
-            title={t("shortExit")}
-            rules={snapshot.shortExitRules}
-            definitions={indicatorDefinitions}
-            overriddenPaths={overriddenPaths}
-            pathPrefix="shortExitRules"
-            t={t}
-            tRule={tRule}
-          />
+          <div className="min-w-0 overflow-hidden">
+            <RuleSection
+              title={t("longEntry")}
+              rules={snapshot.longEntryRules}
+              definitions={indicatorDefinitions}
+              overriddenPaths={overriddenPaths}
+              pathPrefix="longEntryRules"
+              t={t}
+              tRule={tRule}
+            />
+          </div>
+          <div className="min-w-0 overflow-x-auto">
+            <RuleSection
+              title={t("longExit")}
+              rules={snapshot.longExitRules}
+              definitions={indicatorDefinitions}
+              overriddenPaths={overriddenPaths}
+              pathPrefix="longExitRules"
+              t={t}
+              tRule={tRule}
+            />
+          </div>
+          <div className="min-w-0 overflow-x-auto">
+            <RuleSection
+              title={t("shortEntry")}
+              rules={snapshot.shortEntryRules}
+              definitions={indicatorDefinitions}
+              overriddenPaths={overriddenPaths}
+              pathPrefix="shortEntryRules"
+              t={t}
+              tRule={tRule}
+            />
+          </div>
+          <div className="min-w-0 overflow-x-auto">
+            <RuleSection
+              title={t("shortExit")}
+              rules={snapshot.shortExitRules}
+              definitions={indicatorDefinitions}
+              overriddenPaths={overriddenPaths}
+              pathPrefix="shortExitRules"
+              t={t}
+              tRule={tRule}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
