@@ -36,7 +36,7 @@ export const FeatureAnimatedCard = ({
       transition={{ delay: index * 0.1 }}
       className="h-full" // div가 Card의 높이를 100% 차지하도록
     >
-      <Card className="h-full hover:border-violet-500/50 hover:bg-white/10 transition-colors duration-300">
+      <Card className="h-full hover:border-violet-500/50 hover:bg-violet-500/10 transition-colors duration-300">
         <CardHeader>
           {icon}
           <CardTitle>{title}</CardTitle>
