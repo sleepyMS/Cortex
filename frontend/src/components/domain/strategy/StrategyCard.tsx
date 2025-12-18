@@ -421,9 +421,9 @@ export function StrategyCard({
     <Card className="group flex flex-col justify-between h-full transition-all duration-300 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 bg-card/50 hover:bg-card overflow-hidden">
       <Link
         href={`/strategies?edit=${strategy.id}`}
-        className="flex flex-col flex-grow h-full p-6"
+        className="flex flex-col flex-grow h-full p-5"
       >
-        <CardHeader className="p-0 mb-4 space-y-2">
+        <CardHeader className="p-0 mb-3 space-y-1">
           <div className="flex items-start justify-between gap-4">
             <CardTitle className="text-xl font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
               {strategy.name}
@@ -459,11 +459,11 @@ export function StrategyCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-grow space-y-6">
-          <p className="text-sm text-muted-foreground line-clamp-3 min-h-[60px] leading-relaxed">
+        <CardContent className="p-0 flex-grow space-y-4">
+          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px] leading-relaxed">
             {strategy.description || t("noDescription")}
           </p>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground uppercase tracking-wider font-medium">
               <span>Performance</span>
             </div>
@@ -473,11 +473,11 @@ export function StrategyCard({
           </div>
         </CardContent>
       </Link>
-      <CardFooter className="p-6 pt-4 border-t bg-muted/20 flex flex-col gap-4">
-        <div className="w-full min-h-[24px]">
+      <CardFooter className="px-5 py-3 border-t bg-muted/20 flex flex-col gap-2">
+        <div className="w-full">
           <KeyIndicatorBadges strategy={strategy} />
         </div>
-        <div className="flex items-center justify-between w-full pt-2">
+        <div className="flex items-center justify-between w-full">
           <p className="text-xs text-muted-foreground tabular-nums">
             {displayDateString
               ? format(new Date(displayDateString), "yyyy.MM.dd")
