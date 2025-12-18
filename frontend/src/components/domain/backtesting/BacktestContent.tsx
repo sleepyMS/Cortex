@@ -243,6 +243,7 @@ export function BacktestContent({
       return res.data;
     },
     enabled: backtest?.status === "completed" && !!tradeLogsData, // Wait for trade logs!
+    gcTime: 0, // [Performance] Disable caching to prevent UI freeze on navigation
     refetchOnWindowFocus: false,
   });
 
