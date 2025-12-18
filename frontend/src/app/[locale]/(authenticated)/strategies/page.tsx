@@ -84,11 +84,31 @@ const LoadingSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) =>
   viewMode === "grid" ? (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="space-y-3 p-6 border rounded-lg">
-          <Skeleton className="h-5 w-3/4" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-5/6" />
-          <div className="flex justify-between items-center pt-4">
+        <div
+          key={i}
+          className="relative overflow-hidden rounded-xl border bg-card p-5 space-y-4"
+          style={{ animationDelay: `${i * 100}ms` }}
+        >
+          {/* Shimmer overlay */}
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-muted-foreground/5 to-transparent" />
+
+          {/* Header */}
+          <div className="flex justify-between items-start gap-3">
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-between items-center pt-2">
             <Skeleton className="h-5 w-1/4" />
             <Skeleton className="h-8 w-8 rounded-full" />
           </div>
@@ -98,7 +118,20 @@ const LoadingSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) =>
   ) : (
     <div className="space-y-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-20 w-full" />
+        <div
+          key={i}
+          className="relative overflow-hidden rounded-lg border bg-card p-4"
+        >
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-muted-foreground/5 to-transparent" />
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -106,16 +139,31 @@ const LoadingSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) =>
 const EmptyState = () => {
   const t = useTranslations("StrategiesPage");
   return (
-    <div className="text-center py-16 border border-dashed rounded-lg">
-      <h2 className="text-xl font-semibold">{t("empty.title")}</h2>
-      <p className="text-muted-foreground mt-2 mb-6">
-        {t("empty.description")}
-      </p>
-      <div className="flex justify-center gap-4">
-        <Link href="/strategies/new">
-          <Button>{t("empty.createButton")}</Button>
-        </Link>
-        <Button variant="outline">{t("empty.templateButton")}</Button>
+    <div className="relative flex flex-col items-center justify-center py-20 px-6 border border-dashed rounded-2xl bg-muted/20">
+      {/* Decorative gradient background */}
+      <div className="absolute inset-0 gradient-mesh opacity-30 rounded-2xl" />
+
+      <div className="relative z-10 flex flex-col items-center text-center max-w-md">
+        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
+          <PlusCircle className="h-10 w-10 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">
+          {t("empty.title")}
+        </h2>
+        <p className="text-muted-foreground mb-8 leading-relaxed">
+          {t("empty.description")}
+        </p>
+        <div className="flex justify-center gap-4">
+          <Link href="/strategies/new">
+            <Button size="lg" className="gap-2">
+              <PlusCircle className="h-5 w-5" />
+              {t("empty.createButton")}
+            </Button>
+          </Link>
+          <Button variant="outline" size="lg">
+            {t("empty.templateButton")}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -470,46 +518,51 @@ function StrategiesPageContent() {
       ) : (
         /* Normal full-width view */
         <div className="container mx-auto max-w-7xl px-4 py-8">
-          {/* 1. 페이지 헤더 */}
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                {t("title")}
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                {t("subtitle", {
-                  defaultMessage: "Manage and analyze your trading strategies",
-                })}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center p-1 bg-muted/50 rounded-lg border">
+          {/* 1. Enhanced page header with gradient */}
+          <div className="relative mb-10">
+            <div className="absolute inset-0 gradient-radial-subtle opacity-50 -z-10" />
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 pb-6 border-b">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-bold tracking-tight text-foreground">
+                  {t("title")}
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                  {t("subtitle", {
+                    defaultMessage:
+                      "Manage and analyze your trading strategies",
+                  })}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center p-1 bg-muted/50 rounded-lg border">
+                  <Button
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    aria-label="Grid view"
+                    className="h-9 w-9 p-0"
+                  >
+                    <LayoutGrid className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("list")}
+                    aria-label="List view"
+                    className="h-9 w-9 p-0"
+                  >
+                    <List className="h-5 w-5" />
+                  </Button>
+                </div>
                 <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  aria-label="Grid view"
-                  className="h-9 w-9 p-0"
+                  size="lg"
+                  className="gap-2"
+                  onClick={handleNavigateToCreate}
                 >
-                  <LayoutGrid className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  aria-label="List view"
-                  className="h-9 w-9 p-0"
-                >
-                  <List className="h-5 w-5" />
+                  <PlusCircle className="h-5 w-5" />
+                  {t("createNewStrategy")}
                 </Button>
               </div>
-              <Button
-                className="h-10 px-4 shadow-sm"
-                onClick={handleNavigateToCreate}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                {t("createNewStrategy")}
-              </Button>
             </div>
           </div>
 

@@ -59,22 +59,39 @@ import { cn } from "@/lib/utils";
 const LoadingSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
     {Array.from({ length: 8 }).map((_, i) => (
-      <div key={i} className="space-y-3 p-4 border rounded-lg h-64">
-        <div className="flex justify-between items-start">
-          <Skeleton className="h-5 w-3/4" />
+      <div
+        key={i}
+        className="relative overflow-hidden rounded-xl border bg-card p-5 space-y-4 h-64"
+        style={{ animationDelay: `${i * 100}ms` }}
+      >
+        {/* Shimmer overlay */}
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-muted-foreground/5 to-transparent" />
+
+        {/* Header */}
+        <div className="flex justify-between items-start gap-3">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
           <div className="flex flex-col items-end gap-1.5">
-            <Skeleton className="h-5 w-16" />
-            <Skeleton className="h-5 w-12" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-4 w-12" />
           </div>
         </div>
-        <div className="flex justify-around items-center pt-8">
-          <Skeleton className="h-8 w-1/4" />
-          <Skeleton className="h-8 w-1/4" />
-          <Skeleton className="h-8 w-1/4" />
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-muted/30">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
         </div>
-        <Skeleton className="h-4 w-full pt-4" />
-        <div className="flex justify-between items-center pt-10">
-          <Skeleton className="h-5 w-1/3" />
+
+        {/* Progress */}
+        <Skeleton className="h-2 w-full rounded-full" />
+
+        {/* Footer */}
+        <div className="flex justify-between items-center pt-2">
+          <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-8 w-8 rounded-full" />
         </div>
       </div>
@@ -88,15 +105,27 @@ const LoadingSkeleton = () => (
 const EmptyState = () => {
   const t = useTranslations("OptimizationPage");
   return (
-    <div className="text-center py-16 border border-dashed rounded-lg">
-      <Zap className="mx-auto h-12 w-12 text-muted-foreground" />
-      <h2 className="mt-4 text-xl font-semibold">{t("empty.title")}</h2>
-      <p className="text-muted-foreground mt-2 mb-6">
-        {t("empty.description")}
-      </p>
-      <Link href="/optimization/new">
-        <Button>{t("empty.createButton")}</Button>
-      </Link>
+    <div className="relative flex flex-col items-center justify-center py-20 px-6 border border-dashed rounded-2xl bg-muted/20">
+      {/* Decorative gradient background */}
+      <div className="absolute inset-0 gradient-mesh opacity-30 rounded-2xl" />
+
+      <div className="relative z-10 flex flex-col items-center text-center max-w-md">
+        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
+          <Zap className="h-10 w-10 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">
+          {t("empty.title")}
+        </h2>
+        <p className="text-muted-foreground mb-8 leading-relaxed">
+          {t("empty.description")}
+        </p>
+        <Link href="/optimization/new">
+          <Button size="lg" className="gap-2">
+            <PlusCircle className="h-5 w-5" />
+            {t("empty.createButton")}
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };
@@ -243,23 +272,27 @@ export default function OptimizationPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
-      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            {t("subtitle", {
-              defaultMessage: "Find the best parameters for your strategy",
-            })}
-          </p>
+      {/* Enhanced Header with gradient background */}
+      <div className="relative mb-10">
+        <div className="absolute inset-0 gradient-radial-subtle opacity-50 -z-10" />
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 pb-6 border-b">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              {t("title")}
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              {t("subtitle", {
+                defaultMessage: "Find the best parameters for your strategy",
+              })}
+            </p>
+          </div>
+          <Link href="/optimization/new">
+            <Button size="lg" className="gap-2">
+              <PlusCircle className="h-5 w-5" />
+              {t("createNewOptimization")}
+            </Button>
+          </Link>
         </div>
-        <Link href="/optimization/new">
-          <Button className="h-10 px-4 shadow-sm">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {t("createNewOptimization")}
-          </Button>
-        </Link>
       </div>
 
       <div className="mb-8 space-y-4">

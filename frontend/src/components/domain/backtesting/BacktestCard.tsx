@@ -263,9 +263,16 @@ export const BacktestCard = ({
     <TooltipProvider delayDuration={100}>
       <Card
         className={cn(
-          "group flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-border/50 bg-card/50 hover:bg-card hover:border-primary/20",
+          "group flex flex-col h-full transition-all duration-300 border-border/50 bg-card/50",
+          // Hover effects
+          "hover:shadow-lg hover:-translate-y-1 hover:bg-card hover:border-primary/30",
+          // Status-based styling
+          status === "completed" &&
+            "hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]",
+          status === "running" &&
+            "shadow-[0_0_15px_rgba(59,130,246,0.2)] border-blue-500/30",
           (status === "failed" || status === "canceled") &&
-            "opacity-70 hover:opacity-100"
+            "opacity-60 hover:opacity-100"
         )}
       >
         <Link

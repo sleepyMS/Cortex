@@ -48,14 +48,38 @@ import { cn } from "@/lib/utils";
 const LoadingSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
     {Array.from({ length: 8 }).map((_, i) => (
-      <div key={i} className="space-y-3 p-4 border rounded-lg">
-        <div className="flex justify-between items-start">
-          <Skeleton className="h-5 w-3/4" />
-          <Skeleton className="h-5 w-1/5" />
+      <div
+        key={i}
+        className="relative overflow-hidden rounded-xl border bg-card p-5 space-y-4"
+        style={{ animationDelay: `${i * 100}ms` }}
+      >
+        {/* Shimmer overlay */}
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-muted-foreground/5 to-transparent" />
+
+        {/* Header */}
+        <div className="flex justify-between items-start gap-3">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+          <Skeleton className="h-6 w-20 rounded-full" />
         </div>
-        <Skeleton className="h-4 w-5/6" />
-        <div className="flex justify-between items-center pt-4">
-          <Skeleton className="h-5 w-1/4" />
+
+        {/* Stats area */}
+        <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30">
+          <div className="space-y-2 text-center">
+            <Skeleton className="h-3 w-16 mx-auto" />
+            <Skeleton className="h-6 w-12 mx-auto" />
+          </div>
+          <div className="space-y-2 text-center border-l border-border/50">
+            <Skeleton className="h-3 w-16 mx-auto" />
+            <Skeleton className="h-6 w-12 mx-auto" />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center pt-2 border-t">
+          <Skeleton className="h-4 w-24" />
           <Skeleton className="h-8 w-8 rounded-full" />
         </div>
       </div>
@@ -66,15 +90,27 @@ const LoadingSkeleton = () => (
 const EmptyState = () => {
   const t = useTranslations("BacktesterPage");
   return (
-    <div className="text-center py-16 border border-dashed rounded-lg">
-      <BarChartHorizontal className="mx-auto h-12 w-12 text-muted-foreground" />
-      <h2 className="mt-4 text-xl font-semibold">{t("empty.title")}</h2>
-      <p className="text-muted-foreground mt-2 mb-6">
-        {t("empty.description")}
-      </p>
-      <Link href="/backtester/new">
-        <Button>{t("empty.createButton")}</Button>
-      </Link>
+    <div className="relative flex flex-col items-center justify-center py-20 px-6 border border-dashed rounded-2xl bg-muted/20">
+      {/* Decorative gradient background */}
+      <div className="absolute inset-0 gradient-mesh opacity-30 rounded-2xl" />
+
+      <div className="relative z-10 flex flex-col items-center text-center max-w-md">
+        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
+          <BarChartHorizontal className="h-10 w-10 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">
+          {t("empty.title")}
+        </h2>
+        <p className="text-muted-foreground mb-8 leading-relaxed">
+          {t("empty.description")}
+        </p>
+        <Link href="/backtester/new">
+          <Button size="lg" className="gap-2">
+            <PlusCircle className="h-5 w-5" />
+            {t("empty.createButton")}
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };
@@ -202,23 +238,27 @@ export default function BacktesterPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
-      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-10 pb-6 border-b">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            {t("subtitle", {
-              defaultMessage: "Manage and analyze your backtests",
-            })}
-          </p>
+      {/* Enhanced Header with gradient background */}
+      <div className="relative mb-10">
+        <div className="absolute inset-0 gradient-radial-subtle opacity-50 -z-10" />
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 pb-6 border-b">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              {t("title")}
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              {t("subtitle", {
+                defaultMessage: "Manage and analyze your backtests",
+              })}
+            </p>
+          </div>
+          <Link href="/backtester/new">
+            <Button size="lg" className="gap-2">
+              <PlusCircle className="h-5 w-5" />
+              {t("createNewBacktest")}
+            </Button>
+          </Link>
         </div>
-        <Link href="/backtester/new">
-          <Button className="h-10 px-4 shadow-sm">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {t("createNewBacktest")}
-          </Button>
-        </Link>
       </div>
 
       <div className="mb-8 space-y-4">
