@@ -181,7 +181,9 @@ export const useUserStore = create<State & Actions>()(
 
       // 사용자를 로그아웃 처리하는 액션
       logout: () => {
-        // 4. [개선] 중복되는 헤더 설정 코드 제거
+        // [수정] 잠재적인 혼란을 방지하기 위해 루트 레벨의 토큰 키도 삭제합니다.
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
         set({ ...initialState, isAuthInitialized: true });
       },
 
@@ -193,6 +195,39 @@ export const useUserStore = create<State & Actions>()(
         if (!refreshToken) {
           get().logout();
           return null;
+        }
+
+        // [추가] Race Condition 방지: LocalStorage의 최신 상태를 확인합니다.
+        // 다른 탭이나 프로세스에서 이미 토큰을 갱신했을 수 있습니다.
+        try {
+          const storageStr = localStorage.getItem("cortex-auth-storage");
+          if (storageStr) {
+            const storageData = JSON.parse(storageStr);
+            const storedRefreshToken = storageData?.state?.refreshToken;
+
+            // 저장된 리프레시 토큰이 현재 메모리의 토큰과 다르고, 유효한 값이 존재한다면
+            // 이미 갱신된 것으로 간주하고 저장된 값을 사용합니다.
+            if (
+              storedRefreshToken &&
+              storedRefreshToken !== refreshToken &&
+              storedRefreshToken !== "null"
+            ) {
+              console.log(
+                "Detected token refresh by another tab/process. Syncing..."
+              );
+              const storedAccessToken = storageData?.state?.accessToken;
+              if (storedAccessToken) {
+                set({
+                  accessToken: storedAccessToken,
+                  refreshToken: storedRefreshToken,
+                });
+                return storedAccessToken;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Error checking localStorage for race condition:", e);
+          // 파싱 에러 등 발생 시 무시하고 정상 흐름 진행
         }
 
         try {
