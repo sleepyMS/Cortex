@@ -9,7 +9,7 @@ import {
 // 👈 Pathnames는 next-intl/routing에서 임포트 (Pathnames deprecation 해결)
 import { Pathnames } from "next-intl/routing";
 
-export const locales = ["en", "ko"] as const;
+export const locales = ["ko", "en"] as const;
 export const defaultLocale = "ko" as const;
 
 export const pathnames = {
