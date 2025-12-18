@@ -199,21 +199,7 @@ export function BacktestContent({
     retry: false,
   });
 
-  // 2. Chart data (only when completed)
-  const { data: chartData, isLoading: isLoadingCharts } = useQuery<{
-    pnlCurveJson: { time: number; value: number }[];
-    drawdownCurveJson: { time: number; value: number }[];
-  }>({
-    queryKey: ["backtestCharts", backtestId],
-    queryFn: async () => {
-      const res = await apiClient.get(`/backtests/${backtestId}/charts`);
-      return res.data;
-    },
-    enabled: backtest?.status === "completed",
-    refetchOnWindowFocus: false,
-  });
-
-  // 3. Trade logs - pagination + sorting state
+  // 2. Trade logs - pagination + sorting state (MOVED UP for priority)
   const [tradePage, setTradePage] = React.useState(1);
   const [tradeLimit, setTradeLimit] = React.useState(10);
   const [tradeSortBy, setTradeSortBy] = React.useState("timestamp");
@@ -243,6 +229,20 @@ export function BacktestContent({
       return res.data;
     },
     enabled: backtest?.status === "completed",
+    refetchOnWindowFocus: false,
+  });
+
+  // 3. Chart data (Fetched ONLY after trade logs arrive to avoid blocking)
+  const { data: chartData, isLoading: isLoadingCharts } = useQuery<{
+    pnlCurveJson: { time: number; value: number }[];
+    drawdownCurveJson: { time: number; value: number }[];
+  }>({
+    queryKey: ["backtestCharts", backtestId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/backtests/${backtestId}/charts`);
+      return res.data;
+    },
+    enabled: backtest?.status === "completed" && !!tradeLogsData, // Wait for trade logs!
     refetchOnWindowFocus: false,
   });
 
