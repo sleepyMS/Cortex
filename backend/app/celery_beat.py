@@ -6,7 +6,7 @@ from celery.schedules import crontab
 celery_app.conf.beat_schedule = {
     'fetch-btc-usdt-1h-every-hour': {
         'task': 'fetch_and_store_ohlcv',
-        'schedule': crontab(minute='*/6'),
+        'schedule': crontab(minute='*/60'),
         'args': ('BTCUSDT', '1h'),
     },
     'fetch-btc-usdt-5m-every-5-mins': {
@@ -16,7 +16,7 @@ celery_app.conf.beat_schedule = {
     },
     'fetch-btc-usdt-15m-every-15-mins': {
         'task': 'fetch_and_store_ohlcv',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(minute='*/15'),
         'args': ('BTCUSDT', '15m'),
     },
     'process-daily-recurring-payments': {
