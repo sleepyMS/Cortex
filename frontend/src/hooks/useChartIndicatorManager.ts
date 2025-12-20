@@ -148,7 +148,7 @@ const getThemeOptions = (resolvedTheme?: string): DeepPartial<ChartOptions> => {
     layout: {
       background: {
         type: ColorType.Solid,
-        color: isDark ? "#020817" : "#FFFFFF",
+        color: "transparent",
       },
       textColor: isDark ? "#D1D5DB" : "#1F2937",
     },
