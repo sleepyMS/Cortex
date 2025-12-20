@@ -28,7 +28,7 @@ const LanguageSwitcher = () => {
         {/* 트리거 버튼: GangNaengBot-FE 스타일 적용 (px-3 py-2, scale 애니메이션) */}
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95 font-semibold text-sm tracking-wide border border-border/60 hover:bg-accent data-[state=open]:ring-2 data-[state=open]:ring-violet-500/50 data-[state=open]:bg-accent shadow-sm"
+          className="flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-md transition-all duration-200 font-semibold text-sm tracking-wide border border-border/60 hover:bg-accent data-[state=open]:ring-2 data-[state=open]:ring-violet-500/50 data-[state=open]:bg-accent shadow-sm"
         >
           <Globe className="h-4 w-4 text-violet-500" />
           <span>{localeConfig[currentLocale].countryCode}</span>
