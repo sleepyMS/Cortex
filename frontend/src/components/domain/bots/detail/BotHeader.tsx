@@ -65,7 +65,7 @@ export function BotHeader({ bot }: BotHeaderProps) {
     mutationFn: () => panicSell(bot.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bot", bot.id] });
-      queryClient.invalidateQueries({ queryKey: ["botLogs", bot.id] }); // 로그 데이터도 새로고침
+      queryClient.invalidateQueries({ queryKey: ["botLogs", bot.id] });
       toast.success(t("success.panicSellExecuted"), {
         description: t("success.positionsClosed"),
       });
@@ -83,110 +83,122 @@ export function BotHeader({ bot }: BotHeaderProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="space-y-2">
-        {/* Breadcrumbs */}
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Link
-            href="/bots"
-            className="hover:text-foreground transition-colors"
-          >
-            {t("bots")}
-          </Link>
-          <ChevronRight className="h-4 w-4 mx-1" />
-          <span className="font-medium text-foreground">
-            {bot.strategy?.name || t("botDetail")}
-          </span>
-        </div>
+    <div className="relative pb-6 border-b">
+      {/* Gradient background */}
+      <div className="absolute inset-0 gradient-radial-subtle opacity-50 -z-10" />
 
-        {/* Title & Status */}
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">{bot.ticker}</h1>
-          <Badge
-            variant={bot.status === "active" ? "default" : "secondary"}
-            className={`
-              ${
-                bot.status === "active"
-                  ? "bg-green-500/15 text-green-600 hover:bg-green-500/25 border-green-200"
-                  : bot.status === "error"
-                  ? "bg-red-500/15 text-red-600 hover:bg-red-500/25 border-red-200"
-                  : "bg-gray-500/15 text-gray-600 hover:bg-gray-500/25 border-gray-200"
-              } border px-3 py-1 text-sm font-medium capitalize flex items-center gap-2
-            `}
-          >
-            <span
-              className={`relative flex h-2 w-2 ${
-                bot.status === "active" ? "animate-pulse" : ""
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-3">
+          {/* Breadcrumbs */}
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Link
+              href="/bots"
+              className="hover:text-foreground transition-colors"
+            >
+              {t("bots")}
+            </Link>
+            <ChevronRight className="h-4 w-4 mx-1" />
+            <span className="font-medium text-foreground">
+              {bot.strategy?.name || t("botDetail")}
+            </span>
+          </div>
+
+          {/* Title & Status */}
+          <div className="flex items-center gap-4">
+            <h1 className="text-4xl font-bold tracking-tight">{bot.ticker}</h1>
+
+            {/* Status Badge with pulse */}
+            <Badge
+              variant={bot.status === "active" ? "default" : "secondary"}
+              className={`
+                ${
+                  bot.status === "active"
+                    ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/30"
+                    : bot.status === "error"
+                    ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-500/30"
+                    : "bg-muted text-muted-foreground"
+                } border px-3 py-1 text-sm font-medium capitalize flex items-center gap-2
+              `}
+            >
+              <span className="relative flex h-2 w-2">
+                {bot.status === "active" && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    bot.status === "active"
+                      ? "bg-green-500"
+                      : bot.status === "error"
+                      ? "bg-red-500"
+                      : "bg-gray-500"
+                  }`}
+                />
+              </span>
+              {t(`status.${bot.status}` as any)}
+            </Badge>
+
+            {/* Mode Badge */}
+            <Badge
+              variant="outline"
+              className={`text-sm font-medium ${
+                bot.mode === "paper"
+                  ? "border-amber-500/30 text-amber-600"
+                  : "border-green-500/30 text-green-600"
               }`}
             >
-              <span
-                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  bot.status === "active" ? "bg-green-500" : "hidden"
-                }`}
-              ></span>
-              <span
-                className={`relative inline-flex rounded-full h-2 w-2 ${
-                  bot.status === "active"
-                    ? "bg-green-500"
-                    : bot.status === "error"
-                    ? "bg-red-500"
-                    : "bg-gray-500"
-                }`}
-              ></span>
-            </span>
-            {t(`status.${bot.status}` as any)}
-          </Badge>
-          <span className="text-sm text-muted-foreground border-l pl-4">
-            {bot.mode === "paper"
-              ? `📄 ${t("paperTrading")}`
-              : `🔴 ${t("liveTrading")}`}
-          </span>
+              {bot.mode === "paper"
+                ? `📄 ${t("paperTrading")}`
+                : `🔴 ${t("liveTrading")}`}
+            </Badge>
+          </div>
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3">
-        {bot.status === "active" ? (
-          <Button
-            variant="outline"
-            onClick={handleStartStop}
-            disabled={updateStatusMutation.isPending}
-            className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
-          >
-            <Pause className="mr-2 h-4 w-4" />
-            {t("pauseBot")}
-          </Button>
-        ) : (
-          <Button
-            onClick={handleStartStop}
-            disabled={bot.status === "error" || updateStatusMutation.isPending}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            <Play className="mr-2 h-4 w-4" />
-            {t("startBot")}
-          </Button>
-        )}
+        {/* Actions */}
+        <div className="flex items-center gap-3">
+          {bot.status === "active" ? (
+            <Button
+              variant="outline"
+              onClick={handleStartStop}
+              disabled={updateStatusMutation.isPending}
+              className="border-orange-500/30 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:bg-orange-500/10"
+            >
+              <Pause className="mr-2 h-4 w-4" />
+              {t("pauseBot")}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleStartStop}
+              disabled={
+                bot.status === "error" || updateStatusMutation.isPending
+              }
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              {t("startBot")}
+            </Button>
+          )}
 
-        {bot.positionSize !== 0 && (
-          <Button
-            variant="destructive"
-            onClick={() => setPanicSellDialogOpen(true)}
-            disabled={panicSellMutation.isPending}
-          >
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            {t("panicSell")}
-          </Button>
-        )}
+          {bot.positionSize !== 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => setPanicSellDialogOpen(true)}
+              disabled={panicSellMutation.isPending}
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              {t("panicSell")}
+            </Button>
+          )}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setDeleteDialogOpen(true)}
-          disabled={deleteMutation.isPending}
-          className="text-muted-foreground hover:text-red-600"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={deleteMutation.isPending}
+            className="text-muted-foreground hover:text-red-600 hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Dialogs */}

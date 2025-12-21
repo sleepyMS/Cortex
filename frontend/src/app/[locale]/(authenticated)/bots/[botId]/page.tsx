@@ -74,27 +74,36 @@ export default function BotDetailPage() {
       .map((d) => d.time as number)
       .sort((a, b) => a - b);
 
-    const signals = tradeLogs.map((log) => {
-      const tradeTime = Math.floor(new Date(log.timestamp).getTime() / 1000);
+    const firstCandleTime = candleTimes[0];
 
-      // Find the latest candle time that is less than or equal to the trade time
-      let matchedTime = candleTimes[0];
-      for (let i = candleTimes.length - 1; i >= 0; i--) {
-        if (candleTimes[i] <= tradeTime) {
-          matchedTime = candleTimes[i];
-          break;
+    // Filter and map trade logs to signals
+    const signals = tradeLogs
+      .filter((log) => {
+        // Exclude trades that occurred before the first visible candle
+        const tradeTime = Math.floor(new Date(log.timestamp).getTime() / 1000);
+        return tradeTime >= firstCandleTime;
+      })
+      .map((log) => {
+        const tradeTime = Math.floor(new Date(log.timestamp).getTime() / 1000);
+
+        // Find the latest candle time that is less than or equal to the trade time
+        let matchedTime = candleTimes[0];
+        for (let i = candleTimes.length - 1; i >= 0; i--) {
+          if (candleTimes[i] <= tradeTime) {
+            matchedTime = candleTimes[i];
+            break;
+          }
         }
-      }
 
-      return {
-        time: matchedTime as UTCTimestamp,
-        signalType: log.side.toLowerCase() as
-          | "long_entry"
-          | "long_exit"
-          | "short_entry"
-          | "short_exit",
-      };
-    });
+        return {
+          time: matchedTime as UTCTimestamp,
+          signalType: log.side.toLowerCase() as
+            | "long_entry"
+            | "long_exit"
+            | "short_entry"
+            | "short_exit",
+        };
+      });
 
     return { signals };
   }, [tradeLogs, ohlcvData]);
@@ -216,13 +225,15 @@ export default function BotDetailPage() {
       <PerformanceHero bot={botWithPnl} />
 
       {/* Full Width Price Chart */}
-      <Card className="border-2 overflow-hidden">
-        <CardHeader className="pb-2">
+      <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/30 group">
+        {/* Hover gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        <CardHeader className="pb-2 relative">
           <CardTitle className="text-lg flex items-center gap-2">
             {botWithPnl.ticker} - {botWithPnl.executionInterval}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 relative">
           <DynamicStrategyChart
             rules={strategyRules}
             ohlcvData={ohlcvData || []}
@@ -253,13 +264,15 @@ export default function BotDetailPage() {
         <BotLogViewer logs={systemLogs} />
 
         {/* Right: Strategy Configuration (30%) */}
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/30 group">
+          {/* Hover gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          <CardHeader className="relative">
             <CardTitle>{t("strategyConfig")}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 relative">
             <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
                 <span className="text-sm text-muted-foreground">
                   {t("strategy")}
                 </span>
@@ -267,7 +280,7 @@ export default function BotDetailPage() {
                   {botWithPnl.strategy?.name || "N/A"}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
                 <span className="text-sm text-muted-foreground">
                   {t("executionInterval")}
                 </span>
@@ -275,7 +288,7 @@ export default function BotDetailPage() {
                   {botWithPnl.executionInterval}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
                 <span className="text-sm text-muted-foreground">
                   {t("leverage")}
                 </span>

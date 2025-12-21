@@ -28,7 +28,6 @@ export function BalanceChart({
 }: BotChartProps) {
   const t = useTranslations("LiveTrading.Detail");
 
-  // If no performance data but we have current balance, create a single data point
   let chartData = performance.map((snapshot) => ({
     date: new Date(snapshot.snapshotDate).toLocaleString(undefined, {
       month: "numeric",
@@ -40,15 +39,11 @@ export function BalanceChart({
     pnl: snapshot.realizedPnl,
   }));
 
-  // Append current balance as the latest point if:
-  // 1. We have current balance data
-  // 2. Either no snapshots exist OR last snapshot is older than 1 hour
   if (currentBalance != null && initialCapital != null) {
     const now = new Date();
     const lastSnapshot = chartData[chartData.length - 1];
 
     if (!lastSnapshot) {
-      // No snapshots at all - show current state
       chartData = [
         {
           date: now.toLocaleString(undefined, {
@@ -71,14 +66,17 @@ export function BalanceChart({
   }
 
   return (
-    <Card className="h-full border-2">
-      <CardHeader className="pb-4">
+    <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/30 group">
+      {/* Hover gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      <CardHeader className="pb-4 relative">
         <CardTitle className="text-lg flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
           {t("totalAssetChart")}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="relative">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={330}>
             <LineChart
@@ -89,6 +87,7 @@ export function BalanceChart({
                 strokeDasharray="3 3"
                 vertical={false}
                 stroke="#e5e7eb"
+                opacity={0.5}
               />
               <XAxis
                 dataKey="date"
@@ -110,12 +109,12 @@ export function BalanceChart({
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md text-sm max-w-[280px]">
+                      <div className="rounded-xl border bg-background/95 backdrop-blur-sm p-4 shadow-lg text-sm">
                         <p className="font-semibold mb-2 text-foreground">
                           {data.date}
                         </p>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-6">
                             <span className="text-muted-foreground">
                               Balance:
                             </span>
@@ -124,7 +123,7 @@ export function BalanceChart({
                             </span>
                           </div>
                           {data.pnl != null && (
-                            <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center justify-between gap-6">
                               <span className="text-muted-foreground">
                                 PnL:
                               </span>
@@ -176,15 +175,19 @@ export function BalanceChart({
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[350px] flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
-            <div className="rounded-full bg-muted p-4 mb-4">
-              <TrendingUp className="h-8 w-8 text-muted-foreground" />
+          <div className="relative h-[350px] flex flex-col items-center justify-center text-muted-foreground rounded-xl border-2 border-dashed overflow-hidden">
+            {/* Empty state gradient */}
+            <div className="absolute inset-0 gradient-mesh opacity-20" />
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="rounded-full bg-primary/10 p-4 mb-4">
+                <TrendingUp className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-lg font-medium">{t("noPerformanceData")}</p>
+              <p className="text-sm mt-2 text-center max-w-sm">
+                Chart will display once the bot starts running and balance data
+                is collected
+              </p>
             </div>
-            <p className="text-lg font-medium">{t("noPerformanceData")}</p>
-            <p className="text-sm mt-2 text-center max-w-sm">
-              Chart will display once the bot starts running and balance data is
-              collected
-            </p>
           </div>
         )}
       </CardContent>

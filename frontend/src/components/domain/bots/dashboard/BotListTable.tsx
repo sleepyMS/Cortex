@@ -49,6 +49,7 @@ export function BotListTable() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [botToDelete, setBotToDelete] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const { data: bots, isLoading } = useQuery({
     queryKey: ["bots"],
@@ -94,6 +95,7 @@ export function BotListTable() {
   };
 
   const handleDeleteClick = (botId: string) => {
+    setOpenDropdownId(null); // Close dropdown first
     setBotToDelete(botId);
     setDeleteDialogOpen(true);
   };
@@ -238,7 +240,12 @@ export function BotListTable() {
 
                     {/* Actions dropdown - stop propagation to prevent card click */}
                     <div onClick={(e) => e.preventDefault()}>
-                      <DropdownMenu>
+                      <DropdownMenu
+                        open={openDropdownId === bot.id}
+                        onOpenChange={(open) =>
+                          setOpenDropdownId(open ? bot.id : null)
+                        }
+                      >
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"

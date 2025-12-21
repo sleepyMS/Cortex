@@ -3,7 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useTranslations } from "next-intl";
 import { LiveBot } from "@/lib/api/bots";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 
 interface ActivePositionCardProps {
   bot: LiveBot;
@@ -22,16 +27,19 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
       : "0.00";
 
   return (
-    <Card className="h-full overflow-hidden border-2 border-primary/20">
-      <CardHeader className="bg-primary/5 pb-4">
+    <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/30 group">
+      {/* Hover gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      <CardHeader className="bg-primary/5 pb-4 relative">
         <CardTitle className="text-base font-semibold flex items-center justify-between">
           <span>{t("activePosition")}</span>
           {hasPosition && (
             <span
               className={`text-sm px-3 py-1 rounded-full font-bold ${
                 bot.positionSize > 0
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  ? "bg-green-500/10 text-green-600 border border-green-500/20"
+                  : "bg-red-500/10 text-red-600 border border-red-500/20"
               }`}
             >
               {bot.positionSize > 0 ? t("long") : t("short")}
@@ -39,7 +47,7 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-6 space-y-6 relative">
         {hasPosition ? (
           <>
             {/* Main PnL Display */}
@@ -51,12 +59,18 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
                 className={`text-4xl font-bold ${pnlColor} flex items-center justify-center gap-2`}
               >
                 {(bot.unrealizedPnl || 0) >= 0 ? (
-                  <TrendingUp className="h-8 w-8" />
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-500/10">
+                    <ArrowUpRight className="h-6 w-6" />
+                  </div>
                 ) : (
-                  <TrendingDown className="h-8 w-8" />
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-500/10">
+                    <ArrowDownRight className="h-6 w-6" />
+                  </div>
                 )}
-                {(bot.unrealizedPnl || 0) >= 0 ? "+" : "-"}$
-                {Math.abs(bot.unrealizedPnl || 0).toFixed(2)}
+                <span>
+                  {(bot.unrealizedPnl || 0) >= 0 ? "+" : "-"}$
+                  {Math.abs(bot.unrealizedPnl || 0).toFixed(2)}
+                </span>
               </div>
               <div className={`text-lg font-semibold ${pnlColor}`}>
                 ({(bot.unrealizedPnl || 0) >= 0 ? "+" : ""}
@@ -66,9 +80,9 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
 
             {/* Progress Bar */}
             <div className="space-y-2">
-              <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                 <div
-                  className={`h-full ${pnlBg} transition-all duration-500`}
+                  className={`h-full ${pnlBg} transition-all duration-500 rounded-full`}
                   style={{
                     width: `${Math.min(
                       Math.abs(Number(pnlPercent)) * 5,
@@ -83,34 +97,38 @@ export function ActivePositionCard({ bot }: ActivePositionCardProps) {
             </div>
 
             {/* Details Grid */}
-            <div className="flex flex-col gap-4 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+              <div className="p-3 rounded-lg bg-muted/50 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                   {t("size")}
                 </p>
-                <p className="font-mono text-xl font-bold">
-                  {Math.abs(bot.positionSize)}
+                <p className="font-mono text-lg font-bold">
+                  {Math.abs(bot.positionSize).toFixed(4)}
                 </p>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+              <div className="p-3 rounded-lg bg-muted/50 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                   {t("entryPrice")}
                 </p>
-                <p className="font-mono text-xl font-bold">
+                <p className="font-mono text-lg font-bold">
                   ${bot.entryPrice?.toFixed(2)}
                 </p>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center text-muted-foreground py-8">
-            <div className="rounded-full bg-muted p-4 mb-4">
-              <TrendingUp className="h-8 w-8 text-muted-foreground" />
+          <div className="relative flex flex-col items-center justify-center text-muted-foreground py-8">
+            {/* Empty state gradient */}
+            <div className="absolute inset-0 gradient-mesh opacity-20 rounded-lg" />
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="rounded-full bg-primary/10 p-4 mb-4">
+                <TrendingUp className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-lg font-medium">{t("noActivePosition")}</p>
+              <p className="text-sm mt-2 text-center max-w-sm">
+                {t("noActivePositionDescription")}
+              </p>
             </div>
-            <p className="text-lg font-medium">{t("noActivePosition")}</p>
-            <p className="text-sm mt-2 text-center max-w-sm">
-              {t("noActivePositionDescription")}
-            </p>
           </div>
         )}
       </CardContent>
