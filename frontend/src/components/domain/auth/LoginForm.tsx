@@ -69,7 +69,7 @@ export default function LoginForm() {
         if (redirectUrl && redirectUrl.startsWith("/")) {
           router.push(redirectUrl); // 예: /strategies/new로 이동
         } else {
-          router.push("/dashboard"); // 기본값 대시보드로 이동
+          router.push("/"); // 기본값 메인 페이지로 이동
         }
       }
     } catch (error: any) {

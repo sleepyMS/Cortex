@@ -13,8 +13,7 @@ export default function SocialLogins() {
 
   const redirectUrl = searchParams.get("redirect");
 
-  const state =
-    redirectUrl && redirectUrl.startsWith("/") ? redirectUrl : "/dashboard";
+  const state = redirectUrl && redirectUrl.startsWith("/") ? redirectUrl : "/";
 
   // 5. 각 URL에 동적으로 생성된 state 값을 삽입합니다.
   const GOOGLE_AUTH_URL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${
