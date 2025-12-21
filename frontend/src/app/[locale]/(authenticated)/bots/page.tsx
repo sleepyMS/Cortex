@@ -13,11 +13,13 @@ export default function LiveBotsPage() {
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8 space-y-8">
       {/* Enhanced Header with gradient background */}
-      <div className="relative">
+      <div className="relative mb-10">
         <div className="absolute inset-0 gradient-radial-subtle opacity-50 -z-10" />
         <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 pb-6 border-b">
           <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">{t("title")}</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              {t("title")}
+            </h1>
             <p className="text-muted-foreground text-lg">{t("subtitle")}</p>
           </div>
           <Link href="/bots/new">
