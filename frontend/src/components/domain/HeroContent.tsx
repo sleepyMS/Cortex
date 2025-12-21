@@ -19,6 +19,16 @@ import {
   ChevronDown,
   MoreHorizontal,
   ArrowUpRight,
+  GitCompareArrows,
+  TrendingUp,
+  Zap,
+  CheckCircle2,
+  ArrowDown,
+  ArrowUp,
+  Clock,
+  Target,
+  Scale,
+  ShieldCheck,
 } from "lucide-react";
 import {
   AreaChart,
@@ -26,6 +36,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   YAxis,
+  Tooltip,
 } from "recharts";
 
 // Mock chart data
@@ -142,10 +153,107 @@ export const HeroContent = ({
   );
 };
 
+// --- Mock Components for Strategy Builder Look ---
+
+const MockOperand = ({
+  label,
+  color = "violet",
+}: {
+  label: string;
+  color?: "violet" | "slate" | "emerald";
+}) => {
+  const colorStyles = {
+    violet: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    slate: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  };
+
+  return (
+    <div
+      className={`px-2 py-1 rounded text-[10px] md:text-xs font-medium border ${colorStyles[color]} flex items-center gap-1`}
+    >
+      {label}
+    </div>
+  );
+};
+
+const MockRuleCard = ({
+  icon: Icon,
+  title,
+  children,
+  delay = 0,
+  type = "logic",
+}: {
+  icon: any;
+  title: string;
+  children: React.ReactNode;
+  delay?: number;
+  type?: "logic" | "action";
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, delay, ease: "backOut" }}
+      className={`relative group bg-card/80 backdrop-blur-sm border ${
+        type === "logic"
+          ? "border-l-violet-500 border-violet-500/20"
+          : "border-l-emerald-500 border-emerald-500/20"
+      } border-t-border/50 border-r-border/50 border-b-border/50 rounded-lg p-3 md:p-4 shadow-sm hover:shadow-md transition-all border-l-4 w-full max-w-sm`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <div
+          className={`p-1.5 rounded-md ${
+            type === "logic" ? "bg-violet-500/10" : "bg-emerald-500/10"
+          }`}
+        >
+          <Icon
+            size={14}
+            className={
+              type === "logic" ? "text-violet-400" : "text-emerald-400"
+            }
+          />
+        </div>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          {title}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">{children}</div>
+    </motion.div>
+  );
+};
+
+const MockConnector = ({
+  label,
+  delay = 0,
+}: {
+  label: string;
+  delay?: number;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: "1.5rem" }}
+    transition={{ duration: 0.3, delay }}
+    className="relative flex justify-center items-center h-6"
+  >
+    <div className="absolute h-full w-0.5 bg-border/60"></div>
+    <motion.div
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 0.2, delay: delay + 0.2 }}
+      className="relative z-10 bg-background border border-border px-1.5 py-0.5 rounded-full"
+    >
+      <span className="text-[9px] font-bold text-muted-foreground">
+        {label}
+      </span>
+    </motion.div>
+  </motion.div>
+);
+
 /** Mock Trading Terminal Component */
 const MockTradingTerminal = () => {
   return (
-    <div className="w-full h-full flex flex-col bg-background text-foreground font-sans text-xs select-none">
+    <div className="w-full h-full flex flex-col bg-background text-foreground font-sans text-xs select-none rounded-xl border border-border/50 shadow-2xl overflow-hidden">
       {/* App Header */}
       <div className="h-10 border-b border-border flex items-center px-4 justify-between bg-background">
         <div className="flex items-center gap-4">
@@ -159,14 +267,14 @@ const MockTradingTerminal = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            System Operational
+          </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded cursor-pointer hover:bg-violet-500/20 transition-colors">
             <Play size={10} fill="currentColor" />
             <span className="font-bold tracking-wide">DEPLOY</span>
           </div>
-          <div className="p-1.5 hover:bg-muted rounded cursor-pointer text-muted-foreground">
-            <Bell size={14} />
-          </div>
-          <div className="w-6 h-6 rounded bg-gradient-to-br from-violet-500 to-purple-500"></div>
         </div>
       </div>
 
@@ -192,30 +300,42 @@ const MockTradingTerminal = () => {
           <div className="p-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
             Logic Blocks
           </div>
-          <div className="p-2 space-y-1 overflow-y-auto">
+          <div className="p-2 space-y-1 overflow-y-auto flex-1">
             {[
-              "Market Data",
-              "Technical Indicators",
-              "Math Operators",
-              "Order Execution",
-              "Risk Management",
-              "Portfolio",
-            ].map((cat) => (
+              { icon: GitCompareArrows, label: "Comparison" },
+              { icon: TrendingUp, label: "Crossover" },
+              { icon: BarChart2, label: "State Check" },
+              { icon: Target, label: "Threshold" },
+              { icon: Clock, label: "Time Filter" },
+              { icon: Activity, label: "Volume Check" },
+              { icon: ShieldCheck, label: "Risk Manager" },
+              { icon: Scale, label: "Position Size" },
+            ].map((item, i) => (
               <div
-                key={cat}
-                className="px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded cursor-pointer flex items-center justify-between group"
+                key={i}
+                className="flex items-center gap-3 p-2 rounded-md bg-background border border-border/40 hover:border-violet-500/50 transition-colors cursor-pointer group"
               >
-                {cat}
-                <ChevronDown
-                  size={10}
-                  className="opacity-0 group-hover:opacity-100"
+                <item.icon
+                  size={14}
+                  className="text-muted-foreground group-hover:text-violet-500 transition-colors"
                 />
+                <span className="text-xs text-foreground/80">{item.label}</span>
               </div>
             ))}
           </div>
+          {/* Bottom Status Panel */}
+          <div className="p-3 border-t border-border/50 bg-background/50 mt-auto">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Memory</span>
+              <span>24%</span>
+            </div>
+            <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+              <div className="h-full w-[24%] bg-violet-500 rounded-full" />
+            </div>
+          </div>
         </div>
 
-        {/* Main Canvas Area */}
+        {/* Main Canvas Area - Hybrid Node Graph + Strategy Builder */}
         <div className="flex-1 flex flex-col bg-muted/30 relative overflow-hidden">
           {/* Grid Background */}
           <div
@@ -226,125 +346,335 @@ const MockTradingTerminal = () => {
             }}
           ></div>
 
-          {/* Nodes Container */}
-          <div className="relative w-full h-full p-8">
-            {/* Connecting Lines */}
+          {/* Main Container with Nodes and Strategy Block */}
+          <div className="relative w-full h-full p-6">
+            {/* SVG Connecting Lines */}
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
-              <path
-                d="M260 120 C 320 120, 320 200, 380 200"
+              {/* Line to Long block */}
+              <motion.path
+                d="M240 200 C 280 200, 320 80, 360 80"
                 stroke="currentColor"
                 strokeWidth="2"
                 fill="none"
-                className="animate-pulse text-border"
-                strokeOpacity="0.5"
+                className="text-violet-500/60"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.6 }}
+                transition={{
+                  pathLength: { duration: 0.8, delay: 0.6, ease: "easeInOut" },
+                  opacity: { duration: 0.3, delay: 0.6 },
+                }}
               />
-              <path
-                d="M260 300 C 320 300, 320 230, 380 230"
+              {/* Line to Short block */}
+              <motion.path
+                d="M240 210 C 260 280, 270 340, 280 360"
                 stroke="currentColor"
                 strokeWidth="2"
                 fill="none"
-                className="text-border"
-                strokeOpacity="0.5"
-              />
-              <path
-                d="M580 215 C 640 215, 640 215, 700 215"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeDasharray="4 4"
-                className="animate-[dash_1s_linear_infinite] text-violet-500"
+                className="text-rose-500/60"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.5 }}
+                transition={{
+                  pathLength: { duration: 0.8, delay: 0.9, ease: "easeInOut" },
+                  opacity: { duration: 0.3, delay: 0.9 },
+                }}
               />
             </svg>
 
-            {/* Node 1: RSI Source */}
-            <div className="absolute top-20 left-10 w-64 bg-card border border-border rounded-lg shadow-xl overflow-hidden group hover:border-muted-foreground transition-colors">
+            {/* Node: Market Data (Original Style) */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="absolute top-24 left-4 w-56 bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+            >
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
-                <div className="font-bold text-foreground flex items-center gap-2">
-                  <Activity size={12} className="text-blue-400" /> RSI Indicator
-                </div>
-                <MoreHorizontal size={12} className="text-muted-foreground" />
-              </div>
-              <div className="p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Period</span>
-                  <span className="bg-background px-2 py-0.5 rounded text-blue-300 font-mono">
-                    14
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Source</span>
-                  <span className="bg-background px-2 py-0.5 rounded text-foreground font-mono">
-                    Close
-                  </span>
-                </div>
-              </div>
-              <div className="px-3 py-1.5 bg-muted/50 border-t border-border flex justify-end">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              </div>
-            </div>
-
-            {/* Node 2: Price Data */}
-            <div className="absolute top-64 left-10 w-64 bg-card border border-border rounded-lg shadow-xl overflow-hidden group hover:border-muted-foreground transition-colors">
-              <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
-                <div className="font-bold text-foreground flex items-center gap-2">
+                <div className="font-bold text-foreground flex items-center gap-2 text-xs">
                   <BarChart2 size={12} className="text-purple-400" /> Market
                   Data
                 </div>
                 <MoreHorizontal size={12} className="text-muted-foreground" />
               </div>
               <div className="p-3 space-y-2">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">Symbol</span>
                   <span className="bg-background px-2 py-0.5 rounded text-purple-300 font-mono">
                     BTC-USDT
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Timeframe</span>
+                  <span className="bg-background px-2 py-0.5 rounded text-purple-300 font-mono">
+                    15m
                   </span>
                 </div>
               </div>
               <div className="px-3 py-1.5 bg-muted/50 border-t border-border flex justify-end">
                 <div className="w-2 h-2 rounded-full bg-purple-500"></div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Node 3: Logic */}
-            <div className="absolute top-40 left-[380px] w-52 bg-card border border-border rounded-lg shadow-xl overflow-hidden group hover:border-muted-foreground transition-colors ring-2 ring-violet-500/20">
+            {/* Strategy Block Container (Right Side - Can be partially cut off) */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="absolute top-8 left-[360px] w-[360px] bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+            >
+              {/* Strategy Card Header */}
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
-                <div className="font-bold text-foreground flex items-center gap-2">
-                  <GitBranch size={12} className="text-orange-400" /> CrossOver
-                  Logic
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-violet-500/20 flex items-center justify-center">
+                    <CheckCircle2 size={10} className="text-violet-400" />
+                  </div>
+                  <span className="font-semibold text-foreground text-xs">
+                    Long Entry Condition
+                  </span>
+                  <ArrowUp size={10} className="text-violet-400" />
                 </div>
+                <span className="text-[9px] text-muted-foreground">
+                  ⊕ Add Rule
+                </span>
               </div>
-              <div className="p-3">
-                <div className="text-center text-muted-foreground py-2 font-mono text-[10px]">
-                  Processing Signal...
-                </div>
-              </div>
-              <div className="px-3 py-1.5 bg-muted/50 border-t border-border flex justify-between">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse"></div>
-              </div>
-            </div>
 
-            {/* Node 4: Execution */}
-            <div className="absolute top-40 left-[700px] w-60 bg-card border border-border rounded-lg shadow-xl overflow-hidden group hover:border-muted-foreground transition-colors hidden xl:block">
+              {/* Strategy Content */}
+              <div className="p-3 space-y-2">
+                {/* Block 1: 돌파 */}
+                <div className="bg-background border border-border/60 rounded-md overflow-hidden">
+                  <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp size={10} className="text-violet-400" />
+                      <span className="text-[10px] font-medium text-foreground">
+                        Crossover
+                      </span>
+                    </div>
+                    <MoreHorizontal
+                      size={10}
+                      className="text-muted-foreground"
+                    />
+                  </div>
+                  <div className="p-2 border-l-[3px] border-l-violet-500">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
+                        <span className="font-medium">EMA</span>
+                        <span className="text-muted-foreground">(10, 1h)</span>
+                        <Settings size={8} className="text-muted-foreground" />
+                      </div>
+                      <div className="px-1.5 py-1 bg-violet-500/10 rounded border border-violet-500/30 text-[9px] text-violet-400">
+                        Crosses Above ▾
+                      </div>
+                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
+                        <span className="font-medium">EMA</span>
+                        <span className="text-muted-foreground">(20, 1h)</span>
+                        <Settings size={8} className="text-muted-foreground" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AND Connector + Block 2: 상태 기반 */}
+                <div className="flex">
+                  {/* AND Label */}
+                  <div className="flex flex-col items-center w-8 shrink-0 -mt-1">
+                    <div className="w-0.5 h-2 bg-violet-500/40"></div>
+                    <div className="px-1 py-0.5 bg-violet-500/10 border border-violet-500/30 rounded text-[8px] font-bold text-violet-400">
+                      AND
+                    </div>
+                    <div className="w-0.5 flex-1 bg-violet-500/40"></div>
+                  </div>
+
+                  {/* Indented Block 2 */}
+                  <div className="flex-1 bg-background border border-border/60 rounded-md overflow-hidden">
+                    <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                      <div className="flex items-center gap-1.5">
+                        <BarChart2 size={10} className="text-violet-400" />
+                        <span className="text-[10px] font-medium text-foreground">
+                          State Based
+                        </span>
+                      </div>
+                      <MoreHorizontal
+                        size={10}
+                        className="text-muted-foreground"
+                      />
+                    </div>
+                    <div className="p-2 border-l-[3px] border-l-violet-500 space-y-1.5">
+                      {/* RSI Row */}
+                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">RSI</span>
+                          <span className="text-muted-foreground">
+                            (14, 1h)
+                          </span>
+                        </div>
+                        <Settings size={8} className="text-muted-foreground" />
+                      </div>
+                      {/* Range Row */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] text-muted-foreground w-6">
+                          Range
+                        </span>
+                        <div className="flex-1 flex items-center gap-1">
+                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
+                            30
+                          </div>
+                          <span className="text-muted-foreground text-[9px]">
+                            ~
+                          </span>
+                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
+                            70
+                          </div>
+                        </div>
+                      </div>
+                      {/* Action Row */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] text-muted-foreground w-6">
+                          Action
+                        </span>
+                        <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
+                          <span>In Range</span>
+                          <ChevronDown
+                            size={8}
+                            className="text-muted-foreground"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Short Strategy Block Container */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="absolute top-[340px] left-[280px] w-[360px] bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+            >
+              {/* Strategy Card Header */}
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
-                <div className="font-bold text-foreground flex items-center gap-2">
-                  <Wallet size={12} className="text-violet-400" /> Execution
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-rose-500/20 flex items-center justify-center">
+                    <CheckCircle2 size={10} className="text-rose-400" />
+                  </div>
+                  <span className="font-semibold text-foreground text-xs">
+                    Short Entry Condition
+                  </span>
+                  <ArrowDown size={10} className="text-rose-400" />
                 </div>
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-border"></div>
+                <span className="text-[9px] text-muted-foreground">
+                  ⊕ Add Rule
+                </span>
+              </div>
+
+              {/* Strategy Content */}
+              <div className="p-3 space-y-2">
+                {/* Block 1: 돌파 */}
+                <div className="bg-background border border-border/60 rounded-md overflow-hidden">
+                  <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp
+                        size={10}
+                        className="text-rose-400 rotate-180"
+                      />
+                      <span className="text-[10px] font-medium text-foreground">
+                        Crossover
+                      </span>
+                    </div>
+                    <MoreHorizontal
+                      size={10}
+                      className="text-muted-foreground"
+                    />
+                  </div>
+                  <div className="p-2 border-l-[3px] border-l-rose-500">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
+                        <span className="font-medium">EMA</span>
+                        <span className="text-muted-foreground">(10, 1h)</span>
+                        <Settings size={8} className="text-muted-foreground" />
+                      </div>
+                      <div className="px-1.5 py-1 bg-rose-500/10 rounded border border-rose-500/30 text-[9px] text-rose-400">
+                        Crosses Below ▾
+                      </div>
+                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
+                        <span className="font-medium">EMA</span>
+                        <span className="text-muted-foreground">(20, 1h)</span>
+                        <Settings size={8} className="text-muted-foreground" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AND Connector + Block 2: 상태 기반 */}
+                <div className="flex">
+                  {/* AND Label */}
+                  <div className="flex flex-col items-center w-8 shrink-0 -mt-1">
+                    <div className="w-0.5 h-2 bg-rose-500/40"></div>
+                    <div className="px-1 py-0.5 bg-rose-500/10 border border-rose-500/30 rounded text-[8px] font-bold text-rose-400">
+                      AND
+                    </div>
+                    <div className="w-0.5 flex-1 bg-rose-500/40"></div>
+                  </div>
+
+                  {/* Indented Block 2 */}
+                  <div className="flex-1 bg-background border border-border/60 rounded-md overflow-hidden">
+                    <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                      <div className="flex items-center gap-1.5">
+                        <BarChart2 size={10} className="text-rose-400" />
+                        <span className="text-[10px] font-medium text-foreground">
+                          State Based
+                        </span>
+                      </div>
+                      <MoreHorizontal
+                        size={10}
+                        className="text-muted-foreground"
+                      />
+                    </div>
+                    <div className="p-2 border-l-[3px] border-l-rose-500 space-y-1.5">
+                      {/* RSI Row */}
+                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">RSI</span>
+                          <span className="text-muted-foreground">
+                            (14, 1h)
+                          </span>
+                        </div>
+                        <Settings size={8} className="text-muted-foreground" />
+                      </div>
+                      {/* Range Row */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] text-muted-foreground w-6">
+                          Range
+                        </span>
+                        <div className="flex-1 flex items-center gap-1">
+                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
+                            70
+                          </div>
+                          <span className="text-muted-foreground text-[9px]">
+                            ~
+                          </span>
+                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
+                            90
+                          </div>
+                        </div>
+                      </div>
+                      {/* Action Row */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] text-muted-foreground w-6">
+                          Action
+                        </span>
+                        <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
+                          <span>Break Above</span>
+                          <ChevronDown
+                            size={8}
+                            className="text-muted-foreground"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="p-3 bg-violet-950/10">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-violet-400 font-bold">LONG 5x</span>
-                  <span className="text-muted-foreground">Limit Order</span>
-                </div>
-                <div className="h-1 w-full bg-muted rounded overflow-hidden">
-                  <div className="h-full w-[60%] bg-violet-500"></div>
-                </div>
-              </div>
-            </div>
+            </motion.div>
           </div>
         </div>
 
@@ -373,8 +703,31 @@ const MockTradingTerminal = () => {
                     stroke="currentColor"
                     className="text-border"
                     vertical={false}
+                    horizontalCoordinatesGenerator={({ height }) => {
+                      const lines = 5;
+                      return Array.from(
+                        { length: lines },
+                        (_, i) => (height / (lines - 1)) * i
+                      );
+                    }}
                   />
                   <YAxis hide domain={["dataMin", "dataMax"]} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "11px",
+                      padding: "8px 12px",
+                    }}
+                    labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                    itemStyle={{ color: "#8b5cf6" }}
+                    formatter={(value: number) => [
+                      `$${value.toLocaleString()}`,
+                      "Balance",
+                    ]}
+                    labelFormatter={(label) => `Time: ${label}`}
+                  />
                   <Area
                     type="monotone"
                     dataKey="val"
@@ -408,16 +761,22 @@ const MockTradingTerminal = () => {
               <div className="text-[10px] uppercase text-muted-foreground font-bold">
                 Recent Trades
               </div>
-              {[1, 2, 3].map((i) => (
+              {[
+                { type: "LONG BTC", time: "09:15:42", profit: "+$185.50" },
+                { type: "LONG ETH", time: "11:32:18", profit: "+$312.00" },
+                { type: "LONG BTC", time: "14:48:05", profit: "+$467.80" },
+              ].map((trade, i) => (
                 <div
                   key={i}
                   className="flex items-center justify-between text-[11px] py-1 border-b border-border/50"
                 >
-                  <span className="text-violet-400">LONG BTC</span>
+                  <span className="text-violet-400">{trade.type}</span>
                   <span className="text-muted-foreground font-mono">
-                    14:02:2{i}
+                    {trade.time}
                   </span>
-                  <span className="text-foreground font-mono">+$24{i}.00</span>
+                  <span className="text-foreground font-mono">
+                    {trade.profit}
+                  </span>
                 </div>
               ))}
             </div>
