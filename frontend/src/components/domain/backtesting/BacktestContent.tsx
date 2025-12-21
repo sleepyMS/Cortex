@@ -453,14 +453,18 @@ export function BacktestContent({
   };
 
   return (
-    <div className="container mx-auto max-w-screen-xl px-4 py-8">
-      {showHeader && backtest && (
-        <PageHeader
-          backtest={backtest}
-          totalTrades={backtest.result?.totalTrades}
-        />
-      )}
-      {renderContent()}
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="container mx-auto max-w-screen-xl">
+          {showHeader && backtest && (
+            <PageHeader
+              backtest={backtest}
+              totalTrades={backtest.result?.totalTrades}
+            />
+          )}
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 }

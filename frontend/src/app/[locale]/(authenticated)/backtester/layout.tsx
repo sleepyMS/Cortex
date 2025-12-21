@@ -30,14 +30,14 @@ export default function BacktesterLayout({ children }: BacktesterLayoutProps) {
 
   // Detail view - sidebar + content
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-full overflow-hidden">
       <BacktestSidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <main
         className={cn(
-          "flex-1 overflow-auto transition-all duration-200",
+          "flex-1 relative transition-all duration-200",
           sidebarCollapsed ? "md:ml-0" : "md:ml-0"
         )}
       >

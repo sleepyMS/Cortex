@@ -14,12 +14,14 @@ const Footer = () => {
   const pathname = usePathname();
 
   // 전략 편집 페이지에서는 푸터를 숨김
-  // 전략 편집 또는 생성 페이지에서는 푸터를 숨김
+  // 전략 편집 또는 생성 페이지, 그리고 백테스트 상세 페이지에서는 푸터를 숨김
   const isStrategyMode =
     pathname.includes("/strategies") &&
     (searchParams.has("edit") || searchParams.get("create") === "true");
 
-  if (isStrategyMode) {
+  const isBacktesterDetail = pathname.includes("/backtester/");
+
+  if (isStrategyMode || isBacktesterDetail) {
     return null;
   }
 

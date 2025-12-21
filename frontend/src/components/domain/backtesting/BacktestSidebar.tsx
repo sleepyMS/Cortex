@@ -173,7 +173,7 @@ export function BacktestSidebar({ collapsed, onToggle }: BacktestSidebarProps) {
       animate={{ width: "320px", opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
-      className="hidden md:flex flex-col border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden h-[calc(100vh-4rem)] sticky top-16"
+      className="hidden md:flex flex-col border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden h-full"
     >
       {/* Header */}
       <div className="p-4 border-b">

@@ -28,10 +28,11 @@ function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // 전략 편집 또는 생성 모드 감지
-  const isStrategyMode =
-    pathname.includes("/strategies") &&
-    (searchParams.has("edit") || searchParams.get("create") === "true");
+  // 전략 편집/생성 모드 또는 백테스트 상세 페이지인지 감지 (전체 화면 모드)
+  const isFullScreenMode =
+    (pathname.includes("/strategies") &&
+      (searchParams.has("edit") || searchParams.get("create") === "true")) ||
+    pathname.includes("/backtester/"); // 백테스트 상세 페이지 (단순 목록 아님을 가정, 실제로는 /backtester/uuid 형태)
 
   const { data, isSuccess, isLoading, isError, error } = useQuery({
     queryKey: ["indicatorMetadata"], // 이 key로 데이터가 react-query 전역 캐시에 저장됩니다.
@@ -76,7 +77,7 @@ function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "relative",
-        isStrategyMode
+        isFullScreenMode
           ? "h-[calc(100vh-4.1rem)] overflow-hidden"
           : "min-h-screen pb-24"
       )}
