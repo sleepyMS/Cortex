@@ -224,7 +224,7 @@ export function BacktestSidebar({ collapsed, onToggle }: BacktestSidebarProps) {
       </div>
 
       {/* Scrollable list */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1.5">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-3 space-y-1.5">
         {isLoading ? (
           <CompactLoadingSkeleton />
         ) : backtests.length === 0 ? (
