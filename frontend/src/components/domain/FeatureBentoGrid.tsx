@@ -170,7 +170,7 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
 
           {/* LEFT SIDE: Individual Logic Blocks (Scaled down) */}
           <div
-            className="absolute left-12 top-24 space-y-18 z-10"
+            className="absolute left-12 top-24 space-y-16 z-10"
             style={{ transform: "scale(0.85)", transformOrigin: "top left" }}
           >
             {/* Crossover Block - Exact copy from HeroContent */}
