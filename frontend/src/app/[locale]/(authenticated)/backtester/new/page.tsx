@@ -9,17 +9,19 @@ export default function NewBacktestPage() {
   const t = useTranslations("NewBacktestPage");
 
   return (
-    <div className="container mx-auto max-w-screen-xl px-4 py-8">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">
-          {t("title")}
-        </h1>
-        <p className="text-lg text-muted-foreground mt-3 max-w-2xl mx-auto">
-          {t("description")}
-        </p>
-      </div>
+    <div className="h-full overflow-y-auto custom-scrollbar p-6">
+      <div className="container mx-auto max-w-screen-xl px-4 py-8">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-lg text-muted-foreground mt-3 max-w-2xl mx-auto">
+            {t("description")}
+          </p>
+        </div>
 
-      <BacktestSetupForm />
+        <BacktestSetupForm />
+      </div>
     </div>
   );
 }
