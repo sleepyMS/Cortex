@@ -1,0 +1,52 @@
+"use client";
+
+import React from "react";
+import { Button } from "@/components/ui/Button";
+import Link from "next/link";
+
+interface CTAContentProps {
+  title: string;
+  subtitle: string;
+  buttonText: string;
+}
+
+export const CTAContent: React.FC<CTAContentProps> = ({
+  title,
+  subtitle,
+  buttonText,
+}) => {
+  return (
+    <div className="relative z-10">
+      <h2 className="text-4xl md:text-5xl font-bold mb-8 tracking-tight text-foreground">
+        {title.split(" ").map((word, i) => {
+          // Highlight key word with violet color
+          if (
+            word.toLowerCase().includes("알파") ||
+            word.toLowerCase().includes("alpha")
+          ) {
+            return (
+              <span key={i} className="text-violet-400">
+                {word}{" "}
+              </span>
+            );
+          }
+          return word + " ";
+        })}
+      </h2>
+      <p className="text-muted-foreground max-w-2xl mx-auto mb-10 text-lg leading-relaxed">
+        {subtitle}
+      </p>
+      <Link href="/strategies/new" passHref>
+        <Button
+          size="lg"
+          className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-md px-8 font-medium transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]"
+        >
+          <span className="mr-2">{buttonText}</span>
+          <span className="group-hover:translate-x-1 transition-transform">
+            →
+          </span>
+        </Button>
+      </Link>
+    </div>
+  );
+};

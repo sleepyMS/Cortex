@@ -71,14 +71,31 @@
     "weeklyReset": "(매주 월요일 초기화)"
   },
   "Footer": {
-    "description": "데이터 기반 투자 플랫폼, Cortex와 함께 새로운 투자 여정을 시작하세요.",
-    "rights": "All Rights Reserved.",
-    "product": "프로젝트",
-    "legal": "법률",
-    "featuresLink": "핵심 기능",
-    "pricingLink": "가격 정책",
-    "termsLink": "이용약관",
-    "privacyLink": "개인정보처리방침"
+    "description": "트레이더를 위한 전문 도구로 수익성 있는 전략을 구축, 테스트 및 자동화하여 역량을 강화하세요.",
+    "rights": "All rights reserved.",
+    "Platform": {
+      "title": "플랫폼",
+      "visualEditor": "비주얼 에디터",
+      "backtestingEngine": "백테스팅 엔진",
+      "paperTrading": "모의 투자",
+      "aiOptimization": "AI 최적화"
+    },
+    "Resources": {
+      "title": "리소스",
+      "documentation": "문서",
+      "apiReference": "API 레퍼런스",
+      "communityStrategies": "커뮤니티 전략",
+      "blog": "블로그"
+    },
+    "Company": {
+      "title": "회사",
+      "aboutUs": "소개",
+      "careers": "채용",
+      "legal": "법률",
+      "contact": "문의하기"
+    },
+    "privacyPolicy": "개인정보 처리방침",
+    "termsOfService": "서비스 이용약관"
   },
   "LanguageSwitcher": {
     "label": "언어 변경",
@@ -89,12 +106,39 @@
     "Hero": {
       "title": "데이터로 시장을 지배한다. <br></br> 감정은 빼고, 전략은 더하고.",
       "subtitle": "개인 투자자를 위한 올인원 퀀트 플랫폼, Cortex에서 당신의 투자 아이디어를 검증하고 24시간 자동화하세요.",
-      "ctaButton": "무료로 나만의 전략 만들기"
+      "ctaButton": "무료로 나만의 전략 만들기",
+      "versionBadge": "Cortex Beta"
     },
     "FeatureSection": {
+      "sectionTitle": "완벽한 퀀트 스택",
+      "sectionSubtitle": "아이디어에서 실행까지 몇 분 만에. 헤지펀드가 수백만 달러를 들여 구축하는 인프라를 모두에게 제공합니다.",
       "title": "투자의 모든 과정을 한 곳에서",
       "subtitle": "Cortex는 아이디어 구상부터 전략 검증, 자동화 실행, 그리고 공유에 이르기까지 모든 단계를 지원합니다.",
       "features": {
+        "strategyBuilder": {
+          "title": "비주얼 전략 빌더",
+          "description": "드래그 앤 드롭으로 복잡한 트레이딩 알고리즘을 생성합니다. 고급 수학, 기술적 지표, 커스텀 로직을 지원합니다."
+        },
+        "tickBacktesting": {
+          "title": "틱 레벨 백테스팅",
+          "description": "5년간의 과거 데이터로 밀리초 단위 테스트, 99.9% 정확도로 전략을 검증하세요."
+        },
+        "aiOptimization": {
+          "title": "AI 파라미터 최적화",
+          "description": "ML 모델이 샤프 비율을 최대화하고 드로다운을 최소화하는 최적의 설정을 찾아드립니다."
+        },
+        "exchangeConnectivity": {
+          "title": "거래소 연결",
+          "description": "바이낸스, 업비트, 바이비트 등 10개 이상의 거래소에 API 키로 배포하세요. 비수탁 방식으로 안전합니다."
+        },
+        "security": {
+          "title": "엔터프라이즈급 보안",
+          "description": "전략은 격리된 샌드박스에서 실행됩니다. API 키는 AES-256으로 암호화됩니다."
+        },
+        "community": {
+          "title": "성장하는 커뮤니티",
+          "description": "혼자 하는 투자는 외롭습니다. 다른 투자자들과 전략을 공유하고 집단 지성을 통해 함께 성장하세요."
+        },
         "backtesting": {
           "title": "강력한 백테스팅",
           "description": "과거는 미래의 거울입니다. 수년간의 데이터로 당신의 전략이 실제로 통했는지 1분 안에 확인하세요."
@@ -102,12 +146,13 @@
         "autoTrading": {
           "title": "24/7 자동매매",
           "description": "검증된 전략을 24시간 흔들림 없이 실행하여 당신의 시간을 아껴드립니다. 감정의 개입은 이제 그만."
-        },
-        "community": {
-          "title": "성장하는 커뮤니티",
-          "description": "혼자 하는 투자는 외롭습니다. 다른 투자자들과 전략을 공유하고 집단 지성을 통해 함께 성장하세요."
         }
       }
+    },
+    "CTA": {
+      "title": "당신의 알파를 배포할 준비가 되셨나요?",
+      "subtitle": "수천 명의 퀀트 트레이더들과 함께 코드 한 줄 없이 금융의 미래를 만들어 가세요. 지금 바로 백테스팅을 시작하세요.",
+      "button": "무료로 시작하기"
     }
   },
   "Pricing": {

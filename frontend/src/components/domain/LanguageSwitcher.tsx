@@ -12,6 +12,7 @@ import {
 import { Globe, Check } from "lucide-react";
 import { locales } from "i18n";
 import { localeConfig, type Locale } from "@/i18n/config";
+import { cn } from "@/lib/utils";
 const LanguageSwitcher = () => {
   const currentLocale = useLocale() as Locale;
   const router = useRouter();
@@ -25,54 +26,42 @@ const LanguageSwitcher = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        {/* 트리거 버튼: GangNaengBot-FE 스타일 적용 (px-3 py-2, scale 애니메이션) */}
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-md transition-all duration-200 font-semibold text-sm tracking-wide border border-border/60 hover:bg-accent data-[state=open]:ring-2 data-[state=open]:ring-violet-500/50 data-[state=open]:bg-accent shadow-sm"
+          size="icon"
+          className="rounded-full w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+          aria-label="Change language"
         >
-          <Globe className="h-4 w-4 text-violet-500" />
-          <span>{localeConfig[currentLocale].countryCode}</span>
+          <Globe className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
 
-      {/* 드롭다운 컨테이너: GangNaengBot-FE 스타일 적용 (min-w-[120px], rounded-xl). 기본 Popover의 w-72(288px)를 덮어쓰기 위해 w-auto 추가 */}
       <PopoverContent
         align="end"
-        sideOffset={10}
-        className="w-auto min-w-[120px] py-2 px-0 overflow-hidden rounded-xl shadow-lg border-border bg-popover/98 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200"
+        sideOffset={8}
+        className="w-[140px] p-1 rounded-xl shadow-lg border-border/60 bg-background/80 backdrop-blur-xl"
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0.5">
           {locales.map((locale) => {
             const isSelected = currentLocale === locale;
             return (
               <button
                 key={locale}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 transition-colors text-left group ${
-                  isSelected ? "bg-violet-500/10" : "hover:bg-accent"
-                }`}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
+                  isSelected
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
                 onClick={() => handleLocaleChange(locale)}
               >
-                <div className="flex items-center gap-3">
-                  {/* 국가 코드 */}
-                  <span className="text-xs font-semibold w-6 text-center text-muted-foreground group-hover:text-foreground/70">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs opacity-70 w-5">
                     {localeConfig[locale].countryCode}
                   </span>
-                  {/* 언어 명칭 */}
-                  <span
-                    className={`text-sm ${
-                      isSelected
-                        ? "text-violet-500 font-semibold"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {localeConfig[locale].nativeName}
-                  </span>
+                  <span>{localeConfig[locale].nativeName}</span>
                 </div>
-
-                {/* 선택 표시 */}
-                {isSelected && (
-                  <Check className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
-                )}
+                {isSelected && <Check className="h-3 w-3" />}
               </button>
             );
           })}

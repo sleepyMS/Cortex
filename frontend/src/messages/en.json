@@ -89,12 +89,39 @@
     "Hero": {
       "title": "Data Dominates the Market. <br></br> Less Emotion, More Strategy.",
       "subtitle": "Validate your investment ideas and automate them 24/7 on Cortex, the all-in-one quant platform for individual investors.",
-      "ctaButton": "Build Your Strategy for Free"
+      "ctaButton": "Build Your Strategy for Free",
+      "versionBadge": "Cortex Beta"
     },
     "FeatureSection": {
+      "sectionTitle": "A Complete Quantitative Stack",
+      "sectionSubtitle": "From idea to execution in minutes. Infrastructure that hedge funds spend millions building, made accessible to everyone.",
       "title": "The Entire Investment Process in One Place",
       "subtitle": "Cortex supports every step, from brainstorming ideas and verifying strategies to automated execution and sharing.",
       "features": {
+        "strategyBuilder": {
+          "title": "Visual Strategy Builder",
+          "description": "Create complex trading algorithms with drag-and-drop. Supports advanced math, technical indicators, and custom logic."
+        },
+        "tickBacktesting": {
+          "title": "Tick-Level Backtesting",
+          "description": "Test against 5 years of historical data in milliseconds with 99.9% accuracy."
+        },
+        "aiOptimization": {
+          "title": "AI Parameter Optimization",
+          "description": "Let ML models find the perfect settings to maximize Sharpe ratio and minimize drawdown."
+        },
+        "exchangeConnectivity": {
+          "title": "Exchange Connectivity",
+          "description": "Deploy to Binance, Upbit, Bybit, and 10+ exchanges via API keys. Non-custodial and secure."
+        },
+        "security": {
+          "title": "Enterprise-Grade Security",
+          "description": "Strategies run in isolated sandboxes. API keys are encrypted with AES-256."
+        },
+        "community": {
+          "title": "A Growing Community",
+          "description": "Investing alone is lonely. Share strategies with other investors and grow together through collective intelligence."
+        },
         "backtesting": {
           "title": "Powerful Backtesting",
           "description": "The past is a mirror to the future. Verify if your strategy actually worked with years of data in under a minute."
@@ -102,12 +129,13 @@
         "autoTrading": {
           "title": "24/7 Automated Trading",
           "description": "No more emotional intervention. Save your time by executing verified strategies flawlessly, 24/7."
-        },
-        "community": {
-          "title": "A Growing Community",
-          "description": "Investing alone is lonely. Share strategies with other investors and grow together through collective intelligence."
         }
       }
+    },
+    "CTA": {
+      "title": "Ready to deploy your alpha?",
+      "subtitle": "Join thousands of quantitative traders building the future of finance without writing a single line of code. Start backtesting today.",
+      "button": "Start Building Free"
     }
   },
   "Pricing": {

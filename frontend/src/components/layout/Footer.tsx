@@ -1,65 +1,166 @@
-// file: frontend/src/components/layout/Footer.tsx
-
-"use client"; // 이 컴포넌트가 클라이언트 컴포넌트임을 명시
+"use client";
 
 import * as React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
-import { IconButton } from "@/components/ui/IconButton";
-import { Github, Twitter } from "lucide-react";
-import { useTranslations } from "next-intl"; // getTranslations 대신 useTranslations 훅 사용
+import { Twitter, Github, Linkedin } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const Footer = () => {
-  // async 키워드 제거
-  const t = useTranslations("Footer"); // useTranslations 훅 사용
-  const currentYear = new Date().getFullYear(); // 클라이언트에서 현재 연도 가져옴
+  const t = useTranslations("Footer");
+  const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="hidden md:block w-full border-t border-border/40 bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          <div className="flex flex-col gap-4">
-            <Link href="/" passHref>
-              <Logo />
-            </Link>
-            <p className="text-sm text-muted-foreground">{t("description")}</p>
-            <p className="text-xs text-muted-foreground">
-              &copy; {currentYear} Cortex. {t("rights")}
-            </p>
+    <footer className="w-full border-t border-border/40 bg-background relative z-50 pt-20 pb-10 px-6 md:px-12">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+        {/* Brand Column */}
+        <div className="flex flex-col gap-4 col-span-1 md:col-span-1">
+          <Link href="/" aria-label="Cortex Home">
+            <Logo />
+          </Link>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-2">
+            {t("description")}
+          </p>
+          <div className="flex gap-4">
+            <a
+              href="https://twitter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <Twitter size={16} />
+            </a>
+            <a
+              href="https://linkedin.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <Linkedin size={16} />
+            </a>
+            <a
+              href="https://github.com/sleepyMS?tab=overview&from=2025-12-01&to=2025-12-21"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <Github size={16} />
+            </a>
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-8 md:col-span-2">
-            <div className="flex flex-col gap-2">
-              <h4 className="font-semibold">{t("product")}</h4>
-              <Link
-                href="#features"
-                className="text-sm text-muted-foreground hover:text-primary"
-              >
-                {t("featuresLink")}
+        {/* Platform Column */}
+        <div className="flex flex-col gap-6">
+          <h4 className="font-bold text-foreground">{t("Platform.title")}</h4>
+          <ul className="space-y-4 text-sm text-muted-foreground">
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Platform.visualEditor")}
               </Link>
+            </li>
+            <li>
               <Link
-                href="/pricing"
-                className="text-sm text-muted-foreground hover:text-primary"
+                href="/backtester"
+                className="hover:text-primary transition-colors"
               >
-                {t("pricingLink")}
+                {t("Platform.backtestingEngine")}
               </Link>
-            </div>
-            <div className="flex flex-col gap-2">
-              <h4 className="font-semibold">{t("legal")}</h4>
+            </li>
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Platform.paperTrading")}
+              </Link>
+            </li>
+            <li>
               <Link
-                href="/terms"
-                className="text-sm text-muted-foreground hover:text-primary"
+                href="/optimization"
+                className="hover:text-primary transition-colors"
               >
-                {t("termsLink")}
+                {t("Platform.aiOptimization")}
               </Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Resources Column */}
+        <div>
+          <h4 className="font-bold text-foreground mb-6">
+            {t("Resources.title")}
+          </h4>
+          <ul className="space-y-4 text-sm text-muted-foreground">
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Resources.documentation")}
+              </Link>
+            </li>
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Resources.apiReference")}
+              </Link>
+            </li>
+            <li>
               <Link
-                href="/privacy"
-                className="text-sm text-muted-foreground hover:text-primary"
+                href="/strategies"
+                className="hover:text-primary transition-colors"
               >
-                {t("privacyLink")}
+                {t("Resources.communityStrategies")}
               </Link>
-            </div>
-          </div>
+            </li>
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Resources.blog")}
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Company Column */}
+        <div>
+          <h4 className="font-bold text-foreground mb-6">
+            {t("Company.title")}
+          </h4>
+          <ul className="space-y-4 text-sm text-muted-foreground">
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Company.aboutUs")}
+              </Link>
+            </li>
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Company.careers")}
+              </Link>
+            </li>
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Company.legal")}
+              </Link>
+            </li>
+            <li>
+              <Link href="#" className="hover:text-primary transition-colors">
+                {t("Company.contact")}
+              </Link>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto border-t border-border/40 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="text-muted-foreground text-xs">
+          &copy; {currentYear} Cortex. {t("rights")}
+        </div>
+        <div className="flex gap-6">
+          <Link
+            href="/privacy"
+            className="text-muted-foreground hover:text-foreground text-xs transition-colors"
+          >
+            {t("privacyPolicy")}
+          </Link>
+          <Link
+            href="/terms"
+            className="text-muted-foreground hover:text-foreground text-xs transition-colors"
+          >
+            {t("termsOfService")}
+          </Link>
         </div>
       </div>
     </footer>
