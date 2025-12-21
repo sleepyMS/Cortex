@@ -299,7 +299,7 @@ class LiveBotService:
             # 5. 상태 업데이트
             bot.current_balance = result['current_balance']
             bot.position_size = result['position_size']
-            bot.entry_price = result['entry_price'] if result['entry_price'] else bot.entry_price
+            bot.entry_price = result.get('entry_price')  # Allow None after exit
             bot.last_signal = result['last_signal']
             bot.last_run_at = datetime.now(timezone.utc)
             
@@ -317,30 +317,42 @@ class LiveBotService:
             db.add(bot)
             
             # 6. 트레이드 로그 저장 및 리스크 관리
-            if result.get('trades'):
-                for trade in result['trades']:
-                    trade_log = models.TradeLog(
-                        backtest_id=None,
-                        live_bot_id=bot.id,
-                        # Paper Trading이라도 실시간 봇이므로 '체결 시간'은 현재 시간으로 기록
-                        timestamp=datetime.now(timezone.utc),
-                        side=trade['side'],
-                        price=trade['price'],
-                        quantity=trade['quantity'],
-                        commission=trade['commission'],
-                        pnl=trade['pnl'],
-                        reason=trade['reason']
+            trades = result.get('trades', [])
+            logger.info(f"Bot {bot.id}: Processing {len(trades)} trades from engine")
+            
+            for trade in trades:
+                logger.info(
+                    f"Bot {bot.id}: Trade - side={trade['side']}, "
+                    f"price={trade['price']}, pnl={trade['pnl']}"
+                )
+                
+                trade_log = models.TradeLog(
+                    backtest_id=None,
+                    live_bot_id=bot.id,
+                    timestamp=datetime.now(timezone.utc),
+                    side=trade['side'],
+                    price=trade['price'],
+                    quantity=trade['quantity'],
+                    commission=trade['commission'],
+                    pnl=trade['pnl'],
+                    reason=trade['reason']
+                )
+                db.add(trade_log)
+                
+                # ========== 거래 발생 시 리스크 관리 ==========
+                # Exit 거래는 pnl이 계산됨, Entry 거래는 pnl=None
+                if trade['pnl'] is not None:
+                    logger.info(f"Bot {bot.id}: Updating stats - pnl={trade['pnl']}")
+                    # 일일 손익 업데이트
+                    await risk_manager.update_daily_pnl(db, bot, trade['pnl'])
+                    # 거래 통계 업데이트
+                    await risk_manager.update_trade_statistics(db, bot, trade['pnl'])
+                    logger.info(
+                        f"Bot {bot.id}: Stats updated - "
+                        f"total_trades={bot.total_trades}, "
+                        f"total_pnl={bot.total_pnl}"
                     )
-                    db.add(trade_log)
-                    
-                    # ========== 추가: 거래 발생 시 리스크 관리 ==========
-                    if trade['pnl'] is not None:
-                        # 일일 손익 업데이트
-                        await risk_manager.update_daily_pnl(db, bot, trade['pnl'])
-                        
-                        # 거래 통계 업데이트
-                        await risk_manager.update_trade_statistics(db, bot, trade['pnl'])
-                    # =================================================
+                # ==============================================
             
             # ========== 추가: MDD 업데이트 ==========
             await risk_manager.update_drawdown(db, bot)

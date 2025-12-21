@@ -37,7 +37,7 @@ class PaperTradingEngine(BacktestingEngine):
         if live_bot.current_balance is not None:
             self.balance = live_bot.current_balance
         
-        self.position_size = live_bot.position_size
+        self.position_size = live_bot.position_size or 0.0
         self.entry_price = live_bot.entry_price if live_bot.entry_price else 0.0
         
         # 포지션 방향 설정
@@ -54,8 +54,17 @@ class PaperTradingEngine(BacktestingEngine):
         # 투자 원금 계산 (대략적)
         if self.position_type:
             self.invested_capital = abs(self.position_size) * self.entry_price
+            # entry_commission 복구: 진입 시 수수료 (투자금 * 수수료율)
+            self.entry_commission = self.invested_capital * (self.fee_pct / 100)
+            logger.info(
+                f"PaperTradingEngine: Restored position - "
+                f"type={self.position_type}, size={self.position_size}, "
+                f"entry_price={self.entry_price}, invested={self.invested_capital}, "
+                f"entry_commission={self.entry_commission}"
+            )
         else:
             self.invested_capital = 0.0
+            self.entry_commission = 0.0
 
         # 임시 보완: 포지션이 있는데 SL/TP가 없다면, 현재가 기준으로라도 설정 시도?
         # 아니면 전략 파라미터의 고정 %가 있다면 그것으로 복구 가능.
