@@ -18,6 +18,8 @@ import {
   Share2,
   BarChartHorizontal,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
 import { UTCTimestamp } from "lightweight-charts";
 import { useRouter } from "@/i18n/navigation";
 
@@ -173,15 +175,159 @@ const LoadingSkeleton = () => (
 );
 
 // --- Main Component ---
+// --- Compact Sticky Header ---
+const CompactPageHeader = ({
+  backtest,
+  onRerun,
+  onShare,
+}: {
+  backtest: Backtest;
+  onRerun: () => void;
+  onShare: () => void;
+}) => {
+  const tHeader = useTranslations("BacktestDetailPage.Header");
+
+  const startDate = backtest.parameters?.startDate
+    ? new Date(backtest.parameters.startDate)
+    : null;
+  const endDate = backtest.parameters?.endDate
+    ? new Date(backtest.parameters.endDate)
+    : null;
+  const dateRange =
+    startDate && isValid(startDate) && endDate && isValid(endDate)
+      ? `${format(startDate, "yyyy.MM.dd")} ~ ${format(endDate, "yyyy.MM.dd")}`
+      : "";
+
+  return (
+    <motion.div
+      initial={{ y: -50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -50, opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="absolute top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b px-6 h-16 flex items-center justify-between shadow-sm"
+    >
+      <div className="flex items-center gap-4 overflow-hidden">
+        <div className="flex flex-col">
+          <span className="text-xs text-muted-foreground font-medium">
+            {tHeader("strategy")}
+          </span>
+          <span className="text-sm font-bold truncate">
+            {backtest.strategy?.name || tHeader("unknownStrategy")}
+          </span>
+        </div>
+
+        {dateRange && (
+          <>
+            <div className="h-8 w-[1px] bg-border mx-2 hidden sm:block" />
+            <div className="hidden sm:flex flex-col">
+              <span className="text-xs text-muted-foreground">Period</span>
+              <span className="text-xs font-medium">{dateRange}</span>
+            </div>
+          </>
+        )}
+
+        <div className="h-8 w-[1px] bg-border mx-2 hidden md:block" />
+        <div className="hidden md:flex flex-col">
+          <span className="text-xs text-muted-foreground">Trades</span>
+          <span className="text-xs font-medium">
+            {backtest.result?.totalTrades ?? 0}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onRerun} className="h-8">
+          <Repeat className="mr-2 h-3.5 w-3.5" />
+          {tHeader("rerun")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onShare}
+          disabled={backtest.status !== "completed"}
+          className="h-8 w-8"
+        >
+          <Share2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- Scroll Layout Component ---
+interface BacktestScrollLayoutProps {
+  children: React.ReactNode;
+  backtest: Backtest | undefined;
+  onRerun: () => void;
+  onShare: () => void;
+  showHeader: boolean;
+}
+
+const BacktestScrollLayout = ({
+  children,
+  backtest,
+  onRerun,
+  onShare,
+  showHeader,
+}: BacktestScrollLayoutProps) => {
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const scrollTop = scrollContainerRef.current.scrollTop;
+      // Optimization: Simple threshold check, React handles state deduplication
+      if (scrollTop > 200 && !showStickyHeader) {
+        setShowStickyHeader(true);
+      } else if (scrollTop <= 200 && showStickyHeader) {
+        setShowStickyHeader(false);
+      }
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden relative">
+      {/* Sticky Header Overlay */}
+      <AnimatePresence>
+        {showStickyHeader && backtest && (
+          <CompactPageHeader
+            backtest={backtest}
+            onRerun={onRerun}
+            onShare={onShare}
+          />
+        )}
+      </AnimatePresence>
+
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto custom-scrollbar p-6"
+      >
+        <div className="container mx-auto max-w-screen-xl">
+          {showHeader && backtest && (
+            <PageHeader
+              backtest={backtest}
+              totalTrades={backtest.result?.totalTrades}
+            />
+          )}
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Component ---
 export function BacktestContent({
   backtestId,
   showHeader = true,
 }: BacktestContentProps) {
   const t = useTranslations("BacktestDetailPage");
+  const tHeader = useTranslations("BacktestDetailPage.Header");
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // --- [Performance] 3 parallel queries ---
-
   // 1. Core backtest info
   const {
     data: backtest,
@@ -199,7 +345,7 @@ export function BacktestContent({
     retry: false,
   });
 
-  // 2. Trade logs - pagination + sorting state (MOVED UP for priority)
+  // 2. Trade logs - pagination + sorting state
   const [tradePage, setTradePage] = React.useState(1);
   const [tradeLimit, setTradeLimit] = React.useState(10);
   const [tradeSortBy, setTradeSortBy] = React.useState("timestamp");
@@ -232,7 +378,7 @@ export function BacktestContent({
     refetchOnWindowFocus: false,
   });
 
-  // 3. Chart data (Fetched ONLY after trade logs arrive to avoid blocking)
+  // 3. Chart data
   const { data: chartData, isLoading: isLoadingCharts } = useQuery<{
     pnlCurveJson: { time: number; value: number }[];
     drawdownCurveJson: { time: number; value: number }[];
@@ -249,6 +395,7 @@ export function BacktestContent({
 
   // --- WebSocket for real-time updates ---
   useEffect(() => {
+    // ... (WebSocket logic remains unchanged)
     if (
       backtest &&
       (backtest.status === "running" || backtest.status === "pending")
@@ -269,6 +416,7 @@ export function BacktestContent({
               message.status === "completed" &&
               oldData.status !== "completed"
             ) {
+              // Invalidate all related queries
               queryClient.invalidateQueries({
                 queryKey: ["backtestCore", backtestId],
               });
@@ -295,30 +443,38 @@ export function BacktestContent({
     }
   }, [backtest?.status, backtestId, queryClient]);
 
-  const renderContent = () => {
-    // 1. Loading core data
-    if (isLoadingCore) {
-      return <LoadingSkeleton />;
+  // Shared Handlers (Recreate logic from PageHeader if needed or pass down)
+  // Since PageHeader is internal, we can duplicate the simple handlers or move them out.
+  // For simplicity and cleaner code, I'll inline the simple handlers here for the compact header.
+  const handleRerun = () => {
+    if (!backtest?.strategy) {
+      toast.error(t("errorNoStrategyInfo"));
+      return;
     }
+    const params = new URLSearchParams({ sourceBacktestId: backtest.id });
+    router.push(`/backtester/new?${params.toString()}`);
+  };
 
-    // 2. Error handling
+  const handleShare = () => {
+    toast.info(tHeader("shareWip")); // Reusing translation key
+  };
+
+  const renderContent = () => {
+    // ... (Render logic remains roughly unchanged, just collapsing for brevity)
+    // 1. Loading core data
+    if (isLoadingCore) return <LoadingSkeleton />;
     if (isErrorCore) {
       return (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <TriangleAlert className="h-4 w-4" />
           <AlertTitle>{t("errorTitle")}</AlertTitle>
           <AlertDescription>
-            {t("errorMessage", {
-              error:
-                (errorCore as any)?.response?.data?.detail ||
-                (errorCore as Error).message,
-            })}
+            {(errorCore as any)?.response?.data?.detail ||
+              (errorCore as Error).message}
           </AlertDescription>
         </Alert>
       );
     }
-
-    // 3. No data
     if (!backtest) {
       return (
         <Alert variant="default" className="max-w-2xl mx-auto">
@@ -345,26 +501,17 @@ export function BacktestContent({
           </div>
         );
       case "completed":
-        // result is missing but still fetching (timing after completion)
-        if (!backtest.result && isFetchingCore) {
-          return <LoadingSkeleton />;
-        }
-        // fetching complete but no result
-        if (!backtest.result) {
+        if (!backtest.result && isFetchingCore) return <LoadingSkeleton />;
+        if (!backtest.result)
           return <Alert variant="destructive">{t("noResultData")}</Alert>;
-        }
+
         return (
           <div className="flex flex-col space-y-8">
-            {/* 1. Summary metrics - instant */}
             <BacktestResultSummary result={backtest.result} />
-
-            {/* 2. Detailed metrics - instant */}
             <DetailedMetrics result={backtest.result} />
-
-            {/* 3. Backtest parameters - instant */}
             <BacktestParameters backtest={backtest} />
 
-            {/* 4. Equity chart - separate loading */}
+            {/* Charts & Tables ... (Keeping existing structure) */}
             {isLoadingCharts ? (
               <Skeleton className="h-[350px] w-full rounded-lg" />
             ) : (
@@ -378,7 +525,7 @@ export function BacktestContent({
               />
             )}
 
-            {/* 5. Drawdown chart - separate loading */}
+            {/* Drawdown Chart */}
             {isLoadingCharts ? (
               <Skeleton className="h-[350px] w-full rounded-lg" />
             ) : (
@@ -392,7 +539,7 @@ export function BacktestContent({
               />
             )}
 
-            {/* 6. Monthly performance table - uses chart data */}
+            {/* Monthly Performance */}
             {isLoadingCharts ? (
               <Skeleton className="h-[250px] w-full rounded-lg" />
             ) : (
@@ -406,7 +553,7 @@ export function BacktestContent({
               />
             )}
 
-            {/* 7. Trade log table - pagination */}
+            {/* Trade Logs */}
             {isLoadingTrades ? (
               <Skeleton className="h-[400px] w-full rounded-lg" />
             ) : (
@@ -453,18 +600,13 @@ export function BacktestContent({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-        <div className="container mx-auto max-w-screen-xl">
-          {showHeader && backtest && (
-            <PageHeader
-              backtest={backtest}
-              totalTrades={backtest.result?.totalTrades}
-            />
-          )}
-          {renderContent()}
-        </div>
-      </div>
-    </div>
+    <BacktestScrollLayout
+      backtest={backtest}
+      onRerun={handleRerun}
+      onShare={handleShare}
+      showHeader={showHeader}
+    >
+      {renderContent()}
+    </BacktestScrollLayout>
   );
 }
