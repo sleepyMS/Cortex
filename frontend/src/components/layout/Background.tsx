@@ -1,4 +1,20 @@
+"use client";
+
+import { usePathname } from "@/i18n/navigation";
+
 export function Background() {
+  const pathname = usePathname();
+
+  const isAuthPage = [
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+  ].some((path) => pathname.includes(path));
+
+  if (isAuthPage) return null;
+
   return (
     <div className="fixed inset-0 z-[-1] h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none">
       <div className="absolute left-1/2 -translate-x-1/2 top-[-10%] h-[1000px] w-[1000px] rounded-full bg-[radial-gradient(circle_400px_at_50%_300px,rgba(139,92,246,0.15),transparent)]"></div>

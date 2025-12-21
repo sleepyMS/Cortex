@@ -56,8 +56,17 @@ export function Header() {
   const isBacktestDetail =
     pathname.startsWith("/backtester/") &&
     pathname.length > "/backtester/".length;
+
+  const isAuthPage = [
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+  ].some((path) => pathname.includes(path));
+
   const shouldShowBackground =
-    scrolled || !!isEditMode || isCreateMode || isBacktestDetail;
+    scrolled || !!isEditMode || isCreateMode || isBacktestDetail || isAuthPage;
 
   return (
     <header

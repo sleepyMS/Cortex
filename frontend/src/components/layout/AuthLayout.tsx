@@ -101,7 +101,11 @@ export default function AuthLayout({
         {/* Left Side: Branding/Quote */}
         <div className="flex flex-col gap-4 text-left">
           <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tighter text-foreground">
-            {t.rich("title", { br: () => <br /> })}
+            {t("titleLine1")}
+            <br />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-300 dark:to-violet-400 pb-1">
+              {t("titleLine2")}
+            </span>
           </h1>
           <p className="text-base sm:text-lg text-muted-foreground">
             {t("subtitle")}

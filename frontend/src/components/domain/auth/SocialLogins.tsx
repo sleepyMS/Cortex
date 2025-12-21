@@ -42,15 +42,12 @@ export default function SocialLogins() {
 
   return (
     <>
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="px-2 text-muted-foreground">
-            {t("socialLoginDivider")}
-          </span>
-        </div>
+      <div className="flex items-center gap-4 my-6">
+        <div className="h-px flex-1 bg-border/50"></div>
+        <span className="text-xs uppercase text-muted-foreground">
+          {t("socialLoginDivider")}
+        </span>
+        <div className="h-px flex-1 bg-border/50"></div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
