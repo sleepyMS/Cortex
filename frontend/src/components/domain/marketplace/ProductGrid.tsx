@@ -9,6 +9,7 @@ import { Inbox, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { StrategyMarketCard } from "./StrategyMarketCard";
 import { ShopItemCard } from "./ShopItemCard";
+import { motion } from "framer-motion";
 
 interface ProductGridProps {
   isLoading: boolean;
@@ -74,37 +75,42 @@ export const ProductGrid = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {products.map((product) =>
-        productType === "STRATEGY" ? (
-          <StrategyMarketCard
-            key={product.id}
-            strategy={product as MarketplaceStrategy}
-            isOwned={purchasedStrategyIds.includes(
-              (product as MarketplaceStrategy).linkedResourceId
-            )}
-            onPurchase={() => onPurchaseClick(product)}
-            isPurchasing={
-              purchaseMutation.isPending &&
-              purchaseMutation.variables?.items[0]?.productId === product.id
-            }
-            // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
-            onChargeCredits={onChargeCredits}
-          />
-        ) : (
-          <ShopItemCard
-            key={product.id}
-            item={product as ShopItem}
-            isOwned={ownedItemIds.includes(product.id)}
-            onPurchase={() => onPurchaseClick(product)}
-            isPurchasing={
-              purchaseMutation.isPending &&
-              purchaseMutation.variables?.items[0]?.productId === product.id
-            }
-            // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
-            onChargeCredits={onChargeCredits}
-          />
-        )
-      )}
+      {products.map((product, index) => (
+        <motion.div
+          key={product.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.05 }}
+        >
+          {productType === "STRATEGY" ? (
+            <StrategyMarketCard
+              strategy={product as MarketplaceStrategy}
+              isOwned={purchasedStrategyIds.includes(
+                (product as MarketplaceStrategy).linkedResourceId
+              )}
+              onPurchase={() => onPurchaseClick(product)}
+              isPurchasing={
+                purchaseMutation.isPending &&
+                purchaseMutation.variables?.items[0]?.productId === product.id
+              }
+              // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
+              onChargeCredits={onChargeCredits}
+            />
+          ) : (
+            <ShopItemCard
+              item={product as ShopItem}
+              isOwned={ownedItemIds.includes(product.id)}
+              onPurchase={() => onPurchaseClick(product)}
+              isPurchasing={
+                purchaseMutation.isPending &&
+                purchaseMutation.variables?.items[0]?.productId === product.id
+              }
+              // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
+              onChargeCredits={onChargeCredits}
+            />
+          )}
+        </motion.div>
+      ))}
     </div>
   );
 };
