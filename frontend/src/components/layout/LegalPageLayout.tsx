@@ -25,7 +25,9 @@ export function LegalPageLayout({
   lastUpdated,
 }: LegalPageLayoutProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background pb-24">
+      {/* Dark glass overlay */}
+      <div className="fixed inset-0 bg-background/30 backdrop-blur-sm -z-10" />
       {/* 헤더 영역 */}
       <div className="border-b border-border/40 bg-muted/30">
         <div className="container mx-auto max-w-4xl px-4 py-8">

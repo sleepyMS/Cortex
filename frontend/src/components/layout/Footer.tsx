@@ -11,7 +11,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="w-full border-t border-border/40 bg-background relative z-50 py-8 px-6 md:px-12 mt-24">
+    <footer className="w-full border-t border-border/40 bg-background relative z-50 py-8 px-6 md:px-12">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
         {/* Brand Column */}
         <div className="flex flex-col gap-4 col-span-1 md:col-span-1">

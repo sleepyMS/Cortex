@@ -71,26 +71,30 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="container mx-auto max-w-4xl py-12 px-4 space-y-8">
-      <div className="flex justify-start">
-        <BackButton />
-      </div>
+    <div className="relative min-h-screen pb-24">
+      {/* Dark glass overlay */}
+      <div className="fixed inset-0 bg-background/30 backdrop-blur-sm -z-10" />
+      <div className="container mx-auto max-w-4xl py-12 px-4 space-y-8">
+        <div className="flex justify-start">
+          <BackButton />
+        </div>
 
-      {/* 사용자 프로필 정보 표시 컴포넌트 */}
-      <UserProfileDisplay profile={profileData} />
+        {/* 사용자 프로필 정보 표시 컴포넌트 */}
+        <UserProfileDisplay profile={profileData} />
 
-      {/* 대표 전략 표시 컴포넌트 */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">
-          {t("featuredStrategyTitle")}
-        </h2>
-        {featuredStrategy ? (
-          <FeaturedStrategyCard strategy={featuredStrategy} />
-        ) : (
-          <div className="text-center py-10 border-2 border-dashed rounded-lg">
-            <p className="text-muted-foreground">{t("noFeaturedContent")}</p>
-          </div>
-        )}
+        {/* 대표 전략 표시 컴포넌트 */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">
+            {t("featuredStrategyTitle")}
+          </h2>
+          {featuredStrategy ? (
+            <FeaturedStrategyCard strategy={featuredStrategy} />
+          ) : (
+            <div className="text-center py-10 border-2 border-dashed rounded-lg">
+              <p className="text-muted-foreground">{t("noFeaturedContent")}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -63,7 +63,13 @@ function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
   }
 
   // 성공적으로 로드되면 자식 페이지를 렌더링합니다.
-  return <>{children}</>;
+  return (
+    <div className="relative min-h-screen pb-24">
+      {/* Dark glass overlay for all authenticated pages */}
+      <div className="fixed inset-0 bg-background/30 backdrop-blur-sm -z-10" />
+      {children}
+    </div>
+  );
 }
 
 /**

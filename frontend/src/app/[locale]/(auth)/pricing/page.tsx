@@ -106,7 +106,7 @@ export default async function PricingPage() {
   const faqItems = t.raw("faq.items");
 
   return (
-    <main className="relative flex min-h-screen flex-col overflow-hidden">
+    <main className="relative flex min-h-screen flex-col overflow-hidden pb-24">
       {/* 배경 렌더링 */}
       <PricingBackground />
 
@@ -149,7 +149,6 @@ export default async function PricingPage() {
           {/* FAQ 섹션 */}
           <FaqSection faqItems={faqItems} />
         </div>
-        <div className="p-12"></div>
       </div>
     </main>
   );
