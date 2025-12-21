@@ -453,8 +453,8 @@ const MockTradingTerminal = () => {
               onMouseLeave={() => setHoveredBlock(null)}
               className={`absolute top-24 left-4 w-56 bg-card border rounded-lg shadow-xl overflow-hidden cursor-pointer transition-all duration-300 ${
                 hoveredBlock === "market"
-                  ? "border-purple-500/60 shadow-[0_0_25px_rgba(139,92,246,0.4)] scale-[1.02]"
-                  : "border-border"
+                  ? "border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.5)] scale-[1.02] ring-1 ring-purple-500/50"
+                  : "border-border hover:border-purple-500/50"
               }`}
             >
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
@@ -492,8 +492,8 @@ const MockTradingTerminal = () => {
               onMouseLeave={() => setHoveredBlock(null)}
               className={`absolute top-8 left-[360px] w-[360px] bg-card border rounded-lg shadow-xl overflow-hidden cursor-pointer transition-all duration-300 ${
                 hoveredBlock === "long"
-                  ? "border-violet-500/60 shadow-[0_0_25px_rgba(139,92,246,0.4)] scale-[1.02]"
-                  : "border-border"
+                  ? "border-violet-500 shadow-[0_0_30px_rgba(139,92,246,0.5)] scale-[1.02] ring-1 ring-violet-500/50"
+                  : "border-border hover:border-violet-500/50"
               }`}
             >
               {/* Strategy Card Header */}
@@ -628,8 +628,8 @@ const MockTradingTerminal = () => {
               onMouseLeave={() => setHoveredBlock(null)}
               className={`absolute top-[340px] left-[280px] w-[360px] bg-card border rounded-lg shadow-xl overflow-hidden cursor-pointer transition-all duration-300 ${
                 hoveredBlock === "short"
-                  ? "border-rose-500/60 shadow-[0_0_25px_rgba(244,63,94,0.4)] scale-[1.02]"
-                  : "border-border"
+                  ? "border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.5)] scale-[1.02] ring-1 ring-rose-500/50"
+                  : "border-border hover:border-rose-500/50"
               }`}
             >
               {/* Strategy Card Header */}
