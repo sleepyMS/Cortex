@@ -119,27 +119,27 @@
       "features": {
         "strategyBuilder": {
           "title": "Visual Strategy Builder",
-          "description": "Construct complex trading algorithms by combining logic blocks. Easily create, test, and deploy strategies via UI without coding."
+          "description": "Turn your trading ideas into reality **without a single line of code**. Combine various technical indicators like EMA and RSI with logical blocks to build advanced quant strategies. **Maximize productivity** through our intuitive visual interface."
         },
         "tickBacktesting": {
           "title": "High-Precision Backtesting",
-          "description": "Verify strategies with realistic simulation including slippage and fees."
+          "description": "**Realistic simulation** of slippage and commissions is just the beginning. Perform **multi-dimensional analysis** with key metrics like Sharpe and MDD, interactive charts, and detailed trade logs."
         },
         "aiOptimization": {
           "title": "ML-Based Optimization",
-          "description": "Tailored to your investment goals, Machine Learning algorithms find robust parameters maximizing Sharpe Ratio. Prevent overfitting with Walk-Forward Analysis."
+          "description": "Tailored to your investment goals, **Machine Learning algorithms** find robust parameters **maximizing Sharpe Ratio**. **Prevent overfitting** with Walk-Forward Analysis."
         },
         "exchangeConnectivity": {
           "title": "Exchange Connectivity",
-          "description": "Optimized connection for Binance. Assets stay safe in your exchange account via non-custodial API delivery."
+          "description": "**Optimized connection** for Binance. Assets stay safe in your exchange account via **non-custodial** API delivery."
         },
         "security": {
           "title": "Enterprise-Grade Security",
-          "description": "Strategies run in isolated sandboxes. API keys are encrypted with AES-256."
+          "description": "Strategies run in **isolated sandboxes**. API keys are **encrypted with AES-256**."
         },
         "community": {
           "title": "24/7 Paper & Live Trading",
-          "description": "Validate strategies via paper trading or deploy to live exchanges. Our cloud infrastructure ensures 24/7 uninterrupted automation."
+          "description": "**Validate strategies via paper trading** or **deploy to live exchanges**. Our cloud infrastructure ensures **24/7 uninterrupted automation**."
         },
         "backtesting": {
           "title": "Powerful Backtesting",

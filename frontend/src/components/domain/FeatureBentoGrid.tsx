@@ -57,6 +57,25 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
     null
   );
 
+  // Helper function to format text with bold emphasis
+  const formatText = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return (
+      <>
+        {parts.map((part, index) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            return (
+              <span key={index} className="text-violet-400 font-bold">
+                {part.slice(2, -2)}
+              </span>
+            );
+          }
+          return <span key={index}>{part}</span>;
+        })}
+      </>
+    );
+  };
+
   // Update setLines to avoid unnecessary re-renders if path hasn't changed
   const setLinesSafe = (newLines: { crossover: string; state: string }) => {
     setLines((prev) => {
@@ -158,7 +177,9 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
       {/* Large Feature - Visual Strategy Builder */}
       <SpotlightCard
         title={translations.features.strategyBuilder.title}
-        description={translations.features.strategyBuilder.description}
+        description={formatText(
+          translations.features.strategyBuilder.description
+        )}
         icon={<Workflow />}
         className="md:col-span-2 md:row-span-2"
       >
@@ -473,35 +494,87 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
       {/* Small Feature - Tick-Level Backtesting */}
       <SpotlightCard
         title={translations.features.tickBacktesting.title}
-        description={translations.features.tickBacktesting.description}
+        description={formatText(
+          translations.features.tickBacktesting.description
+        )}
         icon={<Zap />}
         className="md:col-span-1 md:row-span-1"
-      >
-        <div className="h-28 w-full relative overflow-hidden rounded-lg bg-muted/50 border border-border flex items-end justify-between px-2 pb-0 pt-8 gap-1">
-          {[20, 50, 35, 90, 60, 85, 75, 95, 120].map((h, i) => (
-            <motion.div
-              key={i}
-              initial={{ height: 10 }}
-              whileInView={{ height: `${h}%` }}
-              transition={{ duration: 0.8, delay: i * 0.1, ease: "backOut" }}
-              className="flex-1 bg-violet-500/80 rounded-t-[4px] hover:bg-violet-400 transition-colors"
-            />
-          ))}
-        </div>
-      </SpotlightCard>
+      />
 
       {/* Small Feature - AI Optimization */}
       <SpotlightCard
         title={translations.features.aiOptimization.title}
-        description={translations.features.aiOptimization.description}
+        description={formatText(
+          translations.features.aiOptimization.description
+        )}
         icon={<Cpu />}
         className="md:col-span-1 md:row-span-1"
-      />
+      >
+        <div className="h-32 w-full relative mt-4 bg-muted/30 rounded-lg border border-border/40 p-3 overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between relative z-10">
+            <span className="text-[9px] text-muted-foreground font-mono">
+              TPE Engine
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-violet-500 animate-pulse"></span>
+              <span className="text-[9px] text-violet-400 font-mono">
+                Searching...
+              </span>
+            </div>
+          </div>
+
+          {/* Visualization of parameter points or a rising curve */}
+          <div className="flex-1 flex items-end gap-1 px-1 py-3 relative z-10">
+            {[0.15, 0.3, 0.25, 0.5, 0.45, 0.7, 0.65, 0.85, 1.0, 0.95].map(
+              (h, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ height: 0, opacity: 0 }}
+                  whileInView={{ height: `${h * 100}%`, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: i * 0.05 }}
+                  className="flex-1 bg-gradient-to-t from-violet-500/20 to-violet-500/60 rounded-t-sm"
+                />
+              )
+            )}
+          </div>
+
+          <div className="flex items-end justify-between relative z-10">
+            <div className="space-y-0.5">
+              <span className="text-[7px] text-muted-foreground block uppercase leading-none">
+                Best Metric
+              </span>
+              <span className="text-[11px] font-bold text-violet-400 font-mono leading-none">
+                Sharpe 3.82
+              </span>
+            </div>
+            <div className="text-right space-y-0.5">
+              <span className="text-[7px] text-muted-foreground block uppercase leading-none">
+                Iteration
+              </span>
+              <span className="text-[9px] font-medium font-mono leading-none">
+                64 / 100
+              </span>
+            </div>
+          </div>
+
+          {/* Decorative background: Scanning grid effect */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0">
+            <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:8px_8px]"></div>
+          </div>
+          <motion.div
+            animate={{ top: ["-100%", "200%"] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            className="absolute left-0 right-0 h-[20%] bg-gradient-to-b from-transparent via-violet-500/10 to-transparent pointer-events-none z-0"
+          />
+        </div>
+      </SpotlightCard>
 
       {/* Wide Feature - Exchange Connectivity */}
       <SpotlightCard
         title={translations.features.exchangeConnectivity.title}
-        description={translations.features.exchangeConnectivity.description}
+        description={formatText(
+          translations.features.exchangeConnectivity.description
+        )}
         icon={<Globe />}
         className="md:col-span-3 lg:col-span-1"
       >
@@ -550,7 +623,7 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
       {/* Wide Feature - Security */}
       <SpotlightCard
         title={translations.features.security.title}
-        description={translations.features.security.description}
+        description={formatText(translations.features.security.description)}
         icon={<ShieldCheck />}
         className="md:col-span-3 lg:col-span-1"
       >
@@ -606,7 +679,7 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
       {/* Wide Feature - 24/7 Trading */}
       <SpotlightCard
         title={translations.features.community.title}
-        description={translations.features.community.description}
+        description={formatText(translations.features.community.description)}
         icon={<CloudLightning />}
         className="md:col-span-3 lg:col-span-1"
       >

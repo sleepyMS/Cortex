@@ -5,7 +5,7 @@ import clsx from "clsx";
 
 interface SpotlightCardProps {
   title: string;
-  description: string;
+  description: string | React.ReactNode;
   icon: React.ReactNode;
   className?: string;
   children?: React.ReactNode;
@@ -72,20 +72,22 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
       />
 
       <div className="relative z-10 flex h-full flex-col justify-between">
-        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-muted border border-border text-foreground group-hover:text-violet-400 group-hover:scale-110 transition-all duration-300 shadow-lg">
-          {icon}
-        </div>
-
-        {children && <div className="mb-6 flex-1 w-full">{children}</div>}
-
         <div>
-          <h3 className="mb-2 text-xl font-semibold text-foreground group-hover:text-foreground transition-colors">
-            {title}
-          </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-muted-foreground/80 transition-colors">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-muted border border-border text-foreground group-hover:text-violet-400 group-hover:scale-110 transition-all duration-300 shadow-lg shrink-0">
+              {icon}
+            </div>
+            <h3 className="text-xl font-semibold text-foreground group-hover:text-foreground transition-colors">
+              {title}
+            </h3>
+          </div>
+
+          <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-muted-foreground/80 transition-colors mb-4">
             {description}
           </p>
         </div>
+
+        {children && <div className="flex-1 w-full">{children}</div>}
       </div>
     </div>
   );
