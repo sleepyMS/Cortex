@@ -90,13 +90,13 @@ def _run_single_bot_cycle_sync(bot_id: uuid.UUID) -> dict:
                 # 5. 상태 업데이트
                 bot.current_balance = result['current_balance']
                 bot.position_size = result['position_size']
-                bot.entry_price = result['entry_price'] if result['entry_price'] else bot.entry_price
+                bot.entry_price = result.get('entry_price')  # Allow None after exit
                 bot.last_signal = result['last_signal']
                 bot.last_run_at = datetime.now(timezone.utc)
                 
                 # Equity 계산 (동기 버전)
                 equity = bot.current_balance or bot.initial_capital
-                if bot.position_size != 0:
+                if bot.position_size != 0 and bot.entry_price:
                     try:
                         current_df = market_data_service.get_latest_data_sync(
                             db=session,
@@ -123,22 +123,53 @@ def _run_single_bot_cycle_sync(bot_id: uuid.UUID) -> dict:
                 
                 session.add(bot)
                 
-                # 6. 트레이드 로그 저장
-                if result.get('trades'):
-                    for trade in result['trades']:
-                        trade_log = models.TradeLog(
-                            backtest_id=None,
-                            live_bot_id=bot.id,
-                            # Paper Trading이라도 실시간 봇이므로 '체결 시간'은 현재 시간으로 기록
-                            timestamp=datetime.now(timezone.utc),
-                            side=trade['side'],
-                            price=trade['price'],
-                            quantity=trade['quantity'],
-                            commission=trade['commission'],
-                            pnl=trade['pnl'],
-                            reason=trade['reason']
+                # 6. 트레이드 로그 저장 및 통계 업데이트
+                trades = result.get('trades', [])
+                for trade in trades:
+                    trade_log = models.TradeLog(
+                        backtest_id=None,
+                        live_bot_id=bot.id,
+                        timestamp=datetime.now(timezone.utc),
+                        side=trade['side'],
+                        price=trade['price'],
+                        quantity=trade['quantity'],
+                        commission=trade['commission'],
+                        pnl=trade['pnl'],
+                        reason=trade['reason']
+                    )
+                    session.add(trade_log)
+                    
+                    # ========== 통계 업데이트 (Exit 거래만 pnl 있음) ==========
+                    if trade['pnl'] is not None:
+                        # 일일/총 손익 업데이트
+                        bot.daily_pnl = (bot.daily_pnl or 0) + trade['pnl']
+                        bot.total_pnl = (bot.total_pnl or 0) + trade['pnl']
+                        
+                        # 거래 통계 업데이트
+                        bot.total_trades = (bot.total_trades or 0) + 1
+                        if trade['pnl'] > 0:
+                            bot.winning_trades = (bot.winning_trades or 0) + 1
+                        
+                        logger.info(
+                            f"Bot {bot.id}: Stats updated - "
+                            f"total_trades={bot.total_trades}, "
+                            f"total_pnl={bot.total_pnl:.2f}"
                         )
-                        session.add(trade_log)
+                    # ========================================================
+                
+                # ========== MDD (Max Drawdown) 업데이트 ==========
+                if bot.equity:
+                    # 최고점 갱신
+                    if bot.peak_balance is None or bot.equity > bot.peak_balance:
+                        bot.peak_balance = bot.equity
+                    
+                    # MDD 계산
+                    if bot.peak_balance and bot.peak_balance > 0:
+                        drawdown = ((bot.peak_balance - bot.equity) / bot.peak_balance) * 100
+                        if drawdown > (bot.max_drawdown or 0):
+                            bot.max_drawdown = drawdown
+                            logger.info(f"Bot {bot.id}: New max drawdown: {bot.max_drawdown:.2f}%")
+                # ================================================
                 
                 session.commit()
                 return {"bot_id": str(bot.id), "status": "success", "last_signal": bot.last_signal}
