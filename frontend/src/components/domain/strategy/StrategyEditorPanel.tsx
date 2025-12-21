@@ -637,7 +637,7 @@ export function StrategyEditorPanel({
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <IndicatorHub
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
@@ -645,8 +645,8 @@ export function StrategyEditorPanel({
         selectionMode={hubSelectionMode}
       />
 
-      {/* Header with close button */}
-      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+      {/* Header with close button - fixed at top */}
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
             <Button
@@ -670,7 +670,7 @@ export function StrategyEditorPanel({
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="p-6">
           <FormProvider {...formMethods}>
             <form

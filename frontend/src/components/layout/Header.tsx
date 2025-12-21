@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 
@@ -35,6 +36,9 @@ export function Header() {
   const hasHydrated = useHasHydrated();
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get("edit");
+  const isCreateMode = searchParams.get("create") === "true";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,11 +52,18 @@ export function Header() {
     setTheme(theme === "light" ? "dark" : "light");
   };
 
+  // Force scrolled style (opaque background) if in edit mode, create mode, or backtester detail page
+  const isBacktestDetail =
+    pathname.startsWith("/backtester/") &&
+    pathname.length > "/backtester/".length;
+  const shouldShowBackground =
+    scrolled || !!isEditMode || isCreateMode || isBacktestDetail;
+
   return (
     <header
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-300",
-        scrolled
+        shouldShowBackground
           ? "bg-background/80 backdrop-blur-md border-b border-border/40 py-1"
           : "bg-transparent border-transparent py-2"
       )}

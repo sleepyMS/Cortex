@@ -469,7 +469,7 @@ function StrategiesPageContent() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 pb-12 space-y-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 pb-12 space-y-2">
               {isLoading ? (
                 <LoadingSkeleton viewMode="list" />
               ) : strategies.length === 0 ? (
@@ -508,7 +508,7 @@ function StrategiesPageContent() {
             animate={{ width: isSplitView ? "80%" : "100%", opacity: 1 }}
             exit={{ width: "100%", opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="flex-1 overflow-y-auto"
+            className="flex-1 overflow-hidden"
           >
             <StrategyEditorPanel
               strategyId={editStrategyId}
