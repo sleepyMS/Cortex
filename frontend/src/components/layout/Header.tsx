@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 
@@ -34,6 +34,7 @@ export function Header() {
   const { user, isAuthInitialized, creditBalance } = useUserStore();
   const hasHydrated = useHasHydrated();
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -75,16 +76,29 @@ export function Header() {
                 { href: "/optimization", label: tNav("optimization") },
                 { href: "/marketplace", label: tNav("marketplace") },
                 { href: "/bots", label: tNav("liveBots") },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative group"
-                >
-                  {item.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-primary transition-all group-hover:w-full"></span>
-                </Link>
-              ))}
+              ].map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "text-sm font-medium transition-colors relative group",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {item.label}
+                    <span
+                      className={cn(
+                        "absolute -bottom-1 left-0 h-[1px] bg-primary transition-all duration-300",
+                        isActive ? "w-full" : "w-0 group-hover:w-full"
+                      )}
+                    ></span>
+                  </Link>
+                );
+              })}
             </>
           )}
         </nav>
