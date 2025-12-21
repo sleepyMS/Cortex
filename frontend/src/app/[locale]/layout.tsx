@@ -7,6 +7,7 @@ import { useMessages } from "next-intl";
 import { Providers } from "@/providers/Providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { Background } from "@/components/layout/Background";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { cn } from "@/lib/utils";
 import { timeZone } from "i18n";
@@ -46,6 +47,7 @@ export default function RootLayout({
         )}
       >
         <Providers locale={locale} messages={messages} timeZone={timeZone}>
+          <Background />
           <Header />
           <PageWrapper>
             <main className="flex-grow flex flex-col">{children}</main>

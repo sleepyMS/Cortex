@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { Plus } from "lucide-react";
 import { BotSummaryCards } from "@/components/domain/bots/dashboard/BotSummaryCards";
 import { BotListTable } from "@/components/domain/bots/dashboard/BotListTable";
+import { GlassPane } from "@/components/ui/GlassPane";
 
 export default function LiveBotsPage() {
   const t = useTranslations("LiveTrading.Dashboard");
@@ -31,13 +32,19 @@ export default function LiveBotsPage() {
         </div>
       </div>
 
-      <BotSummaryCards />
+      <div className="space-y-8">
+        {/* 1. 자산 현황 섹션 */}
+        <GlassPane className="p-6 md:p-8">
+          <BotSummaryCards />
+        </GlassPane>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">
-          {t("yourBots")}
-        </h2>
-        <BotListTable />
+        {/* 2. 봇 목록 섹션 */}
+        <GlassPane className="p-6 md:p-8 space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">
+            {t("yourBots")}
+          </h2>
+          <BotListTable />
+        </GlassPane>
       </div>
     </div>
   );

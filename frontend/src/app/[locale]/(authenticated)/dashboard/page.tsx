@@ -13,6 +13,7 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { ApiKeyManagerTab } from "@/components/domain/dashboard/ApiKeyManagerTab";
 import { CreditManagementTab } from "@/components/domain/dashboard/CreditManagementTab";
 import { Coins } from "lucide-react";
+import { GlassPane } from "@/components/ui/GlassPane";
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard.tabs");
@@ -44,42 +45,44 @@ export default function DashboardPage() {
         description={t("pageDescription")}
       />
 
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
-          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
-          <TabsTrigger value="assets">{t("assets")}</TabsTrigger>
-          <TabsTrigger value="credits">
-            <Coins className="w-4 h-4 mr-2" />
-            {t("credits")}
-          </TabsTrigger>
-          <TabsTrigger value="profile">{t("profile")}</TabsTrigger>
-          <TabsTrigger value="apiKeys">{t("apiKeys")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
-        </TabsList>
+      <GlassPane className="p-6 md:p-8">
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 bg-background/50 border border-border/50">
+            <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
+            <TabsTrigger value="assets">{t("assets")}</TabsTrigger>
+            <TabsTrigger value="credits">
+              <Coins className="w-4 h-4 mr-2" />
+              {t("credits")}
+            </TabsTrigger>
+            <TabsTrigger value="profile">{t("profile")}</TabsTrigger>
+            <TabsTrigger value="apiKeys">{t("apiKeys")}</TabsTrigger>
+            <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
-          <DashboardOverviewTab />
-        </TabsContent>
-        <TabsContent value="assets" className="mt-6">
-          <AssetManagementTab />
-        </TabsContent>
-        <TabsContent value="credits" className="mt-6">
-          <CreditManagementTab />
-        </TabsContent>
-        <TabsContent value="profile" className="mt-6">
-          <ProfileManagementTab />
-        </TabsContent>
-        <TabsContent value="apiKeys" className="mt-6">
-          <ApiKeyManagerTab />
-        </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <AccountSettingsTab />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="overview" className="mt-6">
+            <DashboardOverviewTab />
+          </TabsContent>
+          <TabsContent value="assets" className="mt-6">
+            <AssetManagementTab />
+          </TabsContent>
+          <TabsContent value="credits" className="mt-6">
+            <CreditManagementTab />
+          </TabsContent>
+          <TabsContent value="profile" className="mt-6">
+            <ProfileManagementTab />
+          </TabsContent>
+          <TabsContent value="apiKeys" className="mt-6">
+            <ApiKeyManagerTab />
+          </TabsContent>
+          <TabsContent value="settings" className="mt-6">
+            <AccountSettingsTab />
+          </TabsContent>
+        </Tabs>
+      </GlassPane>
     </div>
   );
 }

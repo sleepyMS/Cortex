@@ -25,6 +25,7 @@ import { useListStrategyMutation } from "@/hooks/useStrategyMutations";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { GlassPane } from "@/components/ui/GlassPane";
 import {
   Select,
   SelectContent,
@@ -566,123 +567,134 @@ function StrategiesPageContent() {
             </div>
           </div>
 
-          {/* 2. 필터링 UI */}
-          <div className="mb-8 space-y-4">
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              {/* 검색 입력창 */}
-              <div className="relative w-full lg:w-[300px]">
-                <Input
-                  placeholder={t("searchPlaceholder")}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 bg-background w-full transition-all focus:ring-2 focus:ring-primary/20"
-                />
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="lucide lucide-search"
+          {/* 2. Content Area wrapped in GlassPane */}
+          <GlassPane className="p-6 md:p-8">
+            {/* Filter UI */}
+            <div className="mb-8 space-y-4">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                {/* 검색 입력창 */}
+                <div className="relative w-full lg:w-[300px]">
+                  <Input
+                    placeholder={t("searchPlaceholder")}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-10 bg-background/50 border-input/50 w-full transition-all focus:ring-2 focus:ring-primary/20"
+                  />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-search"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                  {/* 상태 필터 */}
+                  <Select
+                    value={filterStatus}
+                    onValueChange={(v: any) => setFilterStatus(v)}
                   >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                  </svg>
+                    <SelectTrigger className="w-full sm:w-[140px] bg-background/50 border-input/50">
+                      <SelectValue placeholder={t("filterPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("filterAll")}</SelectItem>
+                      <SelectItem value="public">
+                        {t("filterPublic")}
+                      </SelectItem>
+                      <SelectItem value="private">
+                        {t("filterPrivate")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* 지표 필터 */}
+                  <Select
+                    value={indicatorFilter}
+                    onValueChange={(v: any) => setIndicatorFilter(v)}
+                  >
+                    <SelectTrigger className="w-full sm:w-[160px] bg-background/50 border-input/50">
+                      <SelectValue
+                        placeholder={t("indicatorFilterPlaceholder")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t("indicatorFilterAll")}
+                      </SelectItem>
+                      {KEY_INDICATORS.map((indicator) => (
+                        <SelectItem key={indicator} value={indicator}>
+                          {indicator}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* 정렬 */}
+                  <Select
+                    value={sortBy}
+                    onValueChange={(v: any) => setSortBy(v)}
+                  >
+                    <SelectTrigger className="w-full sm:w-[160px] bg-background/50 border-input/50">
+                      <SelectValue placeholder={t("sortByPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="updated_at_desc">
+                        {t("sortByLastUpdated")}
+                      </SelectItem>
+                      <SelectItem value="created_at_desc">
+                        {t("sortByNewest")}
+                      </SelectItem>
+                      <SelectItem value="name_asc">
+                        {t("sortByNameAsc")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* 필터 초기화 버튼 */}
+                  {(filterStatus !== "all" || indicatorFilter !== "all") && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setFilterStatus("all");
+                        setIndicatorFilter("all");
+                      }}
+                      className="px-3"
+                    >
+                      Reset
+                    </Button>
+                  )}
                 </div>
               </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                {/* 상태 필터 */}
-                <Select
-                  value={filterStatus}
-                  onValueChange={(v: any) => setFilterStatus(v)}
-                >
-                  <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue placeholder={t("filterPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("filterAll")}</SelectItem>
-                    <SelectItem value="public">{t("filterPublic")}</SelectItem>
-                    <SelectItem value="private">
-                      {t("filterPrivate")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* 지표 필터 */}
-                <Select
-                  value={indicatorFilter}
-                  onValueChange={(v: any) => setIndicatorFilter(v)}
-                >
-                  <SelectTrigger className="w-full sm:w-[160px]">
-                    <SelectValue
-                      placeholder={t("indicatorFilterPlaceholder")}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      {t("indicatorFilterAll")}
-                    </SelectItem>
-                    {KEY_INDICATORS.map((indicator) => (
-                      <SelectItem key={indicator} value={indicator}>
-                        {indicator}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* 정렬 */}
-                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-                  <SelectTrigger className="w-full sm:w-[160px]">
-                    <SelectValue placeholder={t("sortByPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="updated_at_desc">
-                      {t("sortByLastUpdated")}
-                    </SelectItem>
-                    <SelectItem value="created_at_desc">
-                      {t("sortByNewest")}
-                    </SelectItem>
-                    <SelectItem value="name_asc">
-                      {t("sortByNameAsc")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* 필터 초기화 버튼 */}
-                {(filterStatus !== "all" || indicatorFilter !== "all") && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setFilterStatus("all");
-                      setIndicatorFilter("all");
-                    }}
-                    className="px-3"
-                  >
-                    Reset
-                  </Button>
-                )}
-              </div>
             </div>
-          </div>
 
-          {/* 3. 전략 목록 */}
-          {renderContent()}
+            {/* 3. 전략 목록 */}
+            {renderContent()}
 
-          {/* 4. 무한 스크롤 감지 영역 */}
-          <div ref={ref} className="h-10 mt-8 flex justify-center items-center">
-            {isFetchingNextPage && <Spinner />}
-            {!hasNextPage && strategies.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                {t("noMoreStrategies")}
-              </p>
-            )}
-          </div>
+            {/* 4. 무한 스크롤 감지 영역 */}
+            <div
+              ref={ref}
+              className="h-10 mt-8 flex justify-center items-center"
+            >
+              {isFetchingNextPage && <Spinner />}
+              {!hasNextPage && strategies.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t("noMoreStrategies")}
+                </p>
+              )}
+            </div>
+          </GlassPane>
 
           {/* 5. 마켓 등록/수정 모달 */}
           <Dialog

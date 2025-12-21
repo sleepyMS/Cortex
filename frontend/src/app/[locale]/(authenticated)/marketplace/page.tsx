@@ -43,6 +43,7 @@ import { Spinner } from "@/components/ui/Spinner";
 // --- 4. 도메인 컴포넌트 ---
 import { ProductGrid } from "@/components/domain/marketplace/ProductGrid";
 import { PurchaseConfirmationModal } from "@/components/domain/marketplace/PurchaseConfirmationModal";
+import { GlassPane } from "@/components/ui/GlassPane";
 
 type PurchasableProduct = MarketplaceStrategy | ShopItem;
 
@@ -272,57 +273,64 @@ export default function MarketplacePage() {
           </div>
 
           {/* 탭 및 상품 그리드 */}
-          <Tabs
-            value={activeTab}
-            onValueChange={handleTabChange}
-            className="w-full"
-          >
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-              <TabsTrigger value="STRATEGY">{t("tabs.strategies")}</TabsTrigger>
-              <TabsTrigger value="SHOP_ITEM">{t("tabs.shop")}</TabsTrigger>
-            </TabsList>
-            <div className="mt-8">
-              <TabsContent value="STRATEGY" className="m-0">
-                <ProductGrid
-                  isLoading={isLoading || isInventoryLoading}
-                  isError={isError}
-                  products={products}
-                  productType="STRATEGY"
-                  purchasedStrategyIds={Array.from(purchasedStrategyIds)}
-                  ownedItemIds={[]}
-                  onPurchaseClick={handlePurchaseClick}
-                  purchaseMutation={creditPurchaseMutation}
-                  onRefetch={refetch}
-                  onChargeCredits={handleChargeCreditsClick}
-                />
-              </TabsContent>
-              <TabsContent value="SHOP_ITEM" className="m-0">
-                <ProductGrid
-                  isLoading={isLoading || isInventoryLoading}
-                  isError={isError}
-                  products={products}
-                  productType="SHOP_ITEM"
-                  purchasedStrategyIds={[]}
-                  ownedItemIds={Array.from(ownedItemIds)}
-                  onPurchaseClick={handlePurchaseClick}
-                  purchaseMutation={cashCheckoutMutation} // 현금 결제 뮤테이션으로 변경
-                  onRefetch={refetch}
-                  onChargeCredits={handleChargeCreditsClick}
-                />
-              </TabsContent>
-            </div>
-          </Tabs>
+          <GlassPane className="p-6 md:p-8">
+            <Tabs
+              value={activeTab}
+              onValueChange={handleTabChange}
+              className="w-full"
+            >
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-background/50 border border-border/50">
+                <TabsTrigger value="STRATEGY">
+                  {t("tabs.strategies")}
+                </TabsTrigger>
+                <TabsTrigger value="SHOP_ITEM">{t("tabs.shop")}</TabsTrigger>
+              </TabsList>
+              <div className="mt-8">
+                <TabsContent value="STRATEGY" className="m-0">
+                  <ProductGrid
+                    isLoading={isLoading || isInventoryLoading}
+                    isError={isError}
+                    products={products}
+                    productType="STRATEGY"
+                    purchasedStrategyIds={Array.from(purchasedStrategyIds)}
+                    ownedItemIds={[]}
+                    onPurchaseClick={handlePurchaseClick}
+                    purchaseMutation={creditPurchaseMutation}
+                    onRefetch={refetch}
+                    onChargeCredits={handleChargeCreditsClick}
+                  />
+                </TabsContent>
+                <TabsContent value="SHOP_ITEM" className="m-0">
+                  <ProductGrid
+                    isLoading={isLoading || isInventoryLoading}
+                    isError={isError}
+                    products={products}
+                    productType="SHOP_ITEM"
+                    purchasedStrategyIds={[]}
+                    ownedItemIds={Array.from(ownedItemIds)}
+                    onPurchaseClick={handlePurchaseClick}
+                    purchaseMutation={cashCheckoutMutation} // 현금 결제 뮤테이션으로 변경
+                    onRefetch={refetch}
+                    onChargeCredits={handleChargeCreditsClick}
+                  />
+                </TabsContent>
+              </div>
+            </Tabs>
 
-          {/* 페이지네이션 */}
-          {!isLoading && !isError && products.length > 0 && totalPages > 1 && (
-            <div className="mt-12 flex justify-center">
-              <PaginationComponent
-                currentPage={page}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          )}
+            {/* 페이지네이션 */}
+            {!isLoading &&
+              !isError &&
+              products.length > 0 &&
+              totalPages > 1 && (
+                <div className="mt-12 flex justify-center">
+                  <PaginationComponent
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
+          </GlassPane>
         </div>
 
         {/* --- 모달 섹션 --- */}

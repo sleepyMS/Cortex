@@ -17,12 +17,7 @@ interface PageWrapperProps {
  */
 export function PageWrapper({ children, className }: PageWrapperProps) {
   return (
-    <div
-      className={clsx(
-        "w-full flex-grow flex flex-col", // flex flex-col 추가: flex 체인 완성
-        className
-      )}
-    >
+    <div className="w-full flex-grow flex flex-col relative z-10 animate-in fade-in duration-500">
       {children}
     </div>
   );
