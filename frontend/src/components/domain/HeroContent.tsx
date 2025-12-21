@@ -3,7 +3,7 @@
 import { motion, Variants } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-import React from "react";
+import React, { useState } from "react";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import {
   Activity,
@@ -252,6 +252,10 @@ const MockConnector = ({
 
 /** Mock Trading Terminal Component */
 const MockTradingTerminal = () => {
+  const [hoveredBlock, setHoveredBlock] = useState<
+    "market" | "long" | "short" | null
+  >(null);
+
   return (
     <div className="w-full h-full flex flex-col bg-background text-foreground font-sans text-xs select-none rounded-xl border border-border/50 shadow-2xl overflow-hidden">
       {/* App Header */}
@@ -350,13 +354,58 @@ const MockTradingTerminal = () => {
           <div className="relative w-full h-full p-6">
             {/* SVG Connecting Lines */}
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
+              {/* SVG Glow Filters */}
+              <defs>
+                <filter
+                  id="violetGlow"
+                  x="-50%"
+                  y="-50%"
+                  width="200%"
+                  height="200%"
+                >
+                  <feDropShadow
+                    dx="0"
+                    dy="0"
+                    stdDeviation="4"
+                    floodColor="#8b5cf6"
+                    floodOpacity="0.8"
+                  />
+                </filter>
+                <filter
+                  id="roseGlow"
+                  x="-50%"
+                  y="-50%"
+                  width="200%"
+                  height="200%"
+                >
+                  <feDropShadow
+                    dx="0"
+                    dy="0"
+                    stdDeviation="4"
+                    floodColor="#f43f5e"
+                    floodOpacity="0.8"
+                  />
+                </filter>
+              </defs>
               {/* Line to Long block */}
               <motion.path
                 d="M240 200 C 280 200, 320 80, 360 80"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth={
+                  hoveredBlock === "market" || hoveredBlock === "long" ? 3 : 2
+                }
                 fill="none"
-                className="text-violet-500/60"
+                className="text-violet-500/60 transition-all duration-300"
+                style={{
+                  filter:
+                    hoveredBlock === "market" || hoveredBlock === "long"
+                      ? "url(#violetGlow)"
+                      : "none",
+                  opacity:
+                    hoveredBlock === "market" || hoveredBlock === "long"
+                      ? 1
+                      : 0.6,
+                }}
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.6 }}
                 transition={{
@@ -368,9 +417,21 @@ const MockTradingTerminal = () => {
               <motion.path
                 d="M240 210 C 260 280, 270 340, 280 360"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth={
+                  hoveredBlock === "market" || hoveredBlock === "short" ? 3 : 2
+                }
                 fill="none"
-                className="text-rose-500/60"
+                className="text-rose-500/60 transition-all duration-300"
+                style={{
+                  filter:
+                    hoveredBlock === "market" || hoveredBlock === "short"
+                      ? "url(#roseGlow)"
+                      : "none",
+                  opacity:
+                    hoveredBlock === "market" || hoveredBlock === "short"
+                      ? 1
+                      : 0.5,
+                }}
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.5 }}
                 transition={{
@@ -385,7 +446,13 @@ const MockTradingTerminal = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="absolute top-24 left-4 w-56 bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+              onMouseEnter={() => setHoveredBlock("market")}
+              onMouseLeave={() => setHoveredBlock(null)}
+              className={`absolute top-24 left-4 w-56 bg-card border rounded-lg shadow-xl overflow-hidden cursor-pointer transition-all duration-300 ${
+                hoveredBlock === "market"
+                  ? "border-purple-500/60 shadow-[0_0_25px_rgba(139,92,246,0.4)] scale-[1.02]"
+                  : "border-border"
+              }`}
             >
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
                 <div className="font-bold text-foreground flex items-center gap-2 text-xs">
@@ -418,7 +485,13 @@ const MockTradingTerminal = () => {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="absolute top-8 left-[360px] w-[360px] bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+              onMouseEnter={() => setHoveredBlock("long")}
+              onMouseLeave={() => setHoveredBlock(null)}
+              className={`absolute top-8 left-[360px] w-[360px] bg-card border rounded-lg shadow-xl overflow-hidden cursor-pointer transition-all duration-300 ${
+                hoveredBlock === "long"
+                  ? "border-violet-500/60 shadow-[0_0_25px_rgba(139,92,246,0.4)] scale-[1.02]"
+                  : "border-border"
+              }`}
             >
               {/* Strategy Card Header */}
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
@@ -456,7 +529,7 @@ const MockTradingTerminal = () => {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
                         <span className="font-medium">EMA</span>
-                        <span className="text-muted-foreground">(10, 1h)</span>
+                        <span className="text-muted-foreground">(10, 15m)</span>
                         <Settings size={8} className="text-muted-foreground" />
                       </div>
                       <div className="px-1.5 py-1 bg-violet-500/10 rounded border border-violet-500/30 text-[9px] text-violet-400">
@@ -464,7 +537,7 @@ const MockTradingTerminal = () => {
                       </div>
                       <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
                         <span className="font-medium">EMA</span>
-                        <span className="text-muted-foreground">(20, 1h)</span>
+                        <span className="text-muted-foreground">(20, 15m)</span>
                         <Settings size={8} className="text-muted-foreground" />
                       </div>
                     </div>
@@ -502,7 +575,7 @@ const MockTradingTerminal = () => {
                         <div className="flex items-center gap-1">
                           <span className="font-medium">RSI</span>
                           <span className="text-muted-foreground">
-                            (14, 1h)
+                            (14, 15m)
                           </span>
                         </div>
                         <Settings size={8} className="text-muted-foreground" />
@@ -548,7 +621,13 @@ const MockTradingTerminal = () => {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
-              className="absolute top-[340px] left-[280px] w-[360px] bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+              onMouseEnter={() => setHoveredBlock("short")}
+              onMouseLeave={() => setHoveredBlock(null)}
+              className={`absolute top-[340px] left-[280px] w-[360px] bg-card border rounded-lg shadow-xl overflow-hidden cursor-pointer transition-all duration-300 ${
+                hoveredBlock === "short"
+                  ? "border-rose-500/60 shadow-[0_0_25px_rgba(244,63,94,0.4)] scale-[1.02]"
+                  : "border-border"
+              }`}
             >
               {/* Strategy Card Header */}
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
@@ -589,7 +668,7 @@ const MockTradingTerminal = () => {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
                         <span className="font-medium">EMA</span>
-                        <span className="text-muted-foreground">(10, 1h)</span>
+                        <span className="text-muted-foreground">(10, 15m)</span>
                         <Settings size={8} className="text-muted-foreground" />
                       </div>
                       <div className="px-1.5 py-1 bg-rose-500/10 rounded border border-rose-500/30 text-[9px] text-rose-400">
@@ -597,7 +676,7 @@ const MockTradingTerminal = () => {
                       </div>
                       <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
                         <span className="font-medium">EMA</span>
-                        <span className="text-muted-foreground">(20, 1h)</span>
+                        <span className="text-muted-foreground">(20, 15m)</span>
                         <Settings size={8} className="text-muted-foreground" />
                       </div>
                     </div>
@@ -635,7 +714,7 @@ const MockTradingTerminal = () => {
                         <div className="flex items-center gap-1">
                           <span className="font-medium">RSI</span>
                           <span className="text-muted-foreground">
-                            (14, 1h)
+                            (14, 15m)
                           </span>
                         </div>
                         <Settings size={8} className="text-muted-foreground" />
