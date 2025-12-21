@@ -73,12 +73,29 @@
   "Footer": {
     "description": "Start a new investment journey with Cortex, the data-driven investment platform.",
     "rights": "All Rights Reserved.",
-    "product": "Product",
-    "legal": "Legal",
-    "featuresLink": "Features",
-    "pricingLink": "Pricing",
-    "termsLink": "Terms of Service",
-    "privacyLink": "Privacy Policy"
+    "Platform": {
+      "title": "Platform",
+      "visualEditor": "Visual Editor",
+      "backtestingEngine": "Backtesting Engine",
+      "paperTrading": "Paper Trading",
+      "aiOptimization": "AI Optimization"
+    },
+    "Resources": {
+      "title": "Resources",
+      "documentation": "Documentation",
+      "apiReference": "API Reference",
+      "communityStrategies": "Community Strategies",
+      "blog": "Blog"
+    },
+    "Company": {
+      "title": "Company",
+      "aboutUs": "About Us",
+      "careers": "Careers",
+      "legal": "Legal",
+      "contact": "Contact"
+    },
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
   },
   "LanguageSwitcher": {
     "label": "Change language",
