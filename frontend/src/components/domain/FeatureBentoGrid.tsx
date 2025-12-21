@@ -9,7 +9,7 @@ import {
   Zap,
   Globe,
   ShieldCheck,
-  Users,
+  CloudLightning,
   Lock,
   LineChart,
   TrendingUp,
@@ -505,18 +505,44 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
         icon={<Globe />}
         className="md:col-span-3 lg:col-span-1"
       >
-        <div className="flex gap-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500 mt-4">
-          <div className="h-10 w-10 rounded-full bg-yellow-500/20 border border-yellow-500/50 flex items-center justify-center text-[10px] text-yellow-500 font-bold">
-            BN
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between p-2 rounded bg-violet-500/5 border border-violet-500/10">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 rounded bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-[8px] text-yellow-500 font-bold">
+                BN
+              </div>
+              <span className="text-[10px] font-medium">Binance Global</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500"></div>
+              <span className="text-[9px] text-green-500 font-medium">
+                Connected
+              </span>
+            </div>
           </div>
-          <div className="h-10 w-10 rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center text-[10px] text-blue-500 font-bold">
-            UB
-          </div>
-          <div className="h-10 w-10 rounded-full bg-orange-500/20 border border-orange-500/50 flex items-center justify-center text-[10px] text-orange-500 font-bold">
-            BB
-          </div>
-          <div className="h-10 w-10 rounded-full bg-purple-500/20 border border-purple-500/50 flex items-center justify-center text-[10px] text-purple-500 font-bold">
-            KK
+
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: "BTC", color: "orange", val: "+2.4%" },
+              { label: "ETH", color: "blue", val: "+1.8%" },
+              { label: "SOL", color: "indigo", val: "-0.5%" },
+              { label: "XRP", color: "sky", val: "+0.2%" },
+            ].map((coin, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <div
+                  className={`h-8 w-8 rounded-full bg-${coin.color}-500/10 border border-${coin.color}-500/30 flex items-center justify-center text-[8px] text-${coin.color}-500 font-bold`}
+                >
+                  {coin.label}
+                </div>
+                <span
+                  className={`text-[7px] ${
+                    coin.val.startsWith("+") ? "text-green-500" : "text-red-500"
+                  }`}
+                >
+                  {coin.val}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </SpotlightCard>
@@ -528,19 +554,97 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
         icon={<ShieldCheck />}
         className="md:col-span-3 lg:col-span-1"
       >
-        <div className="mt-4 flex items-center space-x-2 font-mono text-xs text-violet-400 bg-violet-500/10 w-fit px-3 py-1.5 rounded-full border border-violet-500/20">
-          <Lock className="w-3 h-3" />
-          <span>AES-256 Encrypted</span>
+        <div className="mt-4">
+          <div className="flex items-center space-x-2 font-mono text-[10px] text-violet-400 bg-violet-500/10 w-fit px-3 py-1 rounded-full border border-violet-500/20 mb-3">
+            <Lock className="w-2.5 h-2.5" />
+            <span>AES-256 Encrypted</span>
+          </div>
+
+          <div className="relative h-20 w-full bg-muted/30 rounded border border-border/50 overflow-hidden group">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 border border-dashed border-violet-500/30 rounded-full flex items-center justify-center"
+              >
+                <div className="w-10 h-10 border border-violet-500/20 rounded-full animate-pulse"></div>
+              </motion.div>
+              <Lock className="absolute w-5 h-5 text-violet-400" />
+            </div>
+
+            <div className="absolute bottom-2 left-2 right-2 flex justify-between">
+              <div className="flex items-center space-x-1 font-mono text-[7px] text-muted-foreground">
+                <div className="w-1 h-1 rounded-full bg-violet-400"></div>
+                <span>API Key Protected</span>
+              </div>
+              <div className="px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-[7px] text-violet-400 font-mono">
+                Isolated Sandbox
+              </div>
+            </div>
+
+            {/* Masking animation */}
+            <div className="absolute top-2 left-2 flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <motion.div
+                  key={i}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                  }}
+                  className="w-1 h-3 bg-violet-500/20 rounded-full"
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </SpotlightCard>
 
-      {/* Wide Feature - Community */}
+      {/* Wide Feature - 24/7 Trading */}
       <SpotlightCard
         title={translations.features.community.title}
         description={translations.features.community.description}
-        icon={<Users />}
+        icon={<CloudLightning />}
         className="md:col-span-3 lg:col-span-1"
-      />
+      >
+        <div className="mt-4 p-3 bg-muted/40 rounded-lg border border-border/50 space-y-2 relative overflow-hidden">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <span className="text-[10px] font-medium text-green-500 uppercase tracking-wider">
+                Live Execution
+              </span>
+            </div>
+            <span className="text-[9px] text-muted-foreground font-mono">
+              24:00:00
+            </span>
+          </div>
+
+          <div className="space-y-1.5 font-mono text-[9px]">
+            <div className="flex items-center justify-between text-muted-foreground/80">
+              <span>[06:42:01] Analyzing BTC/USDT...</span>
+              <span className="text-violet-400">Stable</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground/80">
+              <span>[06:42:15] RSI Signal detected</span>
+              <span className="text-green-400">Long</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground/80">
+              <span>[06:42:30] Executing paper trade</span>
+              <span className="text-blue-400">Order sent</span>
+            </div>
+          </div>
+
+          {/* Decorative Gradient Background */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent pointer-events-none"></div>
+        </div>
+      </SpotlightCard>
     </div>
   );
 };

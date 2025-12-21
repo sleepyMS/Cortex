@@ -119,27 +119,27 @@
       "features": {
         "strategyBuilder": {
           "title": "Visual Strategy Builder",
-          "description": "Create complex trading algorithms with drag-and-drop. Supports advanced math, technical indicators, and custom logic."
+          "description": "Construct complex trading algorithms by combining logic blocks. Easily create, test, and deploy strategies via UI without coding."
         },
         "tickBacktesting": {
-          "title": "Tick-Level Backtesting",
-          "description": "Test against 5 years of historical data in milliseconds with 99.9% accuracy."
+          "title": "High-Precision Backtesting",
+          "description": "Verify strategies with realistic simulation including slippage and fees."
         },
         "aiOptimization": {
-          "title": "AI Parameter Optimization",
-          "description": "Let ML models find the perfect settings to maximize Sharpe ratio and minimize drawdown."
+          "title": "ML-Based Optimization",
+          "description": "Tailored to your investment goals, Machine Learning algorithms find robust parameters maximizing Sharpe Ratio. Prevent overfitting with Walk-Forward Analysis."
         },
         "exchangeConnectivity": {
           "title": "Exchange Connectivity",
-          "description": "Deploy to Binance, Upbit, Bybit, and 10+ exchanges via API keys. Non-custodial and secure."
+          "description": "Optimized connection for Binance. Assets stay safe in your exchange account via non-custodial API delivery."
         },
         "security": {
           "title": "Enterprise-Grade Security",
           "description": "Strategies run in isolated sandboxes. API keys are encrypted with AES-256."
         },
         "community": {
-          "title": "A Growing Community",
-          "description": "Investing alone is lonely. Share strategies with other investors and grow together through collective intelligence."
+          "title": "24/7 Paper & Live Trading",
+          "description": "Validate strategies via paper trading or deploy to live exchanges. Our cloud infrastructure ensures 24/7 uninterrupted automation."
         },
         "backtesting": {
           "title": "Powerful Backtesting",
