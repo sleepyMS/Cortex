@@ -388,13 +388,19 @@ function StrategiesPageContent() {
             : "flex flex-col gap-3"
         }
       >
-        {strategies.map((strategy: Strategy) => (
-          <StrategyCard
+        {strategies.map((strategy: Strategy, index: number) => (
+          <motion.div
             key={strategy.id}
-            strategy={strategy}
-            viewMode={viewMode}
-            onOpenListingModal={handleOpenListingModal}
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+          >
+            <StrategyCard
+              strategy={strategy}
+              viewMode={viewMode}
+              onOpenListingModal={handleOpenListingModal}
+            />
+          </motion.div>
         ))}
       </div>
     );

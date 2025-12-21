@@ -45,6 +45,7 @@ import {
   CommandList,
 } from "@/components/ui/Command";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const LoadingSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -217,21 +218,27 @@ export default function BacktesterPage() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {backtests.map((backtest: Backtest) => (
-          <BacktestCard
+        {backtests.map((backtest: Backtest, index: number) => (
+          <motion.div
             key={backtest.id}
-            backtest={backtest}
-            onCancel={cancelMutation.mutate}
-            onDelete={deleteMutation.mutate}
-            isCanceling={
-              cancelMutation.isPending &&
-              cancelMutation.variables === backtest.id
-            }
-            isDeleting={
-              deleteMutation.isPending &&
-              deleteMutation.variables === backtest.id
-            }
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+          >
+            <BacktestCard
+              backtest={backtest}
+              onCancel={cancelMutation.mutate}
+              onDelete={deleteMutation.mutate}
+              isCanceling={
+                cancelMutation.isPending &&
+                cancelMutation.variables === backtest.id
+              }
+              isDeleting={
+                deleteMutation.isPending &&
+                deleteMutation.variables === backtest.id
+              }
+            />
+          </motion.div>
         ))}
       </div>
     );

@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/Popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 // --- Helper Components ---
 
@@ -253,19 +254,25 @@ export default function OptimizationPage() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {optimizationJobs.map((job: OptimizationJob) => (
-          <OptimizationJobCard
+        {optimizationJobs.map((job: OptimizationJob, index: number) => (
+          <motion.div
             key={job.id}
-            job={job}
-            onCancel={cancelMutation.mutate}
-            onDelete={deleteMutation.mutate}
-            isCanceling={
-              cancelMutation.isPending && cancelMutation.variables === job.id
-            }
-            isDeleting={
-              deleteMutation.isPending && deleteMutation.variables === job.id
-            }
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+          >
+            <OptimizationJobCard
+              job={job}
+              onCancel={cancelMutation.mutate}
+              onDelete={deleteMutation.mutate}
+              isCanceling={
+                cancelMutation.isPending && cancelMutation.variables === job.id
+              }
+              isDeleting={
+                deleteMutation.isPending && deleteMutation.variables === job.id
+              }
+            />
+          </motion.div>
         ))}
       </div>
     );
