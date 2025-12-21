@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 interface FeatureTranslations {
+  sectionLabel: string;
   sectionTitle: string;
   sectionSubtitle: string;
   features: {
@@ -106,14 +107,13 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
         className="md:col-span-1 md:row-span-1"
       >
         <div className="h-28 w-full relative overflow-hidden rounded-lg bg-muted/50 border border-border flex items-end justify-between px-2 pb-0 pt-8 gap-1">
-          {[40, 70, 45, 90, 60, 85, 75, 95, 60].map((h, i) => (
+          {[20, 50, 35, 90, 60, 85, 75, 95, 120].map((h, i) => (
             <motion.div
               key={i}
               initial={{ height: 10 }}
               whileInView={{ height: `${h}%` }}
               transition={{ duration: 0.8, delay: i * 0.1, ease: "backOut" }}
-              viewport={{ once: true }}
-              className="flex-1 bg-violet-500/80 rounded-t-sm hover:bg-violet-400 transition-colors"
+              className="flex-1 bg-violet-500/80 rounded-t-[4px] hover:bg-violet-400 transition-colors"
             />
           ))}
         </div>
