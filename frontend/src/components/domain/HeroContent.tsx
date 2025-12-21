@@ -63,7 +63,8 @@ const itemVariants: Variants = {
 };
 
 interface HeroContentProps {
-  title: React.ReactNode;
+  titleLine1: string;
+  titleLine2: string;
   subtitle: string;
   ctaButton: string;
   versionBadge?: string;
@@ -71,7 +72,8 @@ interface HeroContentProps {
 
 /** HeroSection의 텍스트와 버튼 애니메이션 전용 클라이언트 컴포넌트 */
 export const HeroContent = ({
-  title,
+  titleLine1,
+  titleLine2,
   subtitle,
   ctaButton,
   versionBadge = "Cortex Beta",
@@ -99,10 +101,13 @@ export const HeroContent = ({
 
             {/* Main Title */}
             <motion.h1
-              className="text-4xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground via-foreground to-foreground/20 pb-4 tracking-tight text-center"
+              className="text-4xl md:text-7xl font-bold pb-4 tracking-tight text-center flex flex-col gap-2"
               variants={itemVariants}
             >
-              {title}
+              <span className="text-foreground">{titleLine1}</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-300 dark:to-violet-400 pb-2">
+                {titleLine2}
+              </span>
             </motion.h1>
 
             {/* Subtitle */}

@@ -87,7 +87,8 @@
   },
   "Landing": {
     "Hero": {
-      "title": "Data Dominates the Market. <br></br> Less Emotion, More Strategy.",
+      "titleLine1": "Data Dominates the Market.",
+      "titleLine2": "Less Emotion, More Strategy.",
       "subtitle": "Validate your investment ideas and automate them 24/7 on Cortex, the all-in-one quant platform for individual investors.",
       "ctaButton": "Build Your Strategy for Free",
       "versionBadge": "Cortex Beta"

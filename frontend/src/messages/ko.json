@@ -104,7 +104,8 @@
   },
   "Landing": {
     "Hero": {
-      "title": "데이터로 시장을 지배한다. <br></br> 감정은 빼고, 전략은 더하고.",
+      "titleLine1": "데이터로 시장을 지배한다.",
+      "titleLine2": "감정은 빼고, 전략은 더하고.",
       "subtitle": "개인 투자자를 위한 올인원 퀀트 플랫폼, Cortex에서 당신의 투자 아이디어를 검증하고 24시간 자동화하세요.",
       "ctaButton": "무료로 나만의 전략 만들기",
       "versionBadge": "Cortex Beta"

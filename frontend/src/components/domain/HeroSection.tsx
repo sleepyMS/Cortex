@@ -11,9 +11,6 @@ const HeroSection = async () => {
   // 5. 서버에서 직접 번역 텍스트를 가져옴
   const t = await getTranslations("Landing.Hero");
 
-  const titleWithBreaks = t.rich("title", {
-    br: () => <br />,
-  });
   const subtitle = t("subtitle");
   const ctaButton = t("ctaButton");
 
@@ -24,7 +21,8 @@ const HeroSection = async () => {
 
       {/* 7. 텍스트를 props로 받는 클라이언트 컴포넌트 */}
       <HeroContent
-        title={titleWithBreaks}
+        titleLine1={t("titleLine1")}
+        titleLine2={t("titleLine2")}
         subtitle={subtitle}
         ctaButton={ctaButton}
       />
