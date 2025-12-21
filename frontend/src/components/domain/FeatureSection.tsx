@@ -10,6 +10,7 @@ const FeatureSection = async () => {
 
   // 번역 데이터를 클라이언트 컴포넌트에 전달
   const translations = {
+    sectionLabel: t("sectionLabel"),
     sectionTitle: t("sectionTitle"),
     sectionSubtitle: t("sectionSubtitle"),
     features: {
@@ -42,7 +43,10 @@ const FeatureSection = async () => {
 
   return (
     <section id="features" className="mx-auto max-w-7xl px-6 py-24 md:px-12">
-      <div className="mb-20 md:text-center max-w-3xl mx-auto">
+      <div className="mb-20 md:text-center max-w-3xl mx-auto relative z-10">
+        <div className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-sm font-medium text-violet-500 mb-4">
+          {translations.sectionLabel || "Key Features"}
+        </div>
         <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl mb-6">
           {translations.sectionTitle}
         </h2>

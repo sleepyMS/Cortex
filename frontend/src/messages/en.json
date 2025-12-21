@@ -95,6 +95,7 @@
     "FeatureSection": {
       "sectionTitle": "A Complete Quantitative Stack",
       "sectionSubtitle": "From idea to execution in minutes. Infrastructure that hedge funds spend millions building, made accessible to everyone.",
+      "sectionLabel": "Key Features",
       "title": "The Entire Investment Process in One Place",
       "subtitle": "Cortex supports every step, from brainstorming ideas and verifying strategies to automated execution and sharing.",
       "features": {
