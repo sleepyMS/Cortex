@@ -178,9 +178,9 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
               ref={leftCrossoverRef}
               onMouseEnter={() => setHoveredLink("crossover")}
               onMouseLeave={() => setHoveredLink(null)}
-              animate={{ y: [-5, 5] }}
+              animate={{ y: [-8, 8] }}
               transition={{
-                duration: 2.5,
+                duration: 2,
                 repeat: Infinity,
                 repeatType: "mirror",
                 ease: "easeInOut",
@@ -225,9 +225,9 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
               ref={leftStateRef}
               onMouseEnter={() => setHoveredLink("state")}
               onMouseLeave={() => setHoveredLink(null)}
-              animate={{ y: [15, -15] }}
+              animate={{ y: [-8, 8] }}
               transition={{
-                duration: 3,
+                duration: 2,
                 repeat: Infinity,
                 repeatType: "mirror",
                 ease: "easeInOut",
