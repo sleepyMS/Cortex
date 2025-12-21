@@ -14,9 +14,12 @@ const Footer = () => {
   const pathname = usePathname();
 
   // 전략 편집 페이지에서는 푸터를 숨김
-  const isEditMode =
-    pathname.includes("/strategies") && searchParams.has("edit");
-  if (isEditMode) {
+  // 전략 편집 또는 생성 페이지에서는 푸터를 숨김
+  const isStrategyMode =
+    pathname.includes("/strategies") &&
+    (searchParams.has("edit") || searchParams.get("create") === "true");
+
+  if (isStrategyMode) {
     return null;
   }
 

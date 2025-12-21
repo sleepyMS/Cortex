@@ -568,7 +568,16 @@ export function StrategyEditorPanel({
         targetCoins: initialData.targetCoins,
       });
     } else {
-      formMethods.reset();
+      formMethods.reset({
+        name: "",
+        description: "",
+        isPublic: false,
+        takeProfitPct: null,
+        stopLossPct: null,
+        atrStopLossMultiplier: null,
+        atrTakeProfitMultiplier: null,
+        atrPeriod: null,
+      });
       strategyState.reset();
     }
 

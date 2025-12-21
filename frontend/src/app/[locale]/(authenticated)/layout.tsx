@@ -28,9 +28,10 @@ function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // 전략 편집 모드 감지
-  const isEditMode =
-    pathname.includes("/strategies") && searchParams.has("edit");
+  // 전략 편집 또는 생성 모드 감지
+  const isStrategyMode =
+    pathname.includes("/strategies") &&
+    (searchParams.has("edit") || searchParams.get("create") === "true");
 
   const { data, isSuccess, isLoading, isError, error } = useQuery({
     queryKey: ["indicatorMetadata"], // 이 key로 데이터가 react-query 전역 캐시에 저장됩니다.
@@ -75,7 +76,7 @@ function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "relative",
-        isEditMode
+        isStrategyMode
           ? "h-[calc(100vh-4.1rem)] overflow-hidden"
           : "min-h-screen pb-24"
       )}
