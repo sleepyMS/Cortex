@@ -17,6 +17,9 @@ import {
   Archive,
   Clock,
   HelpCircle,
+  TrendingUp,
+  TrendingDown,
+  Activity,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -284,7 +287,7 @@ export const BacktestCard = ({
               <h3 className="font-bold text-lg leading-tight truncate group-hover:text-primary transition-colors">
                 {strategy.name}
               </h3>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
                 <span className="font-medium">{t("period")}:</span>
                 <span>{dateRangeString}</span>
               </div>
@@ -304,20 +307,44 @@ export const BacktestCard = ({
           </div>
 
           <div className="flex-grow space-y-5">
-            <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="space-y-1 text-center">
-                <Tooltip>
-                  <TooltipTrigger className="cursor-help w-full">
-                    <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
-                      {t("totalReturn")}
-                      <HelpCircle className="h-3 w-3 opacity-50" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("totalReturnTooltip")}</TooltipContent>
-                </Tooltip>
+            {/* Refactored Stats Grid matching BotListTable style */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Total Return */}
+              <div
+                className={cn(
+                  "p-3 rounded-lg border border-border/10",
+                  result && result.totalReturnPct !== null
+                    ? result.totalReturnPct >= 0
+                      ? "bg-emerald-500/10"
+                      : "bg-rose-500/10"
+                    : "bg-muted/30"
+                )}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  {result && result.totalReturnPct !== null ? (
+                    result.totalReturnPct >= 0 ? (
+                      <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5 text-rose-500" />
+                    )
+                  ) : (
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {t("totalReturn")}
+                        </span>
+                        <HelpCircle className="h-3 w-3 opacity-50" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("totalReturnTooltip")}</TooltipContent>
+                  </Tooltip>
+                </div>
                 <p
                   className={cn(
-                    "text-xl font-bold tracking-tight",
+                    "text-lg font-bold tracking-tight",
                     result && result.totalReturnPct !== null
                       ? result.totalReturnPct >= 0
                         ? "text-emerald-500"
@@ -325,21 +352,34 @@ export const BacktestCard = ({
                       : "text-muted-foreground"
                   )}
                 >
-                  {result?.totalReturnPct?.toFixed(2) ?? "-"}%
+                  {result && result.totalReturnPct !== null
+                    ? `${
+                        result.totalReturnPct >= 0 ? "+" : ""
+                      }${result.totalReturnPct.toFixed(2)}%`
+                    : "-"}
                 </p>
               </div>
-              <div className="space-y-1 text-center border-l border-border/50">
-                <Tooltip>
-                  <TooltipTrigger className="cursor-help w-full">
-                    <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
-                      {t("mddPct")}
-                      <HelpCircle className="h-3 w-3 opacity-50" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("mddPctTooltip")}</TooltipContent>
-                </Tooltip>
-                <p className="text-xl font-bold tracking-tight text-foreground">
-                  {result?.mddPct?.toFixed(2) ?? "-"}%
+
+              {/* MDD */}
+              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-200/20 dark:border-blue-800/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Activity className="h-3.5 w-3.5 text-blue-500" />
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground font-medium">
+                          MDD
+                        </span>
+                        <HelpCircle className="h-3 w-3 opacity-50" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("mddPctTooltip")}</TooltipContent>
+                  </Tooltip>
+                </div>
+                <p className="text-lg font-bold tracking-tight text-blue-500">
+                  {result?.mddPct !== null
+                    ? `${result?.mddPct?.toFixed(2)}%`
+                    : "-"}
                 </p>
               </div>
             </div>
