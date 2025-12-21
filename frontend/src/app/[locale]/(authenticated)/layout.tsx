@@ -4,11 +4,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useSearchParams, usePathname } from "next/navigation";
 import apiClient from "@/lib/apiClient";
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Spinner } from "@/components/ui/Spinner";
 import { IndicatorMetadata } from "@/types/indicator";
+import { cn } from "@/lib/utils";
 
 /**
  * 백엔드로부터 '지표 정의서' 원본을 가져오는 API 함수
@@ -23,6 +25,12 @@ const fetchIndicatorMetadata = async (): Promise<IndicatorMetadata[]> => {
  */
 function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
   const setMetadata = useIndicatorStore((state) => state.setMetadata);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // 전략 편집 모드 감지
+  const isEditMode =
+    pathname.includes("/strategies") && searchParams.has("edit");
 
   const { data, isSuccess, isLoading, isError, error } = useQuery({
     queryKey: ["indicatorMetadata"], // 이 key로 데이터가 react-query 전역 캐시에 저장됩니다.
@@ -64,7 +72,14 @@ function IndicatorMetadataLoader({ children }: { children: React.ReactNode }) {
 
   // 성공적으로 로드되면 자식 페이지를 렌더링합니다.
   return (
-    <div className="relative min-h-screen pb-24">
+    <div
+      className={cn(
+        "relative",
+        isEditMode
+          ? "h-[calc(100vh-4.1rem)] overflow-hidden"
+          : "min-h-screen pb-24"
+      )}
+    >
       {/* Dark glass overlay for all authenticated pages */}
       <div className="fixed inset-0 bg-background/30 backdrop-blur-sm -z-10" />
       {children}

@@ -440,14 +440,14 @@ function StrategiesPageContent() {
     <>
       {/* Split view layout */}
       {isSplitView ? (
-        <div className="flex min-h-screen">
+        <div className="flex h-full overflow-hidden">
           {/* Left sidebar - Strategy list (hidden on mobile) */}
           <motion.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: "320px", opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-screen sticky top-0"
+            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-full"
           >
             <div className="flex-shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
               <div className="flex items-start justify-between gap-2 mb-2">

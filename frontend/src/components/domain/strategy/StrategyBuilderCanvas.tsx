@@ -86,29 +86,35 @@ function RecursiveRuleRenderer({
               }
             />
             {item.children && item.children.length > 0 && (
-              <div className="relative mt-4 pl-8 border-l-2 border-primary/50">
-                <div className="absolute -left-[11px] top-1/2 -translate-y-1/2 z-10 px-1 bg-background">
-                  <span className="text-sm font-semibold text-primary">
+              <div className="flex mt-3">
+                {/* AND Connector Column */}
+                <div className="flex flex-col items-center w-8 shrink-0">
+                  <div className="w-0.5 h-3 bg-primary/40"></div>
+                  <div className="px-1.5 py-0.5 bg-background border border-primary/30 rounded text-xs font-bold text-primary">
                     {t("andOperator")}
-                  </span>
+                  </div>
+                  <div className="w-0.5 flex-1 min-h-3 bg-primary/40"></div>
                 </div>
-                <RecursiveRuleRenderer
-                  items={item.children}
-                  ruleType={ruleType}
-                  onUpdateRule={(id, newBlock) =>
-                    handlers.onUpdateRule(id, newBlock)
-                  }
-                  onDeleteRule={handlers.onDeleteRule}
-                  onTriggerNestedAddRule={(parentId, as) =>
-                    handlers.onTriggerNestedAddRule(parentId, as)
-                  }
-                  onTriggerOperandHub={(blockId, operandKey) =>
-                    handlers.onTriggerOperandHub(blockId, operandKey)
-                  }
-                  onTriggerReplaceBlock={(blockId) =>
-                    handlers.onTriggerReplaceBlock(blockId)
-                  }
-                />
+                {/* Nested Rules */}
+                <div className="flex-1">
+                  <RecursiveRuleRenderer
+                    items={item.children}
+                    ruleType={ruleType}
+                    onUpdateRule={(id, newBlock) =>
+                      handlers.onUpdateRule(id, newBlock)
+                    }
+                    onDeleteRule={handlers.onDeleteRule}
+                    onTriggerNestedAddRule={(parentId, as) =>
+                      handlers.onTriggerNestedAddRule(parentId, as)
+                    }
+                    onTriggerOperandHub={(blockId, operandKey) =>
+                      handlers.onTriggerOperandHub(blockId, operandKey)
+                    }
+                    onTriggerReplaceBlock={(blockId) =>
+                      handlers.onTriggerReplaceBlock(blockId)
+                    }
+                  />
+                </div>
               </div>
             )}
           </div>

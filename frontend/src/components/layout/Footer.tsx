@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams, usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
 import { Twitter, Github, Linkedin } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -9,6 +10,15 @@ import { useTranslations } from "next-intl";
 const Footer = () => {
   const t = useTranslations("Footer");
   const currentYear = new Date().getFullYear();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // 전략 편집 페이지에서는 푸터를 숨김
+  const isEditMode =
+    pathname.includes("/strategies") && searchParams.has("edit");
+  if (isEditMode) {
+    return null;
+  }
 
   return (
     <footer className="w-full border-t border-border/40 bg-background relative z-50 py-8 px-6 md:px-12">

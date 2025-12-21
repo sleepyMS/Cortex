@@ -637,7 +637,7 @@ export function StrategyEditorPanel({
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       <IndicatorHub
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
