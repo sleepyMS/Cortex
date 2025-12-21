@@ -90,7 +90,7 @@ export const HeroContent = ({
   versionBadge = "Cortex Beta",
 }: HeroContentProps) => {
   return (
-    <div className="flex flex-col overflow-hidden relative z-10">
+    <div className="flex flex-col relative z-10">
       <ContainerScroll
         titleComponent={
           <motion.div
@@ -149,6 +149,9 @@ export const HeroContent = ({
         {/* Mock Trading Terminal UI */}
         <MockTradingTerminal />
       </ContainerScroll>
+
+      {/* Bottom Gradient Fade for smooth transition to next section */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-20"></div>
     </div>
   );
 };
