@@ -872,7 +872,25 @@
       "cancel": "Cancel",
       "saveButton": "Save Strategy",
       "changesCanceled": "Your changes have been discarded."
-    }
+    },
+    "aiModelSelector": {
+      "title": "Select AI Model",
+      "description": "Choose a trained AI model to use in your strategy rules.",
+      "selectModel": "Select Model",
+      "noModels": "No trained AI models available",
+      "trainFirst": "Please train a model in AI Lab first.",
+      "lookaheadWarning": "Lookahead Risk",
+      "lookaheadTitle": "Lookahead Bias Warning",
+      "lookaheadDescription": "This model's training period extends beyond the backtest start date. Results may be skewed.",
+      "signalType": "Signal Type",
+      "signalBuy": "BUY Signal",
+      "signalSell": "SELL Signal",
+      "signalHold": "HOLD Signal",
+      "minConfidence": "Minimum Confidence",
+      "confidenceDescription": "Condition is met only when the AI model prediction probability exceeds this value.",
+      "addBlock": "Add AI Block"
+    },
+    "cancel": "Cancel"
   },
   "StrategyListingPreview": {
     "noDescription": "No description provided.",

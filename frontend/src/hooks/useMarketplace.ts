@@ -21,7 +21,7 @@ import { CheckoutData } from "./usePayment"; // usePayment.ts에서 CheckoutData
 export interface ProductFilters {
   page: number;
   limit: number;
-  productType: "STRATEGY" | "SHOP_ITEM" | "CREDIT_PACK";
+  productType: "STRATEGY" | "SHOP_ITEM" | "CREDIT_PACK" | "AI_MODEL";
   sortBy?: string;
   searchTerm?: string;
   categories?: string[];

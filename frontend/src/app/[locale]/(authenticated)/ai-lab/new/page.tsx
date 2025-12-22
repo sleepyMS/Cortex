@@ -184,13 +184,15 @@ export default function NewAIModelPage() {
                   <SelectItem value="lstm">
                     LSTM (Long Short-Term Memory)
                   </SelectItem>
-                  <SelectItem value="gru" disabled>
-                    GRU (곧 지원 예정)
+                  <SelectItem value="gru">
+                    GRU (Gated Recurrent Unit)
                   </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground mt-2">
-                LSTM은 시계열 데이터에서 장기 패턴을 학습하는 데 효과적입니다.
+                {modelType === "lstm"
+                  ? "LSTM은 장기 패턴을 학습하는 데 효과적입니다."
+                  : "GRU는 LSTM보다 빠르고 가벼우며 유사한 성능을 제공합니다."}
               </p>
             </div>
           </div>

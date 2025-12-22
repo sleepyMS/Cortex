@@ -903,7 +903,25 @@
       "cancel": "취소",
       "saveButton": "전략 저장",
       "changesCanceled": "변경사항이 취소되었습니다."
-    }
+    },
+    "aiModelSelector": {
+      "title": "AI 모델 선택",
+      "description": "전략 규칙에 사용할 학습된 AI 모델을 선택하세요.",
+      "selectModel": "모델 선택",
+      "noModels": "학습된 AI 모델이 없습니다",
+      "trainFirst": "AI Lab에서 먼저 모델을 학습해주세요.",
+      "lookaheadWarning": "미래 참조 위험",
+      "lookaheadTitle": "미래 참조 경고",
+      "lookaheadDescription": "이 모델의 학습 기간이 백테스트 시작일 이후입니다. 결과가 왜곡될 수 있습니다.",
+      "signalType": "신호 타입",
+      "signalBuy": "매수 (BUY) 신호",
+      "signalSell": "매도 (SELL) 신호",
+      "signalHold": "홀딩 (HOLD) 신호",
+      "minConfidence": "최소 신뢰도",
+      "confidenceDescription": "AI 모델 예측 확률이 이 값 이상일 때만 조건이 충족됩니다.",
+      "addBlock": "AI 블록 추가"
+    },
+    "cancel": "취소"
   },
   "StrategyListingPreview": {
     "noDescription": "설명 없음",

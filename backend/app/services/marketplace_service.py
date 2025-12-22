@@ -33,6 +33,15 @@ class MarketplaceService:
              .outerjoin(models.Backtest, models.MarketplaceProduct.representative_backtest_id == models.Backtest.id)\
              .outerjoin(models.BacktestResult, models.Backtest.id == models.BacktestResult.backtest_id)\
              .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.STRATEGY)
+        elif filters.product_type == models.ProductType.AI_MODEL:
+            # AI 모델 상품 조회
+            query = select(
+                models.MarketplaceProduct, models.User.username, models.AIModel.model_type,
+                models.AIModel.training_start_date, models.AIModel.training_end_date,
+                models.AIModel.validation_metrics
+            ).join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
+             .join(models.AIModel, models.MarketplaceProduct.linked_resource_id == models.AIModel.id)\
+             .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.AI_MODEL)
         else:
             query = select(
                 models.MarketplaceProduct, models.User.username, models.ShopItemDetail.display_properties
@@ -58,6 +67,19 @@ class MarketplaceService:
             for product, username, total_return, mdd, win_rate, profit_factor, sharpe_ratio, sortino_ratio in db_results:
                 summary = schemas.BacktestResultSummaryForCard(total_return_pct=total_return, mdd_pct=mdd, win_rate_pct=win_rate, profit_factor=profit_factor, sharpe_ratio=sharpe_ratio, sortino_ratio=sortino_ratio) if total_return is not None else None
                 validated_product = schemas.StrategyProduct.model_validate({**product.__dict__, 'author': {'username': username}, 'latest_backtest_summary': summary}, from_attributes=True)
+                products_response.append(validated_product)
+        elif filters.product_type == models.ProductType.AI_MODEL:
+            for product, username, model_type, training_start, training_end, validation_metrics in db_results:
+                accuracy = validation_metrics.get('accuracy') if validation_metrics else None
+                ai_model_data = {
+                    **product.__dict__, 
+                    'author': {'username': username},
+                    'model_type': model_type,
+                    'training_start_date': training_start.isoformat() if training_start else None,
+                    'training_end_date': training_end.isoformat() if training_end else None,
+                    'accuracy': accuracy,
+                }
+                validated_product = schemas.AIModelProduct.model_validate(ai_model_data, from_attributes=True)
                 products_response.append(validated_product)
         else:
              for product, username, display_properties in db_results:
@@ -256,10 +278,24 @@ class MarketplaceService:
                 )
 
             elif product.inventory_type == models.InventoryType.UNLOCK:
-                ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(user_id=order.buyer_id, strategy_id=product.linked_resource_id)
-                ownership_exists = await db.scalar(select(ownership_exists_query.exists()))
-                if not ownership_exists:
-                    db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
+                if product.product_type == models.ProductType.AI_MODEL:
+                    # AI 모델 구매 처리: UserPurchasedAIModel에 권한 추가
+                    ai_ownership_exists = await db.scalar(
+                        select(models.UserPurchasedAIModel).filter_by(user_id=order.buyer_id, ai_model_id=product.linked_resource_id)
+                    )
+                    if not ai_ownership_exists:
+                        db.add(models.UserPurchasedAIModel(
+                            user_id=order.buyer_id, 
+                            ai_model_id=product.linked_resource_id, 
+                            order_item_id=item.id
+                        ))
+                        logger.info(f"Granted AI model {product.linked_resource_id} access to user {order.buyer_id}")
+                else:
+                    # 전략 구매 처리
+                    ownership_exists_query = select(models.UserPurchasedStrategy).filter_by(user_id=order.buyer_id, strategy_id=product.linked_resource_id)
+                    ownership_exists = await db.scalar(select(ownership_exists_query.exists()))
+                    if not ownership_exists:
+                        db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
             elif product.inventory_type == models.InventoryType.CONSUMABLE:
                 existing_inventory_item = await db.scalar(select(models.UserInventory).filter_by(user_id=order.buyer_id, product_id=product.id))
                 if existing_inventory_item:
@@ -427,6 +463,108 @@ class MarketplaceService:
                 combined_data_for_validation, from_attributes=True
             )
     
+    async def get_ai_model_product_detail(
+        self, 
+        db: AsyncSession, 
+        product: models.MarketplaceProduct,
+        current_user: Optional[models.User]
+    ) -> schemas.AIModelProduct:
+        """
+        AI 모델 상품의 상세 정보를 조회합니다.
+        """
+        # 1. 연결된 AI 모델 정보 조회
+        ai_model = await db.scalar(
+            select(models.AIModel)
+            .options(joinedload(models.AIModel.user))
+            .filter(models.AIModel.id == product.linked_resource_id)
+        )
+        if not ai_model:
+            logger.error(f"Data integrity error: Product {product.id} links to non-existent AIModel {product.linked_resource_id}")
+            raise HTTPException(status_code=404, detail="연결된 AI 모델을 찾을 수 없습니다.")
+
+        # 2. 정확도 추출
+        accuracy = None
+        if ai_model.validation_metrics:
+            accuracy = ai_model.validation_metrics.get('accuracy')
+
+        # 3. 응답 데이터 조합
+        return schemas.AIModelProduct(
+            id=product.id,
+            name=product.name,
+            price=product.price,
+            product_type=product.product_type,
+            inventory_type=product.inventory_type,
+            product_metadata=product.product_metadata or {},
+            author=schemas.ProductAuthor(username=ai_model.user.username if ai_model.user else None),
+            model_type=ai_model.model_type,
+            training_start_date=ai_model.training_start_date.isoformat() if ai_model.training_start_date else None,
+            training_end_date=ai_model.training_end_date.isoformat() if ai_model.training_end_date else None,
+            accuracy=accuracy
+        )
+
+    async def list_ai_model_as_product(
+        self,
+        db: AsyncSession,
+        ai_model: models.AIModel,
+        listing_data: schemas.AIModelListPayload,
+        seller: models.User
+    ) -> models.MarketplaceProduct:
+        """
+        사용자의 AI 모델을 마켓플레이스 상품으로 등록하거나 업데이트합니다.
+        """
+        # 1. 이 AI 모델이 이미 마켓플레이스 상품으로 등록되었는지 확인
+        existing_product = await db.scalar(
+            select(models.MarketplaceProduct)
+            .filter(
+                models.MarketplaceProduct.linked_resource_id == ai_model.id,
+                models.MarketplaceProduct.product_type == models.ProductType.AI_MODEL
+            )
+        )
+        
+        # 2. 메타데이터 조합
+        metadata = {
+            "modelType": ai_model.model_type,
+            "trainingSymbol": ai_model.training_symbol,
+        }
+
+        # 3. 기존 상품이 있으면 정보 업데이트, 없으면 새로 생성
+        if existing_product:
+            existing_product.price = listing_data.price
+            existing_product.description = listing_data.description
+            existing_product.product_metadata = metadata
+            existing_product.is_active = True
+            product = existing_product
+            logger.info(f"Updating existing marketplace product for AI model {ai_model.id}.")
+        else:
+            product = models.MarketplaceProduct(
+                name=ai_model.name,
+                description=listing_data.description or ai_model.description,
+                price=listing_data.price,
+                product_type=models.ProductType.AI_MODEL,
+                inventory_type=models.InventoryType.UNLOCK,
+                linked_resource_id=ai_model.id,
+                seller_id=seller.id,
+                product_metadata=metadata,
+            )
+            db.add(product)
+            logger.info(f"Creating new marketplace product for AI model {ai_model.id}.")
+        
+        await db.flush()
+        product.seller = seller
+        
+        return product
+
+    async def check_ai_model_purchase(
+        self, db: AsyncSession, user_id: uuid.UUID, ai_model_id: uuid.UUID
+    ) -> bool:
+        """사용자가 특정 AI 모델을 구매했는지 여부를 확인합니다."""
+        query = select(models.UserPurchasedAIModel).filter_by(
+            user_id=user_id, 
+            ai_model_id=ai_model_id
+        )
+        result = await db.execute(select(query.exists()))
+        return result.scalar_one()
+
     async def unlist_strategy_product(
         self, db: AsyncSession, product_id: uuid.UUID, current_user_id: uuid.UUID
     ):

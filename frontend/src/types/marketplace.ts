@@ -82,8 +82,27 @@ export interface ShopItem
   // ShopItem에만 특화된 속성이 있다면 여기에 추가
 }
 
+/**
+ * AI 모델 메타데이터
+ */
+export interface AIModelMetadata {
+  modelType: string;
+  trainingSymbol?: string;
+}
+
+/**
+ * AI 모델 상품 타입
+ */
+export interface MarketplaceAIModel
+  extends BaseProduct<AIModelMetadata, "AI_MODEL"> {
+  modelType: string;
+  trainingStartDate?: string;
+  trainingEndDate?: string;
+  accuracy?: number;
+}
+
 export interface PaginatedProductsResponse {
-  products: (MarketplaceStrategy | ShopItem)[];
+  products: (MarketplaceStrategy | ShopItem | MarketplaceAIModel)[];
   meta: {
     totalItems: number;
     itemCount: number;

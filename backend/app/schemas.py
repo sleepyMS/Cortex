@@ -365,8 +365,25 @@ class PatternLogic(BaseLogicBlock):
     pattern_key: str
     direction: Literal["bullish", "bearish", "any"]
 
+class AISignalLogic(BaseLogicBlock):
+    """
+    AI 모델 기반 신호 로직 블록.
+    
+    ONNX 모델을 사용하여 BUY/HOLD/SELL 예측을 수행하고,
+    지정된 신호 타입의 확률이 임계값 이상일 때 True를 반환합니다.
+    """
+    type: Literal["ai_signal"]
+    model_id: str  # AI 모델 UUID
+    signal_type: Literal["buy", "sell", "hold"]  # 체크할 예측 신호
+    min_confidence: float = Field(0.5, ge=0.0, le=1.0)  # 최소 신뢰도 (0.0~1.0)
+    
+    # 프론트엔드 표시용 (읽기 전용)
+    model_name: Optional[str] = None
+    training_end_date: Optional[str] = None  # 미래 참조 경고용
+
 LogicBlock = Union[
-    ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, ChannelLogic, DivergenceLogic, PatternLogic
+    ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, 
+    ChannelLogic, DivergenceLogic, PatternLogic, AISignalLogic
 ]
 AnnotatedLogicBlock = Field(..., discriminator='type')
 
@@ -974,6 +991,12 @@ class StrategyListPayload(CamelCaseModel):
     description: Optional[str] = None
     representative_backtest_id: Optional[uuid.UUID] = None
 
+class AIModelListPayload(CamelCaseModel):
+    """AI 모델을 마켓플레이스에 등록하기 위한 요청 본문"""
+    model_id: uuid.UUID
+    price: float = Field(..., ge=0)
+    description: Optional[str] = None
+
 
 # --- API 응답(Response) 스키마 ---
 
@@ -998,6 +1021,13 @@ class StrategyProduct(BaseProduct):
 class ShopItemProduct(BaseProduct):
     """상점 아이템 목록에 표시될 정보"""
     display_properties: Dict[str, Any]
+
+class AIModelProduct(BaseProduct):
+    """AI 모델 상품 목록에 표시될 정보"""
+    model_type: str  # 'lstm', 'gru', 'tft'
+    training_start_date: Optional[str] = None
+    training_end_date: Optional[str] = None
+    accuracy: Optional[float] = None
 
 class BacktestPublic(CamelCaseModel):
     """마켓플레이스 등 공개용 백테스트 스키마 (민감 정보 제외, 차트 포함)"""

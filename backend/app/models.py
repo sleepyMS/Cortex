@@ -602,6 +602,7 @@ class ProductType(str, enum.Enum):
     STRATEGY = "STRATEGY"
     SHOP_ITEM = "SHOP_ITEM"
     CREDIT_PACK = "CREDIT_PACK"
+    AI_MODEL = "AI_MODEL"
 
 class InventoryType(str, enum.Enum):
     UNLOCK = "UNLOCK"      # 한 번만 구매 가능

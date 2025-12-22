@@ -211,3 +211,158 @@ def merge_dataframes_on_close_time(
     # 직전 행(`18:30`)을 참조해야 미래 참조 오류를 피할 수 있습니다."
 
     return merged_df
+
+
+def extract_ai_blocks_from_strategy(
+    strategy: Union[schemas.StrategyCreate, schemas.Strategy, Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """
+    전략에서 모든 AI 신호 블록을 추출합니다.
+    
+    Returns:
+        AI 블록 목록 [{model_id, signal_type, min_confidence}, ...]
+    """
+    ai_blocks = []
+    
+    def find_ai_blocks_recursively(obj: Any):
+        # Check if this is an AI signal block
+        block_type = None
+        if hasattr(obj, 'type'):
+            block_type = obj.type
+        elif isinstance(obj, dict):
+            block_type = obj.get('type')
+        
+        if block_type == 'ai_signal':
+            if hasattr(obj, 'model_id'):
+                ai_blocks.append({
+                    'model_id': obj.model_id,
+                    'signal_type': getattr(obj, 'signal_type', 'buy'),
+                    'min_confidence': getattr(obj, 'min_confidence', 0.5)
+                })
+            elif isinstance(obj, dict):
+                ai_blocks.append({
+                    'model_id': obj.get('model_id'),
+                    'signal_type': obj.get('signal_type', 'buy'),
+                    'min_confidence': obj.get('min_confidence', 0.5)
+                })
+        
+        # Recurse into nested structures
+        # Pydantic model
+        if hasattr(obj, 'children') and obj.children:
+            for child in obj.children:
+                find_ai_blocks_recursively(child)
+        
+        # Dict
+        if isinstance(obj, dict) and 'children' in obj and obj['children']:
+            for child in obj['children']:
+                find_ai_blocks_recursively(child)
+    
+    # Traverse strategy rules
+    rules_sources = []
+    
+    if isinstance(strategy, dict):
+        rules_sources = [
+            strategy.get('long_entry_rules'),
+            strategy.get('long_exit_rules'),
+            strategy.get('short_entry_rules'),
+            strategy.get('short_exit_rules')
+        ]
+    else:
+        rules_sources = [
+            getattr(strategy, 'long_entry_rules', None),
+            getattr(strategy, 'long_exit_rules', None),
+            getattr(strategy, 'short_entry_rules', None),
+            getattr(strategy, 'short_exit_rules', None)
+        ]
+    
+    for rules in rules_sources:
+        if not rules:
+            continue
+        
+        blocks = []
+        if hasattr(rules, 'blocks'):
+            blocks = rules.blocks
+        elif isinstance(rules, dict) and 'blocks' in rules:
+            blocks = rules['blocks']
+        
+        for block in blocks:
+            find_ai_blocks_recursively(block)
+    
+    return ai_blocks
+
+
+class LookaheadBiasError(Exception):
+    """AI 모델의 미래 참조 오류를 나타내는 예외"""
+    def __init__(self, message: str, model_id: str = None, model_name: str = None):
+        super().__init__(message)
+        self.model_id = model_id
+        self.model_name = model_name
+
+
+def validate_ai_lookahead_bias(
+    strategy: Union[schemas.StrategyCreate, schemas.Strategy, Dict[str, Any]],
+    backtest_start_date,
+    db_session = None
+) -> List[Dict[str, Any]]:
+    """
+    전략 내 AI 모델이 백테스트 시작일 이후에 학습된 경우 미래 참조 오류를 반환합니다.
+    
+    Args:
+        strategy: 전략 객체
+        backtest_start_date: 백테스트 시작일 (datetime)
+        db_session: DB 세션 (SyncSession 또는 None)
+        
+    Returns:
+        위반 목록: [{model_id, model_name, training_end_date, backtest_start_date}, ...]
+        
+    Raises:
+        LookaheadBiasError: 심각한 미래 참조 위반 시
+    """
+    from datetime import datetime
+    
+    ai_blocks = extract_ai_blocks_from_strategy(strategy)
+    
+    if not ai_blocks:
+        return []
+    
+    violations = []
+    
+    if db_session is None:
+        # DB 세션이 없으면 검증 스킵 (프론트엔드에서 표시용으로만 사용)
+        return []
+    
+    # DB에서 AI 모델 정보 조회
+    from ..models import AIModel
+    
+    for ai_block in ai_blocks:
+        model_id = ai_block.get('model_id')
+        if not model_id:
+            continue
+        
+        try:
+            ai_model = db_session.query(AIModel).filter(AIModel.id == model_id).first()
+            
+            if ai_model is None:
+                logger.warning(f"AI model not found: {model_id}")
+                continue
+            
+            # training_end_date가 backtest_start_date 이후인지 확인
+            training_end = ai_model.training_end_date
+            
+            # datetime 타입 통일
+            if isinstance(backtest_start_date, str):
+                backtest_start_date = datetime.fromisoformat(backtest_start_date.replace('Z', '+00:00'))
+            
+            if training_end and training_end >= backtest_start_date:
+                violations.append({
+                    'model_id': str(model_id),
+                    'model_name': ai_model.name,
+                    'training_end_date': training_end.isoformat(),
+                    'backtest_start_date': backtest_start_date.isoformat(),
+                })
+                
+        except Exception as e:
+            logger.error(f"Error validating AI model {model_id}: {e}")
+    
+    return violations
+

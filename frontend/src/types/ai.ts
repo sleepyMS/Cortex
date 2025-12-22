@@ -120,6 +120,7 @@ export interface AIModelDetail extends AIModelSummary {
     };
     bestEpoch?: number;
     bestValLoss?: number;
+    featureImportance?: Record<string, number>;
   };
   performanceMetrics?: {
     accuracy: number;

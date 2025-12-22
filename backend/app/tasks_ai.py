@@ -130,6 +130,7 @@ def train_ai_model_task(self, model_id: str, job_id: str):
             "label_stats": result.get("label_stats", {}),
             "best_epoch": result.get("training_metrics", {}).get("best_epoch"),
             "best_val_loss": result.get("training_metrics", {}).get("best_val_loss"),
+            "feature_importance": result.get("feature_importance", {}),
         }
         ai_model.feature_config = result.get("feature_config", ai_model.feature_config)
         

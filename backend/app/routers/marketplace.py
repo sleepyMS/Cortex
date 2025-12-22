@@ -27,8 +27,8 @@ async def get_products(
     db: AsyncSession = Depends(get_async_db)
 ):
     """
-    마켓플레이스의 상품(전략, 아이템) 목록을 필터링 및 페이지네이션하여 조회합니다.
-    - `productType` (필수): 'STRATEGY' 또는 'SHOP_ITEM'
+    마켓플레이스의 상품(전략, 아이템, AI 모델) 목록을 필터링 및 페이지네이션하여 조회합니다.
+    - `productType` (필수): 'STRATEGY', 'SHOP_ITEM', 'CREDIT_PACK', 또는 'AI_MODEL'
     - `page`, `limit`, `sortBy`, `searchTerm`, `categories` 등 다양한 필터를 지원합니다.
     """
     try:
@@ -41,7 +41,7 @@ async def get_products(
 
 @router.get(
     "/products/{product_id}",
-    response_model=Union[schemas.StrategyProductDetailOwned, schemas.StrategyProductDetailPublic, schemas.ShopItemProductDetail],
+    response_model=Union[schemas.StrategyProductDetailOwned, schemas.StrategyProductDetailPublic, schemas.ShopItemProductDetail, schemas.AIModelProduct],
     summary="Get details of a single marketplace product"
 )
 async def get_product_detail(
@@ -62,6 +62,9 @@ async def get_product_detail(
     
     elif product.product_type == models.ProductType.SHOP_ITEM:
         return await marketplace_service.get_shop_item_product_detail(db, product)
+    
+    elif product.product_type == models.ProductType.AI_MODEL:
+        return await marketplace_service.get_ai_model_product_detail(db, product, current_user)
     
     # 향후 다른 상품 타입이 추가될 경우를 대비
     raise HTTPException(status_code=400, detail="알 수 없는 상품 타입입니다.")

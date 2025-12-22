@@ -148,8 +148,11 @@ export default function MarketplacePage() {
   const searchParams = useSearchParams();
 
   // --- 상태 관리 ---
-  const [activeTab, setActiveTab] = useState<"STRATEGY" | "SHOP_ITEM">(
-    (searchParams.get("tab") as "STRATEGY" | "SHOP_ITEM") || "STRATEGY"
+  const [activeTab, setActiveTab] = useState<
+    "STRATEGY" | "SHOP_ITEM" | "AI_MODEL"
+  >(
+    (searchParams.get("tab") as "STRATEGY" | "SHOP_ITEM" | "AI_MODEL") ||
+      "STRATEGY"
   );
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<Partial<ProductFilters>>({});
@@ -216,7 +219,7 @@ export default function MarketplacePage() {
   // --- 이벤트 핸들러 ---
   const handleTabChange = useCallback(
     (value: string) => {
-      const newTab = value as "STRATEGY" | "SHOP_ITEM";
+      const newTab = value as "STRATEGY" | "SHOP_ITEM" | "AI_MODEL";
       setActiveTab(newTab);
       setPage(1);
       setFilters({});
@@ -279,10 +282,11 @@ export default function MarketplacePage() {
               onValueChange={handleTabChange}
               className="w-full"
             >
-              <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-background/50 border border-border/50">
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 bg-background/50 border border-border/50">
                 <TabsTrigger value="STRATEGY">
                   {t("tabs.strategies")}
                 </TabsTrigger>
+                <TabsTrigger value="AI_MODEL">AI 모델</TabsTrigger>
                 <TabsTrigger value="SHOP_ITEM">{t("tabs.shop")}</TabsTrigger>
               </TabsList>
               <div className="mt-8">
@@ -292,6 +296,20 @@ export default function MarketplacePage() {
                     isError={isError}
                     products={products}
                     productType="STRATEGY"
+                    purchasedStrategyIds={Array.from(purchasedStrategyIds)}
+                    ownedItemIds={[]}
+                    onPurchaseClick={handlePurchaseClick}
+                    purchaseMutation={creditPurchaseMutation}
+                    onRefetch={refetch}
+                    onChargeCredits={handleChargeCreditsClick}
+                  />
+                </TabsContent>
+                <TabsContent value="AI_MODEL" className="m-0">
+                  <ProductGrid
+                    isLoading={isLoading || isInventoryLoading}
+                    isError={isError}
+                    products={products}
+                    productType="AI_MODEL"
                     purchasedStrategyIds={Array.from(purchasedStrategyIds)}
                     ownedItemIds={[]}
                     onPurchaseClick={handlePurchaseClick}

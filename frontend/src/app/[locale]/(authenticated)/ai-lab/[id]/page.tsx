@@ -52,6 +52,9 @@ import {
   Download,
 } from "lucide-react";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { AIModelFeatureImportance } from "@/components/domain/ai-lab/AIModelFeatureImportance";
+
 import type { AIModelDetail, AITrainingJob } from "@/types/ai";
 
 const STATUS_CONFIG = {
@@ -245,261 +248,301 @@ export default function AIModelDetailPage({ params }: PageProps) {
       )}
 
       {/* Main Content Grid */}
-      <div className="grid gap-6">
-        {/* Model Info */}
-        <GlassPane className="p-6">
-          <h2 className="text-lg font-semibold mb-4">모델 정보</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Target className="h-4 w-4" />
-                <span>타임프레임</span>
-              </div>
-              <span className="font-medium">{model.trainingTimeframe}</span>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Calendar className="h-4 w-4" />
-                <span>학습 기간</span>
-              </div>
-              <span className="font-medium text-sm">
-                {format(new Date(model.trainingStartDate), "yyyy.MM.dd", {
-                  locale: ko,
-                })}{" "}
-                -{" "}
-                {format(new Date(model.trainingEndDate), "yyyy.MM.dd", {
-                  locale: ko,
-                })}
-              </span>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Clock className="h-4 w-4" />
-                <span>생성일</span>
-              </div>
-              <span className="font-medium">
-                {format(new Date(model.createdAt), "yyyy.MM.dd HH:mm", {
-                  locale: ko,
-                })}
-              </span>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                {model.isPublic ? (
-                  <Globe className="h-4 w-4" />
-                ) : (
-                  <Lock className="h-4 w-4" />
-                )}
-                <span>공개 상태</span>
-              </div>
-              <span className="font-medium">
-                {model.isPublic ? "공개" : "비공개"}
-              </span>
-            </div>
-          </div>
-        </GlassPane>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
+          <TabsTrigger value="overview">개요</TabsTrigger>
+          <TabsTrigger value="feature-importance">피처 중요도</TabsTrigger>
+        </TabsList>
 
-        {/* Performance Metrics (if completed) */}
-        {model.status === "completed" && model.performanceMetrics && (
-          <GlassPane className="p-6">
-            <h2 className="text-lg font-semibold mb-4">성능 지표</h2>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div className="text-center p-4 rounded-lg bg-muted/50">
-                <div className="text-2xl font-bold text-emerald-500">
-                  {(model.performanceMetrics.accuracy * 100).toFixed(1)}%
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">정확도</div>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/50">
-                <div className="text-2xl font-bold text-blue-500">
-                  {(model.performanceMetrics.f1Score * 100).toFixed(1)}%
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  F1 Score
-                </div>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/50">
-                <div className="text-2xl font-bold text-orange-500">
-                  {model.performanceMetrics.validationLoss?.toFixed(4) || "N/A"}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Validation Loss
-                </div>
-              </div>
-            </div>
-
-            {/* Class-wise performance */}
-            {model.performanceMetrics.classWiseMetrics && (
-              <div className="mt-6 grid sm:grid-cols-3 gap-4">
-                {["BUY", "HOLD", "SELL"].map((cls) => {
-                  const metrics =
-                    model.performanceMetrics?.classWiseMetrics?.[
-                      cls.toLowerCase()
-                    ];
-                  if (!metrics) return null;
-                  return (
-                    <div key={cls} className="p-4 rounded-lg border">
-                      <div className="flex items-center gap-2 mb-2">
-                        {cls === "BUY" && (
-                          <TrendingUp className="h-4 w-4 text-emerald-500" />
-                        )}
-                        {cls === "HOLD" && (
-                          <Minus className="h-4 w-4 text-gray-500" />
-                        )}
-                        {cls === "SELL" && (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        )}
-                        <span className="font-medium">{cls}</span>
-                      </div>
-                      <div className="text-sm space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Precision
-                          </span>
-                          <span>{(metrics.precision * 100).toFixed(1)}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Recall</span>
-                          <span>{(metrics.recall * 100).toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </GlassPane>
-        )}
-
-        {/* Prediction Test (if completed) */}
-        {model.status === "completed" && (
-          <GlassPane className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">예측 테스트</h2>
-              <Button onClick={handleTestPrediction} disabled={isPredicting}>
-                {isPredicting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4 mr-2" />
-                )}
-                테스트 실행
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              현재 시장 데이터를 기반으로 모델의 예측을 테스트합니다.
-            </p>
-
-            {predictionResult && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-lg border"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className={`px-4 py-2 rounded-lg font-bold text-lg ${
-                      predictionResult.prediction === "BUY"
-                        ? "bg-emerald-500/10 text-emerald-600"
-                        : predictionResult.prediction === "SELL"
-                        ? "bg-red-500/10 text-red-600"
-                        : "bg-gray-500/10 text-gray-600"
-                    }`}
-                  >
-                    {predictionResult.prediction}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-6">
+            {/* Model Info */}
+            <GlassPane className="p-6">
+              <h2 className="text-lg font-semibold mb-4">모델 정보</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <Target className="h-4 w-4" />
+                    <span>타임프레임</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    신뢰도: {(predictionResult.confidence * 100).toFixed(1)}%
+                  <span className="font-medium">{model.trainingTimeframe}</span>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>학습 기간</span>
+                  </div>
+                  <span className="font-medium text-sm">
+                    {format(new Date(model.trainingStartDate), "yyyy.MM.dd", {
+                      locale: ko,
+                    })}{" "}
+                    -{" "}
+                    {format(new Date(model.trainingEndDate), "yyyy.MM.dd", {
+                      locale: ko,
+                    })}
                   </span>
                 </div>
-                {predictionResult.probabilities && (
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div className="text-center p-2 rounded bg-emerald-500/10">
-                      <div className="text-emerald-600 font-medium">BUY</div>
-                      <div>
-                        {(predictionResult.probabilities.buy * 100).toFixed(1)}%
-                      </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <Clock className="h-4 w-4" />
+                    <span>생성일</span>
+                  </div>
+                  <span className="font-medium">
+                    {format(new Date(model.createdAt), "yyyy.MM.dd HH:mm", {
+                      locale: ko,
+                    })}
+                  </span>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    {model.isPublic ? (
+                      <Globe className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                    <span>공개 상태</span>
+                  </div>
+                  <span className="font-medium">
+                    {model.isPublic ? "공개" : "비공개"}
+                  </span>
+                </div>
+              </div>
+            </GlassPane>
+
+            {/* Performance Metrics (if completed) */}
+            {model.status === "completed" && model.performanceMetrics && (
+              <GlassPane className="p-6">
+                <h2 className="text-lg font-semibold mb-4">성능 지표</h2>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="text-center p-4 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-emerald-500">
+                      {(model.performanceMetrics.accuracy * 100).toFixed(1)}%
                     </div>
-                    <div className="text-center p-2 rounded bg-gray-500/10">
-                      <div className="text-gray-600 font-medium">HOLD</div>
-                      <div>
-                        {(predictionResult.probabilities.hold * 100).toFixed(1)}
-                        %
-                      </div>
-                    </div>
-                    <div className="text-center p-2 rounded bg-red-500/10">
-                      <div className="text-red-600 font-medium">SELL</div>
-                      <div>
-                        {(predictionResult.probabilities.sell * 100).toFixed(1)}
-                        %
-                      </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      정확도
                     </div>
                   </div>
-                )}
-              </motion.div>
-            )}
-          </GlassPane>
-        )}
+                  <div className="text-center p-4 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-blue-500">
+                      {(model.performanceMetrics.f1Score * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      F1 Score
+                    </div>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-orange-500">
+                      {model.performanceMetrics.validationLoss?.toFixed(4) ||
+                        "N/A"}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Validation Loss
+                    </div>
+                  </div>
+                </div>
 
-        {/* Actions */}
-        <GlassPane className="p-6">
-          <h2 className="text-lg font-semibold mb-4">모델 관리</h2>
-          <div className="flex flex-wrap gap-3">
-            {model.status === "completed" && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => togglePublicMutation.mutate(!model.isPublic)}
-                  disabled={togglePublicMutation.isPending}
-                >
-                  {model.isPublic ? (
-                    <>
-                      <Lock className="h-4 w-4 mr-2" />
-                      비공개로 전환
-                    </>
-                  ) : (
-                    <>
-                      <Globe className="h-4 w-4 mr-2" />
-                      공개하기
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" asChild>
-                  <a href={`/api/ai-models/${modelId}/download`} download>
-                    <Download className="h-4 w-4 mr-2" />
-                    ONNX 다운로드
-                  </a>
-                </Button>
-              </>
+                {/* Class-wise performance */}
+                {model.performanceMetrics.classWiseMetrics && (
+                  <div className="mt-6 grid sm:grid-cols-3 gap-4">
+                    {["BUY", "HOLD", "SELL"].map((cls) => {
+                      const metrics =
+                        model.performanceMetrics?.classWiseMetrics?.[
+                          cls.toLowerCase()
+                        ];
+                      if (!metrics) return null;
+                      return (
+                        <div key={cls} className="p-4 rounded-lg border">
+                          <div className="flex items-center gap-2 mb-2">
+                            {cls === "BUY" && (
+                              <TrendingUp className="h-4 w-4 text-emerald-500" />
+                            )}
+                            {cls === "HOLD" && (
+                              <Minus className="h-4 w-4 text-gray-500" />
+                            )}
+                            {cls === "SELL" && (
+                              <TrendingDown className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="font-medium">{cls}</span>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Precision
+                              </span>
+                              <span>
+                                {(metrics.precision * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Recall
+                              </span>
+                              <span>{(metrics.recall * 100).toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </GlassPane>
             )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  모델 삭제
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>모델 삭제</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    정말로 이 AI 모델을 삭제하시겠습니까? 이 작업은 되돌릴 수
-                    없습니다.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>취소</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteMutation.mutate()}
-                    className="bg-destructive text-destructive-foreground"
+
+            {/* Prediction Test (if completed) */}
+            {model.status === "completed" && (
+              <GlassPane className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">예측 테스트</h2>
+                  <Button
+                    onClick={handleTestPrediction}
+                    disabled={isPredicting}
                   >
-                    삭제
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    {isPredicting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4 mr-2" />
+                    )}
+                    테스트 실행
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  현재 시장 데이터를 기반으로 모델의 예측을 테스트합니다.
+                </p>
+
+                {predictionResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div
+                        className={`px-4 py-2 rounded-lg font-bold text-lg ${
+                          predictionResult.prediction === "BUY"
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : predictionResult.prediction === "SELL"
+                            ? "bg-red-500/10 text-red-600"
+                            : "bg-gray-500/10 text-gray-600"
+                        }`}
+                      >
+                        {predictionResult.prediction}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        신뢰도: {(predictionResult.confidence * 100).toFixed(1)}
+                        %
+                      </span>
+                    </div>
+                    {predictionResult.probabilities && (
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div className="text-center p-2 rounded bg-emerald-500/10">
+                          <div className="text-emerald-600 font-medium">
+                            BUY
+                          </div>
+                          <div>
+                            {(predictionResult.probabilities.buy * 100).toFixed(
+                              1
+                            )}
+                            %
+                          </div>
+                        </div>
+                        <div className="text-center p-2 rounded bg-gray-500/10">
+                          <div className="text-gray-600 font-medium">HOLD</div>
+                          <div>
+                            {(
+                              predictionResult.probabilities.hold * 100
+                            ).toFixed(1)}
+                            %
+                          </div>
+                        </div>
+                        <div className="text-center p-2 rounded bg-red-500/10">
+                          <div className="text-red-600 font-medium">SELL</div>
+                          <div>
+                            {(
+                              predictionResult.probabilities.sell * 100
+                            ).toFixed(1)}
+                            %
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </GlassPane>
+            )}
+
+            {/* Actions */}
+            <GlassPane className="p-6">
+              <h2 className="text-lg font-semibold mb-4">모델 관리</h2>
+              <div className="flex flex-wrap gap-3">
+                {model.status === "completed" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        togglePublicMutation.mutate(!model.isPublic)
+                      }
+                      disabled={togglePublicMutation.isPending}
+                    >
+                      {model.isPublic ? (
+                        <>
+                          <Lock className="h-4 w-4 mr-2" />
+                          비공개로 전환
+                        </>
+                      ) : (
+                        <>
+                          <Globe className="h-4 w-4 mr-2" />
+                          공개하기
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" asChild>
+                      <a href={`/api/ai-models/${modelId}/download`} download>
+                        <Download className="h-4 w-4 mr-2" />
+                        ONNX 다운로드
+                      </a>
+                    </Button>
+                  </>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      모델 삭제
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>모델 삭제</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        정말로 이 AI 모델을 삭제하시겠습니까? 이 작업은 되돌릴
+                        수 없습니다.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>취소</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteMutation.mutate()}
+                        className="bg-destructive text-destructive-foreground"
+                      >
+                        삭제
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </GlassPane>
           </div>
-        </GlassPane>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="feature-importance">
+          <AIModelFeatureImportance
+            featureImportance={
+              model.validationMetrics?.featureImportance ||
+              (model.validationMetrics as any)?.feature_importance
+            }
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

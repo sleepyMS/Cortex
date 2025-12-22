@@ -7,7 +7,7 @@ import logging
 import json
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
@@ -16,6 +16,7 @@ import pandas as pd
 
 from ..models.base import ModelConfig, TrainingConfig, TrainingResult
 from ..models.lstm import LSTMClassifier
+from ..models.gru import GRUClassifier
 from ..labeling.triple_barrier import TripleBarrierLabeler, TripleBarrierConfig
 from ..preprocessing.feature_engineer import FeatureEngineer, FeatureConfig
 
@@ -175,6 +176,13 @@ class AIModelTrainer:
         
         logger.info(f"Training completed: best_epoch={training_result.best_epoch}")
         
+        # Step 4.5: Feature Importance 계산
+        feature_names = feature_store_config.get("feature_order", [])
+        if not feature_names:
+            feature_names = [f"feat_{i}" for i in range(input_size)]
+        
+        feature_importance = self._calculate_feature_importance(X_val, feature_names)
+        
         # Step 5: 모델 저장
         current_step += 1
         self._report_progress(current_step, total_steps, {"phase": "saving"})
@@ -191,6 +199,7 @@ class AIModelTrainer:
             "label_stats": label_stats,
             "training_metrics": asdict(training_result),
             "feature_config": feature_store_config,
+            "feature_importance": feature_importance,
             "model_info": self.model.get_model_info(),
         }
         
@@ -202,7 +211,9 @@ class AIModelTrainer:
         """모델 타입에 따른 모델 생성"""
         if model_type == "lstm":
             return LSTMClassifier()
-        # 향후 GRU, TFT 등 추가
+        elif model_type == "gru":
+            return GRUClassifier()
+        # 향후 TFT 등 추가
         else:
             raise ValueError(f"Unknown model type: {model_type}")
     
@@ -257,3 +268,65 @@ class AIModelTrainer:
         """진행률 보고"""
         if self.progress_callback:
             self.progress_callback(step, total, metrics)
+
+    def _calculate_feature_importance(self, X_val: np.ndarray, feature_names: List[str]) -> Dict[str, float]:
+        """Integrated Gradients를 사용한 피처 중요도 계산"""
+        try:
+            import torch
+            from captum.attr import IntegratedGradients
+            
+            # 모델 평가 모드
+            self.model.network.eval()
+            
+            # 1. 샘플링 (Validation Data 중 최대 100개)
+            n_samples = min(100, len(X_val))
+            if n_samples == 0:
+                return {}
+                
+            # 랜덤 샘플링
+            indices = np.random.choice(len(X_val), n_samples, replace=False)
+            X_sample = torch.tensor(X_val[indices], dtype=torch.float32).to(self.model.device)
+            
+            # 2. Baseline (Zero tensor)
+            baseline = torch.zeros_like(X_sample)
+            
+            # 3. Integrated Gradients 인스턴스
+            ig = IntegratedGradients(self.model.network)
+            
+            # 4. 중요도 계산 (Target: Buy class = index 2 가정)
+            # Triple Barrier Labeler: -1(Sell), 0(Hold), 1(Buy) -> 0, 1, 2
+            target_class = 2 
+            
+            attributions, delta = ig.attribute(
+                inputs=X_sample,
+                baselines=baseline,
+                target=target_class,
+                return_convergence_delta=True
+            )
+            
+            # 5. 집계 (Absolute values -> Batch Mean -> Sequence Mean)
+            # attributions: (batch, seq, features)
+            importances = torch.mean(torch.abs(attributions), dim=0) # (seq, feat)
+            importances = torch.mean(importances, dim=0) # (feat,)
+            
+            # 6. 결과 매핑
+            importance_dict = {}
+            importances_np = importances.detach().cpu().numpy()
+            
+            for i, name in enumerate(feature_names):
+                if i < len(importances_np):
+                     importance_dict[name] = float(importances_np[i])
+            
+            # 중요도 순 정렬 (내림차순)
+            sorted_importances = dict(sorted(importance_dict.items(), key=lambda item: item[1], reverse=True))
+            
+            logger.info(f"Top 5 important features: {list(sorted_importances.keys())[:5]}")
+            return sorted_importances
+            
+        except ImportError:
+            logger.warning("Captum library not found. Skipping feature importance calculation.")
+            return {}
+        except Exception as e:
+            logger.error(f"Error calculating feature importance: {e}")
+            return {}
+

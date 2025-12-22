@@ -212,25 +212,70 @@ class AIModelRegistry:
     
     _cache: Dict[str, ONNXInferenceSession] = {}
     
+    # 기본 모델 저장 경로 (backend/ai_models/{user_id}/{model_id}/)
+    DEFAULT_BASE_PATH = Path(__file__).parent.parent.parent.parent / "ai_models"
+    
     @classmethod
-    def get_session(cls, model_id: str, model_dir: str) -> ONNXInferenceSession:
+    def get_session(cls, model_id: str, model_dir: str = None) -> ONNXInferenceSession:
         """
         캐시된 세션 반환 또는 새로 생성
         
         Args:
             model_id: 모델 ID (캐시 키)
-            model_dir: 모델 디렉토리 경로
+            model_dir: 모델 디렉토리 경로 (없으면 DB에서 조회)
             
         Returns:
             ONNXInferenceSession
         """
-        if model_id not in cls._cache:
-            logger.info(f"Loading model {model_id} from {model_dir}")
-            cls._cache[model_id] = ONNXInferenceSession(model_dir)
-        else:
+        if model_id in cls._cache:
             logger.debug(f"Using cached model {model_id}")
+            return cls._cache[model_id]
+        
+        # model_dir이 없으면 DB에서 조회
+        if model_dir is None:
+            model_dir = cls._get_model_dir_from_db(model_id)
+        
+        if model_dir is None:
+            raise FileNotFoundError(f"Model directory not found for model_id: {model_id}")
+        
+        logger.info(f"Loading model {model_id} from {model_dir}")
+        cls._cache[model_id] = ONNXInferenceSession(model_dir)
         
         return cls._cache[model_id]
+    
+    @classmethod
+    def _get_model_dir_from_db(cls, model_id: str) -> Optional[str]:
+        """
+        DB에서 모델 정보를 조회하여 모델 디렉토리 경로 반환
+        """
+        try:
+            from ...database import SyncSessionLocal
+            from ...models import AIModel
+            
+            with SyncSessionLocal() as session:
+                ai_model = session.query(AIModel).filter(AIModel.id == model_id).first()
+                
+                if ai_model is None:
+                    logger.warning(f"AI model not found in DB: {model_id}")
+                    return None
+                
+                # model_weights_path가 있으면 해당 경로 사용
+                if ai_model.model_weights_path:
+                    model_path = Path(ai_model.model_weights_path)
+                    if model_path.exists():
+                        return str(model_path.parent)
+                
+                # 기본 경로 구성: ai_models/{user_id}/{model_id}/
+                default_path = cls.DEFAULT_BASE_PATH / str(ai_model.user_id) / str(ai_model.id)
+                if default_path.exists():
+                    return str(default_path)
+                
+                logger.warning(f"Model directory not found: {default_path}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error getting model dir from DB: {e}")
+            return None
     
     @classmethod
     def clear_cache(cls, model_id: Optional[str] = None) -> None:
@@ -246,3 +291,4 @@ class AIModelRegistry:
     def get_cached_models(cls) -> List[str]:
         """캐시된 모델 ID 목록"""
         return list(cls._cache.keys())
+

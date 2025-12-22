@@ -13,6 +13,8 @@ from .. import schemas
 # [중요] 비동기 세션 생성을 위한 임포트 재확인
 from ..database import AsyncSessionLocal
 from ..services.market_data_service import market_data_service
+# AI 신호 평가기
+from ..ai.inference.ai_signal_evaluator import get_ai_signal_evaluator
 
 logger = logging.getLogger(__name__)
 
@@ -697,6 +699,20 @@ class SignalService:
                 if block.direction == "bullish": parent_series = pattern_series > 0
                 elif block.direction == "bearish": parent_series = pattern_series < 0
                 elif block.direction == "any": parent_series = pattern_series != 0
+
+        elif block_type == "ai_signal":
+            # AI 모델 기반 신호 평가
+            try:
+                evaluator = get_ai_signal_evaluator()
+                parent_series = evaluator.evaluate(
+                    df=df,
+                    model_id=block.model_id,
+                    signal_type=block.signal_type,
+                    min_confidence=block.min_confidence
+                )
+            except Exception as e:
+                logger.error(f"AI signal evaluation failed for model {block.model_id}: {e}")
+                parent_series = pd.Series(False, index=df.index)
 
         if block.children and len(block.children) > 0:
             children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1, base_timeframe=base_timeframe) for child in block.children]

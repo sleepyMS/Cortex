@@ -14,12 +14,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { HorizontalScrollArea } from "@/components/ui/HorizontalScrollArea";
 import { Button } from "@/components/ui/Button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Brain } from "lucide-react";
 
-// ▼▼▼ [핵심 수정 1] Zustand 스토어를 import 합니다. ▼▼▼
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { IndicatorMetadata } from "@/types/indicator";
-// ▲▲▲ [수정 완료] ▲▲▲
+import { AIModelSelector, AISignalBlockConfig } from "./AIModelSelector";
 
 type SelectedIndicatorState = {
   indicator: IndicatorMetadata;
@@ -30,29 +29,39 @@ interface IndicatorHubProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSelect: (indicator: IndicatorMetadata, logicType: string) => void;
+  onAIModelSelect?: (config: AISignalBlockConfig) => void;
   selectionMode?: "full" | "indicatorOnly";
+  showAICategory?: boolean;
 }
 
 export function IndicatorHub({
   isOpen,
   onOpenChange,
   onSelect,
+  onAIModelSelect,
   selectionMode = "full",
+  showAICategory = true,
 }: IndicatorHubProps) {
   const t = useTranslations("StrategyBuilder");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIndicator, setSelectedIndicator] =
     useState<SelectedIndicatorState>(null);
+  const [isAIModelSelectorOpen, setIsAIModelSelectorOpen] = useState(false);
 
   const indicatorMetadata = useIndicatorStore((state) => state.metadata);
 
   const categories = useMemo(() => {
-    if (!indicatorMetadata) return ["All"];
+    if (!indicatorMetadata) return showAICategory ? ["All", "AI"] : ["All"];
     const uniqueCategories = new Set(
       indicatorMetadata.map((ind) => ind.category)
     );
-    return ["All", ...Array.from(uniqueCategories).sort()];
-  }, [indicatorMetadata]);
+    const cats = ["All", ...Array.from(uniqueCategories).sort()];
+    // AI 카테고리는 맨 뒤에 추가
+    if (showAICategory && !cats.includes("AI")) {
+      cats.push("AI");
+    }
+    return cats;
+  }, [indicatorMetadata, showAICategory]);
 
   const filteredIndicators = useMemo(() => {
     if (!indicatorMetadata) return [];
@@ -156,26 +165,48 @@ export function IndicatorHub({
               <ScrollArea className="flex-grow mt-4 px-6 pb-6">
                 {categories.map((cat) => (
                   <TabsContent key={cat} value={cat} className="pt-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {/* ▼▼▼ [핵심 수정 4] filter 로직이 동적 데이터를 사용하도록 합니다. ▼▼▼ */}
-                      {filteredIndicators
-                        .filter((ind) => cat === "All" || ind.category === cat)
-                        .map((indicator) => (
-                          <div
-                            key={indicator.key}
-                            className="p-3 border rounded-md hover:bg-accent hover:border-primary cursor-pointer transition-colors group bg-card"
-                            onClick={() => handleIndicatorClick(indicator)}
-                          >
-                            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                              {indicator.label}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {indicator.description}
-                            </p>
-                          </div>
-                        ))}
-                      {/* ▲▲▲ [수정 완료] ▲▲▲ */}
-                    </div>
+                    {cat === "AI" ? (
+                      /* AI 카테고리 특별 처리 */
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div
+                          className="p-4 border rounded-md hover:bg-violet-500/10 hover:border-violet-500 cursor-pointer transition-colors group bg-card flex flex-col items-center justify-center min-h-[120px]"
+                          onClick={() => {
+                            setIsAIModelSelectorOpen(true);
+                          }}
+                        >
+                          <Brain className="h-8 w-8 text-violet-500 mb-2 group-hover:scale-110 transition-transform" />
+                          <p className="font-semibold text-foreground group-hover:text-violet-500 transition-colors text-center">
+                            AI 신호
+                          </p>
+                          <p className="text-xs text-muted-foreground text-center mt-1">
+                            학습된 AI 모델의 예측을 조건으로 사용
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {/* ▼▼▼ [핵심 수정 4] filter 로직이 동적 데이터를 사용하도록 합니다. ▼▼▼ */}
+                        {filteredIndicators
+                          .filter(
+                            (ind) => cat === "All" || ind.category === cat
+                          )
+                          .map((indicator) => (
+                            <div
+                              key={indicator.key}
+                              className="p-3 border rounded-md hover:bg-accent hover:border-primary cursor-pointer transition-colors group bg-card"
+                              onClick={() => handleIndicatorClick(indicator)}
+                            >
+                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                                {indicator.label}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {indicator.description}
+                              </p>
+                            </div>
+                          ))}
+                        {/* ▲▲▲ [수정 완료] ▲▲▲ */}
+                      </div>
+                    )}
                   </TabsContent>
                 ))}
               </ScrollArea>
@@ -203,6 +234,19 @@ export function IndicatorHub({
           )}
         </div>
       </DialogContent>
+
+      {/* AI Model Selector Dialog */}
+      <AIModelSelector
+        isOpen={isAIModelSelectorOpen}
+        onOpenChange={setIsAIModelSelectorOpen}
+        onSelect={(config) => {
+          if (onAIModelSelect) {
+            onAIModelSelect(config);
+            onOpenChange(false);
+          }
+          setIsAIModelSelectorOpen(false);
+        }}
+      />
     </Dialog>
   );
 }

@@ -1,7 +1,11 @@
 // file: frontend/src/components/domain/marketplace/ProductGrid.tsx
 "use client";
 
-import { MarketplaceStrategy, ShopItem } from "@/types/marketplace";
+import {
+  MarketplaceStrategy,
+  ShopItem,
+  MarketplaceAIModel,
+} from "@/types/marketplace";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -9,13 +13,14 @@ import { Inbox, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { StrategyMarketCard } from "./StrategyMarketCard";
 import { ShopItemCard } from "./ShopItemCard";
+import { MarketplaceAIModelCard } from "./MarketplaceAIModelCard";
 import { motion } from "framer-motion";
 
 interface ProductGridProps {
   isLoading: boolean;
   isError: boolean;
-  products: (MarketplaceStrategy | ShopItem)[];
-  productType: "STRATEGY" | "SHOP_ITEM";
+  products: (MarketplaceStrategy | ShopItem | MarketplaceAIModel)[];
+  productType: "STRATEGY" | "SHOP_ITEM" | "AI_MODEL";
   purchasedStrategyIds: string[];
   ownedItemIds: string[];
   onPurchaseClick: (product: any) => void;
@@ -93,7 +98,19 @@ export const ProductGrid = ({
                 purchaseMutation.isPending &&
                 purchaseMutation.variables?.items[0]?.productId === product.id
               }
-              // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
+              onChargeCredits={onChargeCredits}
+            />
+          ) : productType === "AI_MODEL" ? (
+            <MarketplaceAIModelCard
+              model={product as unknown as MarketplaceAIModel}
+              isOwned={purchasedStrategyIds.includes(
+                (product as unknown as MarketplaceAIModel).linkedResourceId
+              )}
+              onPurchase={() => onPurchaseClick(product)}
+              isPurchasing={
+                purchaseMutation.isPending &&
+                purchaseMutation.variables?.items[0]?.productId === product.id
+              }
               onChargeCredits={onChargeCredits}
             />
           ) : (
@@ -105,7 +122,6 @@ export const ProductGrid = ({
                 purchaseMutation.isPending &&
                 purchaseMutation.variables?.items[0]?.productId === product.id
               }
-              // [신규] onChargeCredits 핸들러를 하위 컴포넌트로 전달
               onChargeCredits={onChargeCredits}
             />
           )}
