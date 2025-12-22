@@ -708,7 +708,7 @@ class Backtest(BacktestInList):
     parameters: BacktestParametersPayload  
     strategy_snapshot: Optional[Dict[str, Any]] = None
     strategy: Optional[Strategy] = None 
-    result: Optional[BacktestResultSummary] = None 
+    result: Optional[BacktestResultCore] = None
 
 # ==============================================================================
 # Live Bot 관련 추가 스키마
@@ -999,13 +999,21 @@ class ShopItemProduct(BaseProduct):
     """상점 아이템 목록에 표시될 정보"""
     display_properties: Dict[str, Any]
 
+class BacktestPublic(CamelCaseModel):
+    """마켓플레이스 등 공개용 백테스트 스키마 (민감 정보 제외, 차트 포함)"""
+    id: uuid.UUID
+    status: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    result: Optional[BacktestResultSummary] = None # 차트 데이터 포함 (Lazy Loading 권한 문제 방지)
+
 class StrategyProductDetailPublic(StrategyProduct):
     """
     비구매자에게 보여줄 공개용 상세 정보.
     전략 규칙 등 민감한 정보는 모두 제외됩니다.
     """
     description: Optional[str] = None
-    representative_backtest: Optional[Backtest] = None # 대표 백테스트 결과는 공개
+    representative_backtest: Optional[BacktestPublic] = None # 대표 백테스트 결과는 공개 (안전한 스키마 사용)
     
     # long_entry_rules 등 민감 정보는 여기에 포함시키지 않습니다.
 
@@ -1234,8 +1242,8 @@ class WFOFoldResult(CamelCaseModel):
     oos_end_date: str = Field(validation_alias="oos_end", serialization_alias="oosEndDate")
     
     best_params: Dict[str, Any]
-    in_sample_metrics: BacktestResultSummary
-    out_of_sample_metrics: BacktestResultSummary
+    in_sample_metrics: BacktestResultCore
+    out_of_sample_metrics: BacktestResultCore
 
 class WFOResult(CamelCaseModel):
     """WFO 전체 결과 스키마"""

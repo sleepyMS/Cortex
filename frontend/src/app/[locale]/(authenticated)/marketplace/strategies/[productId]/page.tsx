@@ -166,23 +166,26 @@ export default function StrategyDetailPage() {
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2 space-y-6">
               <BacktestResultSummary result={backtestResult} />
-              <DynamicEquityChart
-                pnlData={
-                  (backtestResult.pnlCurveJson ||
-                    []) as AreaData<UTCTimestamp>[]
-                }
-              />
-              <DynamicDrawdownChart
-                drawdownData={
-                  (backtestResult.drawdownCurveJson ||
-                    []) as AreaData<UTCTimestamp>[]
-                }
-              />
+
+              {/* 차트 영역 */}
+              <>
+                <DynamicEquityChart
+                  pnlData={
+                    (backtestResult.pnlCurveJson ||
+                      []) as AreaData<UTCTimestamp>[]
+                  }
+                />
+                <DynamicDrawdownChart
+                  drawdownData={
+                    (backtestResult.drawdownCurveJson ||
+                      []) as AreaData<UTCTimestamp>[]
+                  }
+                />
+              </>
               <DetailedMetrics result={backtestResult} />
               <MonthlyPerformance
-                pnlData={
-                  (backtestResult.pnlCurveJson ||
-                    []) as AreaData<UTCTimestamp>[]
+                monthlyReturns={
+                  backtestResult.tradeSummaryJson?.monthly_returns || {}
                 }
               />
             </div>
