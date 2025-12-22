@@ -69,7 +69,7 @@ async def create_optimization(
     
     # [개선] 전략의 타임프레임 동적 반영
     min_tf_minutes = 60
-    strategy = await strategy_service.get_strategy_by_id(db, request.strategy_id)
+    strategy = await strategy_service.get_strategy_by_id(db, job_in.strategy_id)
     if strategy:
         min_tf_minutes = get_min_timeframe_minutes(strategy, default_timeframe='1h')
 

@@ -160,13 +160,26 @@ def run_optimization(self, job_id: str):
         strategy_data = job.strategy_snapshot if hasattr(job, 'strategy_snapshot') and job.strategy_snapshot else schemas.Strategy.model_validate(job.strategy).model_dump()
         strategy_snapshot = schemas.StrategyCreate.model_validate(strategy_data)
 
+        # 전략의 타임프레임 동적 반영
+        min_minutes = get_min_timeframe_minutes(strategy_snapshot, default_timeframe='1h')
+        
+        if min_minutes == 1440: target_timeframe = '1d'
+        elif min_minutes == 10080: target_timeframe = '1w'
+        elif min_minutes >= 43200: target_timeframe = '1M'
+        elif min_minutes >= 60 and min_minutes % 60 == 0:
+            target_timeframe = f"{min_minutes // 60}h"
+        else:
+            target_timeframe = f"{min_minutes}m"
+        
+        logger.info(f"Optimization running with timeframe: {target_timeframe}")
+
         WebSocketManager.send_optimization_update(job_id, "running", "데이터 로딩 중...", 5)
 
         # 2. 데이터 로딩 (단 1회 전체 로딩)
         target_coin = strategy_snapshot.target_coins[0].ticker if strategy_snapshot.target_coins else "BTCUSDT"
         base_ohlcv_df = market_data_service.get_historical_data_sync(
             ticker=target_coin,
-            timeframe='1h',
+            timeframe=target_timeframe,
             start_date=config.start_date,
             end_date=config.end_date
         )
@@ -174,6 +187,24 @@ def run_optimization(self, job_id: str):
              raise ValueError("최적화를 위한 시세 데이터가 충분하지 않습니다.")
 
         logger.info(f"Loaded {len(base_ohlcv_df)} rows for optimization.")
+
+        # [복합 타임프레임 지원] 추가 데이터 로드 logic (Backtest와 동일)
+        required_timeframes = extract_all_timeframes_from_strategy(strategy_snapshot)
+        if target_timeframe in required_timeframes:
+            required_timeframes.remove(target_timeframe)
+            
+        additional_dfs = {}
+        for tf in required_timeframes:
+            logger.info(f"Optimization: Fetching higher timeframe data: {tf}")
+            higher_df = market_data_service.get_historical_data_sync(
+                ticker=target_coin,
+                timeframe=tf,
+                start_date=config.start_date,
+                end_date=config.end_date
+            )
+            if not higher_df.empty:
+                additional_dfs[tf] = higher_df
+
 
         # ----------------------------------------------------------------------
         # 공통 Optuna Objective 함수 Factory
@@ -200,7 +231,7 @@ def run_optimization(self, job_id: str):
                         pass
         
                     signals_df = signal_service.generate_signals_from_dataframe(
-                        target_df, current_strategy, timeframe='1h'
+                        target_df, current_strategy, timeframe=target_timeframe, additional_data=additional_dfs
                     )
 
                     # c. 백테스트 실행 (실시간 가지치기 적용)
@@ -368,7 +399,7 @@ def run_optimization(self, job_id: str):
                 
                 # a. Warm-up 포함 데이터로 신호 생성
                 oos_signals_with_warmup = signal_service.generate_signals_from_dataframe(
-                    split['test_with_warmup'], best_strategy, timeframe='1h'
+                    split['test_with_warmup'], best_strategy, timeframe=target_timeframe, additional_data=additional_dfs
                 )
 
                 # b. 실제 테스트 구간으로 데이터 자르기
@@ -495,7 +526,10 @@ def run_backtest(self, backtest_id: str):
         min_tf_minutes = get_min_timeframe_minutes(snapshot_as_strategy, default_timeframe='1h')
         
         # 분 단위를 문자열로 변환 (ccxt 표준)
-        tf_map = {1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 240: '4h', 1440: '1d'}
+        tf_map = {
+            1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m', 
+            60: '1h', 240: '4h', 1440: '1d', 10080: '1w', 43200: '1M'
+        }
         base_timeframe = tf_map.get(min_tf_minutes, '1h') # 매핑되지 않는 경우 기본 1h
         
         logger.info(f"Backtest Base Timeframe determined: {base_timeframe} ({min_tf_minutes}m)")

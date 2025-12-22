@@ -177,48 +177,14 @@ def merge_dataframes_on_close_time(
     merged_df.index = df_base.sort_values('_close_time').index
     merged_df = merged_df.sort_index()
     
-    # 5. 검증 테이블(Trace Table) 출력 (로그)
-    try:
-        sample_times = [
-            "18:30:00", "18:45:00", "19:00:00"
-        ]
-        log_msg = f"\n[Data Merge Verification: {base_tf_str} + {higher_tf_str}]\n"
-        log_msg += f"{'Base Open':<20} | {'Base Close':<20} | {'Mapped Higher Open':<20} | {'Mapped Higher Close':<20}\n"
-        log_msg += "-" * 90 + "\n"
-        
-        for t_str in sample_times:
-            # 날짜는 데이터의 마지막 날짜 등을 기준으로 찾거나, 실제 존재하는 데이터에서 샘플링
-            # 여기서는 데이터에 해당 시간이 존재한다면 출력
-            matches = [idx for idx in merged_df.index if str(idx).endswith(t_str) or str(idx).split()[-1] == t_str]
-            if matches:
-                 # 가장 마지막 날짜의 해당 시간대 샘플 사용
-                idx = matches[-1]
-                row = merged_df.loc[idx]
-                
-                base_close = row['_close_time']
-                
-                # 매핑된 Higher TF의 Open Time을 역추적할 컬럼이 필요함.
-                # 위에서 리네이밍할 때 'open_{higher_tf}' 같은 컬럼이 생겼을 것임.
-                mapped_open_col = f"open_{higher_tf_str}"
-                mapped_open_val = row.get(mapped_open_col, "N/A")
-                
-                # 매핑된 Higher Close Time은 존재하지 않음(병합값에 포함 안됨). 
-                # 하지만 _close_time은 "Base의 Close Time"이자 "매핑 기준"임.
-                # 매핑된 캔들의 Close Time을 추론: Higher Open + Higher Delta
-                mapped_close_val = "N/A"
-                if mapped_open_val != "N/A":
-                     # Timestamp 객체인지 확인
-                     try:
-                         # 만약 open 값이 float/int라면 변환 필요할 수 있으나, 보통 Timestamp 유지됨
-                         mapped_close_val = mapped_open_val + timedelta(minutes=higher_minutes)
-                     except:
-                         pass
-
-                log_msg += f"{str(idx):<20} | {str(base_close):<20} | {str(mapped_open_val):<20} | {str(mapped_close_val):<20}\n"
-                
-        logger.info(log_msg)
-    except Exception as e:
-        logger.warning(f"Failed to print merge verification table: {e}")
+    # 5. 검증 테이블(Trace Table) 출력 (로그) - 주석 처리됨 (Noise reduction)
+    # try:
+    #     sample_times = ["18:30:00", "18:45:00", "19:00:00"]
+    #     log_msg = f"\n[Data Merge Verification: {base_tf_str} + {higher_tf_str}]\n"
+    #     # ... (Logging logic removed for clean output)
+    #     # logger.info(log_msg)
+    # except Exception as e:
+    #     pass
 
     # 6. 임시 컬럼 삭제
     merged_df = merged_df.drop(columns=['_close_time'])
