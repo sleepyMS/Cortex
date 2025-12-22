@@ -55,6 +55,9 @@ export interface BacktestResultSummary {
   pnlCurveJson: { time: number; value: number }[] | null;
   drawdownCurveJson?: { time: number; value: number }[] | null;
   scoreFactors?: any;
+  tradeSummaryJson?: {
+    monthly_returns?: { [year: number]: (number | null)[] };
+  };
 }
 
 /**

@@ -544,11 +544,8 @@ export function BacktestContent({
               <Skeleton className="h-[250px] w-full rounded-lg" />
             ) : (
               <MonthlyPerformance
-                pnlData={
-                  (chartData?.pnlCurveJson as unknown as {
-                    time: UTCTimestamp;
-                    value: number;
-                  }[]) || []
+                monthlyReturns={
+                  backtest.result?.tradeSummaryJson?.monthly_returns || {}
                 }
               />
             )}

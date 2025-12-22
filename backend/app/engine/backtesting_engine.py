@@ -226,6 +226,61 @@ class BacktestingEngine:
             if self.position_type == 'long' and (self.sl_price is None or new_sl_price > self.sl_price): self.sl_price = new_sl_price
             elif self.position_type == 'short' and (self.sl_price is None or new_sl_price < self.sl_price): self.sl_price = new_sl_price
 
+    def _calculate_monthly_returns(self, equity_df: pd.DataFrame) -> Dict[str, List[Optional[float]]]:
+        """
+        백엔드에서 정확한 월별 수익률을 미리 계산합니다.
+        Frontend에서 다운샘플링된 데이터를 사용하면 계산이 부정확해지기 때문입니다.
+        """
+        if equity_df.empty:
+            return {}
+
+        df = equity_df.copy()
+        # 월별 리샘플링 (각 월의 마지막 데이터 포인트 사용 via .last())
+        monthly_df = df['value'].resample('ME').last()
+        
+        # 수익률 계산 (pct_change)
+        # 정확한 첫 달 수익률 계산을 위해, 초기 자본금을 0번째 인덱스(시작 직전 시간)로 추가합니다.
+        # 이렇게 하면 pct_change() 실행 시 첫 달의 수익률이 (1월말 자산 - 초기 자본금) / 초기 자본금으로 정상 계산됩니다.
+        initial_series = pd.Series([self.initial_capital], index=[df.index[0] - timedelta(seconds=1)])
+        combined_df = pd.concat([initial_series, monthly_df])
+        monthly_returns_pct = combined_df.pct_change().dropna() * 100
+
+        # 결과 포맷팅: { "2024": [null, 5.2, ...(12개)] }
+        result: Dict[int, List[Optional[float]]] = {}
+        
+        for date, value in monthly_returns_pct.items():
+            year = date.year
+            month_idx = date.month - 1 # 0-indexed (0=Jan, 11=Dec)
+            
+            if year not in result:
+                result[year] = [None] * 12
+                
+            result[year][month_idx] = round(value, 2)
+            
+        return result
+
+    def _downsample_data(self, data: List[Dict], target_count: int = 200) -> List[Dict]:
+        """
+        차트 렌더링 성능을 위해 시계열 데이터를 다운샘플링합니다.
+        단순 N-th sampling 방식을 사용합니다.
+        """
+        if not data or len(data) <= target_count:
+            return data
+            
+        step = len(data) / target_count
+        sampled = []
+        
+        for i in range(target_count):
+            index = int(i * step)
+            if index < len(data):
+                sampled.append(data[index])
+                
+        # 마지막 데이터 포인트는 반드시 포함 (최종 결과값 일치 보장)
+        if data[-1] not in sampled:
+            sampled.append(data[-1])
+            
+        return sampled
+
     def _execute_trade(self, timestamp, price: float, side: str, is_entry: bool, reason: str):
         trade_price = price * (1 + self.slippage_pct / 100) if side == 'buy' else price * (1 - self.slippage_pct / 100)
         pnl, commission = None, 0.0
@@ -299,7 +354,12 @@ class BacktestingEngine:
         peak = equity_df['value'].expanding(min_periods=1).max()
         drawdown = (equity_df['value'] - peak) / peak
         mdd_pct = drawdown.min() * 100 if not drawdown.empty else 0.0
-        drawdown_curve_json = [{'time': int(idx.timestamp()), 'value': round(val, 2)} for idx, val in (drawdown * 100).items()]
+        
+        # [수정] Drawdown Curve도 일단 전체 해상도로 생성 (이후 다운샘플링)
+        drawdown_curve_full = [{'time': int(idx.timestamp()), 'value': round(val, 2)} for idx, val in (drawdown * 100).items()]
+        
+        # [New] 월별 수익률 계산 (전체 해상도 데이터 사용)
+        monthly_returns = self._calculate_monthly_returns(equity_df)
         
         total_trades = self.winning_trades + self.losing_trades
         win_rate_pct = (self.winning_trades / total_trades) * 100 if total_trades > 0 else 0.0
@@ -337,6 +397,7 @@ class BacktestingEngine:
             if std_err > 0 and len(x) > 0:
                 k_ratio = (slope * 365) / (std_err * np.sqrt(len(x))) * (1 / np.sqrt(365))
         
+        
         score_factors = {"profitability": {"metric": "Profit Factor", "value": profit_factor, "target": 2.0, "weight": 30}, "riskAdjusted": {"metric": "Sortino Ratio", "value": sortino_ratio, "target": 3.0, "weight": 30}, "resilience": {"metric": "Calmar Ratio", "value": calmar_ratio, "target": 1.0, "weight": 30}, "consistency": {"metric": "K-Ratio", "value": k_ratio, "target": 1.5, "weight": 10}}
         backtest_score = 0
         for key, factor in score_factors.items():
@@ -344,14 +405,32 @@ class BacktestingEngine:
             score_factors[key]['score'] = max(0, min(150, score))
             backtest_score += score_factors[key]['score'] * (factor['weight'] / 100)
 
+        # [New] 거래 요약 정보에 월별 수익률 추가
+        trade_summary = {
+            "monthly_returns": monthly_returns
+        }
+
+        # [New] 차트 데이터 다운샘플링 적용
+        pnl_curve_sampled = self._downsample_data(self.equity_curve, target_count=150)
+        drawdown_curve_sampled = self._downsample_data(drawdown_curve_full, target_count=150)
+
         return {
             "final_equity": final_equity, # [필수] WFO 연속 실행을 위해 자본금 전달
             "total_return_pct": round(total_return_pct, 2), "mdd_pct": round(mdd_pct, 2),
             "win_rate_pct": round(win_rate_pct, 2), "profit_factor": round(profit_factor, 2),
             "sharpe_ratio": round(sharpe_ratio, 2), "sortino_ratio": round(sortino_ratio, 2),
             "cagr_pct": round(cagr, 2), "total_trades": total_trades, "winning_trades": self.winning_trades,
-            "losing_trades": self.losing_trades, "pnl_curve_json": self.equity_curve,
-            "drawdown_curve_json": drawdown_curve_json, "calmar_ratio": round(calmar_ratio, 2),
+            "losing_trades": self.losing_trades, 
+            
+            # [수정] 다운샘플링된 커브 전달
+            "pnl_curve_json": pnl_curve_sampled,
+            "drawdown_curve_json": drawdown_curve_sampled, 
+            
+            # [수정] 월별 성과가 포함된 요약 정보 전달 (기존에는 별도 키가 없었으므로 새로 추가하거나 기존 필드 활용)
+            # 여기서는 trade_summary_json 키로 매핑될 수 있도록 반환 딕셔너리에 포함
+            "trade_summary_json": trade_summary,
+
+            "calmar_ratio": round(calmar_ratio, 2),
             "avg_profit_loss_ratio": round(avg_profit_loss_ratio, 2), "ulcer_index": round(ulcer_index, 2),
             "longest_flat_days": longest_flat_days, "avg_holding_period_days": round(avg_holding_period_days, 2),
             "k_ratio": round(k_ratio, 2), "backtest_score": round(backtest_score, 2), "score_factors": score_factors
