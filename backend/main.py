@@ -1,6 +1,11 @@
 # file: backend/main.py
 
 import os
+import warnings
+# Filter UserWarnings from pandas_ta module
+warnings.filterwarnings("ignore", category=UserWarning, module="pandas_ta")
+# Filter pkg_resources deprecation warnings by message
+warnings.filterwarnings("ignore", category=UserWarning, message=".*pkg_resources is deprecated.*")
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status

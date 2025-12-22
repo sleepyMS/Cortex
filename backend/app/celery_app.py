@@ -1,6 +1,11 @@
 # file: backend/app/celery_app.py
 
 import os
+import warnings
+# Filter UserWarnings from pandas_ta module
+warnings.filterwarnings("ignore", category=UserWarning, module="pandas_ta")
+# Filter pkg_resources deprecation warnings by message
+warnings.filterwarnings("ignore", category=UserWarning, message=".*pkg_resources is deprecated.*")
 import sys
 import uuid
 from celery import Celery, Task

@@ -610,7 +610,7 @@ class SignalService:
             lower_bound = block.lower_bound if block.lower_bound is not None else -np.inf
             upper_bound = block.upper_bound if block.upper_bound is not None else np.inf
             is_within = (indicator_series >= lower_bound) & (indicator_series <= upper_bound)
-            was_within = is_within.shift(1).fillna(False).infer_objects(copy=False)
+            was_within = is_within.shift(1, fill_value=False)
             if block.state_action == "within": parent_series = is_within
             elif block.state_action == "enter": parent_series = ~was_within & is_within
             elif block.state_action == "exit": parent_series = was_within & ~is_within
