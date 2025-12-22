@@ -94,6 +94,7 @@ export function Header() {
                 { href: "/strategies", label: tNav("strategies") },
                 { href: "/backtester", label: tNav("backtester") },
                 { href: "/optimization", label: tNav("optimization") },
+                { href: "/ai-lab", label: tNav("aiLab") },
                 { href: "/marketplace", label: tNav("marketplace") },
                 { href: "/bots", label: tNav("liveBots") },
               ].map((item) => {

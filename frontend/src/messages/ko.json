@@ -787,7 +787,8 @@
     "optimization": "전략 최적화",
     "marketplace": "마켓플레이스",
     "community": "커뮤니티",
-    "liveBots": "실전 매매"
+    "liveBots": "실전 매매",
+    "aiLab": "AI 연구소"
   },
   "BacktestList": {
     "title": "백테스트 기록",
@@ -2243,6 +2244,38 @@
       "exchange": "거래소",
       "tradesCount": "{winning}승 / {total}회 거래",
       "riskLevel": "위험 수준"
+    }
+  },
+  "AILabPage": {
+    "title": "AI 연구소",
+    "subtitle": "머신러닝 모델을 학습하고 관리하세요",
+    "createNewModel": "새 AI 모델 생성",
+    "filterStatusAll": "모든 상태",
+    "filterStatusTraining": "학습중",
+    "filterStatusCompleted": "완료",
+    "filterStatusFailed": "실패",
+    "filterStatusPending": "대기중",
+    "resetFilters": "필터 초기화",
+    "fetchError": "AI 모델 목록을 불러오는 중 오류가 발생했습니다.",
+    "deleteSuccess": "AI 모델이 삭제되었습니다.",
+    "deleteError": "모델 삭제 실패: {error}",
+    "empty": {
+      "title": "아직 생성된 AI 모델이 없습니다",
+      "description": "첫 번째 AI 모델을 학습시켜 당신만의 트레이딩 신호를 생성해보세요.",
+      "createButton": "첫 AI 모델 생성하기"
+    },
+    "status": {
+      "pending": "대기중",
+      "training": "학습중",
+      "completed": "완료",
+      "failed": "실패"
+    },
+    "card": {
+      "timeframe": "타임프레임",
+      "period": "학습 기간",
+      "viewDetail": "상세 보기",
+      "testPrediction": "예측 테스트",
+      "delete": "삭제"
     }
   }
 }

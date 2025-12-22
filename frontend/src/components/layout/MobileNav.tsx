@@ -52,6 +52,7 @@ import {
   Check,
   Github,
   Twitter,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -227,6 +228,7 @@ export function MobileNav() {
                   icon={Zap}
                   label={tNav("optimization")}
                 />
+                <NavItem href="/ai-lab" icon={Brain} label={tNav("aiLab")} />
                 <NavItem
                   href="/marketplace"
                   icon={Store}

@@ -22,7 +22,7 @@ from app.services.plan_service import plan_service
 from app.services.marketplace_service import marketplace_service
 from app.routers import (
     auth, users, backtests, strategies, api_keys,
-    plans, subscriptions, live_bots, community, admin, market_data, marketplace, websockets, indicators, webhook, credits, optimizations
+    plans, subscriptions, live_bots, community, admin, market_data, marketplace, websockets, indicators, webhook, credits, optimizations, ai_models
 )
 
 # .env 파일 로드
@@ -102,6 +102,7 @@ app.include_router(indicators.router, prefix=API_PREFIX, tags=["Indicators"])
 app.include_router(webhook.router, prefix=API_PREFIX, tags=["Webhook"]) 
 app.include_router(credits.router, prefix=API_PREFIX, tags=["Credits"]) 
 app.include_router(optimizations.router, prefix=API_PREFIX, tags=["Optimizations"]) 
+app.include_router(ai_models.router, prefix=API_PREFIX, tags=["AI Models"]) 
 
 
 @app.get(f"{API_PREFIX}/health", tags=["Health Check"])

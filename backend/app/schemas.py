@@ -1276,3 +1276,164 @@ class OptimizationJobDetail(OptimizationJobSummary):
 
     class Config:
         from_attributes = True
+
+
+# ==============================================================================
+# 9. AI 모델 관련 스키마 
+# ==============================================================================
+
+class AIModelStatus(str, enum.Enum):
+    """AI 모델 상태"""
+    PENDING = "pending"
+    TRAINING = "training"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class AIIndicatorConfig(CamelCaseModel):
+    """AI 모델에 사용될 기술적 지표 설정"""
+    type: str  # RSI, EMA, MACD, BB, ATR 등
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AIFeatureConfig(CamelCaseModel):
+    """AI 모델 피처 설정"""
+    sequence_length: int = Field(60, ge=10, le=500, description="시퀀스 길이 (봉 개수)")
+    use_ohlcv: bool = True
+    ohlcv_columns: List[str] = Field(default_factory=lambda: ["open", "high", "low", "close", "volume"])
+    indicators: List[AIIndicatorConfig] = Field(default_factory=list)
+    use_returns: bool = True
+    use_log_returns: bool = True
+
+
+class AILabelingConfig(CamelCaseModel):
+    """Triple Barrier 라벨링 설정"""
+    method: str = Field("triple_barrier", description="라벨링 방법")
+    horizon: int = Field(24, ge=1, le=168, description="최대 대기 시간 (봉 개수)")
+    profit_target: float = Field(0.02, ge=0.001, le=0.5, description="Take Profit 비율")
+    stop_loss: float = Field(0.01, ge=0.001, le=0.5, description="Stop Loss 비율")
+
+
+class AIArchitectureConfig(CamelCaseModel):
+    """AI 모델 아키텍처 설정"""
+    hidden_size: int = Field(64, ge=16, le=512)
+    num_layers: int = Field(2, ge=1, le=5)
+    dropout: float = Field(0.2, ge=0, le=0.5)
+    bidirectional: bool = False
+
+
+class AITrainingConfigSchema(CamelCaseModel):
+    """AI 모델 학습 설정"""
+    epochs: int = Field(100, ge=10, le=500)
+    batch_size: int = Field(64, ge=16, le=256)
+    learning_rate: float = Field(0.001, ge=0.0001, le=0.1)
+    early_stopping_patience: int = Field(10, ge=3, le=50)
+    validation_split: float = Field(0.2, ge=0.1, le=0.4)
+
+
+class AIModelCreate(CamelCaseModel):
+    """AI 모델 생성 요청"""
+    name: str = Field(..., min_length=3, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    model_type: str = Field("lstm", description="모델 타입 (lstm, gru)")
+    architecture_config: AIArchitectureConfig
+    feature_config: AIFeatureConfig
+    labeling_config: AILabelingConfig
+    training_config: AITrainingConfigSchema
+    training_symbol: str = Field(..., description="학습 심볼 (예: BTCUSDT)")
+    training_timeframe: str = Field("1h", description="타임프레임")
+    training_start_date: datetime
+    training_end_date: datetime
+
+    @field_validator('name', 'description')
+    @classmethod
+    def sanitize_fields(cls, value: Optional[str]) -> Optional[str]:
+        if value:
+            return sanitize_html(value)
+        return value
+
+
+class AITrainingMetrics(CamelCaseModel):
+    """학습 결과 메트릭"""
+    accuracy: Optional[float] = None
+    f1_macro: Optional[float] = None
+    precision_macro: Optional[float] = None
+    recall_macro: Optional[float] = None
+    confusion_matrix: Optional[List[List[int]]] = None
+
+
+class AILabelStats(CamelCaseModel):
+    """라벨 분포 통계"""
+    total_samples: int
+    buy_count: int
+    hold_count: int
+    sell_count: int
+    buy_ratio: float
+    hold_ratio: float
+    sell_ratio: float
+
+
+class AITrainingJobResponse(CamelCaseModel):
+    """학습 작업 상태 응답"""
+    id: uuid.UUID
+    model_id: uuid.UUID
+    status: str
+    progress_pct: int
+    current_epoch: Optional[int] = None
+    total_epochs: Optional[int] = None
+    current_metrics: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class AIModelSummary(CamelCaseModel):
+    """AI 모델 목록 조회용 요약"""
+    id: uuid.UUID
+    name: str
+    description: Optional[str] = None
+    model_type: str
+    status: AIModelStatus
+    training_symbol: str
+    training_timeframe: str
+    training_start_date: datetime
+    training_end_date: datetime
+    is_public: bool
+    created_at: datetime
+
+
+class AIModelDetail(AIModelSummary):
+    """AI 모델 상세 정보"""
+    user_id: uuid.UUID
+    architecture_config: Dict[str, Any]
+    feature_config: Dict[str, Any]
+    labeling_config: Dict[str, Any]
+    training_config: Dict[str, Any]
+    training_metrics: Optional[Dict[str, Any]] = None
+    validation_metrics: Optional[Dict[str, Any]] = None
+    model_weights_path: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    latest_training_job: Optional[AITrainingJobResponse] = None
+
+
+class AIModelCreateResponse(CamelCaseModel):
+    """AI 모델 생성 응답"""
+    model: AIModelSummary
+    training_job: AITrainingJobResponse
+    task_id: str
+
+
+class AIPredictionRequest(CamelCaseModel):
+    """AI 예측 테스트 요청"""
+    symbol: str = Field(..., description="테스트할 심볼")
+    timeframe: str = Field("1h", description="타임프레임")
+
+
+class AIPredictionResponse(CamelCaseModel):
+    """AI 예측 결과 응답"""
+    buy_probability: float
+    hold_probability: float
+    sell_probability: float
+    predicted_class: int
+    predicted_label: str

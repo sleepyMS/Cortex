@@ -774,3 +774,118 @@ class CreditsAttendanceLog(Base):
     consecutive_days = Column(Integer, default=1, nullable=False)
     
     user = relationship("User")
+
+# ==============================================================================
+# 8. AI 모델 관련 모델
+# ==============================================================================
+
+class AIModelStatus(str, enum.Enum):
+    """AI 모델 학습 상태"""
+    PENDING = "pending"      # 학습 대기 중
+    TRAINING = "training"    # 학습 진행 중
+    COMPLETED = "completed"  # 학습 완료
+    FAILED = "failed"        # 학습 실패
+
+
+class AIModel(Base):
+    """
+    AI/ML 모델 메타데이터 모델.
+    LSTM, GRU, TFT 등 다양한 모델의 학습 설정과 결과를 저장합니다.
+    """
+    __tablename__ = "ai_models"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    
+    # 모델 아키텍처 설정
+    model_type = Column(String(50), nullable=False)  # 'lstm', 'gru', 'tft'
+    architecture_config = Column(JSONB, nullable=False)  # hidden_size, num_layers, dropout 등
+    
+    # Feature Store - 학습에 사용된 피처 설정 (핵심!)
+    # 추론 시 동일한 순서로 피처를 재현하기 위해 필수
+    feature_config = Column(JSONB, nullable=False)
+    
+    # 라벨링 설정 (Triple Barrier 등)
+    labeling_config = Column(JSONB, nullable=False)
+    
+    # 학습 하이퍼파라미터
+    training_config = Column(JSONB, nullable=False)
+    
+    # 학습 데이터 정보 (미래 참조 방지 핵심!)
+    training_symbol = Column(String(50), nullable=False)
+    training_timeframe = Column(String(10), nullable=False)
+    training_start_date = Column(DateTime(timezone=True), nullable=False)
+    training_end_date = Column(DateTime(timezone=True), nullable=False)
+    
+    # 학습 결과 메트릭
+    training_metrics = Column(JSONB, nullable=True)  # accuracy, f1, confusion_matrix 등
+    validation_metrics = Column(JSONB, nullable=True)
+    
+    # 모델 파일 저장 경로 (로컬 파일시스템)
+    model_weights_path = Column(String(500), nullable=True)
+    
+    # 상태 관리
+    status = Column(Enum(AIModelStatus), default=AIModelStatus.PENDING, nullable=False, index=True)
+    is_public = Column(Boolean, default=False, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    
+    # 관계
+    user = relationship("User")
+    training_jobs = relationship("AITrainingJob", back_populates="model", cascade="all, delete-orphan")
+    purchases = relationship("UserPurchasedAIModel", back_populates="ai_model", cascade="all, delete-orphan")
+
+
+class AITrainingJob(Base):
+    """
+    AI 모델 학습 작업 추적 모델.
+    Celery 태스크와 연동하여 학습 진행 상황을 실시간으로 추적합니다.
+    """
+    __tablename__ = "ai_training_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    model_id = Column(UUID(as_uuid=True), ForeignKey("ai_models.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # 진행 상태
+    status = Column(String(20), default="pending", nullable=False)  # pending, running, completed, failed
+    progress_pct = Column(Integer, default=0, nullable=False)
+    current_epoch = Column(Integer, nullable=True)
+    total_epochs = Column(Integer, nullable=True)
+    
+    # 실시간 메트릭 (학습 중 업데이트)
+    current_metrics = Column(JSONB, nullable=True)  # train_loss, val_loss 등
+    
+    # 에러 정보
+    error_message = Column(Text, nullable=True)
+    
+    # Celery 태스크 연동
+    celery_task_id = Column(String(255), nullable=True, index=True)
+    
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    # 관계
+    model = relationship("AIModel", back_populates="training_jobs")
+    user = relationship("User")
+
+
+class UserPurchasedAIModel(Base):
+    """사용자가 마켓플레이스에서 구매한 AI 모델 소유권 모델"""
+    __tablename__ = "user_purchased_ai_models"
+    __table_args__ = (UniqueConstraint('user_id', 'ai_model_id', name='_user_ai_model_uc'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    ai_model_id = Column(UUID(as_uuid=True), ForeignKey("ai_models.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_item_id = Column(UUID(as_uuid=True), ForeignKey("marketplace_order_items.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+    ai_model = relationship("AIModel", back_populates="purchases")
+    order_item = relationship("MarketplaceOrderItem")
+
