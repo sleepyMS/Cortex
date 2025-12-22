@@ -97,6 +97,7 @@ const EquityChart: React.FC<EquityChartProps> = ({
           fontSize={12}
           tickLine={false}
           axisLine={false}
+          domain={["auto", "auto"]}
           tickFormatter={(value) => `$${value.toLocaleString()}`}
         />
         <Tooltip

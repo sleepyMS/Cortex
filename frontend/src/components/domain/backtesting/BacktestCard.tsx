@@ -312,7 +312,7 @@ export const BacktestCard = ({
               {/* Total Return */}
               <div
                 className={cn(
-                  "p-3 rounded-lg border border-border/10",
+                  "p-3 rounded-lg border border-border/10 flex flex-col items-center text-center",
                   result && result.totalReturnPct !== null
                     ? result.totalReturnPct >= 0
                       ? "bg-emerald-500/10"
@@ -320,7 +320,7 @@ export const BacktestCard = ({
                     : "bg-muted/30"
                 )}
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
                   {result && result.totalReturnPct !== null ? (
                     result.totalReturnPct >= 0 ? (
                       <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
@@ -361,8 +361,8 @@ export const BacktestCard = ({
               </div>
 
               {/* MDD */}
-              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-200/20 dark:border-blue-800/20">
-                <div className="flex items-center gap-1.5 mb-1">
+              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-200/20 dark:border-blue-800/20 flex flex-col items-center text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
                   <Activity className="h-3.5 w-3.5 text-blue-500" />
                   <Tooltip>
                     <TooltipTrigger className="cursor-help">
