@@ -30,7 +30,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
         {/* Brand Column */}
         <div className="flex flex-col gap-4 col-span-1 md:col-span-1">
-          <Link href="/" aria-label="Cortex Home">
+          <Link href="/" aria-label="Cortex Home" className="group">
             <Logo />
           </Link>
           <p className="text-muted-foreground text-sm leading-relaxed mb-2">

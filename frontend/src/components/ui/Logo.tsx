@@ -1,6 +1,7 @@
 // file: frontend/src/components/ui/Logo.tsx
 
 import * as React from "react";
+import Image from "next/image";
 import { clsx } from "clsx";
 
 interface LogoProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -10,16 +11,22 @@ const Logo = React.forwardRef<HTMLDivElement, LogoProps>(
     return (
       <div
         ref={ref}
-        className={clsx(
-          "inline-block text-xl font-bold tracking-tighter",
-          className
-        )}
+        className={clsx("flex items-center gap-2.5", className)}
         {...props}
       >
-        <span className="bg-gradient-to-r from-violet-400 to-purple-500 bg-clip-text text-transparent">
-          Cor
-        </span>
-        <span className="text-foreground">tex</span>
+        <Image
+          src="/images/logo.svg"
+          alt="Cortex Logo"
+          width={24}
+          height={24}
+          className="w-auto h-6 transform transition-transform group-hover:scale-110"
+        />
+        <div className="text-xl font-bold tracking-tighter">
+          <span className="bg-gradient-to-r from-violet-400 to-purple-500 bg-clip-text text-transparent">
+            Cor
+          </span>
+          <span className="text-foreground">tex</span>
+        </div>
       </div>
     );
   }

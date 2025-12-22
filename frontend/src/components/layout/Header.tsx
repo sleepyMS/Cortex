@@ -81,7 +81,7 @@ export function Header() {
         {/* 좌측 로고 및 모바일 메뉴 */}
         <div className="flex items-center gap-4 justify-self-start">
           <MobileNav />
-          <Link href="/" aria-label="Go to homepage">
+          <Link href="/" aria-label="Go to homepage" className="group">
             <Logo />
           </Link>
         </div>
