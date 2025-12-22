@@ -78,6 +78,7 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { IndicatorMetadata } from "@/types/indicator";
 import { StrategySnapshotList } from "@/components/domain/strategy/StrategySnapshotList";
+import { GlassPane } from "@/components/ui/GlassPane";
 
 // --- Animation variants ---
 const barVariants = {
@@ -773,8 +774,8 @@ export function StrategyEditorPanel({
 
                 <Separator />
 
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <GlassPane className="p-6 md:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <h2 className="text-2xl font-bold text-foreground">
                       {t("chartTitle")}
                     </h2>
@@ -784,7 +785,7 @@ export function StrategyEditorPanel({
                         onValueChange={setChartTicker}
                         disabled={strategyState.targetCoins.length === 0}
                       >
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-[180px] bg-background/50">
                           <SelectValue placeholder="Select a coin" />
                         </SelectTrigger>
                         <SelectContent>
@@ -799,7 +800,7 @@ export function StrategyEditorPanel({
                         value={chartTimeframe}
                         onValueChange={setChartTimeframe}
                       >
-                        <SelectTrigger className="w-[100px]">
+                        <SelectTrigger className="w-[100px] bg-background/50">
                           <SelectValue placeholder="Timeframe" />
                         </SelectTrigger>
                         <SelectContent>
@@ -823,7 +824,7 @@ export function StrategyEditorPanel({
                     </div>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative rounded-lg overflow-hidden border border-primary/10">
                     {isLoadingOHLCV ? (
                       <Skeleton className="w-full h-[400px] rounded-lg" />
                     ) : isError ? (
@@ -847,7 +848,7 @@ export function StrategyEditorPanel({
                       />
                     )}
                   </div>
-                </div>
+                </GlassPane>
 
                 <Separator />
 
