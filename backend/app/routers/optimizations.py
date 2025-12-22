@@ -9,6 +9,8 @@ from .. import schemas, models
 from ..dependencies import get_async_db, get_current_active_user, create_owner_verifier
 from ..services.optimization_service import optimization_service
 from ..services.cost_calculator import cost_calculator_service
+from ..services.strategy_service import strategy_service
+from ..utils.strategy_utils import get_min_timeframe_minutes
 
 router = APIRouter(
     prefix="/optimizations",
@@ -34,8 +36,14 @@ async def estimate_optimization_cost(
     duration_years = duration_days / 365.25 if duration_days > 0 else 0
     if duration_years <= 0: raise HTTPException(status_code=400, detail="Invalid date range")
 
+    # 전략의 타임프레임 동적 반영
+    min_tf_minutes = 60
+    strategy = await strategy_service.get_strategy_by_id(db, request.strategy_id)
+    if strategy:
+        min_tf_minutes = get_min_timeframe_minutes(strategy, default_timeframe='1h')
+
     cost_params = schemas.CostEstimationRequest(
-        backtest_duration_years=duration_years, min_timeframe_minutes=60, trials=request.trials
+        backtest_duration_years=duration_years, min_timeframe_minutes=min_tf_minutes, trials=request.trials
     )
     return await cost_calculator_service.calculate_credit_cost(db, current_user, cost_params)
 
@@ -58,8 +66,15 @@ async def create_optimization(
 
     duration_days = (job_in.end_date - job_in.start_date).days
     duration_years = duration_days / 365.25 if duration_days > 0 else 0
+    
+    # [개선] 전략의 타임프레임 동적 반영
+    min_tf_minutes = 60
+    strategy = await strategy_service.get_strategy_by_id(db, request.strategy_id)
+    if strategy:
+        min_tf_minutes = get_min_timeframe_minutes(strategy, default_timeframe='1h')
+
     cost_params = schemas.CostEstimationRequest(
-        backtest_duration_years=duration_years, min_timeframe_minutes=60, trials=total_trials
+        backtest_duration_years=duration_years, min_timeframe_minutes=min_tf_minutes, trials=total_trials
     )
     cost_info = await cost_calculator_service.calculate_credit_cost(db, current_user, cost_params)
 

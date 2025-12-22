@@ -48,14 +48,7 @@ OUTPUT_PREFIX_MAP = {
     "VWAP": ["VWAP"],
 }
 
-def timeframe_to_minutes(tf_str: str) -> int:
-    """타임프레임 문자열을 분 단위 정수로 변환합니다."""
-    if 'm' in tf_str: return int(tf_str.replace('m', ''))
-    if 'h' in tf_str: return int(tf_str.replace('h', '')) * 60
-    if 'd' in tf_str: return int(tf_str.replace('d', '')) * 1440
-    if 'w' in tf_str: return int(tf_str.replace('w', '')) * 10080
-    if 'M' in tf_str: return int(tf_str.replace('M', '')) * 43200
-    return float('inf')
+from ..utils.strategy_utils import timeframe_to_minutes
 
 
 class SignalService:
@@ -158,41 +151,79 @@ class SignalService:
             return pd.DataFrame(columns=['signal']), '1h'
 
         # [핵심] 계산된 데이터프레임을 넘겨 순수 로직 평가만 수행 (공통 메서드 사용)
-        return self._compute_signals_on_dataframe(df_merged, request), calculation_tf
+        # [수정] 혼합 타임프레임 처리를 위해 base_timeframe 명시적 전달
+        return self._compute_signals_on_dataframe(df_merged, request, base_timeframe=calculation_tf), calculation_tf
 
     def generate_signals_from_dataframe(
         self,
         base_df: pd.DataFrame,
         strategy_snapshot: schemas.StrategyCreate,
-        timeframe: str = '1h'
+        timeframe: str = '1h',
+        additional_data: Dict[str, pd.DataFrame] = None
     ) -> pd.DataFrame:
         """
         [SYNC/CPU-Bound] 최적화 루프용 신규 메서드.
+        혼합 타임프레임 처리를 위해 Native Timeframe에서 지표를 먼저 계산하고 병합합니다.
+        
+        Args:
+            additional_data (Dict[str, pd.DataFrame]): 
+                '1h', '4h' 등의 키를 가진 상위 타임프레임 원본 데이터.
+                미리 병합된 상태가 아니라 순수 OHLCV 데이터여야 합니다.
         """
+        from ..utils.strategy_utils import merge_dataframes_on_close_time
+
         # 1. 원본 데이터 보존을 위해 복사
         df = base_df.copy()
 
-        # [핵심 수정] DatetimeIndex를 'time' 컬럼(Unix Timestamp)으로 변환
-        # MarketDataService는 DatetimeIndex를 반환하므로, 이를 다시 컬럼으로 만들어줘야 합니다.
+        # [수정] DatetimeIndex 유지 + 'time' 컬럼 확보
+        # merge_dataframes_on_close_time은 DatetimeIndex를 필요로 하므로 reset_index()를 하지 않습니다.
+        
+        # A. Index가 DatetimeIndex가 아니라면 변환 시도
+        if not isinstance(df.index, pd.DatetimeIndex):
+            if 'time' in df.columns:
+                # time 컬럼이 있다면 이를 인덱스로 설정
+                df['time_dt'] = pd.to_datetime(df['time'], unit='s', utc=True)
+                df = df.set_index('time_dt')
+                df.index.name = 'time_dt' # 명시적 이름
+            elif 'date' in df.columns:
+                 df['date_dt'] = pd.to_datetime(df['date'])
+                 df = df.set_index('date_dt')
+
+        # B. 'time' 컬럼(Unix Timestamp)이 없다면 생성
         if 'time' not in df.columns and isinstance(df.index, pd.DatetimeIndex):
-             df = df.reset_index()
-             # 컬럼명이 'index'나 다른 이름일 수 있으므로 확인 후 'time'으로 통일
-             if 'index' in df.columns:
-                 df = df.rename(columns={'index': 'time'})
-             
-             # Unix Timestamp(초 단위)로 변환
-             if 'time' in df.columns:
-                 df['time'] = df['time'].astype('int64') // 10**9
+             # 나노초 단위 Int64 -> 초 단위 변환
+             df['time'] = df.index.astype('int64') // 10**9
 
         # 2. 전략에서 필요한 지표 설정 추출
         configs = self._get_required_timeframes_and_indicators(strategy_snapshot, base_timeframe=timeframe)
-        
-        # 3. 기본 타임프레임 지표 계산 (인메모리)
+        all_timeframes = configs.get('timeframes', [timeframe])
+
+        # 3. Base Timeframe 지표 계산
         base_indicators = configs['indicators'].get(timeframe, [])
         self._apply_indicators(df, base_indicators)
 
-        # 4. 로직 평가 및 신호 생성
-        return self._compute_signals_on_dataframe(df, strategy_snapshot)
+        # 4. Higher Timeframe 지표 계산 및 병합
+        if additional_data:
+            for tf, higher_df in additional_data.items():
+                if tf == timeframe: continue # Base는 이미 계산됨
+                
+                # 4-1. Native Higher TF에서 지표 계산
+                # 원본 변형 방지를 위해 복사 후 계산
+                temp_higher_df = higher_df.copy()
+                indicators = configs['indicators'].get(tf, [])
+                self._apply_indicators(temp_higher_df, indicators)
+                
+                # 4-2. Close Time 기준 병합
+                # merge_dataframes_on_close_time이 리네이밍과 매핑을 모두 수행함
+                df = merge_dataframes_on_close_time(
+                    base_df=df,
+                    base_tf_str=timeframe,
+                    higher_df=temp_higher_df,
+                    higher_tf_str=tf
+                )
+
+        # 5. 로직 평가 및 신호 생성
+        return self._compute_signals_on_dataframe(df, strategy_snapshot, base_timeframe=timeframe)
 
     # ==========================================================================
     # 2. Core Logic Methods (Internal, Pure Functional, Shared)
@@ -237,7 +268,8 @@ class SignalService:
     def _compute_signals_on_dataframe(
         self,
         df: pd.DataFrame,
-        rules_source: Union[schemas.SignalCalculationRequest, schemas.StrategyCreate]
+        rules_source: Union[schemas.SignalCalculationRequest, schemas.StrategyCreate],
+        base_timeframe: str = '1h'
     ) -> pd.DataFrame:
         """
         [Helper] 준비된 DataFrame과 규칙을 받아 최종 매매 신호를 계산합니다.
@@ -248,7 +280,7 @@ class SignalService:
         def process_rules(rules: Optional[schemas.PositionRules], signal_type: str):
             if not rules or not rules.blocks: return
             # _parse_logic_block_to_series는 기존과 100% 동일하게 동작함
-            block_results = [self._parse_logic_block_to_series(df, block) for block in rules.blocks]
+            block_results = [self._parse_logic_block_to_series(df, block, base_timeframe=base_timeframe) for block in rules.blocks]
             op = any if rules.logic_operator == "OR" else all
             final_series = pd.DataFrame(block_results).transpose().apply(op, axis=1)
             signal_points = df[final_series]
@@ -271,9 +303,10 @@ class SignalService:
         return signals_df[['signal']]
 
     def _get_indicator_column_name(
-    self,
-    df_columns: List[str],
-    indicator_value: Union[schemas.IndicatorValue, float, int]
+        self,
+        df_columns: List[str],
+        indicator_value: Union[schemas.IndicatorValue, float, int],
+        base_timeframe: str = '1h'
     ) -> Optional[Union[str, float, int]]:
         """
         [Refactored] 데이터프레임에서 지표 컬럼명을 찾습니다.
@@ -427,6 +460,14 @@ class SignalService:
 
         expected_col_base = f"{target_prefix}_{params_str}".lower() if params_str else target_prefix.lower()
         
+        # [핵심 수정] 타임프레임 접미사 처리
+        # 지표가 다른 타임프레임에서 계산된 경우, 컬럼명 뒤에 '_{tf}'가 붙어 있습니다.
+        target_tf = indicator_value.timeframe if indicator_value.timeframe else base_timeframe
+        
+        # base_timeframe과 다르면 접미사 추가
+        if target_tf != base_timeframe:
+            expected_col_base = f"{expected_col_base}_{target_tf}"
+
         # Exact match attempt
         for col in df_columns:
             if col.lower() == expected_col_base: return col
@@ -436,11 +477,11 @@ class SignalService:
         
         return None
 
-    def _get_operand_series(self, df: pd.DataFrame, operand: Union[schemas.IndicatorValue, float, int, None]) -> Optional[pd.Series]:
+    def _get_operand_series(self, df: pd.DataFrame, operand: Union[schemas.IndicatorValue, float, int, None], base_timeframe: str = '1h') -> Optional[pd.Series]:
         """
         Offset 기능을 지원하기 위한 헬퍼 메서드
         """
-        col_name = self._get_indicator_column_name(df.columns, operand)
+        col_name = self._get_indicator_column_name(df.columns, operand, base_timeframe=base_timeframe)
         if col_name is None: return None
         
         series = df[col_name] if isinstance(col_name, str) else pd.Series(col_name, index=df.index)
@@ -538,7 +579,7 @@ class SignalService:
         
         df[f"{indicator_col}_divergence"] = div_series
 
-    def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0) -> pd.Series:
+    def _parse_logic_block_to_series(self, df: pd.DataFrame, block: schemas.LogicBlock, depth=0, base_timeframe: str = '1h') -> pd.Series:
         """
         단일 LogicBlock을 평가하여 boolean Series를 반환합니다.
         """
@@ -546,8 +587,8 @@ class SignalService:
         block_type = block.type
         
         if block_type == "comparison":
-            series_a = self._get_operand_series(df, block.operand_a)
-            series_b = self._get_operand_series(df, block.operand_b)
+            series_a = self._get_operand_series(df, block.operand_a, base_timeframe=base_timeframe)
+            series_b = self._get_operand_series(df, block.operand_b, base_timeframe=base_timeframe)
             
             if series_a is None or series_b is None: return pd.Series(False, index=df.index)
             
@@ -555,15 +596,15 @@ class SignalService:
             parent_series = op_map.get(block.operator, pd.Series(False, index=df.index))
 
         elif block_type == "crossover":
-            main_col = self._get_indicator_column_name(df.columns, block.main_line)
-            signal_col = self._get_indicator_column_name(df.columns, block.signal_line)
+            main_col = self._get_indicator_column_name(df.columns, block.main_line, base_timeframe=base_timeframe)
+            signal_col = self._get_indicator_column_name(df.columns, block.signal_line, base_timeframe=base_timeframe)
             if main_col is None or signal_col is None: return pd.Series(False, index=df.index)
             series_main = df[main_col] if isinstance(main_col, str) else pd.Series(main_col, index=df.index)
             series_signal = df[signal_col] if isinstance(signal_col, str) else pd.Series(signal_col, index=df.index)
             parent_series = ta.cross(series_main, series_signal, above=block.cross_direction == "above").fillna(False)
 
         elif block_type == "state":
-            indicator_col = self._get_indicator_column_name(df.columns, block.indicator)
+            indicator_col = self._get_indicator_column_name(df.columns, block.indicator, base_timeframe=base_timeframe)
             if indicator_col is None: return pd.Series(False, index=df.index)
             indicator_series = df[indicator_col] if isinstance(indicator_col, str) else pd.Series(indicator_col, index=df.index)
             lower_bound = block.lower_bound if block.lower_bound is not None else -np.inf
@@ -610,8 +651,8 @@ class SignalService:
                 # 설정된 키로 컬럼 찾기
                 upper_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": [upper_key]})
                 lower_ind_val = schemas.IndicatorValue(**{**indicator.model_dump(), "outputs": [lower_key]})
-                upper_col = self._get_indicator_column_name(df.columns, upper_ind_val)
-                lower_col = self._get_indicator_column_name(df.columns, lower_ind_val)
+                upper_col = self._get_indicator_column_name(df.columns, upper_ind_val, base_timeframe=base_timeframe)
+                lower_col = self._get_indicator_column_name(df.columns, lower_ind_val, base_timeframe=base_timeframe)
             
             if upper_col is None or lower_col is None: return pd.Series(False, index=df.index)
 
@@ -633,7 +674,7 @@ class SignalService:
             elif block.action == "exit": parent_series = was_within & ~is_within
 
         elif block_type == "divergence":
-            base_ind_col = self._get_indicator_column_name(df.columns, block.indicator)
+            base_ind_col = self._get_indicator_column_name(df.columns, block.indicator, base_timeframe=base_timeframe)
             if base_ind_col:
                 divergence_col = f"{base_ind_col}_divergence"
                 
@@ -658,7 +699,7 @@ class SignalService:
                 elif block.direction == "any": parent_series = pattern_series != 0
 
         if block.children and len(block.children) > 0:
-            children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1) for child in block.children]
+            children_series_list = [self._parse_logic_block_to_series(df, child, depth + 1, base_timeframe=base_timeframe) for child in block.children]
             all_series_in_group = [parent_series] + children_series_list
             op_func = np.logical_and if block.logic_operator == "AND" else np.logical_or
             final_series = reduce(op_func, all_series_in_group)

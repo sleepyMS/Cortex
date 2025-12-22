@@ -39,6 +39,9 @@ from .engine.backtesting_engine import BacktestingEngine
 from .utils.communication import WebSocketManager
 from .utils.async_utils import run_async
 from .event_bus import publish_event
+from .utils.strategy_utils import (
+    get_min_timeframe_minutes, extract_all_timeframes_from_strategy
+)
 from .services.market_data_service import market_data_service
 from .services.signal_service import signal_service
 from .services.marketplace_service import marketplace_service
@@ -482,11 +485,22 @@ def run_backtest(self, backtest_id: str):
         params_from_db = schemas.BacktestParametersPayload.model_validate(backtest.parameters)
         snapshot_as_strategy = schemas.StrategyForSnapshot.model_validate(backtest.strategy_snapshot)
 
-        # 2. 시세 데이터 로드 (전체 기간 먼저 로드)
-        WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터 로딩 중...", 25)
+
+        # 2. 시세 데이터 로드 및 병합 (Multi-Timeframe Support)
+        WebSocketManager.send_status_update(backtest_id, "running", "시세 데이터 로딩 및 정렬 중...", 25)
+        
         ticker = snapshot_as_strategy.target_coins[0].ticker if snapshot_as_strategy.target_coins else "BTCUSDT"
-        # 백테스트는 기본 1시간봉으로 가정 (필요시 전략에서 추출하는 로직 추가 가능)
-        base_timeframe = '1h'
+        
+        # A. Base Timeframe 결정 (전략에서 가장 작은 Timeframe)
+        min_tf_minutes = get_min_timeframe_minutes(snapshot_as_strategy, default_timeframe='1h')
+        
+        # 분 단위를 문자열로 변환 (ccxt 표준)
+        tf_map = {1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 240: '4h', 1440: '1d'}
+        base_timeframe = tf_map.get(min_tf_minutes, '1h') # 매핑되지 않는 경우 기본 1h
+        
+        logger.info(f"Backtest Base Timeframe determined: {base_timeframe} ({min_tf_minutes}m)")
+
+        # B. Base Data Fetching
         ohlcv_df = market_data_service.get_historical_data_sync(
             ticker=ticker,
             timeframe=base_timeframe,
@@ -494,13 +508,35 @@ def run_backtest(self, backtest_id: str):
             end_date=params_from_db.end_date
         )
         if ohlcv_df.empty:
-            raise ValueError("백테스트를 위한 시세 데이터가 부족합니다.")
+            raise ValueError(f"백테스트를 위한 기본 시세 데이터({base_timeframe})가 부족합니다.")
+
+        # C. Higher Timeframe Fetching (For Mix-TF support)
+        required_timeframes = extract_all_timeframes_from_strategy(snapshot_as_strategy)
+        # base_timeframe 이미 로드했으므로 제외
+        if base_timeframe in required_timeframes:
+            required_timeframes.remove(base_timeframe)
+            
+        additional_dfs = {}
+        for tf in required_timeframes:
+            logger.info(f"Fetching higher timeframe data: {tf}")
+            higher_df = market_data_service.get_historical_data_sync(
+                ticker=ticker,
+                timeframe=tf,
+                start_date=params_from_db.start_date,
+                end_date=params_from_db.end_date
+            )
+            
+            if not higher_df.empty:
+                additional_dfs[tf] = higher_df
+            else:
+                logger.warning(f"Higher timeframe data {tf} is empty. Skipping.")
 
         # 3. 신호 생성 (로드된 전체 데이터를 기반으로 인메모리 계산)
-        WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 중...", 50)
-        # [중요] generate_signals_from_dataframe은 동기 메서드이므로 바로 호출합니다.
+        WebSocketManager.send_status_update(backtest_id, "running", "매매 신호 생성 및 데이터 정렬 중...", 50)
+        
+        # [중요] generate_signals_from_dataframe 내부에서 지표 선계산 후 병합(Merge) 수행
         signals_df = signal_service.generate_signals_from_dataframe(
-            ohlcv_df, snapshot_as_strategy, timeframe=base_timeframe
+            ohlcv_df, snapshot_as_strategy, timeframe=base_timeframe, additional_data=additional_dfs
         )
 
         # 4. 엔진 실행

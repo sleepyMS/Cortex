@@ -26,10 +26,29 @@ class CostCalculationService:
         duration_days = (request.end_date - request.start_date).days
         duration_years = duration_days / 365.25 if duration_days > 0 else 0
 
+        # [개선] 전략 ID가 있는 경우, 실제 전략의 최소 타임프레임을 추출하여 비용 계산에 반영합니다.
+        min_tf_minutes = 60 # 기본값 1h
+        
+        # request가 strategy_id를 가지고 있는지 확인 (OptimizationCostEstimationRequest 등)
+        if hasattr(request, 'strategy_id') and request.strategy_id:
+            try:
+                # Circular Import 방지를 위해 함수 내부에서 임포트
+                from ..services.strategy_service import strategy_service
+                from ..utils.strategy_utils import get_min_timeframe_minutes
+                
+                # 전략 조회
+                strategy = await strategy_service.get_strategy_by_id(db, request.strategy_id)
+                if strategy:
+                    min_tf_minutes = get_min_timeframe_minutes(strategy, default_timeframe='1h')
+            except Exception as e:
+                # 전략 조회 실패 시 기본값 사용 (로깅 생략 가능 또는 warning)
+                print(f"[CostCalculator] Failed to extract timeframe from strategy: {e}")
+                pass
+
         # 비용 계산에 필요한 저수준 파라미터 객체를 내부적으로 생성합니다.
         cost_params = schemas.CostEstimationRequest(
             backtest_duration_years=duration_years,
-            min_timeframe_minutes=60,  # TODO: 실제 전략에서 사용하는 최소 타임프레임을 동적으로 추출해야 합니다.
+            min_timeframe_minutes=min_tf_minutes,
             trials=1
         )
         
