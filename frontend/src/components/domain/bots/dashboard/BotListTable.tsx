@@ -258,7 +258,7 @@ export function BotListTable() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>{t("actions")}</DropdownMenuLabel>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem asChild className="cursor-pointer">
                             <Link
                               href={`/bots/${bot.id}`}
                               className="flex w-full"
@@ -269,7 +269,7 @@ export function BotListTable() {
                           <DropdownMenuSeparator />
                           {bot.status === "active" ? (
                             <DropdownMenuItem
-                              className="text-orange-500"
+                              className="text-amber-600 focus:text-amber-600 focus:bg-amber-600/10 cursor-pointer"
                               onClick={() =>
                                 handleStartStop(bot.id, bot.status)
                               }
@@ -279,7 +279,7 @@ export function BotListTable() {
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem
-                              className="text-green-500"
+                              className="text-emerald-600 focus:text-emerald-600 focus:bg-emerald-600/10 cursor-pointer"
                               onClick={() =>
                                 handleStartStop(bot.id, bot.status)
                               }
@@ -291,7 +291,7 @@ export function BotListTable() {
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            className="text-red-500"
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                             onClick={() => handleDeleteClick(bot.id)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />

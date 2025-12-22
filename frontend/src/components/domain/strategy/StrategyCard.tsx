@@ -195,7 +195,7 @@ export function StrategyCard({
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={handleUnlistFromMarketplace}
-            className="text-amber-600 focus:text-amber-700 cursor-pointer focus:bg-amber-50"
+            className="text-amber-600 focus:text-amber-600 cursor-pointer focus:bg-amber-600/10"
             disabled={unlistStrategyMutation.isPending}
           >
             {unlistStrategyMutation.isPending ? (

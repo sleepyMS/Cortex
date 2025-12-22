@@ -307,7 +307,7 @@ export const OptimizationJobCard = ({
                   isCanceling || (status !== "running" && status !== "pending")
                 }
                 onClick={() => onCancel(id)}
-                className="text-yellow-600 dark:text-yellow-500"
+                className="text-amber-600 focus:text-amber-600 focus:bg-amber-600/10 cursor-pointer"
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 {t("actions.cancel")}
@@ -317,7 +317,7 @@ export const OptimizationJobCard = ({
                   isDeleting || status === "running" || status === "pending"
                 }
                 onClick={() => onDelete(id)}
-                className="text-[hsl(var(--destructive))] focus:bg-[hsl(var(--destructive))]/10 focus:text-[hsl(var(--destructive))]"
+                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t("actions.delete")}

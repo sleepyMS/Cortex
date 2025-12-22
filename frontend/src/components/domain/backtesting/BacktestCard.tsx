@@ -418,15 +418,15 @@ export const BacktestCard = ({
               <DropdownMenuItem
                 disabled={isCanceling || status !== "running"}
                 onClick={() => onCancel(id)}
-                className="text-yellow-600 dark:text-yellow-500"
+                className="text-amber-600 focus:text-amber-600 focus:bg-amber-600/10 cursor-pointer"
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 {t("actions.cancel")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={isDeleting}
-                onClick={() => onDelete(id)}
-                className="text-destructive focus:text-destructive"
+                onClick={handleDeleteClick}
+                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t("actions.delete")}
