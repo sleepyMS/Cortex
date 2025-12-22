@@ -32,6 +32,22 @@ def timeframe_to_minutes(tf_str: str) -> int:
     if 'M' in tf_str: return int(tf_str.replace('M', '')) * 43200
     return float('inf')
 
+def convert_minutes_to_timeframe_string(minutes: int) -> str:
+    """
+    분(minute) 단위 정수를 Cortex 표준 타임프레임 문자열로 변환합니다.
+    (예: 60 -> '1h', 1440 -> '1d').
+    매핑되지 않는 값은 가장 가까운 하위 표준 타임프레임(보수적 접근) 또는 기본값 '1h'를 반환합니다.
+    """
+    # Cortex / CCXT Standard Timeframes
+    mapping = {
+        1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m',
+        60: '1h', 240: '4h', 720: '12h', 1440: '1d', 10080: '1w', 43200: '1M'
+    }
+    if minutes in mapping:
+        return mapping[minutes]
+        
+    return '1h'
+
 def extract_all_timeframes_from_strategy(strategy: Union[schemas.StrategyCreate, schemas.Strategy, Dict[str, Any], schemas.SignalCalculationRequest]) -> Set[str]:
     """
     전략 객체(또는 딕셔너리)를 순회하며 사용된 모든 타임프레임을 추출합니다.

@@ -40,7 +40,8 @@ from .utils.communication import WebSocketManager
 from .utils.async_utils import run_async
 from .event_bus import publish_event
 from .utils.strategy_utils import (
-    get_min_timeframe_minutes, extract_all_timeframes_from_strategy
+    get_min_timeframe_minutes, extract_all_timeframes_from_strategy,
+    convert_minutes_to_timeframe_string
 )
 from .services.market_data_service import market_data_service
 from .services.signal_service import signal_service
@@ -160,16 +161,9 @@ def run_optimization(self, job_id: str):
         strategy_data = job.strategy_snapshot if hasattr(job, 'strategy_snapshot') and job.strategy_snapshot else schemas.Strategy.model_validate(job.strategy).model_dump()
         strategy_snapshot = schemas.StrategyCreate.model_validate(strategy_data)
 
-        # 전략의 타임프레임 동적 반영
+        # 전략의 타임프레임 동적 반영 (Unified Utility 사용)
         min_minutes = get_min_timeframe_minutes(strategy_snapshot, default_timeframe='1h')
-        
-        if min_minutes == 1440: target_timeframe = '1d'
-        elif min_minutes == 10080: target_timeframe = '1w'
-        elif min_minutes >= 43200: target_timeframe = '1M'
-        elif min_minutes >= 60 and min_minutes % 60 == 0:
-            target_timeframe = f"{min_minutes // 60}h"
-        else:
-            target_timeframe = f"{min_minutes}m"
+        target_timeframe = convert_minutes_to_timeframe_string(min_minutes)
         
         logger.info(f"Optimization running with timeframe: {target_timeframe}")
 
@@ -525,12 +519,9 @@ def run_backtest(self, backtest_id: str):
         # A. Base Timeframe 결정 (전략에서 가장 작은 Timeframe)
         min_tf_minutes = get_min_timeframe_minutes(snapshot_as_strategy, default_timeframe='1h')
         
-        # 분 단위를 문자열로 변환 (ccxt 표준)
-        tf_map = {
-            1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m', 
-            60: '1h', 240: '4h', 1440: '1d', 10080: '1w', 43200: '1M'
-        }
-        base_timeframe = tf_map.get(min_tf_minutes, '1h') # 매핑되지 않는 경우 기본 1h
+        # 분 단위를 문자열로 변환 (Unified Utility 사용)
+        base_timeframe = convert_minutes_to_timeframe_string(min_tf_minutes)
+        # 매핑되지 않는 경우 기본 1h (by utility fallback)
         
         logger.info(f"Backtest Base Timeframe determined: {base_timeframe} ({min_tf_minutes}m)")
 

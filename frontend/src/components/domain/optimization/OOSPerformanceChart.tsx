@@ -25,7 +25,7 @@ const EquityChartClient = dynamic(
   () => import("@/components/domain/backtesting/EquityChart"),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[400px] w-full" />,
+    loading: () => <Skeleton className="h-[310px] w-full" />,
   }
 );
 
@@ -66,7 +66,7 @@ export const OOSPerformanceChart = ({
         </Badge>
       </CardHeader>
       <CardContent className="pt-4 animate-fadeIn">
-        <div className="h-[400px] w-full">
+        <div className="h-[310px] w-full">
           {oosCurveData && oosCurveData.length > 0 ? (
             <EquityChartClient
               pnlData={oosCurveData}
