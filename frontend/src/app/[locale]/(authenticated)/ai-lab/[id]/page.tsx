@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import Link from "next/link";
 
 import {
   getAIModelDetail,
@@ -51,9 +52,17 @@ import {
   RefreshCw,
   Play,
   Download,
+  ChevronRight,
+  Activity,
+  History as HistoryIcon,
+  AlertCircle,
+  Cpu,
+  Zap,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { Separator } from "@/components/ui/Separator";
+import { cn } from "@/lib/utils";
 import { AIModelFeatureImportance } from "@/components/domain/ai-lab/AIModelFeatureImportance";
 import { AIModelVersionsTable } from "@/components/domain/ai-lab/AIModelVersionsTable";
 import { AIModelRetrainDialog } from "@/components/domain/ai-lab/AIModelRetrainDialog";
@@ -219,452 +228,793 @@ export default function AIModelDetailPage({ params }: PageProps) {
     STATUS_CONFIG[model.status as keyof typeof STATUS_CONFIG];
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/ai-lab")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          AI Lab으로 돌아가기
-        </Button>
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">
-              <Brain className="h-6 w-6 text-white" />
+    <>
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        {/* Breadcrumb Header */}
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Link
+                href="/ai-lab"
+                className="hover:text-primary transition-colors"
+              >
+                AI Lab
+              </Link>
+              <ChevronRight className="h-4 w-4" />
+              <span className="text-foreground font-medium">{model.name}</span>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
-                {model.name}
-              </h1>
-              <p className="text-muted-foreground">
-                {model.modelType.toUpperCase()} · {model.trainingSymbol}
-              </p>
+            <div className="flex items-center gap-4 mt-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                <Brain className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                  {model.name}
+                </h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Badge
+                    variant="secondary"
+                    className="bg-primary/5 text-primary border-primary/10"
+                  >
+                    {model.modelType.toUpperCase()}
+                  </Badge>
+                  <span>·</span>
+                  <span className="font-mono">{model.trainingSymbol}</span>
+                </div>
+              </div>
             </div>
           </div>
-
-          <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              className={cn(
+                "px-3 py-1 text-sm font-semibold shadow-sm",
+                statusConfig.color
+              )}
+            >
+              {statusConfig.label}
+            </Badge>
+          </div>
         </div>
-      </div>
 
-      {/* Training Progress (if training) */}
-      {(model.status === "training" || model.status === "pending") && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <GlassPane className="p-6 border-blue-500/20 bg-blue-500/5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                학습 진행 중
-              </h2>
-              <Button variant="ghost" size="sm" onClick={() => refetchStatus()}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-            {trainingStatus && (
-              <>
-                <Progress
-                  value={trainingStatus.progressPct}
-                  className="h-2 mb-2"
-                />
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>
-                    {trainingStatus.currentEpoch} / {trainingStatus.totalEpochs}{" "}
-                    에폭
+        {/* Hero Metrics (Top Grid) */}
+        {model.status === "completed" && model.performanceMetrics && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <GlassPane className="p-4 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    모델 정확도
                   </span>
-                  <span>{trainingStatus.progressPct.toFixed(1)}%</span>
-                </div>
-                {trainingStatus.errorMessage && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {trainingStatus.errorMessage}
-                  </p>
-                )}
-              </>
-            )}
-          </GlassPane>
-        </motion.div>
-      )}
-
-      {/* Main Content Grid */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-6">
-          <TabsTrigger value="overview">개요</TabsTrigger>
-          <TabsTrigger value="versions">버전 기록</TabsTrigger>
-          <TabsTrigger value="feature-importance">피처 중요도</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6">
-            {/* Model Info */}
-            <GlassPane className="p-6">
-              <h2 className="text-lg font-semibold mb-4">모델 정보</h2>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <Target className="h-4 w-4" />
-                    <span>타임프레임</span>
-                  </div>
-                  <span className="font-medium">{model.trainingTimeframe}</span>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>학습 기간</span>
-                  </div>
-                  <span className="font-medium text-sm">
-                    {format(new Date(model.trainingStartDate), "yyyy.MM.dd", {
-                      locale: ko,
-                    })}{" "}
-                    -{" "}
-                    {format(new Date(model.trainingEndDate), "yyyy.MM.dd", {
-                      locale: ko,
-                    })}
-                  </span>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <Clock className="h-4 w-4" />
-                    <span>생성일</span>
-                  </div>
-                  <span className="font-medium">
-                    {format(new Date(model.createdAt), "yyyy.MM.dd HH:mm", {
-                      locale: ko,
-                    })}
-                  </span>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    {model.isPublic ? (
-                      <Globe className="h-4 w-4" />
-                    ) : (
-                      <Lock className="h-4 w-4" />
-                    )}
-                    <span>공개 상태</span>
-                  </div>
-                  <span className="font-medium">
-                    {model.isPublic ? "공개" : "비공개"}
-                  </span>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <RefreshCw className="h-4 w-4" />
-                    <span>Auto Retrain</span>
-                  </div>
-                  <span className="font-medium">
-                    {model.isAutoRetrainEnabled
-                      ? `${model.retrainIntervalDays}일 주기`
-                      : "비활성화"}
-                  </span>
-                </div>
-              </div>
-            </GlassPane>
-
-            {/* Feature Configuration */}
-            <GlassPane className="p-6">
-              <h2 className="text-lg font-semibold mb-4">학습 피처 설정</h2>
-              <div className="space-y-4">
-                {/* Indicators */}
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                    선택된 지표
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {model.featureConfig?.indicators &&
-                    model.featureConfig.indicators.length > 0 ? (
-                      model.featureConfig.indicators.map(
-                        (
-                          ind: { type: string; params?: Record<string, any> },
-                          idx: number
-                        ) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="font-mono"
-                          >
-                            {ind.type}
-                            {ind.params &&
-                              Object.keys(ind.params).length > 0 && (
-                                <span className="ml-1 text-xs opacity-70">
-                                  (
-                                  {Object.entries(ind.params)
-                                    .map(([k, v]) => `${k}=${v}`)
-                                    .join(", ")}
-                                  )
-                                </span>
-                              )}
-                          </Badge>
-                        )
-                      )
-                    ) : (
-                      <span className="text-sm text-muted-foreground">
-                        지표가 설정되지 않았습니다.
-                      </span>
-                    )}
+                  <div className="p-2 bg-emerald-500/10 rounded-lg">
+                    <Target className="h-4 w-4 text-emerald-500" />
                   </div>
                 </div>
-
-                {/* OHLCV & Returns */}
-                <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      OHLCV 사용:
-                    </span>
-                    <Badge
-                      variant={
-                        model.featureConfig?.useOhlcv ? "default" : "outline"
-                      }
-                    >
-                      {model.featureConfig?.useOhlcv ? "예" : "아니오"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      수익률 피처:
-                    </span>
-                    <Badge
-                      variant={
-                        model.featureConfig?.useReturns ? "default" : "outline"
-                      }
-                    >
-                      {model.featureConfig?.useReturns ? "예" : "아니오"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      시퀀스 길이:
-                    </span>
-                    <span className="font-medium">
-                      {model.featureConfig?.sequenceLength || 60}봉
-                    </span>
-                  </div>
+                <div className="text-3xl font-bold text-emerald-500">
+                  {(model.performanceMetrics.accuracy * 100).toFixed(1)}%
                 </div>
-              </div>
-            </GlassPane>
-            {/* Performance Metrics (if completed) */}
-            {model.status === "completed" && model.performanceMetrics && (
-              <GlassPane className="p-6">
-                <h2 className="text-lg font-semibold mb-4">성능 지표</h2>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <div className="text-center p-4 rounded-lg bg-muted/50">
-                    <div className="text-2xl font-bold text-emerald-500">
-                      {(model.performanceMetrics.accuracy * 100).toFixed(1)}%
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      정확도
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-muted/50">
-                    <div className="text-2xl font-bold text-blue-500">
-                      {(model.performanceMetrics.f1Score * 100).toFixed(1)}%
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      F1 Score
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-muted/50">
-                    <div className="text-2xl font-bold text-orange-500">
-                      {model.performanceMetrics.validationLoss?.toFixed(4) ||
-                        "N/A"}
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Validation Loss
-                    </div>
-                  </div>
-                </div>
-
-                {/* Class-wise performance */}
-                {model.performanceMetrics.classWiseMetrics && (
-                  <div className="mt-6 grid sm:grid-cols-3 gap-4">
-                    {["BUY", "HOLD", "SELL"].map((cls) => {
-                      const metrics =
-                        model.performanceMetrics?.classWiseMetrics?.[
-                          cls.toLowerCase()
-                        ];
-                      if (!metrics) return null;
-                      return (
-                        <div key={cls} className="p-4 rounded-lg border">
-                          <div className="flex items-center gap-2 mb-2">
-                            {cls === "BUY" && (
-                              <TrendingUp className="h-4 w-4 text-emerald-500" />
-                            )}
-                            {cls === "HOLD" && (
-                              <Minus className="h-4 w-4 text-gray-500" />
-                            )}
-                            {cls === "SELL" && (
-                              <TrendingDown className="h-4 w-4 text-red-500" />
-                            )}
-                            <span className="font-medium">{cls}</span>
-                          </div>
-                          <div className="text-sm space-y-1">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Precision
-                              </span>
-                              <span>
-                                {(metrics.precision * 100).toFixed(1)}%
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Recall
-                              </span>
-                              <span>{(metrics.recall * 100).toFixed(1)}%</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </GlassPane>
-            )}
-
-            {/* Prediction Test (if completed) */}
-            {model.status === "completed" && (
-              <GlassPane className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">예측 테스트</h2>
-                  <Button
-                    onClick={handleTestPrediction}
-                    disabled={isPredicting}
-                  >
-                    {isPredicting ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Play className="h-4 w-4 mr-2" />
-                    )}
-                    테스트 실행
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  현재 시장 데이터를 기반으로 모델의 예측을 테스트합니다.
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Validation Set Accuracy
                 </p>
-
-                {predictionResult && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 rounded-lg border"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div
-                        className={`px-4 py-2 rounded-lg font-bold text-lg ${
-                          predictionResult.predictedLabel === "BUY"
-                            ? "bg-emerald-500/10 text-emerald-600"
-                            : predictionResult.predictedLabel === "SELL"
-                            ? "bg-red-500/10 text-red-600"
-                            : "bg-gray-500/10 text-gray-600"
-                        }`}
-                      >
-                        {predictionResult.predictedLabel}
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        신뢰도:{" "}
-                        {(
-                          Math.max(
-                            predictionResult.buyProbability || 0,
-                            predictionResult.holdProbability || 0,
-                            predictionResult.sellProbability || 0
-                          ) * 100
-                        ).toFixed(1)}
-                        %
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div className="text-center p-2 rounded bg-emerald-500/10">
-                        <div className="text-emerald-600 font-medium">BUY</div>
-                        <div>
-                          {(
-                            (predictionResult.buyProbability || 0) * 100
-                          ).toFixed(1)}
-                          %
-                        </div>
-                      </div>
-                      <div className="text-center p-2 rounded bg-gray-500/10">
-                        <div className="text-gray-600 font-medium">HOLD</div>
-                        <div>
-                          {(
-                            (predictionResult.holdProbability || 0) * 100
-                          ).toFixed(1)}
-                          %
-                        </div>
-                      </div>
-                      <div className="text-center p-2 rounded bg-red-500/10">
-                        <div className="text-red-600 font-medium">SELL</div>
-                        <div>
-                          {(
-                            (predictionResult.sellProbability || 0) * 100
-                          ).toFixed(1)}
-                          %
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
               </GlassPane>
-            )}
+            </motion.div>
 
-            {/* Actions */}
-            <GlassPane className="p-6">
-              <h2 className="text-lg font-semibold mb-4">모델 관리</h2>
-              <div className="flex flex-wrap gap-3">
-                {model.status === "completed" && (
-                  <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <GlassPane className="p-4 border-blue-500/10 hover:border-blue-500/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    F1 Score
+                  </span>
+                  <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-blue-500">
+                  {(model.performanceMetrics.f1Score * 100).toFixed(1)}%
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Weighted Average Score
+                </p>
+              </GlassPane>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <GlassPane className="p-4 border-violet-500/10 hover:border-violet-500/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    Validation Loss
+                  </span>
+                  <div className="p-2 bg-violet-500/10 rounded-lg">
+                    <Activity className="h-4 w-4 text-violet-500" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-violet-500">
+                  {model.performanceMetrics.validationLoss?.toFixed(4) || "N/A"}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Final Loss Value
+                </p>
+              </GlassPane>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <GlassPane className="p-4 border-muted hover:border-muted-foreground/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    Versions
+                  </span>
+                  <div className="p-2 bg-muted rounded-lg">
+                    <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-foreground">
+                  {(versions || []).length}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Checkpoints Available
+                </p>
+              </GlassPane>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Main Content Area (Split View) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column (Main) */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Training Progress (Prominent) */}
+            {(model.status === "training" || model.status === "pending") && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <GlassPane className="p-6 border-blue-500/20 bg-blue-500/5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <RefreshCw className="h-24 w-24 animate-spin-slow" />
+                  </div>
+                  <div className="flex items-center justify-between mb-6 relative z-10">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                      Model Training in Progress
+                    </h2>
                     <Button
                       variant="outline"
-                      onClick={() =>
-                        togglePublicMutation.mutate(!model.isPublic)
-                      }
-                      disabled={togglePublicMutation.isPending}
+                      size="sm"
+                      onClick={() => refetchStatus()}
+                      className="bg-background/50"
                     >
-                      {model.isPublic ? (
-                        <>
-                          <Lock className="h-4 w-4 mr-2" />
-                          비공개로 전환
-                        </>
-                      ) : (
-                        <>
-                          <Globe className="h-4 w-4 mr-2" />
-                          공개하기
-                        </>
+                      <RefreshCw className="h-4 w-4 mr-2" /> 새로고침
+                    </Button>
+                  </div>
+                  {trainingStatus && (
+                    <div className="space-y-6 relative z-10">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">Progress</span>
+                          <span className="font-mono">
+                            {trainingStatus.progressPct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={trainingStatus.progressPct}
+                          className="h-3 bg-blue-500/20"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-background/40 p-3 rounded-lg border border-white/5">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                            Current Epoch
+                          </span>
+                          <span className="text-lg font-bold">
+                            {trainingStatus.currentEpoch} /{" "}
+                            {trainingStatus.totalEpochs}
+                          </span>
+                        </div>
+                        <div className="bg-background/40 p-3 rounded-lg border border-white/5">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                            Time Elapsed
+                          </span>
+                          <span className="text-lg font-bold">--:--</span>
+                        </div>
+                      </div>
+                      {trainingStatus.errorMessage && (
+                        <div className="flex items-center gap-2 p-3 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 text-sm">
+                          <AlertCircle className="h-4 w-4" />{" "}
+                          {trainingStatus.errorMessage}
+                        </div>
                       )}
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <a href={`/api/ai-models/${modelId}/download`} download>
-                        <Download className="h-4 w-4 mr-2" />
-                        ONNX 다운로드
-                      </a>
-                    </Button>
-                  </>
+                    </div>
+                  )}
+                </GlassPane>
+              </motion.div>
+            )}
+
+            {/* Feature Configuration & Feature Importance */}
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/30">
+                <TabsTrigger value="overview">모델 개요</TabsTrigger>
+                <TabsTrigger value="versions">버전 기록</TabsTrigger>
+                <TabsTrigger value="feature-importance">피처 분석</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6">
+                {/* Prediction Playground */}
+                {model.status === "completed" && (
+                  <GlassPane className="p-0 border-primary/20 bg-primary/5 overflow-hidden">
+                    <div className="p-6 border-b border-primary/20 bg-muted/20 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-bold text-foreground">
+                          Prediction Playground
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Live market data prediction simulation
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleTestPrediction}
+                        disabled={isPredicting}
+                        className="shadow-violet-500/40 shadow-lg"
+                      >
+                        {isPredicting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4 mr-2 fill-current" />
+                        )}
+                        Run Prediction
+                      </Button>
+                    </div>
+
+                    <div className="p-6 min-h-[200px] flex items-center justify-center">
+                      {!predictionResult && !isPredicting ? (
+                        <div className="text-center space-y-3 opacity-50">
+                          <Play className="h-12 w-12 mx-auto text-muted-foreground" />
+                          <p className="text-sm">
+                            Click the button above to test the model with
+                            current data
+                          </p>
+                        </div>
+                      ) : isPredicting ? (
+                        <div className="text-center space-y-4">
+                          <Loader2 className="h-10 w-10 mx-auto animate-spin text-primary" />
+                          <p className="text-sm font-medium animate-pulse">
+                            Analyzing market patterns...
+                          </p>
+                        </div>
+                      ) : (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="w-full"
+                        >
+                          <div className="grid md:grid-cols-2 gap-8 items-center">
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-4">
+                                <div
+                                  className={cn(
+                                    "h-20 w-20 rounded-2xl flex items-center justify-center text-2xl font-black shadow-2xl",
+                                    predictionResult.predictedLabel === "BUY"
+                                      ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                                      : predictionResult.predictedLabel ===
+                                        "SELL"
+                                      ? "bg-red-500 text-white shadow-red-500/20"
+                                      : "bg-slate-500 text-white shadow-slate-500/20"
+                                  )}
+                                >
+                                  {predictionResult.predictedLabel}
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                                    Verdict Confidence
+                                  </span>
+                                  <div className="text-3xl font-black tabular-nums">
+                                    {(
+                                      Math.max(
+                                        predictionResult.buyProbability || 0,
+                                        predictionResult.holdProbability || 0,
+                                        predictionResult.sellProbability || 0
+                                      ) * 100
+                                    ).toFixed(1)}
+                                    %
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="space-y-3 pt-4">
+                                {["BUY", "HOLD", "SELL"].map((label) => {
+                                  const prob =
+                                    predictionResult[
+                                      `${label.toLowerCase()}Probability`
+                                    ] || 0;
+                                  return (
+                                    <div key={label} className="space-y-1">
+                                      <div className="flex justify-between text-[10px] font-bold">
+                                        <span>{label}</span>
+                                        <span>{(prob * 100).toFixed(1)}%</span>
+                                      </div>
+                                      <div className="h-1.5 w-full bg-muted rounded-full">
+                                        <motion.div
+                                          initial={{ width: 0 }}
+                                          animate={{ width: `${prob * 100}%` }}
+                                          className={cn(
+                                            "h-full rounded-full transition-all duration-1000",
+                                            label === "BUY"
+                                              ? "bg-emerald-500"
+                                              : label === "SELL"
+                                              ? "bg-red-500"
+                                              : "bg-slate-400"
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="bg-background/60 p-5 rounded-xl border border-white/5 space-y-4 font-mono text-xs">
+                              <h4 className="text-[10px] uppercase text-muted-foreground font-black mb-2 flex items-center gap-2">
+                                <TrendingUp className="h-3 w-3" /> Market
+                                Context
+                              </h4>
+                              <div className="flex justify-between pb-2 border-b border-white/5">
+                                <span className="text-muted-foreground">
+                                  Symbol
+                                </span>
+                                <span>{model.trainingSymbol}</span>
+                              </div>
+                              <div className="flex justify-between pb-2 border-b border-white/5">
+                                <span className="text-muted-foreground">
+                                  Timeframe
+                                </span>
+                                <span>{model.trainingTimeframe}</span>
+                              </div>
+                              <div className="flex justify-between pb-2 border-b border-white/5">
+                                <span className="text-muted-foreground">
+                                  Source
+                                </span>
+                                <span className="text-emerald-500">
+                                  Real-time WebSocket
+                                </span>
+                              </div>
+                              <div className="flex justify-between pt-2">
+                                <span className="text-muted-foreground">
+                                  Timestamp
+                                </span>
+                                <span>{format(new Date(), "HH:mm:ss")}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  </GlassPane>
                 )}
+
+                {/* Feature Statistics Summary (Detailed View) */}
+                <GlassPane className="p-6 mt-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      학습 데이터셋 설정 (Dataset Config)
+                    </h3>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* OHLCV & Sequence Info */}
+                    <div className="grid md:grid-cols-3 gap-6 pb-6 border-b border-white/5">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Base Features (OHLCV)
+                        </span>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <Badge
+                            variant={
+                              model.featureConfig?.useOhlcv
+                                ? "default"
+                                : "outline"
+                            }
+                            className="text-[10px]"
+                          >
+                            OHLCV{" "}
+                            {model.featureConfig?.useOhlcv
+                              ? "Enabled"
+                              : "Disabled"}
+                          </Badge>
+                          <Badge
+                            variant={
+                              model.featureConfig?.useReturns
+                                ? "default"
+                                : "outline"
+                            }
+                            className="text-[10px]"
+                          >
+                            Returns{" "}
+                            {model.featureConfig?.useReturns
+                              ? "Enabled"
+                              : "Disabled"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Sequence Length
+                        </span>
+                        <div className="text-xl font-mono font-bold">
+                          {model.featureConfig?.sequenceLength || 60}{" "}
+                          <span className="text-xs font-normal text-muted-foreground">
+                            Candles
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Label Strategy
+                        </span>
+                        <div className="text-xl font-bold">
+                          Standard 3-Class{" "}
+                          <span className="text-xs font-normal text-muted-foreground">
+                            (B/H/S)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Indicators Table-like View */}
+                    <div className="space-y-4">
+                      <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
+                        Techncial Indicators & Parameters
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {model.featureConfig?.indicators &&
+                        model.featureConfig.indicators.length > 0 ? (
+                          model.featureConfig.indicators.map(
+                            (ind: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-white/5 group hover:border-primary/20 transition-all"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-2 w-2 rounded-full bg-primary/40 group-hover:bg-primary transition-colors" />
+                                  <span className="font-mono font-bold text-sm uppercase">
+                                    {ind.type}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap justify-end gap-1.5">
+                                  {ind.params &&
+                                    Object.entries(ind.params).map(
+                                      ([key, value]) => (
+                                        <Badge
+                                          key={key}
+                                          variant="secondary"
+                                          className="px-1.5 py-0 h-5 text-[9px] bg-background/50 border-white/5 font-mono"
+                                        >
+                                          <span className="text-muted-foreground mr-1">
+                                            {key}:
+                                          </span>
+                                          {String(value)}
+                                        </Badge>
+                                      )
+                                    )}
+                                  {(!ind.params ||
+                                    Object.keys(ind.params).length === 0) && (
+                                    <span className="text-[10px] text-muted-foreground italic">
+                                      Default Params
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          )
+                        ) : (
+                          <div className="col-span-2 text-center py-8 bg-muted/10 rounded-xl border border-dashed text-sm text-muted-foreground">
+                            No technical indicators used for this model.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </GlassPane>
+
+                {/* Training & Architecture Config (Hyperparameters) */}
+                <div className="grid md:grid-cols-2 gap-6 mt-8">
+                  {/* Architecture Config */}
+                  <GlassPane className="p-6 border-blue-500/10 hover:border-blue-500/20 transition-all">
+                    <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
+                      <Cpu className="h-5 w-5 text-blue-400" />
+                      모델 아키텍처 (Architecture)
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Hidden Size
+                        </span>
+                        <div className="text-xl font-mono font-bold text-blue-400">
+                          {model.architectureConfig?.hiddenSize || 64}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Layers
+                        </span>
+                        <div className="text-xl font-mono font-bold text-blue-400">
+                          {model.architectureConfig?.numLayers || 2}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Dropout
+                        </span>
+                        <div className="text-xl font-mono font-bold text-blue-400">
+                          {(model.architectureConfig?.dropout || 0) * 100}%
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Bidirectional
+                        </span>
+                        <div className="text-lg font-bold">
+                          {model.architectureConfig?.bidirectional
+                            ? "Enabled"
+                            : "Disabled"}
+                        </div>
+                      </div>
+                    </div>
+                  </GlassPane>
+
+                  {/* Hyperparameters Config */}
+                  <GlassPane className="p-6 border-amber-500/10 hover:border-amber-500/20 transition-all">
+                    <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
+                      <Zap className="h-5 w-5 text-amber-400" />
+                      학습 하이퍼파라미터
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Epochs / Batch
+                        </span>
+                        <div className="text-xl font-mono font-bold text-amber-400">
+                          {model.trainingConfig?.epochs}{" "}
+                          <span className="text-xs font-normal text-muted-foreground">
+                            /
+                          </span>{" "}
+                          {model.trainingConfig?.batchSize}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Learning Rate
+                        </span>
+                        <div className="text-xl font-mono font-bold text-amber-400">
+                          {model.trainingConfig?.learningRate}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Patience
+                        </span>
+                        <div className="text-xl font-mono font-bold text-amber-400">
+                          {model.trainingConfig?.earlyStoppingPatience}{" "}
+                          <span className="text-xs font-normal text-muted-foreground text-amber-400/70">
+                            eps
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                          Val Split
+                        </span>
+                        <div className="text-xl font-mono font-bold text-amber-400">
+                          {(model.trainingConfig?.validationSplit || 0.2) * 100}
+                          %
+                        </div>
+                      </div>
+                    </div>
+                  </GlassPane>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="versions">
+                <GlassPane className="p-0 overflow-hidden">
+                  <div className="p-6 border-b flex justify-between items-center bg-muted/10">
+                    <h2 className="text-lg font-bold">Version History</h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsRetrainDialogOpen(true)}
+                      className="gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" /> Manual Retrain
+                    </Button>
+                  </div>
+                  <AIModelVersionsTable
+                    modelId={modelId}
+                    versions={versions || []}
+                    onVersionActivated={() => {
+                      refetchVersions();
+                      refetchModel();
+                    }}
+                  />
+                </GlassPane>
+              </TabsContent>
+
+              <TabsContent value="feature-importance">
+                <AIModelFeatureImportance
+                  featureImportance={
+                    model.validationMetrics?.featureImportance ||
+                    (model.validationMetrics as any)?.feature_importance
+                  }
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Right Column (Sidebar) */}
+          <div className="space-y-6 sticky top-24 self-start">
+            {/* Configuration Card */}
+            <GlassPane className="p-6 space-y-6">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Model Configuration
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      Training Period
+                    </span>
+                    <span className="text-sm font-medium">
+                      {format(new Date(model.trainingStartDate), "yy.MM.dd")} -{" "}
+                      {format(new Date(model.trainingEndDate), "yy.MM.dd")}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      Created On
+                    </span>
+                    <span className="text-sm font-medium">
+                      {format(new Date(model.createdAt), "yyyy.MM.dd HH:mm")}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <RefreshCw className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      Auto Retraining
+                    </span>
+                    <span className="text-sm font-medium">
+                      {model.isAutoRetrainEnabled
+                        ? `${model.retrainIntervalDays}d Interval`
+                        : "Disabled"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-foreground">Features</h4>
+                <div className="flex flex-wrap gap-2">
+                  {model.featureConfig?.useOhlcv && (
+                    <Badge
+                      variant="secondary"
+                      className="px-2 py-0 h-5 text-[10px]"
+                    >
+                      OHLCV
+                    </Badge>
+                  )}
+                  {model.featureConfig?.useReturns && (
+                    <Badge
+                      variant="secondary"
+                      className="px-2 py-0 h-5 text-[10px]"
+                    >
+                      RETURNS
+                    </Badge>
+                  )}
+                  {model.featureConfig?.indicators?.map(
+                    (i: any, idx: number) => (
+                      <Badge
+                        key={idx}
+                        variant="outline"
+                        className="px-2 py-0 h-5 text-[10px] font-mono"
+                      >
+                        {i.type}
+                      </Badge>
+                    )
+                  )}
+                </div>
+              </div>
+            </GlassPane>
+
+            {/* Management Actions */}
+            <GlassPane className="p-6 space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Management
+              </h3>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-11"
+                  onClick={() => togglePublicMutation.mutate(!model.isPublic)}
+                  disabled={togglePublicMutation.isPending}
+                >
+                  {model.isPublic ? (
+                    <>
+                      <Lock className="h-4 w-4 text-violet-500" /> Switch to
+                      Private
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="h-4 w-4 text-emerald-500" /> Make Public
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-11"
+                  asChild
+                >
+                  <a href={`/api/ai-models/${modelId}/download`} download>
+                    <Download className="h-4 w-4 text-blue-500" /> Download ONNX
+                    Weight
+                  </a>
+                </Button>
+
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      모델 삭제
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-11 text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete Model
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>모델 삭제</AlertDialogTitle>
+                      <AlertDialogTitle>Delete AI Model</AlertDialogTitle>
                       <AlertDialogDescription>
-                        정말로 이 AI 모델을 삭제하시겠습니까? 이 작업은 되돌릴
-                        수 없습니다.
+                        Are you sure you want to delete{" "}
+                        <span className="font-bold text-foreground">
+                          {model.name}
+                        </span>
+                        ? This action is permanent and cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>취소</AlertDialogCancel>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => deleteMutation.mutate()}
-                        className="bg-destructive text-destructive-foreground"
+                        className="bg-red-500 text-white hover:bg-red-600"
                       >
-                        삭제
+                        Delete Permanently
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -672,56 +1022,19 @@ export default function AIModelDetailPage({ params }: PageProps) {
               </div>
             </GlassPane>
           </div>
-        </TabsContent>
-
-        <TabsContent value="versions" className="space-y-6">
-          <GlassPane className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">버전 기록</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsRetrainDialogOpen(true)}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                재학습 (Manual Retrain)
-              </Button>
-            </div>
-            <AIModelVersionsTable
-              modelId={modelId}
-              versions={versions || []}
-              onVersionActivated={() => {
-                refetchVersions();
-                queryClient.invalidateQueries({
-                  queryKey: ["ai-model", modelId],
-                });
-              }}
-            />
-          </GlassPane>
-        </TabsContent>
-
-        <AIModelRetrainDialog
-          open={isRetrainDialogOpen}
-          onOpenChange={setIsRetrainDialogOpen}
-          modelId={modelId}
-          initialStartDate={model.trainingStartDate}
-          initialEndDate={model.trainingEndDate}
-          onSuccess={() => {
-            refetchStatus();
-            // 날짜가 변경되었을 수 있으므로 모델 정보도 갱신
-            queryClient.invalidateQueries({ queryKey: ["ai-model", modelId] });
-          }}
-        />
-
-        <TabsContent value="feature-importance">
-          <AIModelFeatureImportance
-            featureImportance={
-              model.validationMetrics?.featureImportance ||
-              (model.validationMetrics as any)?.feature_importance
-            }
-          />
-        </TabsContent>
-      </Tabs>
-    </div>
+        </div>
+      </div>
+      <AIModelRetrainDialog
+        open={isRetrainDialogOpen}
+        onOpenChange={setIsRetrainDialogOpen}
+        modelId={modelId}
+        initialStartDate={model.trainingStartDate}
+        initialEndDate={model.trainingEndDate}
+        onSuccess={() => {
+          refetchStatus();
+          refetchModel();
+        }}
+      />
+    </>
   );
 }
