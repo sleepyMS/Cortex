@@ -152,16 +152,101 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             training_start_date=ai_model.training_start_date.isoformat(),
             training_end_date=ai_model.training_end_date.isoformat(),
         )
-        
+
+        # 4.3 하이퍼파라미터 최적화 (Optuna) 처리
+        opt_config = ai_model.optimization_config
+        is_opt_enabled = False
+        if opt_config:
+            is_opt_enabled = opt_config.get("is_enabled") or opt_config.get("isEnabled")
+
+        if is_opt_enabled:
+            # UI에 최적화 시작 알림을 위해 선제적으로 상태 업데이트
+            training_job.current_metrics = {
+                "phase": "optimization",
+                "trial": 0,
+                "totalTrials": opt_config.get("n_trials") or opt_config.get("nTrials") or 20,
+                "bestValue": 0.0
+            }
+            training_job.progress_pct = 1 # 0%가 아닌 1%로 설정하여 시작됨을 알림
+            db.commit()
+            
+            from .ai.training.optimizer import AIOptimizer
+            
+            def opt_progress_callback(trial_num, total_trials, metrics):
+                # 최적화 단계를 0~80%로 배분
+                progress = int((trial_num / total_trials) * 80)
+                training_job.progress_pct = progress
+                training_job.current_metrics = {
+                    "phase": "optimization",
+                    "trial": trial_num,
+                    "totalTrials": total_trials,
+                    "bestValue": metrics.get("best_value")
+                }
+                db.commit()
+
+            optimizer = AIOptimizer(
+                config=pipeline_config,
+                optimization_config=opt_config,
+                progress_callback=opt_progress_callback
+            )
+            
+            # 최적화 실행
+            logger.info(f"Starting Optuna optimization for model {model_id}...")
+            opt_result = optimizer.optimize(df)
+            
+            # 결과 저장
+            training_job.optimization_result = opt_result
+            db.commit()
+            
+            # Best 파라미터 적용
+            best_params = opt_result["best_params"]
+            logger.info(f"Optimization finished. Best parameters: {best_params}")
+            
+            # architecture_config 및 training_config 업데이트
+            # trainer.py의 ModelConfig 필드 이름과 일치하도록 매핑
+            new_arch = dict(ai_model.architecture_config or {})
+            if "hidden_size" in best_params: new_arch["hidden_size"] = best_params["hidden_size"]
+            if "num_layers" in best_params: new_arch["num_layers"] = best_params["num_layers"]
+            if "dropout" in best_params: new_arch["dropout"] = best_params["dropout"]
+            ai_model.architecture_config = new_arch
+            
+            new_train = dict(ai_model.training_config or {})
+            if "learning_rate" in best_params: new_train["learning_rate"] = best_params["learning_rate"]
+            if "batch_size" in best_params: new_train["batch_size"] = best_params["batch_size"]
+            ai_model.training_config = new_train
+            
+            # 파이프라인 설정 재로드 (업데이트된 설정 적용)
+            pipeline_config.architecture_config = ai_model.architecture_config
+            pipeline_config.training_config = ai_model.training_config
+            db.commit()
+
         # 4.5 버전 결정
         last_version = db.query(AIModelVersion).filter(AIModelVersion.model_id == model_id).order_by(AIModelVersion.version_number.desc()).first()
         next_version_num = (last_version.version_number + 1) if last_version else 1
+
+        # 5. 최종 모델 학습 실행
+        logger.info(f"Starting final training (Version {next_version_num}) with best/selected parameters for model {model_id}")
         
-        # 5. 학습 실행
+        # 진행률 콜백 업데이트 (최종 학습 phase)
+        original_callback = progress_callback
+        def final_progress_callback(step, total, metrics):
+            # 최종 학습 단계를 80~100%로 배분
+            base_progress = 80
+            if metrics.get("phase") == "training" and "epoch" in metrics:
+                epoch_progress = metrics["epoch"] / metrics.get("total_epochs", 100)
+                progress = base_progress + (epoch_progress * 20)
+                # Client에게는 final_training 상태임을 알림
+                metrics["phase"] = "final_training"
+            else:
+                progress = base_progress
+            
+            training_job.progress_pct = int(min(progress, 99))
+            original_callback(step, total, metrics)
+
         trainer = AIModelTrainer(
             config=pipeline_config,
             save_dir=str(save_dir),
-            progress_callback=progress_callback
+            progress_callback=final_progress_callback
         )
         
         result = trainer.train(df, version_number=next_version_num)

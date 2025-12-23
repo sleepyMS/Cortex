@@ -814,6 +814,9 @@ class AIModel(Base):
     # 학습 하이퍼파라미터
     training_config = Column(JSONB, nullable=False)
     
+    # 최적화 설정 (Optuna)
+    optimization_config = Column(JSONB, nullable=True) # 기존 모델 호환성을 위해 nullable=True
+    
     # 학습 데이터 정보 (미래 참조 방지 핵심!)
     training_symbol = Column(String(50), nullable=False)
     training_timeframe = Column(String(10), nullable=False)
@@ -897,6 +900,7 @@ class AITrainingJob(Base):
     # 실시간 메트릭 (학습 중 업데이트)
     current_metrics = Column(JSONB, nullable=True)  # train_loss, val_loss 등
     epoch_logs = Column(JSONB, nullable=True)  # 에폭별 로그 히스토리 [{epoch, train_loss, val_loss, accuracy, ...}]
+    optimization_result = Column(JSONB, nullable=True)  # 하이퍼파라미터 최적화 결과 (Trials 등)
     
     # 에러 정보
     error_message = Column(Text, nullable=True)

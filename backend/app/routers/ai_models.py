@@ -92,6 +92,7 @@ async def create_ai_model(
             training_timeframe=payload.training_timeframe,
             training_start_date=payload.training_start_date,
             training_end_date=payload.training_end_date,
+            optimization_config=payload.optimization_config.model_dump() if payload.optimization_config else None,
         )
         
         return schemas.AIModelCreateResponse(

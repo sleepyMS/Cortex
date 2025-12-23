@@ -725,6 +725,38 @@
           "success": "Subscription cancelled successfully.",
           "error": "Failed to cancel subscription."
         }
+      },
+      "notifications": {
+        "title": "Notification Settings",
+        "description": "Set your preferences for receiving notifications about various events.",
+        "botTrades": {
+          "label": "Bot Trades",
+          "description": "Receive notifications when your automated trading bot executes a trade."
+        },
+        "communityComments": {
+          "label": "Community Comments",
+          "description": "Receive notifications when new comments are posted on your posts."
+        },
+        "billingReminders": {
+          "label": "Billing Reminders",
+          "description": "Receive important information about subscription renewals or payments."
+        },
+        "saveButton": "Save Settings"
+      },
+      "dangerZone": {
+        "title": "Danger Zone",
+        "description": "Actions here are irreversible, so please proceed with caution.",
+        "deleteButton": "Delete Account Permanently",
+        "deleteSuccess": "Your account has been permanently deleted.",
+        "deleteError": "Failed to delete account: {error}",
+        "dialog": {
+          "title": "Are you sure you want to delete your account?",
+          "description1": "This action cannot be undone. All your strategies, backtest logs, purchase history, and API keys will be permanently deleted.",
+          "description2": "Please verify your username below to continue.",
+          "confirmLabel": "Enter {username}.",
+          "cancel": "Cancel",
+          "confirm": "Delete Account"
+        }
       }
     },
     "admin": {
@@ -1708,8 +1740,11 @@
         "winRate": "WinRate",
         "avgholding period": "average retention period",
         "avgHoldingPeriodValue": "{value}일",
-        "totalTrades": "Total number of transactions"
-      }
+        "totalTrades": "Total number of transactions",
+        "sharpeRatio": "Sharpe Ratio",
+        "avgHoldingPeriod": "Avg Holding Period"
+      },
+      "description": "Detailed description of the strategy."
     },
     "AuthorCard": {
       "title": "producer",
@@ -1789,7 +1824,9 @@
     "goToInventory": "Go To Inventory",
     "continueShopping": "Continue Shopping",
     "approvalSuccessToast": "Approval Request Successful",
-    "approvalErrorToast": "Approval Request Failed"
+    "approvalErrorToast": "Approval Request Failed",
+    "approvingTitle": "Approving Payment",
+    "verifyingTitle": "Verifying Result"
   },
   "PaymentFailPage": {
     "title": "Payment Failed",
@@ -2232,6 +2269,38 @@
       "exchange": "Exchange",
       "tradesCount": "{winning} / {total} trades",
       "riskLevel": "Risk Level"
+    }
+  },
+  "AILabPage": {
+    "title": "AI Lab",
+    "subtitle": "Train and manage machine learning models",
+    "createNewModel": "Create New AI Model",
+    "filterStatusAll": "All Statuses",
+    "filterStatusTraining": "Training",
+    "filterStatusCompleted": "Completed",
+    "filterStatusFailed": "Failed",
+    "filterStatusPending": "Pending",
+    "resetFilters": "Reset Filters",
+    "fetchError": "An error occurred while fetching the AI model list.",
+    "deleteSuccess": "AI model deleted successfully.",
+    "deleteError": "Failed to delete model: {error}",
+    "empty": {
+      "title": "No AI models created yet",
+      "description": "Train your first AI model to generate your own trading signals.",
+      "createButton": "Create First AI Model"
+    },
+    "status": {
+      "pending": "Pending",
+      "training": "Training",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "card": {
+      "timeframe": "Timeframe",
+      "period": "Training Period",
+      "viewDetail": "View Detail",
+      "testPrediction": "Test Prediction",
+      "delete": "Delete"
     }
   }
 }

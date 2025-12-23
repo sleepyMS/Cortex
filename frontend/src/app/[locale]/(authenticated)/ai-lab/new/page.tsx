@@ -64,6 +64,7 @@ import {
   DEFAULT_FEATURE_CONFIG,
   DEFAULT_LABELING_CONFIG,
   DEFAULT_TRAINING_CONFIG,
+  DEFAULT_OPTIMIZATION_CONFIG,
 } from "@/types/ai";
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { ScrollArea } from "@/components/ui/ScrollArea";
@@ -116,6 +117,9 @@ export default function NewAIModelPage() {
     useState<AIArchitectureConfig>(DEFAULT_ARCHITECTURE_CONFIG);
   const [trainingConfig, setTrainingConfig] = useState<AITrainingConfig>(
     DEFAULT_TRAINING_CONFIG
+  );
+  const [optimizationConfig, setOptimizationConfig] = useState(
+    DEFAULT_OPTIMIZATION_CONFIG
   );
 
   const [costData, setCostData] = useState<CostEstimationResponse | null>(null);
@@ -173,7 +177,17 @@ export default function NewAIModelPage() {
             hiddenSize: architectureConfig.hiddenSize,
             numLayers: architectureConfig.numLayers,
           });
-          setCostData(res);
+          if (optimizationConfig.isEnabled && res) {
+            const multiplier = optimizationConfig.nTrials;
+            setCostData({
+              ...res,
+              originalCost: res.originalCost * multiplier,
+              finalCost: res.finalCost * multiplier,
+              isSufficient: res.userBalance >= res.finalCost * multiplier,
+            });
+          } else {
+            setCostData(res);
+          }
         } catch (e) {
           console.error(e);
           toast.error("비용 견적을 불러오는데 실패했습니다.");
@@ -191,6 +205,8 @@ export default function NewAIModelPage() {
     trainingConfig.epochs,
     architectureConfig.hiddenSize,
     architectureConfig.numLayers,
+    optimizationConfig.isEnabled,
+    optimizationConfig.nTrials,
   ]);
 
   // Set default dates (1 year period)
@@ -227,6 +243,7 @@ export default function NewAIModelPage() {
       featureConfig,
       labelingConfig,
       trainingConfig,
+      optimizationConfig,
     };
     createMutation.mutate(payload);
   };
@@ -242,7 +259,10 @@ export default function NewAIModelPage() {
       case 4:
         return labelingConfig.profitTarget > 0 && labelingConfig.stopLoss > 0;
       case 5:
-        return architectureConfig.hiddenSize > 0;
+        return optimizationConfig.isEnabled
+          ? optimizationConfig.nTrials > 0 &&
+              optimizationConfig.maximizeMetric.length > 0
+          : architectureConfig.hiddenSize > 0;
       case 6:
         return true;
       default:
@@ -724,118 +744,428 @@ export default function NewAIModelPage() {
       case 5:
         return (
           <div className="space-y-6">
-            <div>
-              <Label className="text-base font-medium">
-                Hidden Size: {architectureConfig.hiddenSize}
-              </Label>
-              <Slider
-                value={[architectureConfig.hiddenSize]}
-                onValueChange={([v]) =>
-                  setArchitectureConfig((prev) => ({ ...prev, hiddenSize: v }))
-                }
-                min={32}
-                max={256}
-                step={16}
-                className="mt-4"
-              />
-              <p className="text-sm text-muted-foreground mt-2">
-                LSTM 레이어의 은닉 상태 차원입니다. 크면 복잡한 패턴을
-                학습하지만 과적합 위험이 있습니다.
-              </p>
-            </div>
-            <div>
-              <Label className="text-base font-medium">
-                레이어 수: {architectureConfig.numLayers}
-              </Label>
-              <Slider
-                value={[architectureConfig.numLayers]}
-                onValueChange={([v]) =>
-                  setArchitectureConfig((prev) => ({ ...prev, numLayers: v }))
-                }
-                min={1}
-                max={4}
-                step={1}
-                className="mt-4"
-              />
-              <p className="text-sm text-muted-foreground mt-2">
-                모델의 깊이를 결정합니다. 레이어가 많을수록 복잡한 시계열 패턴을
-                더 잘 포착할 수 있지만, 학습 시간이 길어지고 과적합의 가능성이
-                높아집니다.
-              </p>
-            </div>
-            <div>
-              <Label className="text-base font-medium">
-                Dropout: {(architectureConfig.dropout * 100).toFixed(0)}%
-              </Label>
-              <Slider
-                value={[architectureConfig.dropout * 100]}
-                onValueChange={([v]) =>
-                  setArchitectureConfig((prev) => ({
-                    ...prev,
-                    dropout: v / 100,
-                  }))
-                }
-                min={0}
-                max={50}
-                step={5}
-                className="mt-4"
-              />
-              <p className="text-sm text-muted-foreground mt-2">
-                과적합 방지를 위해 학습 중 일부 뉴런을 무작위로 비활성화합니다.
-              </p>
-            </div>
-            <div>
-              <Label className="text-base font-medium">
-                Learning Rate (학습률): {trainingConfig.learningRate}
-              </Label>
-              <Select
-                value={trainingConfig.learningRate.toString()}
-                onValueChange={(v) =>
-                  setTrainingConfig((prev) => ({
-                    ...prev,
-                    learningRate: parseFloat(v),
-                  }))
-                }
-              >
-                <SelectTrigger className="mt-4">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0.01">0.01 (빠름 / 저정밀도)</SelectItem>
-                  <SelectItem value="0.005">0.005</SelectItem>
-                  <SelectItem value="0.001">0.001 (권장값)</SelectItem>
-                  <SelectItem value="0.0005">0.0005</SelectItem>
-                  <SelectItem value="0.0001">
-                    0.0001 (느림 / 고정밀도)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground mt-2">
-                가중치 업데이트 보폭을 조절합니다. 너무 크면 최적점을 찾지
-                못하고 요동칠 수 있으며, 너무 작으면 학습 속도가 매우
-                느려집니다.
-              </p>
-            </div>
-            <div>
-              <Label className="text-base font-medium">
-                에폭 수: {trainingConfig.epochs}
-              </Label>
-              <Slider
-                value={[trainingConfig.epochs]}
-                onValueChange={([v]) =>
-                  setTrainingConfig((prev) => ({ ...prev, epochs: v }))
-                }
-                min={30}
-                max={300}
-                step={10}
-                className="mt-4"
-              />
-              <p className="text-sm text-muted-foreground mt-2">
-                전체 데이터를 반복해서 학습하는 횟수입니다. 충분히 학습해야
-                하지만, 너무 많으면 과거 데이터에만 최적화되어 실제 미래 성능이
-                떨어질 수 있습니다.
-              </p>
-            </div>
+            <Tabs
+              defaultValue={optimizationConfig.isEnabled ? "auto" : "manual"}
+              className="w-full"
+              onValueChange={(v) =>
+                setOptimizationConfig((prev) => ({
+                  ...prev,
+                  isEnabled: v === "auto",
+                }))
+              }
+            >
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <Settings2 className="w-4 h-4" />
+                  수동 설정
+                </TabsTrigger>
+                <TabsTrigger value="auto" className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  Optuna 자동 최적화
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="manual" className="space-y-6">
+                <div>
+                  <Label className="text-base font-medium">
+                    Hidden Size: {architectureConfig.hiddenSize}
+                  </Label>
+                  <Slider
+                    value={[architectureConfig.hiddenSize]}
+                    onValueChange={([v]) =>
+                      setArchitectureConfig((prev) => ({
+                        ...prev,
+                        hiddenSize: v,
+                      }))
+                    }
+                    min={32}
+                    max={256}
+                    step={16}
+                    className="mt-4"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    LSTM 레이어의 은닉 상태 차원입니다. 크면 복잡한 패턴을
+                    학습하지만 과적합 위험이 있습니다.
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-base font-medium">
+                    레이어 수: {architectureConfig.numLayers}
+                  </Label>
+                  <Slider
+                    value={[architectureConfig.numLayers]}
+                    onValueChange={([v]) =>
+                      setArchitectureConfig((prev) => ({
+                        ...prev,
+                        numLayers: v,
+                      }))
+                    }
+                    min={1}
+                    max={4}
+                    step={1}
+                    className="mt-4"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    모델의 깊이를 결정합니다. 레이어가 많을수록 복잡한 시계열
+                    패턴을 더 잘 포착할 수 있지만, 학습 시간이 길어지고 과적합의
+                    가능성이 높아집니다.
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-base font-medium">
+                    Dropout: {(architectureConfig.dropout * 100).toFixed(0)}%
+                  </Label>
+                  <Slider
+                    value={[architectureConfig.dropout * 100]}
+                    onValueChange={([v]) =>
+                      setArchitectureConfig((prev) => ({
+                        ...prev,
+                        dropout: v / 100,
+                      }))
+                    }
+                    min={0}
+                    max={50}
+                    step={5}
+                    className="mt-4"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    과적합 방지를 위해 학습 중 일부 뉴런을 무작위로
+                    비활성화합니다.
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-base font-medium">
+                    Learning Rate (학습률): {trainingConfig.learningRate}
+                  </Label>
+                  <Select
+                    value={trainingConfig.learningRate.toString()}
+                    onValueChange={(v) =>
+                      setTrainingConfig((prev) => ({
+                        ...prev,
+                        learningRate: parseFloat(v),
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="mt-4">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0.01">
+                        0.01 (빠름 / 저정밀도)
+                      </SelectItem>
+                      <SelectItem value="0.005">0.005</SelectItem>
+                      <SelectItem value="0.001">0.001 (권장값)</SelectItem>
+                      <SelectItem value="0.0005">0.0005</SelectItem>
+                      <SelectItem value="0.0001">
+                        0.0001 (느림 / 고정밀도)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    가중치 업데이트 보폭을 조절합니다. 너무 크면 최적점을 찾지
+                    못하고 요동칠 수 있으며, 너무 작으면 학습 속도가 매우
+                    느려집니다.
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-base font-medium">
+                    에폭 수: {trainingConfig.epochs}
+                  </Label>
+                  <Slider
+                    value={[trainingConfig.epochs]}
+                    onValueChange={([v]) =>
+                      setTrainingConfig((prev) => ({ ...prev, epochs: v }))
+                    }
+                    min={30}
+                    max={300}
+                    step={10}
+                    className="mt-4"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    전체 데이터를 반복해서 학습하는 횟수입니다. 충분히 학습해야
+                    하지만, 너무 많으면 과거 데이터에만 최적화되어 실제 미래
+                    성능이 떨어질 수 있습니다.
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="auto" className="space-y-8 py-4">
+                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4 flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-medium text-violet-200">
+                      Optuna 자동 최적화 모드
+                    </h4>
+                    <p className="text-sm text-violet-300/80 leading-relaxed">
+                      인공지능이 수십 번 이상의 실험을 통해 당신의 전략과
+                      데이터에 가장 적합한 아키텍처와 학습률을 자동으로
+                      찾아냅니다. 최적의 성능을 끌어내기 위한 미세 조정을
+                      자동화합니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <Label className="text-base font-medium">
+                      Trial 수 (시도 횟수): {optimizationConfig.nTrials}회
+                    </Label>
+                    <Badge
+                      variant="outline"
+                      className="text-violet-400 border-violet-400/30"
+                    >
+                      예상 {optimizationConfig.nTrials}배 크레딧 소모
+                    </Badge>
+                  </div>
+                  <Slider
+                    value={[optimizationConfig.nTrials]}
+                    onValueChange={([v]) =>
+                      setOptimizationConfig((prev) => ({ ...prev, nTrials: v }))
+                    }
+                    min={10}
+                    max={100}
+                    step={10}
+                    className="mt-4"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    시도 횟수가 많을수록 더 정밀한 최적화가 가능하지만, 그만큼
+                    더 많은 시간과 크레딧이 소요됩니다. 보통 20~50회 정도를
+                    권장합니다.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-base font-medium">
+                    최적화 목표 지표
+                  </Label>
+                  <Select
+                    value={optimizationConfig.maximizeMetric}
+                    onValueChange={(v: any) =>
+                      setOptimizationConfig((prev) => ({
+                        ...prev,
+                        maximizeMetric: v,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="accuracy">
+                        Validation Accuracy (정확도 극대화)
+                      </SelectItem>
+                      <SelectItem value="f1">
+                        F1-Score (정밀도/재현율 균형)
+                      </SelectItem>
+                      <SelectItem value="return">
+                        Expected Return (기대 수익률 극대화)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    어떤 기준이 가장 높은 모델을 찾을지 결정합니다. 일반적인
+                    트레이딩에는 F1-Score나 Accuracy가 추천됩니다.
+                  </p>
+                </div>
+
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger asChild>
+                    <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/10 cursor-pointer hover:bg-violet-500/10 transition-all">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-sm font-medium flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-violet-400" />
+                          하이퍼파라미터 탐색 범위 세부 설정
+                        </h5>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-6 p-4 rounded-xl border border-muted/20 bg-muted/5">
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-muted/20">
+                      <p className="text-xs text-muted-foreground">
+                        설정된 범위를 기본값으로 되돌립니다.
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-[10px] gap-1.5 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setOptimizationConfig((prev) => ({
+                            ...prev,
+                            searchSpace:
+                              DEFAULT_OPTIMIZATION_CONFIG.searchSpace,
+                          }));
+                          toast.success(
+                            "탐색 범위가 기본값으로 초기화되었습니다."
+                          );
+                        }}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        기본값으로 초기화
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <Label>Hidden Size 범위</Label>
+                        <span className="font-mono text-violet-400">
+                          {optimizationConfig.searchSpace.hiddenSize.min} ~{" "}
+                          {optimizationConfig.searchSpace.hiddenSize.max}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[
+                          optimizationConfig.searchSpace.hiddenSize.min,
+                          optimizationConfig.searchSpace.hiddenSize.max,
+                        ]}
+                        onValueChange={([min, max]) =>
+                          setOptimizationConfig((prev) => ({
+                            ...prev,
+                            searchSpace: {
+                              ...prev.searchSpace,
+                              hiddenSize: { min, max },
+                            },
+                          }))
+                        }
+                        min={16}
+                        max={512}
+                        step={16}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <Label>Layers 범위</Label>
+                        <span className="font-mono text-violet-400">
+                          {optimizationConfig.searchSpace.numLayers.min} ~{" "}
+                          {optimizationConfig.searchSpace.numLayers.max}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[
+                          optimizationConfig.searchSpace.numLayers.min,
+                          optimizationConfig.searchSpace.numLayers.max,
+                        ]}
+                        onValueChange={([min, max]) =>
+                          setOptimizationConfig((prev) => ({
+                            ...prev,
+                            searchSpace: {
+                              ...prev.searchSpace,
+                              numLayers: { min, max },
+                            },
+                          }))
+                        }
+                        min={1}
+                        max={8}
+                        step={1}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <Label>Dropout 범위</Label>
+                        <span className="font-mono text-violet-400">
+                          {(
+                            optimizationConfig.searchSpace.dropout.min * 100
+                          ).toFixed(0)}
+                          % ~{" "}
+                          {(
+                            optimizationConfig.searchSpace.dropout.max * 100
+                          ).toFixed(0)}
+                          %
+                        </span>
+                      </div>
+                      <Slider
+                        value={[
+                          optimizationConfig.searchSpace.dropout.min * 100,
+                          optimizationConfig.searchSpace.dropout.max * 100,
+                        ]}
+                        onValueChange={([min, max]) =>
+                          setOptimizationConfig((prev) => ({
+                            ...prev,
+                            searchSpace: {
+                              ...prev.searchSpace,
+                              dropout: { min: min / 100, max: max / 100 },
+                            },
+                          }))
+                        }
+                        min={0}
+                        max={80}
+                        step={5}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <Label>Learning Rate 범위</Label>
+                        <span className="font-mono text-violet-400">
+                          {optimizationConfig.searchSpace.learningRate.min} ~{" "}
+                          {optimizationConfig.searchSpace.learningRate.max}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[
+                          Math.log10(
+                            optimizationConfig.searchSpace.learningRate.min
+                          ),
+                          Math.log10(
+                            optimizationConfig.searchSpace.learningRate.max
+                          ),
+                        ]}
+                        onValueChange={([min, max]) =>
+                          setOptimizationConfig((prev) => ({
+                            ...prev,
+                            searchSpace: {
+                              ...prev.searchSpace,
+                              learningRate: {
+                                min: Math.pow(10, min),
+                                max: Math.pow(10, max),
+                              },
+                            },
+                          }))
+                        }
+                        min={-5}
+                        max={-1}
+                        step={0.1}
+                      />
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        LR은 로그 스케일로 조정됩니다 (1e-5 ~ 1e-1)
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <Label>Batch Size 범위</Label>
+                        <span className="font-mono text-violet-400">
+                          {optimizationConfig.searchSpace.batchSize.min} ~{" "}
+                          {optimizationConfig.searchSpace.batchSize.max}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[
+                          optimizationConfig.searchSpace.batchSize.min,
+                          optimizationConfig.searchSpace.batchSize.max,
+                        ]}
+                        onValueChange={([min, max]) =>
+                          setOptimizationConfig((prev) => ({
+                            ...prev,
+                            searchSpace: {
+                              ...prev.searchSpace,
+                              batchSize: { min, max },
+                            },
+                          }))
+                        }
+                        min={16}
+                        max={512}
+                        step={16}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </TabsContent>
+            </Tabs>
           </div>
         );
 

@@ -48,6 +48,7 @@ class AIModelService:
         training_timeframe: str,
         training_start_date: datetime,
         training_end_date: datetime,
+        optimization_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         AI 모델 생성 및 학습 시작
@@ -64,6 +65,13 @@ class AIModelService:
             timeframe=training_timeframe,
             epochs=training_config.get("epochs", 100)
         )
+        
+        # 최적화 사용 시 n_trials 만큼 곱함
+        if optimization_config and optimization_config.get("is_enabled"):
+            n_trials = optimization_config.get("n_trials", 20)
+            cost_estimation.original_cost *= n_trials
+            cost_estimation.final_cost *= n_trials
+            # Sufficient 잔액 체크는 deduct_credits 내부에서 수행되므로 여기서는 값만 업데이트
         
         # 크레딧 차감 (Transactional)
         # related_entity_id는 나중에 Job ID로 업데이트하거나, 여기서 미리 UUID 생성 후 사용
@@ -95,6 +103,7 @@ class AIModelService:
             training_timeframe=training_timeframe,
             training_start_date=training_start_date,
             training_end_date=training_end_date,
+            optimization_config=optimization_config,
             status=AIModelStatus.PENDING,
         )
         self.db.add(ai_model)

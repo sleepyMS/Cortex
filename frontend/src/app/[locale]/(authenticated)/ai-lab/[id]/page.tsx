@@ -56,10 +56,13 @@ import {
   Activity,
   History as HistoryIcon,
   AlertCircle,
-  Cpu,
-  Zap,
   BarChart2,
   ListChecks,
+  Sparkles,
+  Cpu,
+  Zap,
+  Trophy,
+  Layout,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
@@ -541,6 +544,22 @@ export default function AIModelDetailPage({ params }: PageProps) {
             >
               {statusConfig.label}
             </Badge>
+            {model.optimizationConfig?.isEnabled && (
+              <Badge
+                variant="outline"
+                className="bg-violet-500/10 text-violet-400 border-violet-500/20 px-3 py-1 flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Optuna Optimized
+              </Badge>
+            )}
+            <Badge
+              variant="outline"
+              className="bg-muted/30 text-muted-foreground border-muted/50 px-3 py-1 flex items-center gap-1.5"
+            >
+              <Cpu className="h-3.5 w-3.5" />
+              {model.trainingSymbol}
+            </Badge>
           </div>
         </div>
 
@@ -646,19 +665,45 @@ export default function AIModelDetailPage({ params }: PageProps) {
           {/* Left Column (Main) */}
           <div className="lg:col-span-2 space-y-8">
             {/* Training Progress (Prominent) */}
+            {/* Training Progress (Prominent) */}
             {(model.status === "training" || model.status === "pending") && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <GlassPane className="p-6 border-blue-500/20 bg-blue-500/5 relative overflow-hidden">
+                <GlassPane
+                  className={cn(
+                    "p-6 border-blue-500/20 bg-blue-500/5 relative overflow-hidden",
+                    trainingStatus?.currentMetrics?.phase === "optimization" &&
+                      "border-purple-500/20 bg-purple-500/5"
+                  )}
+                >
                   <div className="absolute top-0 right-0 p-4 opacity-10">
                     <RefreshCw className="h-24 w-24 animate-spin-slow" />
                   </div>
                   <div className="flex items-center justify-between mb-6 relative z-10">
                     <h2 className="text-xl font-bold flex items-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                      Model Training in Progress
+                      <Loader2
+                        className={cn(
+                          "h-5 w-5 animate-spin",
+                          trainingStatus?.currentMetrics?.phase ===
+                            "optimization" ||
+                            (model.optimizationConfig?.isEnabled &&
+                              (trainingStatus?.progressPct ?? 0) < 80)
+                            ? "text-purple-500"
+                            : "text-blue-500"
+                        )}
+                      />
+                      {trainingStatus?.currentMetrics?.phase ===
+                        "optimization" ||
+                      (model.optimizationConfig?.isEnabled &&
+                        trainingStatus &&
+                        (trainingStatus.progressPct ?? 0) < 80)
+                        ? "Hyperparameter Optimization in Progress"
+                        : trainingStatus?.currentMetrics?.phase ===
+                          "final_training"
+                        ? "Final Model Training with Best Parameters"
+                        : "Model Training in Progress"}
                     </h2>
                     <Button
                       variant="outline"
@@ -673,35 +718,86 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     <div className="space-y-6 relative z-10">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium">Progress</span>
+                          <span className="font-medium">Total Progress</span>
                           <span className="font-mono">
                             {trainingStatus.progressPct.toFixed(1)}%
                           </span>
                         </div>
                         <Progress
                           value={trainingStatus.progressPct}
-                          className="h-3 bg-blue-500/20"
+                          className={cn(
+                            "h-3",
+                            trainingStatus?.currentMetrics?.phase ===
+                              "optimization"
+                              ? "bg-purple-500/20"
+                              : "bg-blue-500/20"
+                          )}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-background/40 p-3 rounded-lg border border-white/5">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                            Current Epoch
-                          </span>
-                          <span className="text-lg font-bold">
-                            {trainingStatus.currentEpoch} /{" "}
-                            {trainingStatus.totalEpochs}
-                          </span>
-                        </div>
-                        <div className="bg-background/40 p-3 rounded-lg border border-white/5">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                            Time Elapsed
-                          </span>
-                          <span className="text-lg font-bold">
-                            {elapsedTime}
-                          </span>
-                        </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {trainingStatus.currentMetrics?.phase ===
+                          "optimization" ||
+                        (model.optimizationConfig?.isEnabled &&
+                          (trainingStatus.progressPct ?? 0) < 80) ? (
+                          <>
+                            <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
+                              <span className="text-[10px] text-purple-400 uppercase font-bold block mb-1">
+                                Current Trial
+                              </span>
+                              <span className="text-xl font-bold font-mono">
+                                #{trainingStatus.currentMetrics?.trial || 0}{" "}
+                                <span className="text-xs text-muted-foreground">
+                                  /{" "}
+                                  {trainingStatus.currentMetrics?.totalTrials ||
+                                    model.optimizationConfig?.nTrials ||
+                                    20}
+                                </span>
+                              </span>
+                            </div>
+                            <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
+                              <span className="text-[10px] text-purple-400 uppercase font-bold block mb-1">
+                                Best Metric (
+                                {model.optimizationConfig?.maximizeMetric})
+                              </span>
+                              <span className="text-xl font-bold font-mono text-purple-400">
+                                {trainingStatus.currentMetrics?.bestValue?.toFixed(
+                                  4
+                                ) || "0.0000"}
+                              </span>
+                            </div>
+                            <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
+                              <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                                Elapsed Time
+                              </span>
+                              <span className="text-lg font-bold">
+                                {elapsedTime}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="bg-background/40 p-3 rounded-lg border border-white/5">
+                              <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                                Current Epoch
+                              </span>
+                              <span className="text-lg font-bold">
+                                {trainingStatus.currentEpoch} /{" "}
+                                {trainingStatus.totalEpochs}
+                              </span>
+                            </div>
+                            <div className="bg-background/40 p-3 rounded-lg border border-white/5 md:col-span-2">
+                              <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                                Time Elapsed
+                              </span>
+                              <span className="text-lg font-bold">
+                                {elapsedTime}
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
+
                       {trainingStatus.errorMessage && (
                         <div className="flex items-center gap-2 p-3 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 text-sm">
                           <AlertCircle className="h-4 w-4" />{" "}
@@ -718,7 +814,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/30">
                 <TabsTrigger value="overview">모델 개요</TabsTrigger>
-                <TabsTrigger value="versions">버전 기록</TabsTrigger>
+                <TabsTrigger value="versions">
+                  {model.optimizationConfig?.isEnabled
+                    ? "가장 우수한 시도 (Trials)"
+                    : "버전 기록"}
+                </TabsTrigger>
                 <TabsTrigger value="feature-importance">피처 분석</TabsTrigger>
               </TabsList>
 
@@ -1001,10 +1101,10 @@ export default function AIModelDetailPage({ params }: PageProps) {
 
                 {/* Training & Architecture Config (Hyperparameters) */}
                 <div className="grid md:grid-cols-2 gap-6 mt-8">
-                  {/* Architecture Config */}
+                  {/* Architecture Overview */}
                   <GlassPane className="p-6 border-blue-500/10 hover:border-blue-500/20 transition-all">
                     <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
-                      <Cpu className="h-5 w-5 text-blue-400" />
+                      <Layout className="h-5 w-5 text-blue-400" />
                       모델 아키텍처 (Architecture)
                     </h3>
                     <div className="grid grid-cols-2 gap-y-6 gap-x-4">
@@ -1013,7 +1113,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           Hidden Size
                         </span>
                         <div className="text-xl font-mono font-bold text-blue-400">
-                          {model.architectureConfig?.hiddenSize || 64}
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <span className="text-sm animate-pulse text-purple-400 italic">
+                              Searching...
+                            </span>
+                          ) : (
+                            model.architectureConfig?.hiddenSize || 64
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -1021,7 +1128,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           Layers
                         </span>
                         <div className="text-xl font-mono font-bold text-blue-400">
-                          {model.architectureConfig?.numLayers || 2}
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <span className="text-sm animate-pulse text-purple-400 italic">
+                              Searching...
+                            </span>
+                          ) : (
+                            model.architectureConfig?.numLayers || 2
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -1029,7 +1143,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           Dropout
                         </span>
                         <div className="text-xl font-mono font-bold text-blue-400">
-                          {(model.architectureConfig?.dropout || 0) * 100}%
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <span className="text-sm animate-pulse text-purple-400 italic">
+                              Searching...
+                            </span>
+                          ) : (
+                            `${(model.architectureConfig?.dropout || 0) * 100}%`
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -1037,9 +1158,16 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           Bidirectional
                         </span>
                         <div className="text-lg font-bold">
-                          {model.architectureConfig?.bidirectional
-                            ? "Enabled"
-                            : "Disabled"}
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <span className="text-sm animate-pulse text-purple-400 italic">
+                              Searching...
+                            </span>
+                          ) : model.architectureConfig?.bidirectional ? (
+                            "Enabled"
+                          ) : (
+                            "Disabled"
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1061,7 +1189,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           <span className="text-xs font-normal text-muted-foreground">
                             /
                           </span>{" "}
-                          {model.trainingConfig?.batchSize}
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <span className="text-sm animate-pulse text-purple-400 italic">
+                              ...
+                            </span>
+                          ) : (
+                            model.trainingConfig?.batchSize
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -1069,7 +1204,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           Learning Rate
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
-                          {model.trainingConfig?.learningRate}
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <span className="text-sm animate-pulse text-purple-400 italic font-sans font-normal">
+                              Auto-tuning
+                            </span>
+                          ) : (
+                            model.trainingConfig?.learningRate
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -1106,7 +1248,100 @@ export default function AIModelDetailPage({ params }: PageProps) {
                 />
               </TabsContent>
 
-              <TabsContent value="versions">
+              <TabsContent value="versions" className="space-y-8">
+                {/* Optimization Trials (if available) */}
+                {model.optimizationConfig?.isEnabled && (
+                  <GlassPane className="p-0 overflow-hidden border-purple-500/20 bg-purple-500/5">
+                    <div className="p-6 border-b border-purple-500/20 flex justify-between items-center bg-purple-500/10">
+                      <div>
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                          <Trophy className="h-5 w-5 text-yellow-500" />
+                          Optimization Results (Top 5 Trials)
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          The following hyperparameters were explored during the
+                          auto-optimization process.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-muted/50 text-[10px] uppercase font-bold text-muted-foreground border-b">
+                          <tr>
+                            <th className="px-6 py-3">Rank</th>
+                            <th className="px-6 py-3">Hidden / Layers</th>
+                            <th className="px-6 py-3">Learning Rate</th>
+                            <th className="px-6 py-3">Batch Size</th>
+                            <th className="px-6 py-3">
+                              Value (
+                              {model.optimizationConfig?.maximizeMetric ||
+                                "Metric"}
+                              )
+                            </th>
+                            <th className="px-6 py-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {(
+                            trainingStatus?.optimizationResult?.all_trials ||
+                            model.latestTrainingJob?.optimizationResult
+                              ?.all_trials ||
+                            []
+                          )
+                            .filter((t: any) => t.state === "COMPLETE")
+                            .sort((a: any, b: any) => b.value - a.value)
+                            .slice(0, 5)
+                            .map((trial: any, idx: number) => (
+                              <tr
+                                key={trial.number}
+                                className={cn(
+                                  "hover:bg-white/5 transition-colors",
+                                  idx === 0 && "bg-yellow-500/5"
+                                )}
+                              >
+                                <td className="px-6 py-4 font-bold">
+                                  {idx === 0 ? "🏆 #1" : `#${idx + 1}`}
+                                </td>
+                                <td className="px-6 py-4 font-mono">
+                                  {trial.params?.hidden_size} /{" "}
+                                  {trial.params?.num_layers}
+                                </td>
+                                <td className="px-6 py-4 font-mono text-xs">
+                                  {trial.params?.learning_rate?.toFixed(6)}
+                                </td>
+                                <td className="px-6 py-4 font-mono">
+                                  {trial.params?.batch_size}
+                                </td>
+                                <td className="px-6 py-4 font-bold text-purple-400">
+                                  {trial.value?.toFixed(4)}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 text-[10px] font-bold">
+                                    {trial.state}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          {!trainingStatus?.optimizationResult?.all_trials &&
+                            !model.latestTrainingJob?.optimizationResult
+                              ?.all_trials && (
+                              <tr>
+                                <td
+                                  colSpan={6}
+                                  className="px-6 py-12 text-center text-muted-foreground italic"
+                                >
+                                  {model.status === "training"
+                                    ? "Exploring search space... results will appear here."
+                                    : "No optimization trials found."}
+                                </td>
+                              </tr>
+                            )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </GlassPane>
+                )}
+
                 <GlassPane className="p-0 overflow-hidden">
                   <div className="p-6 border-b flex justify-between items-center bg-muted/10">
                     <h2 className="text-lg font-bold">Version History</h2>
@@ -1119,14 +1354,19 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       <RefreshCw className="h-4 w-4" /> Manual Retrain
                     </Button>
                   </div>
-                  <AIModelVersionsTable
-                    modelId={modelId}
-                    versions={versions || []}
-                    onVersionActivated={() => {
-                      refetchVersions();
-                      refetchModel();
-                    }}
-                  />
+                  {versions && (
+                    <AIModelVersionsTable
+                      modelId={modelId}
+                      versions={versions}
+                      onVersionActivated={() => {
+                        refetchModel();
+                        queryClient.invalidateQueries({
+                          queryKey: ["ai-model-versions", modelId],
+                        });
+                      }}
+                      isOptimized={model.optimizationConfig?.isEnabled}
+                    />
+                  )}
                 </GlassPane>
               </TabsContent>
 

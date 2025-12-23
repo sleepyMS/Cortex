@@ -9,7 +9,9 @@
     "returns",
     "log_returns",
     "EMA_20",
-    "HMA_16"
+    "MACD_12_26_9",
+    "MACDh_12_26_9",
+    "MACDs_12_26_9"
   ],
   "normalization": {
     "method": "rolling_zscore",
@@ -24,9 +26,11 @@
       }
     },
     {
-      "type": "HMA",
+      "type": "MACD",
       "params": {
-        "length": 16
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
       }
     }
   ],

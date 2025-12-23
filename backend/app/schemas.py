@@ -1374,6 +1374,24 @@ class AITrainingConfigSchema(CamelCaseModel):
     learning_rate: float = Field(0.001, ge=0.0001, le=0.1)
     early_stopping_patience: int = Field(10, ge=3, le=50)
     validation_split: float = Field(0.2, ge=0.1, le=0.4)
+    
+class SearchRangeSchema(CamelCaseModel):
+    min: float
+    max: float
+
+class AIOptimizationSearchSpaceSchema(CamelCaseModel):
+    hidden_size: SearchRangeSchema
+    num_layers: SearchRangeSchema
+    dropout: SearchRangeSchema
+    learning_rate: SearchRangeSchema
+    batch_size: SearchRangeSchema
+
+class AIOptimizationConfigSchema(CamelCaseModel):
+    """하이퍼파라미터 최적화 설정 (Optuna)"""
+    is_enabled: bool = False
+    n_trials: int = Field(20, ge=5, le=100)
+    maximize_metric: str = Field("accuracy", pattern="^(accuracy|f1|return)$")
+    search_space: Optional[AIOptimizationSearchSpaceSchema] = None
 
 
 class AIModelCreate(CamelCaseModel):
@@ -1385,6 +1403,7 @@ class AIModelCreate(CamelCaseModel):
     feature_config: AIFeatureConfig
     labeling_config: AILabelingConfig
     training_config: AITrainingConfigSchema
+    optimization_config: AIOptimizationConfigSchema
     training_symbol: str = Field(..., description="학습 심볼 (예: BTCUSDT)")
     training_timeframe: str = Field("1h", description="타임프레임")
     training_start_date: datetime
@@ -1437,6 +1456,7 @@ class AITrainingJobResponse(CamelCaseModel):
     total_epochs: Optional[int] = None
     current_metrics: Optional[Dict[str, Any]] = None
     epoch_logs: Optional[List[AIEpochLog]] = None
+    optimization_result: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -1483,6 +1503,7 @@ class AIModelDetail(AIModelSummary):
     feature_config: AIFeatureConfig
     labeling_config: AILabelingConfig
     training_config: AITrainingConfigSchema
+    optimization_config: Optional[AIOptimizationConfigSchema] = None
     training_metrics: Optional[Dict[str, Any]] = None
     validation_metrics: Optional[Dict[str, Any]] = None
     model_weights_path: Optional[str] = None

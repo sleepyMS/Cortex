@@ -8,33 +8,22 @@
     "volume",
     "returns",
     "log_returns",
-    "EMA_20",
-    "HMA_16"
+    "MACD_12_26_9",
+    "MACDh_12_26_9",
+    "MACDs_12_26_9"
   ],
   "normalization": {
-    "method": {
-      "method": {
-        "method": "rolling_zscore",
-        "params": {},
-        "rolling_window": 100
-      },
-      "params": {},
-      "rolling_window": 100
-    },
+    "method": "rolling_zscore",
     "rolling_window": 100,
     "params": {}
   },
   "indicators": [
     {
-      "type": "EMA",
+      "type": "MACD",
       "params": {
-        "length": 20
-      }
-    },
-    {
-      "type": "HMA",
-      "params": {
-        "length": 16
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
       }
     }
   ],

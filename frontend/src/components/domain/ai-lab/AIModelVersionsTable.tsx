@@ -31,12 +31,14 @@ interface AIModelVersionsTableProps {
   modelId: string;
   versions: AIModelVersion[];
   onVersionActivated: () => void;
+  isOptimized?: boolean;
 }
 
 export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
   modelId,
   versions,
   onVersionActivated,
+  isOptimized = false,
 }) => {
   const [selectedVersion, setSelectedVersion] = useState<AIModelVersion | null>(
     null
@@ -73,7 +75,7 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Version</TableHead>
+              <TableHead>{isOptimized ? "Trial ID" : "Version"}</TableHead>
               <TableHead>Created At</TableHead>
               <TableHead>Training Period</TableHead>
               <TableHead>Metrics</TableHead>
@@ -123,10 +125,19 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
                       size="sm"
                       variant="ghost"
                       onClick={() => handleRollbackClick(v)}
-                      title="Rollback to this version"
+                      title={
+                        isOptimized
+                          ? "Apply this Trial"
+                          : "Rollback to this version"
+                      }
+                      className={
+                        isOptimized
+                          ? "text-violet-400 hover:text-violet-300"
+                          : ""
+                      }
                     >
                       <RotateCcw className="h-4 w-4 mr-1" />
-                      Rollback
+                      {isOptimized ? "Apply" : "Rollback"}
                     </Button>
                   )}
                 </TableCell>
@@ -150,9 +161,13 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>버전 롤백 확인</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isOptimized ? "시도(Trial) 적용 확인" : "버전 롤백 확인"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              버전 {selectedVersion?.versionNumber}으로 롤백하시겠습니까?
+              {isOptimized
+                ? `선택한 시도(Trial #${selectedVersion?.versionNumber})의 설정을 모델에 적용하시겠습니까?`
+                : `버전 ${selectedVersion?.versionNumber}으로 롤백하시겠습니까?`}
               <br />
               <br />이 버전이 활성화되면 AI 신호 생성에 사용되는 모델이
               변경됩니다.

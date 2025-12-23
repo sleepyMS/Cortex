@@ -1,0 +1,60 @@
+{
+  "created_at": "2025-12-23T20:29:57.779757",
+  "model_type": "lstm",
+  "training_symbol": "BTCUSDT",
+  "training_timeframe": "1h",
+  "training_start_date": "2024-12-23T00:00:00+00:00",
+  "training_end_date": "2025-12-23T00:00:00+00:00",
+  "label_stats": {
+    "total_samples": 8756,
+    "buy_count": 3036,
+    "hold_count": 1536,
+    "sell_count": 4184,
+    "buy_ratio": 0.34673366834170855,
+    "hold_ratio": 0.1754225673823664,
+    "sell_ratio": 0.47784376427592506
+  },
+  "training_result": {
+    "best_epoch": 1,
+    "best_val_loss": 1.0656189918518066,
+    "training_time_seconds": 67.37858438491821,
+    "final_metrics": {
+      "accuracy": 0.3747072599531616,
+      "f1_macro": 0.33138364005626136,
+      "f1_per_class": {
+        "buy": 0.34904013961605584,
+        "hold": 0.18867924528301888,
+        "sell": 0.45643153526970953
+      },
+      "precision_macro": 0.3331380686733148,
+      "recall_macro": 0.3388118709071854,
+      "confusion_matrix": [
+        [
+          200,
+          89,
+          228
+        ],
+        [
+          62,
+          55,
+          132
+        ],
+        [
+          367,
+          190,
+          385
+        ]
+      ]
+    }
+  },
+  "model_info": {
+    "model_type": "lstm",
+    "input_size": 10,
+    "hidden_size": 64,
+    "num_layers": 2,
+    "dropout": 0.2,
+    "bidirectional": false,
+    "is_trained": true,
+    "num_parameters": 52931
+  }
+}

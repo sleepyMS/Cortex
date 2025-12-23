@@ -45,6 +45,20 @@ export interface AITrainingConfig {
   validationSplit: number;
 }
 
+// 하이퍼파라미터 최적화 설정 (Optuna)
+export interface AIOptimizationConfig {
+  isEnabled: boolean;
+  nTrials: number;
+  maximizeMetric: "accuracy" | "f1" | "return";
+  searchSpace: {
+    hiddenSize: { min: number; max: number };
+    numLayers: { min: number; max: number };
+    dropout: { min: number; max: number };
+    learningRate: { min: number; max: number };
+    batchSize: { min: number; max: number };
+  };
+}
+
 // AI 모델 생성 요청
 export interface AIModelCreateRequest {
   name: string;
@@ -54,6 +68,7 @@ export interface AIModelCreateRequest {
   featureConfig: AIFeatureConfig;
   labelingConfig: AILabelingConfig;
   trainingConfig: AITrainingConfig;
+  optimizationConfig: AIOptimizationConfig;
   trainingSymbol: string;
   trainingTimeframe: string;
   trainingStartDate: string;
@@ -72,6 +87,9 @@ export interface AITrainingJob {
     trainLoss?: number;
     valLoss?: number;
     phase?: string;
+    trial?: number;
+    totalTrials?: number;
+    bestValue?: number;
   };
   epochLogs?: Array<{
     epoch: number;
@@ -80,6 +98,7 @@ export interface AITrainingJob {
     accuracy?: number;
     timestamp: string;
   }>;
+  optimizationResult?: any;
   errorMessage?: string;
   startedAt?: string;
   completedAt?: string;
@@ -110,6 +129,7 @@ export interface AIModelSummary {
   trainingStartDate: string;
   trainingEndDate: string;
   isPublic: boolean;
+  isOptimized?: boolean;
   createdAt: string;
 }
 
@@ -120,6 +140,7 @@ export interface AIModelDetail extends AIModelSummary {
   featureConfig: AIFeatureConfig;
   labelingConfig: AILabelingConfig;
   trainingConfig: AITrainingConfig;
+  optimizationConfig?: AIOptimizationConfig;
   trainingMetrics?: {
     accuracy?: number;
     f1Macro?: number;
@@ -236,4 +257,17 @@ export const DEFAULT_TRAINING_CONFIG: AITrainingConfig = {
   learningRate: 0.001,
   earlyStoppingPatience: 10,
   validationSplit: 0.2,
+};
+
+export const DEFAULT_OPTIMIZATION_CONFIG: AIOptimizationConfig = {
+  isEnabled: false,
+  nTrials: 20,
+  maximizeMetric: "accuracy",
+  searchSpace: {
+    hiddenSize: { min: 32, max: 256 },
+    numLayers: { min: 1, max: 4 },
+    dropout: { min: 0.1, max: 0.5 },
+    learningRate: { min: 0.0001, max: 0.01 },
+    batchSize: { min: 32, max: 128 },
+  },
 };

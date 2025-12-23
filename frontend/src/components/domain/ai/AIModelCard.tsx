@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Calendar,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -107,12 +108,26 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
               <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                 {model.name}
               </h3>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <Brain className="h-3 w-3" />
-                {model.modelType.toUpperCase()}
-                <span className="mx-1">•</span>
-                {model.trainingSymbol}
-              </p>
+              <div className="flex items-center gap-1 mt-1">
+                <Badge
+                  variant="secondary"
+                  className="bg-primary/5 text-primary border-primary/10 text-[10px] h-5"
+                >
+                  {model.modelType.toUpperCase()}
+                </Badge>
+                {model.isOptimized && (
+                  <Badge
+                    variant="outline"
+                    className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px] h-5 flex items-center gap-1 px-1.5"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Optuna
+                  </Badge>
+                )}
+                <span className="text-[11px] font-mono text-muted-foreground ml-1">
+                  {model.trainingSymbol}
+                </span>
+              </div>
             </div>
 
             {/* Status Badge */}
