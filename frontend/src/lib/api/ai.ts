@@ -10,6 +10,9 @@ import type {
   AITrainingJob,
   AIPredictionRequest,
   AIPredictionResponse,
+  AIModelVersion,
+  AIModelCostEstimationRequest,
+  CostEstimationResponse,
 } from "@/types/ai";
 
 // AI 모델 목록 조회
@@ -99,4 +102,48 @@ export const getModelDownloadUrl = (modelId: string): string => {
   const baseUrl =
     process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
   return `${baseUrl}/ai-models/${modelId}/download`;
+};
+
+// AI 모델 버전 목록 조회
+export const getAIModelVersions = async (
+  modelId: string
+): Promise<AIModelVersion[]> => {
+  const { data } = await apiClient.get<AIModelVersion[]>(
+    `/ai-models/${modelId}/versions`
+  );
+  return data;
+};
+
+// AI 모델 버전 활성화 (Rollback)
+export const activateModelVersion = async (
+  modelId: string,
+  versionId: string
+): Promise<void> => {
+  await apiClient.post(`/ai-models/${modelId}/versions/${versionId}/activate`);
+};
+
+// 모델 수동 재학습 요청
+export const retrainModel = async (
+  modelId: string,
+  range?: { startDate?: string; endDate?: string }
+): Promise<AITrainingJob> => {
+  const { data } = await apiClient.post<AITrainingJob>(
+    `/ai-models/${modelId}/retrain`,
+    {
+      start_date: range?.startDate,
+      end_date: range?.endDate,
+    }
+  );
+  return data;
+};
+
+// 비용 견적
+export const estimateAIModelCost = async (
+  payload: AIModelCostEstimationRequest
+): Promise<CostEstimationResponse> => {
+  const { data } = await apiClient.post<CostEstimationResponse>(
+    "/ai-models/cost-estimation",
+    payload
+  );
+  return data;
 };

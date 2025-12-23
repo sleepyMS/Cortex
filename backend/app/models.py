@@ -835,9 +835,46 @@ class AIModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     
     # 관계
+    # Walk-Forward Retraining
+    is_auto_retrain_enabled = Column(Boolean, default=False, nullable=False)
+    retrain_interval_days = Column(Integer, default=30, nullable=True)
+    retrain_data_window_days = Column(Integer, default=90, nullable=True)
+    next_retrain_at = Column(DateTime(timezone=True), nullable=True)
+
+    active_version_id = Column(
+        UUID(as_uuid=True), 
+        ForeignKey("ai_model_versions.id", use_alter=True, name="fk_ai_models_active_version_id"), 
+        nullable=True
+    )
+
+    # 관계
     user = relationship("User")
+    versions = relationship("AIModelVersion", back_populates="model", cascade="all, delete-orphan", foreign_keys="[AIModelVersion.model_id]")
+    active_version = relationship("AIModelVersion", foreign_keys=[active_version_id], post_update=True)
     training_jobs = relationship("AITrainingJob", back_populates="model", cascade="all, delete-orphan")
     purchases = relationship("UserPurchasedAIModel", back_populates="ai_model", cascade="all, delete-orphan")
+
+
+class AIModelVersion(Base):
+    """
+    AI 모델의 학습된 버전 모델 (Walk-Forward Retraining).
+    """
+    __tablename__ = "ai_model_versions"
+    __table_args__ = (UniqueConstraint('model_id', 'version_number', name='_model_version_uc'),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    model_id = Column(UUID(as_uuid=True), ForeignKey("ai_models.id", ondelete="CASCADE"), nullable=False, index=True)
+    version_number = Column(Integer, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    training_start_date = Column(DateTime(timezone=True), nullable=False)
+    training_end_date = Column(DateTime(timezone=True), nullable=False)
+    
+    model_weights_path = Column(String(500), nullable=False)
+    metrics = Column(JSONB, nullable=True)
+    is_active = Column(Boolean, default=False, nullable=False)
+    
+    model = relationship("AIModel", back_populates="versions", foreign_keys=[model_id])
 
 
 class AITrainingJob(Base):

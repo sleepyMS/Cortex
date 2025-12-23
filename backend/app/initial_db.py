@@ -48,15 +48,26 @@ def seed_db():
         # 가격 정보는 별도로 매핑
         plan_prices = {
             PlanType.BASIC: 0.0,
-            PlanType.TRADER: 49.99, # 이 가격 정보도 config에 추가하는 것을 고려할 수 있습니다.
+            PlanType.TRADER: 49.99, 
             PlanType.PRO: 129.99
+        }
+        
+        # 크레딧 할증 배율 매핑 (Basic은 2배, 유료 플랜은 1배)
+        plan_multipliers = {
+            PlanType.BASIC: 2.0,
+            PlanType.TRADER: 1.5,
+            PlanType.PRO: 1.0
         }
 
         logger.info("Seeding subscription plans...")
         for plan_name, features in plans_to_seed.items():
             db_plan = db.query(models.Plan).filter(models.Plan.name == plan_name).first()
             if not db_plan:
-                db_plan = models.Plan(name=plan_name, price=plan_prices[plan_name])
+                db_plan = models.Plan(
+                    name=plan_name, 
+                    price=plan_prices[plan_name],
+                    credit_surcharge_multiplier=plan_multipliers[plan_name]
+                )
                 db.add(db_plan)
                 db.flush()
 
@@ -66,7 +77,22 @@ def seed_db():
                 db.add(db_features)
                 logger.info(f"Seeded '{plan_name.value}' plan with its features.")
             else:
-                logger.info(f"Plan '{plan_name.value}' already exists.")
+                # 기존 플랜이 존재하더라도 할증 배율 정책이 변경되었을 수 있으므로 업데이트
+                updated = False
+                if abs(db_plan.credit_surcharge_multiplier - plan_multipliers[plan_name]) > 0.001:
+                    db_plan.credit_surcharge_multiplier = plan_multipliers[plan_name]
+                    updated = True
+                
+                # 가격 업데이트 (선택 사항)
+                if db_plan.price != int(plan_prices[plan_name]) and plan_name == PlanType.BASIC:
+                     # Basic은 0원 유지, 유료 플랜은 가격 변경 시 주의 필요하므로 Basic만 체크
+                     pass
+
+                if updated:
+                    db.add(db_plan)
+                    logger.info(f"Updated plan '{plan_name.value}' settings.")
+                else:
+                    logger.info(f"Plan '{plan_name.value}' already exists and is up to date.")
 
         # --- 2. config.py에서 관리자 계정 정보 가져오기 ---
         logger.info("Seeding admin user...")

@@ -1,6 +1,7 @@
 # file: backend/app/services/cost_calculator.py
 
 import math
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -116,7 +117,120 @@ class CostCalculationService:
             original_cost=full_price,
             discount_pct=round(discount_pct, 4),
             final_cost=final_cost,
-            user_balance=user_balance, # 실제 잔액으로 채워줍니다.
+            user_balance=user_balance,
+            is_sufficient=is_sufficient
+        )
+    async def calculate_ai_training_cost(
+        self,
+        db: AsyncSession,
+        user: models.User,
+        training_type: str = "new", # "new" or "retrain"
+        # Dynamic Parameters
+        start_date: datetime = None,
+        end_date: datetime = None,
+        timeframe: str = "1h",
+        epochs: int = 100,
+        model_id: str = None,
+        hidden_size: int = 64,
+        num_layers: int = 2
+    ) -> schemas.CostEstimationResponse:
+        """
+        AI 모델 학습/재학습 비용 계산 (Dynamic)
+        """
+        # 0. Model Lookup & Parameter Params Override (for retrain)
+        if model_id:
+            query = select(models.AIModel).filter(models.AIModel.id == model_id)
+            result = await db.execute(query)
+            target_model = result.scalar_one_or_none()
+            
+            if target_model and training_type == "retrain":
+                # 재학습 시에는 모델의 원본 설정(Timeframe, Epochs)을 따르는 것이 기본
+                if target_model.training_timeframe:
+                    timeframe = target_model.training_timeframe
+                if target_model.training_config:
+                    epochs = target_model.training_config.get("epochs", 100)
+                if target_model.architecture_config:
+                    hidden_size = target_model.architecture_config.get("hidden_size", 64)
+                    num_layers = target_model.architecture_config.get("num_layers", 2)
+                
+                # 날짜가 명시되지 않았으면 모델의 마지막 학습 날짜 등을 참조 (옵션)
+                # 하지만 보통 재학습은 날짜를 명시함.
+                if not start_date: start_date = target_model.training_start_date
+                if not end_date: end_date = target_model.training_end_date
+
+        # 1. Row Count 추정
+        if not start_date or not end_date:
+            # 기본값 (최근 1년)
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=365)
+            
+        duration = (end_date - start_date).total_seconds()
+        
+        # Timeframe in seconds
+        tf_minutes = 60 # 1h default
+        if timeframe.endswith('m'):
+            tf_minutes = int(timeframe[:-1])
+        elif timeframe.endswith('h'):
+            tf_minutes = int(timeframe[:-1]) * 60
+        elif timeframe.endswith('d'):
+            tf_minutes = int(timeframe[:-1]) * 60 * 24
+            
+        tf_seconds = tf_minutes * 60
+        estimated_rows = duration / tf_seconds
+        
+        # 2. Workload Estimation
+        # Heuristic: Total processed items = Rows * Epochs
+        base_items = estimated_rows * epochs
+        
+        # [Complexity Factor]
+        # LSTM 복잡도는 은닉층 크기와 레이어 수에 크게 영향을 받음.
+        # 기준: Hidden=64, Layers=2 => Factor 1.0
+        # Hidden 128 (2배) -> 약 2.8배 연산량 (1.5승 적용)
+        hidden_factor = math.pow(hidden_size / 64.0, 1.5)
+        layer_factor = num_layers / 2.0
+        complexity_factor = hidden_factor * layer_factor
+        
+        total_workload = base_items * complexity_factor
+        
+        # 3. Estimated CPU Time (Seconds)
+        # 벤치마크: CPU 1코어 기준 초당 처리 가능한 (Row*Epoch*Complexity) 수
+        PERFORMANCE_CONSTANT = 15000 
+        estimated_seconds = total_workload / PERFORMANCE_CONSTANT
+        
+        # 최소 비용 보장 (10초)
+        estimated_seconds = max(estimated_seconds, 10.0)
+        
+        # 4. Base Cost (Pro 기준, 1 Credit per Second)
+        # User defined: "Basic 기준 1초에 2크레딧"
+        # Basic Multiplier is usually 2.0. So Base Rate is 1.0.
+        base_rate_per_sec = 1.0
+        base_cost = math.ceil(estimated_seconds * base_rate_per_sec)
+
+        # 5. Plan Calculation
+        if not user.subscription or not user.subscription.plan:
+            query = select(models.Plan).filter(models.Plan.name == models.PlanType.BASIC)
+            result = await db.execute(query)
+            plan = result.scalar_one_or_none()
+            if not plan: raise Exception("Basic plan not found")
+            surcharge_multiplier = plan.credit_surcharge_multiplier
+        else:
+            surcharge_multiplier = user.subscription.plan.credit_surcharge_multiplier
+            
+        final_cost = math.ceil(base_cost * surcharge_multiplier)
+        
+        # 정가 (Basic 기준)
+        full_price = math.ceil(base_cost * 2.0)
+        discount_pct = 1 - (surcharge_multiplier / 2.0)
+        
+        credit_summary = await credit_service.get_balance_summary(db, user.id)
+        user_balance = credit_summary.total_balance
+        is_sufficient = user_balance >= final_cost
+        
+        return schemas.CostEstimationResponse(
+            original_cost=full_price,
+            discount_pct=round(discount_pct, 4),
+            final_cost=final_cost,
+            user_balance=user_balance,
             is_sufficient=is_sufficient
         )
 

@@ -17,6 +17,7 @@ import {
   setModelPublic,
   testPrediction,
   deleteAIModel,
+  getAIModelVersions,
 } from "@/lib/api/ai";
 import { Button } from "@/components/ui/Button";
 import { GlassPane } from "@/components/ui/GlassPane";
@@ -54,6 +55,8 @@ import {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { AIModelFeatureImportance } from "@/components/domain/ai-lab/AIModelFeatureImportance";
+import { AIModelVersionsTable } from "@/components/domain/ai-lab/AIModelVersionsTable";
+import { AIModelRetrainDialog } from "@/components/domain/ai-lab/AIModelRetrainDialog";
 
 import type { AIModelDetail, AITrainingJob } from "@/types/ai";
 
@@ -88,6 +91,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const [predictionResult, setPredictionResult] = useState<any>(null);
   const [isPredicting, setIsPredicting] = useState(false);
+  const [isRetrainDialogOpen, setIsRetrainDialogOpen] = useState(false);
 
   // Fetch model data
   const { data: model, isLoading } = useQuery({
@@ -101,6 +105,13 @@ export default function AIModelDetailPage({ params }: PageProps) {
     queryFn: () => getTrainingStatus(modelId),
     enabled: model?.status === "training" || model?.status === "pending",
     refetchInterval: model?.status === "training" ? 5000 : false,
+  });
+
+  // Fetch model versions
+  const { data: versions, refetch: refetchVersions } = useQuery({
+    queryKey: ["ai-model-versions", modelId],
+    queryFn: () => getAIModelVersions(modelId),
+    enabled: !!model,
   });
 
   // Delete mutation
@@ -249,8 +260,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
 
       {/* Main Content Grid */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-6">
           <TabsTrigger value="overview">개요</TabsTrigger>
+          <TabsTrigger value="versions">버전 기록</TabsTrigger>
           <TabsTrigger value="feature-importance">피처 중요도</TabsTrigger>
         </TabsList>
 
@@ -304,6 +316,17 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   </div>
                   <span className="font-medium">
                     {model.isPublic ? "공개" : "비공개"}
+                  </span>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Auto Retrain</span>
+                  </div>
+                  <span className="font-medium">
+                    {model.isAutoRetrainEnabled
+                      ? `${model.retrainIntervalDays}일 주기`
+                      : "비활성화"}
                   </span>
                 </div>
               </div>
@@ -533,6 +556,45 @@ export default function AIModelDetailPage({ params }: PageProps) {
             </GlassPane>
           </div>
         </TabsContent>
+
+        <TabsContent value="versions" className="space-y-6">
+          <GlassPane className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">버전 기록</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRetrainDialogOpen(true)}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                재학습 (Manual Retrain)
+              </Button>
+            </div>
+            <AIModelVersionsTable
+              modelId={modelId}
+              versions={versions || []}
+              onVersionActivated={() => {
+                refetchVersions();
+                queryClient.invalidateQueries({
+                  queryKey: ["ai-model", modelId],
+                });
+              }}
+            />
+          </GlassPane>
+        </TabsContent>
+
+        <AIModelRetrainDialog
+          open={isRetrainDialogOpen}
+          onOpenChange={setIsRetrainDialogOpen}
+          modelId={modelId}
+          initialStartDate={model.trainingStartDate}
+          initialEndDate={model.trainingEndDate}
+          onSuccess={() => {
+            refetchStatus();
+            // 날짜가 변경되었을 수 있으므로 모델 정보도 갱신
+            queryClient.invalidateQueries({ queryKey: ["ai-model", modelId] });
+          }}
+        />
 
         <TabsContent value="feature-importance">
           <AIModelFeatureImportance

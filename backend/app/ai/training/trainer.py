@@ -88,17 +88,25 @@ class AIModelTrainer:
         self.feature_engineer: Optional[FeatureEngineer] = None
         self.model: Optional[LSTMClassifier] = None
         
-    def train(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def train(self, df: pd.DataFrame, version_number: Optional[int] = None) -> Dict[str, Any]:
         """
         전체 학습 파이프라인 실행
         
         Args:
             df: OHLCV 데이터프레임 (time, open, high, low, close, volume)
+            version_number: (Optional) 모델 버전 번호. 지정 시 하위 디렉토리에 저장.
             
         Returns:
             결과 메트릭 및 모델 정보
         """
         start_time = time.time()
+        
+        # 버전별 저장 경로 설정
+        if version_number is not None:
+             self.save_dir = self.save_dir / f"v{version_number}"
+             self.save_dir.mkdir(parents=True, exist_ok=True)
+             logger.info(f"Versioned training enabled. Output dir: {self.save_dir}")
+
         total_steps = 5
         current_step = 0
         
@@ -195,6 +203,7 @@ class AIModelTrainer:
         result = {
             "status": "completed",
             "training_time_seconds": total_time,
+            "version_number": version_number,
             "model_path": str(self.save_dir / "model.onnx"),
             "label_stats": label_stats,
             "training_metrics": asdict(training_result),

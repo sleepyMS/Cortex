@@ -72,6 +72,17 @@ class CostEstimationRequest(CamelCaseModel):
     min_timeframe_minutes: int = Field(..., ge=1)
     trials: int = Field(1, ge=1)
 
+class AIModelCostEstimationRequest(CamelCaseModel):
+    """AI 모델 학습 비용 견적 요청"""
+    training_type: Literal["new", "retrain"] = Field("new")
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    timeframe: str = "1h"
+    epochs: int = 100
+    model_id: Optional[str] = None
+    hidden_size: int = 64
+    num_layers: int = 2
+
 class CostEstimationResponse(CamelCaseModel):
     """비용 견적 응답 스키마"""
     original_cost: int
@@ -1433,6 +1444,24 @@ class AIModelSummary(CamelCaseModel):
     created_at: datetime
 
 
+class AIModelVersionResponse(CamelCaseModel):
+    """AI 모델 버전 정보"""
+    id: uuid.UUID
+    model_id: uuid.UUID
+    version_number: int
+    created_at: datetime
+    training_start_date: datetime
+    training_end_date: datetime
+    metrics: Optional[Dict[str, Any]] = None
+    is_active: bool
+
+
+class RetrainRequest(CamelCaseModel):
+    """AI 모델 재학습 요청"""
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+
 class AIModelDetail(AIModelSummary):
     """AI 모델 상세 정보"""
     user_id: uuid.UUID
@@ -1445,6 +1474,13 @@ class AIModelDetail(AIModelSummary):
     model_weights_path: Optional[str] = None
     updated_at: Optional[datetime] = None
     latest_training_job: Optional[AITrainingJobResponse] = None
+    
+    # Auto Retrain & Versioning
+    is_auto_retrain_enabled: bool = False
+    retrain_interval_days: Optional[int] = None
+    retrain_data_window_days: Optional[int] = None
+    next_retrain_at: Optional[datetime] = None
+    active_version_id: Optional[uuid.UUID] = None
 
 
 class AIModelCreateResponse(CamelCaseModel):

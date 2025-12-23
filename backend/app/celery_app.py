@@ -53,7 +53,7 @@ celery_app = Celery(
     'cortex_worker',
     broker=settings.DB.REDIS_URL,
     backend=settings.DB.REDIS_URL,
-    include=['app.tasks', 'app.celery_beat'],
+    include=['app.tasks', 'app.tasks_ai', 'app.celery_beat'],
     task_cls=DatabaseTask  # 커스텀 오류 처리 클래스 적용
 )
 
@@ -70,6 +70,10 @@ celery_app.conf.task_routes = {
     # 백테스팅과 최적화는 'cpu_bound_queue'로 보냅니다.
     'run_backtest': {'queue': 'cpu_bound_queue'},
     'run_optimization': {'queue': 'cpu_bound_queue'}, 
+    
+    # AI 학습 관련 태스크
+    'app.tasks_ai.train_ai_model_task': {'queue': 'cpu_bound_queue'},
+    'app.tasks_ai.check_and_retrain_models': {'queue': 'cpu_bound_queue'}, 
 
     # 자동매매 봇과 데이터 수집은 'io_bound_queue'로 보냅니다.
     'run_all_active_bots': {'queue': 'io_bound_queue'},

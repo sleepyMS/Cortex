@@ -10,7 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { createAIModel } from "@/lib/api/ai";
+import { createAIModel, estimateAIModelCost } from "@/lib/api/ai";
 import { Button } from "@/components/ui/Button";
 import { GlassPane } from "@/components/ui/GlassPane";
 import { Input } from "@/components/ui/Input";
@@ -34,6 +34,9 @@ import {
   Sparkles,
   Check,
   Loader2,
+  Tag,
+  Percent,
+  Ticket,
 } from "lucide-react";
 
 import type {
@@ -42,6 +45,7 @@ import type {
   AIFeatureConfig,
   AILabelingConfig,
   AITrainingConfig,
+  CostEstimationResponse,
 } from "@/types/ai";
 import {
   DEFAULT_ARCHITECTURE_CONFIG,
@@ -94,6 +98,44 @@ export default function NewAIModelPage() {
   const [trainingConfig, setTrainingConfig] = useState<AITrainingConfig>(
     DEFAULT_TRAINING_CONFIG
   );
+
+  const [costData, setCostData] = useState<CostEstimationResponse | null>(null);
+  const [isCheckingCost, setIsCheckingCost] = useState(false);
+
+  // Check cost on step 5
+  React.useEffect(() => {
+    if (step === 5) {
+      const fetchCost = async () => {
+        setIsCheckingCost(true);
+        try {
+          const res = await estimateAIModelCost({
+            trainingType: "new",
+            startDate: new Date(startDate).toISOString(),
+            endDate: new Date(endDate).toISOString(),
+            timeframe,
+            epochs: trainingConfig.epochs,
+            hiddenSize: architectureConfig.hiddenSize,
+            numLayers: architectureConfig.numLayers,
+          });
+          setCostData(res);
+        } catch (e) {
+          console.error(e);
+          toast.error("비용 견적을 불러오는데 실패했습니다.");
+        } finally {
+          setIsCheckingCost(false);
+        }
+      };
+      fetchCost();
+    }
+  }, [
+    step,
+    startDate,
+    endDate,
+    timeframe,
+    trainingConfig.epochs,
+    architectureConfig.hiddenSize,
+    architectureConfig.numLayers,
+  ]);
 
   // Set default dates (1 year period)
   React.useEffect(() => {
@@ -449,6 +491,70 @@ export default function NewAIModelPage() {
                   {(labelingConfig.stopLoss * 100).toFixed(1)}%
                 </span>
               </div>
+              <div className="rounded-lg bg-card/50 border border-border p-4 space-y-4">
+                <h4 className="font-semibold text-sm">비용 상세정보</h4>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      <span>정가 (Basic 기준)</span>
+                    </div>
+                    <span>
+                      {costData && !isCheckingCost
+                        ? `${costData.originalCost.toLocaleString()} CC`
+                        : "..."}
+                    </span>
+                  </div>
+
+                  {costData && costData.discountPct > 0 && (
+                    <div className="flex justify-between text-sm text-blue-400">
+                      <div className="flex items-center gap-2">
+                        <Percent className="h-4 w-4" />
+                        <span>
+                          플랜 할인 ({(costData.discountPct * 100).toFixed(0)}%)
+                        </span>
+                      </div>
+                      <span>
+                        -
+                        {Math.ceil(
+                          costData.originalCost - costData.finalCost
+                        ).toLocaleString()}{" "}
+                        CC
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-px bg-border" />
+
+                <div className="flex justify-between items-center text-violet-400">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <Ticket className="h-5 w-5" />
+                    <span>최종 필요 크레딧</span>
+                  </div>
+                  <span className="text-xl font-bold">
+                    {isCheckingCost ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      `${costData?.finalCost.toLocaleString() ?? 0} CC`
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-xs text-muted-foreground pt-2">
+                  <span>내 크레딧 잔액</span>
+                  <span
+                    className={
+                      costData && !costData.isSufficient
+                        ? "text-red-500 font-medium"
+                        : ""
+                    }
+                  >
+                    {costData?.userBalance.toLocaleString()} CC
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -555,11 +661,7 @@ export default function NewAIModelPage() {
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={createMutation.isPending}
-              className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700"
-            >
+            <Button onClick={handleSubmit} disabled={createMutation.isPending}>
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -568,7 +670,7 @@ export default function NewAIModelPage() {
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  학습 시작
+                  학습 시작 ({costData?.finalCost ?? "..."} Credits)
                 </>
               )}
             </Button>

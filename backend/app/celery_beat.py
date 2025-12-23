@@ -36,4 +36,9 @@ celery_app.conf.beat_schedule = {
         'task': 'run_all_active_bots',
         'schedule': crontab(minute='*'),
     },
+    # --- AI 모델 재학습 점검 ---
+    'check-and-retrain-ai-models-daily': {
+        'task': 'app.tasks_ai.check_and_retrain_models',
+        'schedule': crontab(hour=3, minute=0), # 매일 새벽 3시
+    },
 }

@@ -79,6 +79,18 @@ export interface AITrainingJob {
   createdAt: string;
 }
 
+// AI 모델 버전
+export interface AIModelVersion {
+  id: string;
+  modelId: string;
+  versionNumber: number;
+  createdAt: string;
+  trainingStartDate: string;
+  trainingEndDate: string;
+  metrics?: any;
+  isActive: boolean;
+}
+
 // AI 모델 요약 (목록용)
 export interface AIModelSummary {
   id: string;
@@ -137,6 +149,13 @@ export interface AIModelDetail extends AIModelSummary {
   modelWeightsPath?: string;
   updatedAt?: string;
   latestTrainingJob?: AITrainingJob;
+
+  // Auto Retrain & Versioning
+  isAutoRetrainEnabled?: boolean;
+  retrainIntervalDays?: number;
+  retrainDataWindowDays?: number;
+  nextRetrainAt?: string;
+  activeVersionId?: string;
 }
 
 // 모델 생성 응답
@@ -159,6 +178,25 @@ export interface AIPredictionResponse {
   sellProbability: number;
   predictedClass: number;
   predictedLabel: "BUY" | "HOLD" | "SELL";
+}
+
+export interface AIModelCostEstimationRequest {
+  trainingType: "new" | "retrain";
+  startDate?: string;
+  endDate?: string;
+  timeframe?: string;
+  epochs?: number;
+  modelId?: string;
+  hiddenSize?: number;
+  numLayers?: number;
+}
+
+export interface CostEstimationResponse {
+  originalCost: number;
+  discountPct: number;
+  finalCost: number;
+  userBalance: number;
+  isSufficient: boolean;
 }
 
 // 기본 설정값들
