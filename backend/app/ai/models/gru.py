@@ -221,11 +221,12 @@ class GRUClassifier(BaseAIModel):
                 }
                 progress_callback(epoch + 1, config.epochs, metrics)
             
-            if (epoch + 1) % 10 == 0:
-                logger.info(
-                    f"Epoch {epoch + 1}/{config.epochs} - "
-                    f"Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}"
-                )
+            # Log every epoch for debugging
+            logger.info(
+                f"Epoch {epoch + 1}/{config.epochs} - "
+                f"Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, "
+                f"Best Val Loss: {best_val_loss:.4f}, Patience: {patience_counter}/{config.early_stopping_patience}"
+            )
         
         # 최적 모델 복원
         if best_model_state is not None:

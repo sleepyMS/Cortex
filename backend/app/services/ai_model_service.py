@@ -175,20 +175,29 @@ class AIModelService:
         return result.scalar_one_or_none()
     
     async def delete_model(self, model_id: str, user_id: str) -> bool:
-        """모델 삭제"""
+        """모델 삭제 - 모든 버전 및 관련 파일 완전 삭제"""
         model = await self.get_model(model_id, user_id)
         if not model:
             return False
         
-        # 파일 삭제 (Sync I/O but acceptable for now, ideally run in threadpool)
+        # 파일 삭제 (모델 폴더 전체 삭제)
         if model.model_weights_path:
-            model_dir = Path(model.model_weights_path).parent
-            if model_dir.exists():
-                import shutil
+            import shutil
+            version_dir = Path(model.model_weights_path).parent  # v1, v2 등 버전 폴더
+            model_dir = version_dir.parent  # model_id 폴더 (모든 버전 포함)
+            user_model_dir = model_dir.parent  # user_id 폴더
+            
+            # 모델 폴더 전체 삭제 (모든 버전 포함)
+            if model_dir.exists() and model_dir.name == str(model.id):
                 shutil.rmtree(model_dir, ignore_errors=True)
-                logger.info(f"Deleted model files: {model_dir}")
+                logger.info(f"Deleted model folder: {model_dir}")
+            
+            # 사용자 폴더가 비어있으면 삭제
+            if user_model_dir.exists() and not any(user_model_dir.iterdir()):
+                user_model_dir.rmdir()
+                logger.info(f"Deleted empty user folder: {user_model_dir}")
         
-        # DB 삭제
+        # DB 삭제 (CASCADE로 버전 및 관련 Job도 삭제됨)
         await self.db.delete(model)
         await self.db.commit()
         

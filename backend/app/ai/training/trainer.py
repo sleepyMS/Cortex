@@ -131,7 +131,18 @@ class AIModelTrainer:
         current_step += 1
         self._report_progress(current_step, total_steps, {"phase": "feature_extraction"})
         
-        feature_config = FeatureConfig(**self.config.feature_config)
+        # Filter feature_config to only include valid FeatureConfig fields
+        # (exclude feature_store fields like 'feature_order', 'normalization_params')
+        valid_feature_config_fields = {
+            'sequence_length', 'use_ohlcv', 'ohlcv_columns', 'indicators',
+            'normalization', 'rolling_window', 'use_returns', 'use_log_returns'
+        }
+        filtered_feature_config = {
+            k: v for k, v in self.config.feature_config.items() 
+            if k in valid_feature_config_fields
+        }
+        
+        feature_config = FeatureConfig(**filtered_feature_config)
         self.feature_engineer = FeatureEngineer(feature_config)
         X, y, feature_store_config = self.feature_engineer.fit_transform(df, labels)
         

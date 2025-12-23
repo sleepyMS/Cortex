@@ -158,6 +158,11 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         }
         ai_model.feature_config = result.get("feature_config", ai_model.feature_config)
         
+        # Reset all existing versions to inactive before creating new version
+        db.query(AIModelVersion).filter(
+            AIModelVersion.model_id == ai_model.id
+        ).update({"is_active": False})
+        
         # AIModelVersion 생성
         new_version = AIModelVersion(
             model_id=ai_model.id,
