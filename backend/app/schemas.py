@@ -1418,6 +1418,15 @@ class AILabelStats(CamelCaseModel):
     sell_ratio: float
 
 
+class AIEpochLog(CamelCaseModel):
+    """에폭별 학습 상태 로그"""
+    epoch: int
+    train_loss: Optional[float] = None
+    val_loss: Optional[float] = None
+    accuracy: Optional[float] = None
+    timestamp: datetime
+
+
 class AITrainingJobResponse(CamelCaseModel):
     """학습 작업 상태 응답"""
     id: uuid.UUID
@@ -1427,6 +1436,7 @@ class AITrainingJobResponse(CamelCaseModel):
     current_epoch: Optional[int] = None
     total_epochs: Optional[int] = None
     current_metrics: Optional[Dict[str, Any]] = None
+    epoch_logs: Optional[List[AIEpochLog]] = None
     error_message: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

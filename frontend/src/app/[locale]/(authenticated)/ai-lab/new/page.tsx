@@ -757,6 +757,11 @@ export default function NewAIModelPage() {
                 step={1}
                 className="mt-4"
               />
+              <p className="text-sm text-muted-foreground mt-2">
+                모델의 깊이를 결정합니다. 레이어가 많을수록 복잡한 시계열 패턴을
+                더 잘 포착할 수 있지만, 학습 시간이 길어지고 과적합의 가능성이
+                높아집니다.
+              </p>
             </div>
             <div>
               <Label className="text-base font-medium">
@@ -781,6 +786,38 @@ export default function NewAIModelPage() {
             </div>
             <div>
               <Label className="text-base font-medium">
+                Learning Rate (학습률): {trainingConfig.learningRate}
+              </Label>
+              <Select
+                value={trainingConfig.learningRate.toString()}
+                onValueChange={(v) =>
+                  setTrainingConfig((prev) => ({
+                    ...prev,
+                    learningRate: parseFloat(v),
+                  }))
+                }
+              >
+                <SelectTrigger className="mt-4">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.01">0.01 (빠름 / 저정밀도)</SelectItem>
+                  <SelectItem value="0.005">0.005</SelectItem>
+                  <SelectItem value="0.001">0.001 (권장값)</SelectItem>
+                  <SelectItem value="0.0005">0.0005</SelectItem>
+                  <SelectItem value="0.0001">
+                    0.0001 (느림 / 고정밀도)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-2">
+                가중치 업데이트 보폭을 조절합니다. 너무 크면 최적점을 찾지
+                못하고 요동칠 수 있으며, 너무 작으면 학습 속도가 매우
+                느려집니다.
+              </p>
+            </div>
+            <div>
+              <Label className="text-base font-medium">
                 에폭 수: {trainingConfig.epochs}
               </Label>
               <Slider
@@ -793,6 +830,11 @@ export default function NewAIModelPage() {
                 step={10}
                 className="mt-4"
               />
+              <p className="text-sm text-muted-foreground mt-2">
+                전체 데이터를 반복해서 학습하는 횟수입니다. 충분히 학습해야
+                하지만, 너무 많으면 과거 데이터에만 최적화되어 실제 미래 성능이
+                떨어질 수 있습니다.
+              </p>
             </div>
           </div>
         );

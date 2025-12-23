@@ -896,6 +896,7 @@ class AITrainingJob(Base):
     
     # 실시간 메트릭 (학습 중 업데이트)
     current_metrics = Column(JSONB, nullable=True)  # train_loss, val_loss 등
+    epoch_logs = Column(JSONB, nullable=True)  # 에폭별 로그 히스토리 [{epoch, train_loss, val_loss, accuracy, ...}]
     
     # 에러 정보
     error_message = Column(Text, nullable=True)

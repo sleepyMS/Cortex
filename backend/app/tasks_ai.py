@@ -116,6 +116,26 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     "val_loss": metrics.get("val_loss"),
                     "phase": metrics.get("phase"),
                 }
+                
+                # 에폭 로그 추가
+                if metrics.get("phase") == "training" and "epoch" in metrics:
+                    new_log = {
+                        "epoch": metrics.get("epoch"),
+                        "train_loss": metrics.get("train_loss"),
+                        "val_loss": metrics.get("val_loss"),
+                        "accuracy": metrics.get("accuracy"),
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                    if training_job.epoch_logs is None:
+                        training_job.epoch_logs = []
+                    
+                    # 리스트 객체 자체가 변해야 SQLAlchemy가 변경을 감지함 (JSONB Mutable 이슈 방지)
+                    updated_logs = list(training_job.epoch_logs)
+                    # 중복 에폭 방지 (callback이 여러번 호출될 수 있음)
+                    if not updated_logs or updated_logs[-1]["epoch"] != new_log["epoch"]:
+                        updated_logs.append(new_log)
+                        training_job.epoch_logs = updated_logs
+                
                 db.commit()
             except Exception as e:
                 logger.warning(f"Progress callback error: {e}")

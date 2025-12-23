@@ -58,6 +58,8 @@ import {
   AlertCircle,
   Cpu,
   Zap,
+  BarChart2,
+  ListChecks,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
@@ -66,6 +68,18 @@ import { cn } from "@/lib/utils";
 import { AIModelFeatureImportance } from "@/components/domain/ai-lab/AIModelFeatureImportance";
 import { AIModelVersionsTable } from "@/components/domain/ai-lab/AIModelVersionsTable";
 import { AIModelRetrainDialog } from "@/components/domain/ai-lab/AIModelRetrainDialog";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
 import type { AIModelDetail, AITrainingJob } from "@/types/ai";
 
@@ -90,6 +104,228 @@ const STATUS_CONFIG = {
 
 interface PageProps {
   params: { id: string };
+}
+
+// --- Training Analysis Components ---
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl text-xs font-mono">
+        <p className="font-bold text-muted-foreground mb-2">Epoch {label}</p>
+        <div className="space-y-1">
+          {payload.map((entry: any, index: number) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-4"
+            >
+              <span style={{ color: entry.color }}>{entry.name}:</span>
+              <span className="font-bold">
+                {entry.name.includes("Accuracy")
+                  ? (entry.value * 100).toFixed(2) + "%"
+                  : entry.value.toFixed(4)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+function TrainingAnalysis({ logs }: { logs: any[] }) {
+  const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+
+  if (!logs || logs.length === 0) {
+    return (
+      <GlassPane className="p-12 mt-8 text-center bg-muted/5 border-dashed">
+        <div className="opacity-40 space-y-3">
+          <BarChart2 className="h-12 w-12 mx-auto text-muted-foreground" />
+          <p className="text-sm">
+            학습 로그 데이터가 아직 생성되지 않았습니다.
+          </p>
+        </div>
+      </GlassPane>
+    );
+  }
+
+  return (
+    <GlassPane className="p-6 mt-8 overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <BarChart2 className="h-5 w-5 text-violet-400" />
+            학습 프로세스 분석 (Training Log Analysis)
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Epoch별 Loss 수렴 및 정확도 변화 추이
+          </p>
+        </div>
+        <div className="flex bg-muted/30 p-1 rounded-lg self-start">
+          <Button
+            variant={viewMode === "chart" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("chart")}
+            className="h-8 text-[11px] gap-2"
+          >
+            <BarChart2 className="h-3 w-3" /> 차트
+          </Button>
+          <Button
+            variant={viewMode === "table" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            className="h-8 text-[11px] gap-2"
+          >
+            <ListChecks className="h-3 w-3" /> 테이블
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "chart" ? (
+        <div className="h-[350px] w-full pt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={logs}>
+              <defs>
+                <linearGradient id="colorTrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#ffffff10"
+              />
+              <XAxis
+                dataKey="epoch"
+                stroke="#888888"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                label={{
+                  value: "Epoch",
+                  position: "insideBottom",
+                  offset: -5,
+                  fontSize: 10,
+                  fill: "#888888",
+                }}
+              />
+              <YAxis
+                yAxisId="left"
+                stroke="#888888"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => value.toFixed(2)}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#10b981"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                domain={[0, 1]}
+                tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                verticalAlign="top"
+                align="right"
+                iconType="circle"
+                wrapperStyle={{ fontSize: "10px", paddingBottom: "20px" }}
+              />
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="trainLoss"
+                name="Train Loss"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorTrain)"
+                activeDot={{ r: 4, strokeWidth: 0 }}
+              />
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="valLoss"
+                name="Val Loss"
+                stroke="#ec4899"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorVal)"
+                activeDot={{ r: 4, strokeWidth: 0 }}
+              />
+              {logs[0]?.accuracy !== undefined && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="accuracy"
+                  name="Val Accuracy"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              )}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="border-b border-white/5 text-muted-foreground uppercase text-[10px]">
+                <th className="text-left py-3 px-4 font-black">Epoch</th>
+                <th className="text-right py-3 px-4 font-black">Train Loss</th>
+                <th className="text-right py-3 px-4 font-black">Val Loss</th>
+                <th className="text-right py-3 px-4 font-black">Accuracy</th>
+                <th className="text-right py-3 px-4 font-black">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log, i) => (
+                <tr
+                  key={i}
+                  className="border-b border-white/5 hover:bg-white/5 transition-colors group"
+                >
+                  <td className="py-3 px-4 font-bold text-primary">
+                    {log.epoch}
+                  </td>
+                  <td className="text-right py-3 px-4 text-violet-400">
+                    {log.trainLoss?.toFixed(6) || "-"}
+                  </td>
+                  <td className="text-right py-3 px-4 text-fuchsia-400 font-medium">
+                    {log.valLoss?.toFixed(6) || "-"}
+                  </td>
+                  <td className="text-right py-3 px-4">
+                    {log.accuracy !== undefined ? (
+                      <span className="text-emerald-400 font-bold">
+                        {(log.accuracy * 100).toFixed(2)}%
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
+                  <td className="text-right py-3 px-4 text-muted-foreground opacity-50 text-[10px]">
+                    {format(new Date(log.timestamp), "HH:mm:ss", {
+                      locale: ko,
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </GlassPane>
+  );
 }
 
 export default function AIModelDetailPage({ params }: PageProps) {
@@ -181,6 +417,38 @@ export default function AIModelDetailPage({ params }: PageProps) {
       toast.error("설정 변경에 실패했습니다.");
     },
   });
+
+  // Time estimation logic
+  const [elapsedTime, setElapsedTime] = useState<string>("--:--");
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (
+      (model?.status === "training" || model?.status === "pending") &&
+      trainingStatus?.startedAt
+    ) {
+      const startTime = new Date(trainingStatus.startedAt).getTime();
+
+      interval = setInterval(() => {
+        const now = new Date().getTime();
+        const diff = Math.max(0, now - startTime);
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        setElapsedTime(
+          `${minutes.toString().padStart(2, "0")}:${seconds
+            .toString()
+            .padStart(2, "0")}`
+        );
+      }, 1000);
+    } else {
+      setElapsedTime("--:--");
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [model?.status, trainingStatus?.startedAt]);
 
   // Test prediction
   const handleTestPrediction = async () => {
@@ -429,7 +697,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
                             Time Elapsed
                           </span>
-                          <span className="text-lg font-bold">--:--</span>
+                          <span className="text-lg font-bold">
+                            {elapsedTime}
+                          </span>
                         </div>
                       </div>
                       {trainingStatus.errorMessage && (
@@ -825,6 +1095,15 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     </div>
                   </GlassPane>
                 </div>
+
+                {/* Training Analysis (Epoch Logs) */}
+                <TrainingAnalysis
+                  logs={
+                    (model.status === "training" || model.status === "pending"
+                      ? trainingStatus?.epochLogs
+                      : model.latestTrainingJob?.epochLogs) || []
+                  }
+                />
               </TabsContent>
 
               <TabsContent value="versions">

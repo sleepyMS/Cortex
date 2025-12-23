@@ -73,6 +73,13 @@ export interface AITrainingJob {
     valLoss?: number;
     phase?: string;
   };
+  epochLogs?: Array<{
+    epoch: number;
+    trainLoss: number;
+    valLoss: number;
+    accuracy?: number;
+    timestamp: string;
+  }>;
   errorMessage?: string;
   startedAt?: string;
   completedAt?: string;

@@ -212,9 +212,17 @@ class LSTMClassifier(BaseAIModel):
             
             # 진행률 콜백
             if progress_callback:
+                acc = 0.0
+                if has_validation:
+                    with torch.no_grad():
+                        val_outputs = self.model(X_val_t)
+                        preds = val_outputs.argmax(dim=1).cpu().numpy()
+                        acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
+
                 metrics = {
                     "train_loss": avg_train_loss,
                     "val_loss": val_loss,
+                    "accuracy": acc,
                     "best_val_loss": best_val_loss
                 }
                 progress_callback(epoch + 1, config.epochs, metrics)
