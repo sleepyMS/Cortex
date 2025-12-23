@@ -117,7 +117,10 @@ class AIModelTrainer:
         current_step += 1
         self._report_progress(current_step, total_steps, {"phase": "labeling"})
         
-        labeling_config = TripleBarrierConfig(**self.config.labeling_config)
+        labeling_params = self.config.labeling_config.copy()
+        if 'method' in labeling_params:
+            del labeling_params['method']
+        labeling_config = TripleBarrierConfig(**labeling_params)
         self.labeler = TripleBarrierLabeler(labeling_config)
         labels = self.labeler.generate_labels(df)
         label_stats = self.labeler.get_label_stats(labels)

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, use } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -80,12 +80,11 @@ const STATUS_CONFIG = {
 };
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export default function AIModelDetailPage({ params }: PageProps) {
-  const resolvedParams = use(params);
-  const modelId = resolvedParams.id;
+  const modelId = params.id;
   const t = useTranslations("AILabPage");
   const router = useRouter();
   const queryClient = useQueryClient();

@@ -146,7 +146,12 @@ class MarketDataService:
                     return df
 
                 # DatetimeIndex를 기준으로 정확한 기간을 필터링합니다.
-                mask = (df.index >= start_date) & (df.index <= end_date)
+                # Ensure start_date and end_date are timezone-aware (UTC) for comparison
+                import pytz
+                start_dt = start_date if start_date.tzinfo else start_date.replace(tzinfo=pytz.UTC)
+                end_dt = end_date if end_date.tzinfo else end_date.replace(tzinfo=pytz.UTC)
+                
+                mask = (df.index >= start_dt) & (df.index <= end_dt)
                 return df.loc[mask]
 
         try:

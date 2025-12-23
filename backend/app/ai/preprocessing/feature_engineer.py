@@ -137,7 +137,14 @@ class FeatureEngineer:
         return X
     
     def _create_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """피처 생성"""
+        """
+        피처 생성 - pandas_ta.Strategy를 활용한 동적 지표 계산
+        
+        indicator_definitions.py에 정의된 모든 지표를 지원합니다.
+        """
+        import pandas_ta as ta
+        from app.core.indicator_definitions import INDICATOR_DEFINITIONS
+        
         features = pd.DataFrame(index=df.index)
         
         # 1. OHLCV 피처
@@ -153,21 +160,83 @@ class FeatureEngineer:
         if self.config.use_log_returns:
             features['log_returns'] = np.log(df['close'] / df['close'].shift(1))
         
-        # 3. 기술적 지표
+        # 3. 기술적 지표 (pandas_ta.Strategy 동적 사용)
+        if self.config.indicators:
+            # pandas_ta 형식으로 변환
+            ta_params = []
+            for indicator in self.config.indicators:
+                indicator_type = indicator.get('type', '').upper()
+                params = indicator.get('params', {})
+                
+                # indicator_definitions.py에서 kind 조회
+                # Alias mapping for backward compatibility
+                type_aliases = {
+                    "BB": "BBands",
+                    "BOLLINGER": "BBands",
+                    "STOCHASTIC": "Stochastic",
+                    "STOCH": "Stochastic",
+                }
+                lookup_key = type_aliases.get(indicator_type, indicator_type)
+                
+                definition = INDICATOR_DEFINITIONS.get(lookup_key)
+                if definition:
+                    kind = definition.get('kind', indicator_type.lower())
+                else:
+                    # 정의에 없으면 type을 소문자로 사용
+                    kind = indicator_type.lower()
+                
+                # 파라미터 키 변환 (frontend: length -> pandas_ta: length)
+                ta_param = {"kind": kind}
+                for key, value in params.items():
+                    # period -> length 변환 (호환성)
+                    if key == 'period':
+                        ta_param['length'] = value
+                    else:
+                        ta_param[key] = value
+                
+                ta_params.append(ta_param)
+                logger.debug(f"Adding indicator: {ta_param}")
+            
+            # pandas_ta Strategy로 한 번에 모든 지표 계산
+            if ta_params:
+                try:
+                    # df에 직접 계산 (append=True)
+                    df_with_indicators = df.copy()
+                    df_with_indicators.ta.strategy(
+                        ta.Strategy(name="ai_features", ta=ta_params), 
+                        append=True
+                    )
+                    
+                    # 계산된 지표 컬럼들을 features에 추가
+                    ohlcv_cols = {'open', 'high', 'low', 'close', 'volume', 'time'}
+                    for col in df_with_indicators.columns:
+                        if col.lower() not in ohlcv_cols and col not in features.columns:
+                            features[col] = df_with_indicators[col]
+                    
+                    logger.info(f"Calculated {len(ta_params)} indicators via pandas_ta")
+                except Exception as e:
+                    logger.error(f"pandas_ta strategy failed: {e}")
+                    # 폴백: 레거시 방식으로 개별 계산
+                    self._calculate_indicators_legacy(df, features)
+        
+        return features
+    
+    def _calculate_indicators_legacy(self, df: pd.DataFrame, features: pd.DataFrame) -> None:
+        """레거시 지표 계산 (폴백용)"""
         for indicator in self.config.indicators:
             indicator_type = indicator.get('type', '').upper()
             params = indicator.get('params', {})
             
             if indicator_type == 'RSI':
-                period = params.get('period', 14)
+                period = params.get('period', params.get('length', 14))
                 features[f'RSI_{period}'] = self._calculate_rsi(df['close'], period)
                 
             elif indicator_type == 'EMA':
-                period = params.get('period', 20)
+                period = params.get('period', params.get('length', 20))
                 features[f'EMA_{period}'] = df['close'].ewm(span=period, adjust=False).mean()
                 
             elif indicator_type == 'SMA':
-                period = params.get('period', 20)
+                period = params.get('period', params.get('length', 20))
                 features[f'SMA_{period}'] = df['close'].rolling(window=period).mean()
                 
             elif indicator_type == 'MACD':
@@ -179,8 +248,8 @@ class FeatureEngineer:
                 features['MACD_signal'] = signal_line
                 features['MACD_hist'] = histogram
                 
-            elif indicator_type == 'BB':  # Bollinger Bands
-                period = params.get('period', 20)
+            elif indicator_type in ('BB', 'BBANDS'):
+                period = params.get('period', params.get('length', 20))
                 std = params.get('std', 2)
                 upper, middle, lower = self._calculate_bollinger(df['close'], period, std)
                 features['BB_upper'] = upper
@@ -189,15 +258,8 @@ class FeatureEngineer:
                 features['BB_width'] = (upper - lower) / middle
                 
             elif indicator_type == 'ATR':
-                period = params.get('period', 14)
+                period = params.get('period', params.get('length', 14))
                 features[f'ATR_{period}'] = self._calculate_atr(df, period)
-                
-            elif indicator_type == 'VOLUME_SMA':
-                period = params.get('period', 20)
-                features[f'volume_sma_{period}'] = df['volume'].rolling(window=period).mean()
-                features['volume_ratio'] = df['volume'] / features[f'volume_sma_{period}']
-        
-        return features
     
     def _normalize(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
         """데이터 정규화"""

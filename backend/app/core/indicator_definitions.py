@@ -154,7 +154,7 @@ INDICATOR_DEFINITIONS = {
         "supportedLogics": ["comparison", "crossover"],
     },
     "BBands": {
-        "kind": "bb", "label": "볼린저 밴드 (Bollinger Bands)", "description": "주가의 변동성 범위를 나타내는 지표.", "category": "Channel", "paneType": "overlay",
+        "kind": "bbands", "label": "볼린저 밴드 (Bollinger Bands)", "description": "주가의 변동성 범위를 나타내는 지표.", "category": "Channel", "paneType": "overlay",
         "parameters": {
             "length": {"label": "기간", "type": "int", "default": 20, "step": 1, "validation_range": [2, 200], "optimization_range": [10, 50]},
             "std": {"label": "표준편차", "type": "float", "default": 2.0, "step": 0.1, "validation_range": [0.1, 5.0], "optimization_range": [1.0, 3.0]},

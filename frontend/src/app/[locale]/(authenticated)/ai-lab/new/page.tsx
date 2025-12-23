@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { Textarea } from "@/components/ui/Textarea";
 import {
   ArrowLeft,
@@ -37,6 +39,7 @@ import {
   Tag,
   Percent,
   Ticket,
+  ListFilter,
 } from "lucide-react";
 
 import type {
@@ -53,13 +56,17 @@ import {
   DEFAULT_LABELING_CONFIG,
   DEFAULT_TRAINING_CONFIG,
 } from "@/types/ai";
+import { useIndicatorStore } from "@/store/indicatorStore";
+import { ScrollArea } from "@/components/ui/ScrollArea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 
 const STEPS = [
   { id: 1, title: "기본 정보", icon: Brain },
   { id: 2, title: "학습 데이터", icon: Database },
-  { id: 3, title: "라벨링 설정", icon: Target },
-  { id: 4, title: "모델 설정", icon: Settings },
-  { id: 5, title: "확인 및 시작", icon: Sparkles },
+  { id: 3, title: "입력 피처", icon: ListFilter },
+  { id: 4, title: "라벨링 설정", icon: Target },
+  { id: 5, title: "모델 설정", icon: Settings },
+  { id: 6, title: "확인 및 시작", icon: Sparkles },
 ];
 
 const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"];
@@ -90,6 +97,9 @@ export default function NewAIModelPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  const [featureConfig, setFeatureConfig] = useState<AIFeatureConfig>(
+    DEFAULT_FEATURE_CONFIG
+  );
   const [labelingConfig, setLabelingConfig] = useState<AILabelingConfig>(
     DEFAULT_LABELING_CONFIG
   );
@@ -101,10 +111,47 @@ export default function NewAIModelPage() {
 
   const [costData, setCostData] = useState<CostEstimationResponse | null>(null);
   const [isCheckingCost, setIsCheckingCost] = useState(false);
+  const [indicatorSearch, setIndicatorSearch] = useState("");
+
+  // Load indicator metadata from store
+  const indicatorMetadata = useIndicatorStore((state) => state.metadata);
+
+  // Group indicators by category
+  const indicatorCategories = React.useMemo(() => {
+    if (!indicatorMetadata) return [];
+    const categories = new Set(indicatorMetadata.map((ind) => ind.category));
+    return ["All", ...Array.from(categories).sort()];
+  }, [indicatorMetadata]);
+
+  // Filter indicators by search term
+  const filteredIndicators = React.useMemo(() => {
+    if (!indicatorMetadata) return [];
+    if (!indicatorSearch) return indicatorMetadata;
+    return indicatorMetadata.filter(
+      (ind) =>
+        ind.label.toLowerCase().includes(indicatorSearch.toLowerCase()) ||
+        ind.key.toLowerCase().includes(indicatorSearch.toLowerCase())
+    );
+  }, [indicatorMetadata, indicatorSearch]);
+
+  // Helper to get default params for an indicator
+  const getDefaultParams = (indicatorKey: string): Record<string, any> => {
+    const indicator = indicatorMetadata?.find(
+      (ind) => ind.key === indicatorKey
+    );
+    if (!indicator) return {};
+    const params: Record<string, any> = {};
+    if (indicator.parameters) {
+      Object.entries(indicator.parameters).forEach(([key, def]) => {
+        params[key] = def.default;
+      });
+    }
+    return params;
+  };
 
   // Check cost on step 5
   React.useEffect(() => {
-    if (step === 5) {
+    if (step === 6) {
       const fetchCost = async () => {
         setIsCheckingCost(true);
         try {
@@ -168,7 +215,7 @@ export default function NewAIModelPage() {
       trainingStartDate: new Date(startDate).toISOString(),
       trainingEndDate: new Date(endDate).toISOString(),
       architectureConfig,
-      featureConfig: DEFAULT_FEATURE_CONFIG,
+      featureConfig,
       labelingConfig,
       trainingConfig,
     };
@@ -182,10 +229,12 @@ export default function NewAIModelPage() {
       case 2:
         return symbol && timeframe && startDate && endDate;
       case 3:
-        return labelingConfig.profitTarget > 0 && labelingConfig.stopLoss > 0;
+        return featureConfig.indicators.length > 0;
       case 4:
-        return architectureConfig.hiddenSize > 0;
+        return labelingConfig.profitTarget > 0 && labelingConfig.stopLoss > 0;
       case 5:
+        return architectureConfig.hiddenSize > 0;
+      case 6:
         return true;
       default:
         return false;
@@ -302,6 +351,165 @@ export default function NewAIModelPage() {
       case 3:
         return (
           <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-medium">기본 데이터</Label>
+              <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
+                <div className="space-y-0.5">
+                  <Label className="text-base">OHLCV 데이터</Label>
+                  <p className="text-sm text-muted-foreground">
+                    시가, 고가, 저가, 종가, 거래량 데이터를 학습에 사용합니다.
+                  </p>
+                </div>
+                <Switch
+                  checked={featureConfig.useOhlcv}
+                  onCheckedChange={(c) =>
+                    setFeatureConfig({ ...featureConfig, useOhlcv: c })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
+                <div className="space-y-0.5">
+                  <Label className="text-base">수익률(Returns)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    가격 변화율 및 로그 수익률을 피처로 추가합니다.
+                  </p>
+                </div>
+                <Switch
+                  checked={featureConfig.useReturns}
+                  onCheckedChange={(c) =>
+                    setFeatureConfig({
+                      ...featureConfig,
+                      useReturns: c,
+                      useLogReturns: c,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">기술적 지표</Label>
+                <span className="text-sm text-muted-foreground">
+                  {featureConfig.indicators.length}개 선택됨
+                </span>
+              </div>
+
+              {/* Search */}
+              <Input
+                placeholder="지표 검색..."
+                value={indicatorSearch}
+                onChange={(e) => setIndicatorSearch(e.target.value)}
+                className="h-9"
+              />
+
+              {/* Category Tabs */}
+              {indicatorMetadata && indicatorMetadata.length > 0 ? (
+                <Tabs defaultValue="All" className="w-full">
+                  <TabsList className="w-full flex-wrap h-auto gap-1">
+                    {indicatorCategories.map((cat) => (
+                      <TabsTrigger
+                        key={cat}
+                        value={cat}
+                        className="text-xs px-3 py-1"
+                      >
+                        {cat}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {indicatorCategories.map((cat) => (
+                    <TabsContent key={cat} value={cat} className="mt-4">
+                      <ScrollArea className="h-[280px] pr-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {filteredIndicators
+                            .filter(
+                              (ind) => cat === "All" || ind.category === cat
+                            )
+                            .filter(
+                              (ind) =>
+                                ![
+                                  "Close",
+                                  "Open",
+                                  "High",
+                                  "Low",
+                                  "Volume",
+                                ].includes(ind.key)
+                            )
+                            .map((indicator) => {
+                              const isChecked = featureConfig.indicators.some(
+                                (i) =>
+                                  i.type.toUpperCase() ===
+                                  indicator.key.toUpperCase()
+                              );
+                              return (
+                                <div
+                                  key={indicator.key}
+                                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                    isChecked
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-primary/50"
+                                  }`}
+                                  onClick={() => {
+                                    if (isChecked) {
+                                      setFeatureConfig({
+                                        ...featureConfig,
+                                        indicators:
+                                          featureConfig.indicators.filter(
+                                            (i) =>
+                                              i.type.toUpperCase() !==
+                                              indicator.key.toUpperCase()
+                                          ),
+                                      });
+                                    } else {
+                                      setFeatureConfig({
+                                        ...featureConfig,
+                                        indicators: [
+                                          ...featureConfig.indicators,
+                                          {
+                                            type: indicator.key,
+                                            params: getDefaultParams(
+                                              indicator.key
+                                            ),
+                                          },
+                                        ],
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={isChecked}
+                                    className="mt-0.5"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate">
+                                      {indicator.label}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                      {indicator.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </ScrollArea>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  지표 목록 로딩 중...
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
             <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm">
               <p className="font-medium text-blue-600 dark:text-blue-400">
                 Triple Barrier 라벨링
@@ -371,7 +579,7 @@ export default function NewAIModelPage() {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="space-y-6">
             <div>
@@ -447,7 +655,7 @@ export default function NewAIModelPage() {
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
@@ -652,7 +860,7 @@ export default function NewAIModelPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             이전
           </Button>
-          {step < 5 ? (
+          {step < 6 ? (
             <Button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
@@ -661,16 +869,25 @@ export default function NewAIModelPage() {
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={createMutation.isPending}>
+            <Button
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || isCheckingCost || !costData}
+            >
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   생성 중...
                 </>
+              ) : isCheckingCost ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  비용 계산 중...
+                </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  학습 시작 ({costData?.finalCost ?? "..."} Credits)
+                  학습 시작 ({costData?.finalCost?.toLocaleString() ?? 0}{" "}
+                  Credits)
                 </>
               )}
             </Button>

@@ -152,8 +152,7 @@ class GRUClassifier(BaseAIModel):
             optimizer,
             mode='min',
             factor=config.scheduler_factor,
-            patience=config.scheduler_patience,
-            verbose=True
+            patience=config.scheduler_patience
         )
         
         # 학습 기록
@@ -354,9 +353,10 @@ class GRUClassifier(BaseAIModel):
             input_names=['input'],
             output_names=['output'],
             dynamic_axes={
-                'input': {0: 'batch_size', 1: 'sequence_length'},
+                'input': {0: 'batch_size'},
                 'output': {0: 'batch_size'}
-            }
+            },
+            dynamo=False  # Use legacy export for compatibility
         )
         logger.info(f"GRU Model exported to ONNX: {save_path}")
     
