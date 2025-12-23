@@ -466,79 +466,180 @@ export function RuleBlock({
     </div>
   );
 
-  const renderAISignalLogic = (logic: AISignalLogic) => (
-    <div className="flex flex-col gap-3">
-      {/* 모델 이름 표시 */}
-      <div className="flex items-center gap-2 p-2 bg-violet-500/10 rounded-lg border border-violet-500/30">
-        <Brain className="h-4 w-4 text-violet-500" />
-        <span className="font-medium text-sm">
-          {logic.modelName || "AI 모델"}
-        </span>
-      </div>
+  const renderAISignalLogic = (logic: AISignalLogic) => {
+    // 신호 타입별 색상 및 아이콘 설정
+    const signalConfig = {
+      buy: {
+        color: "emerald",
+        label: "BUY",
+        subLabel: "매수 신호",
+        bgClass:
+          "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20",
+        textClass: "text-emerald-500",
+      },
+      sell: {
+        color: "rose",
+        label: "SELL",
+        subLabel: "매도 신호",
+        bgClass: "bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20",
+        textClass: "text-rose-500",
+      },
+      hold: {
+        color: "amber",
+        label: "HOLD",
+        subLabel: "관망 신호",
+        bgClass: "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20",
+        textClass: "text-amber-500",
+      },
+    };
 
-      {/* 설정 컨트롤 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* 신호 타입 */}
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">신호 타입</Label>
-          <Select
-            value={logic.signalType}
-            onValueChange={(val) => handleUpdateField("signalType", val)}
-          >
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="buy">BUY (매수)</SelectItem>
-              <SelectItem value="sell">SELL (매도)</SelectItem>
-              <SelectItem value="hold">HOLD (관망)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+    const currentSignal = signalConfig[logic.signalType] || signalConfig.buy;
 
-        {/* 평가 모드 */}
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">평가 방식</Label>
-          <Select
-            value={logic.evaluationMode}
-            onValueChange={(val) => handleUpdateField("evaluationMode", val)}
-          >
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="highest">최고 확률</SelectItem>
-              <SelectItem value="threshold">임계값</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* 최소 신뢰도 (threshold 모드일 때만) */}
-        {logic.evaluationMode === "threshold" && (
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <Label className="text-xs text-muted-foreground">
-                최소 신뢰도
-              </Label>
-              <span className="text-xs font-medium text-violet-500">
-                {Math.round((logic.minConfidence || 0.5) * 100)}%
+    return (
+      <div className="space-y-4">
+        {/* 헤더: 모델 정보 + 신호 타입 선택 */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* 모델 정보 */}
+          <div className="flex items-center gap-2.5 flex-1 p-2.5 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-lg border border-violet-500/20">
+            <div className="p-1.5 bg-violet-500/20 rounded-md">
+              <Brain className="h-4 w-4 text-violet-400" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-sm truncate">
+                {logic.modelName || "AI 모델"}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                머신러닝 예측 모델
               </span>
             </div>
-            <Slider
-              value={[logic.minConfidence || 0.5]}
-              onValueChange={(val) =>
-                handleUpdateField("minConfidence", val[0])
-              }
-              min={0.1}
-              max={0.99}
-              step={0.05}
-              className="w-full"
-            />
           </div>
-        )}
+
+          {/* 신호 타입 버튼 그룹 */}
+          <div className="flex rounded-lg border border-border/50 overflow-hidden">
+            {(["buy", "sell", "hold"] as const).map((type) => {
+              const config = signalConfig[type];
+              const isActive = logic.signalType === type;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => handleUpdateField("signalType", type)}
+                  className={`
+                    px-3 py-2 text-xs font-bold transition-all duration-200
+                    ${
+                      isActive
+                        ? `${config.bgClass} ${config.textClass} border-0`
+                        : "bg-background hover:bg-accent text-muted-foreground hover:text-foreground"
+                    }
+                  `}
+                >
+                  {config.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 설정 영역 */}
+        <div className="flex flex-col sm:flex-row items-stretch gap-3">
+          {/* 평가 모드 카드 */}
+          <div
+            className={`
+            flex-1 p-3 rounded-lg border transition-all
+            ${
+              logic.evaluationMode === "highest"
+                ? "bg-primary/5 border-primary/30"
+                : "bg-muted/30 border-border/50"
+            }
+          `}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-xs font-medium">평가 방식</Label>
+            </div>
+            <Select
+              value={logic.evaluationMode}
+              onValueChange={(val) => handleUpdateField("evaluationMode", val)}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue>
+                  {logic.evaluationMode === "highest"
+                    ? "최고 확률"
+                    : "임계값 기반"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="highest">
+                  <div className="flex flex-col">
+                    <span className="font-medium">최고 확률</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      선택 신호가 가장 높을 때
+                    </span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="threshold">
+                  <div className="flex flex-col">
+                    <span className="font-medium">임계값 기반</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      설정값 이상일 때
+                    </span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 신뢰도 설정 (threshold 모드일 때만) */}
+          {logic.evaluationMode === "threshold" && (
+            <div className="flex-1 p-3 rounded-lg border bg-violet-500/5 border-violet-500/20">
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-xs font-medium">최소 신뢰도</Label>
+                <span className="text-sm font-bold text-violet-500">
+                  {Math.round((logic.minConfidence || 0.5) * 100)}%
+                </span>
+              </div>
+              <Slider
+                value={[logic.minConfidence || 0.5]}
+                onValueChange={(val) =>
+                  handleUpdateField("minConfidence", val[0])
+                }
+                min={0.1}
+                max={0.99}
+                step={0.05}
+                className="w-full"
+              />
+              <p className="text-[10px] text-muted-foreground mt-2">
+                예측 확률이 이 값 이상일 때 신호 발생
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* 현재 조건 요약 */}
+        <div
+          className={`
+          flex items-center gap-2 px-3 py-2 rounded-md text-xs
+          ${currentSignal.bgClass} border
+        `}
+        >
+          <span className="text-muted-foreground">조건:</span>
+          <span className={`font-semibold ${currentSignal.textClass}`}>
+            {logic.modelName}
+          </span>
+          <span className="text-muted-foreground">모델이</span>
+          <span className={`font-bold ${currentSignal.textClass}`}>
+            {currentSignal.label}
+          </span>
+          <span className="text-muted-foreground">
+            {logic.evaluationMode === "highest"
+              ? "을(를) 최고 확률로 예측할 때"
+              : `확률 ≥ ${Math.round(
+                  (logic.minConfidence || 0.5) * 100
+                )}%일 때`}
+          </span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderLogic = (logic: LogicBlock) => {
     switch (logic.type) {
