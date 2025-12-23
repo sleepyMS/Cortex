@@ -288,7 +288,7 @@ class AIModelTrainer:
             from captum.attr import IntegratedGradients
             
             # 모델 평가 모드
-            self.model.network.eval()
+            self.model.model.eval()
             
             # 1. 샘플링 (Validation Data 중 최대 100개)
             n_samples = min(100, len(X_val))
@@ -303,7 +303,7 @@ class AIModelTrainer:
             baseline = torch.zeros_like(X_sample)
             
             # 3. Integrated Gradients 인스턴스
-            ig = IntegratedGradients(self.model.network)
+            ig = IntegratedGradients(self.model.model)
             
             # 4. 중요도 계산 (Target: Buy class = index 2 가정)
             # Triple Barrier Labeler: -1(Sell), 0(Hold), 1(Buy) -> 0, 1, 2

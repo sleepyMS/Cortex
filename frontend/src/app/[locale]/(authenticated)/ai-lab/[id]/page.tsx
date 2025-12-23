@@ -349,6 +349,87 @@ export default function AIModelDetailPage({ params }: PageProps) {
               </div>
             </GlassPane>
 
+            {/* Feature Configuration */}
+            <GlassPane className="p-6">
+              <h2 className="text-lg font-semibold mb-4">학습 피처 설정</h2>
+              <div className="space-y-4">
+                {/* Indicators */}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                    선택된 지표
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {model.featureConfig?.indicators &&
+                    model.featureConfig.indicators.length > 0 ? (
+                      model.featureConfig.indicators.map(
+                        (
+                          ind: { type: string; params?: Record<string, any> },
+                          idx: number
+                        ) => (
+                          <Badge
+                            key={idx}
+                            variant="secondary"
+                            className="font-mono"
+                          >
+                            {ind.type}
+                            {ind.params &&
+                              Object.keys(ind.params).length > 0 && (
+                                <span className="ml-1 text-xs opacity-70">
+                                  (
+                                  {Object.entries(ind.params)
+                                    .map(([k, v]) => `${k}=${v}`)
+                                    .join(", ")}
+                                  )
+                                </span>
+                              )}
+                          </Badge>
+                        )
+                      )
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        지표가 설정되지 않았습니다.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* OHLCV & Returns */}
+                <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      OHLCV 사용:
+                    </span>
+                    <Badge
+                      variant={
+                        model.featureConfig?.useOhlcv ? "default" : "outline"
+                      }
+                    >
+                      {model.featureConfig?.useOhlcv ? "예" : "아니오"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      수익률 피처:
+                    </span>
+                    <Badge
+                      variant={
+                        model.featureConfig?.useReturns ? "default" : "outline"
+                      }
+                    >
+                      {model.featureConfig?.useReturns ? "예" : "아니오"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      시퀀스 길이:
+                    </span>
+                    <span className="font-medium">
+                      {model.featureConfig?.sequenceLength || 60}봉
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </GlassPane>
             {/* Performance Metrics (if completed) */}
             {model.status === "completed" && model.performanceMetrics && (
               <GlassPane className="p-6">

@@ -1465,10 +1465,10 @@ class RetrainRequest(CamelCaseModel):
 class AIModelDetail(AIModelSummary):
     """AI 모델 상세 정보"""
     user_id: uuid.UUID
-    architecture_config: Dict[str, Any]
-    feature_config: Dict[str, Any]
-    labeling_config: Dict[str, Any]
-    training_config: Dict[str, Any]
+    architecture_config: AIArchitectureConfig
+    feature_config: AIFeatureConfig
+    labeling_config: AILabelingConfig
+    training_config: AITrainingConfigSchema
     training_metrics: Optional[Dict[str, Any]] = None
     validation_metrics: Optional[Dict[str, Any]] = None
     model_weights_path: Optional[str] = None

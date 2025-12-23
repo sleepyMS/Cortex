@@ -211,11 +211,7 @@ export const DEFAULT_FEATURE_CONFIG: AIFeatureConfig = {
   sequenceLength: 60,
   useOhlcv: true,
   ohlcvColumns: ["open", "high", "low", "close", "volume"],
-  indicators: [
-    { type: "RSI", params: { period: 14 } },
-    { type: "MACD", params: { fast: 12, slow: 26, signal: 9 } },
-    { type: "BB", params: { period: 20, std: 2 } },
-  ],
+  indicators: [], // Empty by default - user selects indicators in Step 3
   useReturns: true,
   useLogReturns: true,
 };
