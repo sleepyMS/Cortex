@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -90,7 +90,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const [predictionResult, setPredictionResult] = useState<any>(null);
   const [isPredicting, setIsPredicting] = useState(false);
+  const searchParams = useSearchParams();
   const [isRetrainDialogOpen, setIsRetrainDialogOpen] = useState(false);
+  const [hasAutoTested, setHasAutoTested] = useState(false);
 
   // Fetch model data
   const {
@@ -130,6 +132,20 @@ export default function AIModelDetailPage({ params }: PageProps) {
     queryFn: () => getAIModelVersions(modelId),
     enabled: !!model,
   });
+
+  // Auto-run test if requested via query param
+  useEffect(() => {
+    const testParam = searchParams.get("test");
+    if (
+      testParam === "true" &&
+      model?.status === "completed" &&
+      !hasAutoTested &&
+      !isPredicting
+    ) {
+      setHasAutoTested(true);
+      handleTestPrediction();
+    }
+  }, [searchParams, model?.status, hasAutoTested, isPredicting]);
 
   // Delete mutation
   const deleteMutation = useMutation({

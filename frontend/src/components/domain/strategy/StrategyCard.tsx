@@ -19,7 +19,7 @@ import {
 
 // --- 아이콘 임포트 ---
 import {
-  MoreHorizontal,
+  MoreVertical,
   Edit,
   Trash2,
   Bot,
@@ -403,9 +403,9 @@ export function StrategyCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               {dropdownMenuContent}
@@ -488,9 +488,9 @@ export function StrategyCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground -mr-2"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 -mr-2"
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             {dropdownMenuContent}

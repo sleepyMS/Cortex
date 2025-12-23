@@ -409,7 +409,7 @@ export const BacktestCard = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 -mr-2 hover:bg-background"
+                className="h-8 w-8 -mr-2 hover:bg-muted/50"
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>

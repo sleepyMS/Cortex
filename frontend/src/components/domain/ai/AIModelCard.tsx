@@ -92,10 +92,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
 
   return (
     <Link href={`/ai-lab/${model.id}`} className="block group">
-      <div className="relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:shadow-lg hover:border-primary/30">
-        {/* Gradient overlay on hover */}
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-
+      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1 hover:bg-card">
         {/* Training progress bar for active training */}
         {model.status === "training" && (
           <div className="absolute top-0 left-0 right-0">
@@ -176,7 +173,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 transition-opacity hover:bg-muted/50"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -194,14 +191,14 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                 >
                   {model.status === "completed" && (
                     <DropdownMenuItem asChild>
-                      <Link href={`/ai-lab/${model.id}/test`}>
+                      <Link href={`/ai-lab/${model.id}?test=true`}>
                         <PlayCircle className="h-4 w-4 mr-2" />
                         {t("card.testPrediction")}
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete?.(model.id);
