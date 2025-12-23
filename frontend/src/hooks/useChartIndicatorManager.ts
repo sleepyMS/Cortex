@@ -403,7 +403,9 @@ export function useChartIndicatorManager({
       );
 
       if (bbuKey && bbmKey && bblKey) {
-        const metadata = indicatorMetadata.find((meta) => meta.kind === "bb");
+        const metadata = indicatorMetadata.find(
+          (meta) => meta.kind === "bbands"
+        );
         if (metadata) {
           const baseKey = metadata.key;
           let indicatorState = manager.get(baseKey);
