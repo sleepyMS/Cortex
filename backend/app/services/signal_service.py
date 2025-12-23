@@ -708,7 +708,8 @@ class SignalService:
                     df=df,
                     model_id=block.model_id,
                     signal_type=block.signal_type,
-                    min_confidence=block.min_confidence
+                    evaluation_mode=getattr(block, 'evaluation_mode', 'highest'),
+                    min_confidence=getattr(block, 'min_confidence', 0.5) or 0.5
                 )
             except Exception as e:
                 logger.error(f"AI signal evaluation failed for model {block.model_id}: {e}")

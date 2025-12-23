@@ -26,6 +26,7 @@ import {
   IndicatorValue,
   LogicOperator,
   Strategy,
+  AISignalLogic,
 } from "@/types/strategy";
 import { OHLCVData, SignalData } from "@/types/market";
 import { parseRulesForIndicators, createLogicBlock } from "@/lib/strategyUtils";
@@ -463,6 +464,39 @@ export function StrategyEditorPanel({
     setCurrentTarget(null);
   };
 
+  // AI 모델 선택 핸들러
+  const handleAIModelSelect = (
+    modelId: string,
+    modelName: string,
+    logicType: string
+  ) => {
+    if (!currentTarget) return;
+
+    const newBlock: AISignalLogic = {
+      id: crypto.randomUUID(),
+      type: "ai_signal",
+      modelId,
+      modelName,
+      signalType: "buy", // 기본값, RuleBlock에서 수정 가능
+      evaluationMode: "highest", // 기본값
+      minConfidence: 0.5,
+    };
+
+    if (currentTarget.type === "top-level") {
+      strategyState.addRule(currentTarget.ruleType, newBlock, null);
+    } else if (currentTarget.type === "nested-add") {
+      strategyState.addRule(
+        currentTarget.ruleType,
+        newBlock,
+        currentTarget.parentId,
+        currentTarget.as
+      );
+    }
+
+    setIsHubOpen(false);
+    setCurrentTarget(null);
+  };
+
   const buildPayload = (values: StrategyFormValues): StrategyPayload => {
     let tpslLogic: TpslLogic | null = null;
     if (
@@ -652,6 +686,7 @@ export function StrategyEditorPanel({
         isOpen={isHubOpen}
         onOpenChange={setIsHubOpen}
         onSelect={handleIndicatorSelect}
+        onAIModelSelect={handleAIModelSelect}
         selectionMode={hubSelectionMode}
       />
 

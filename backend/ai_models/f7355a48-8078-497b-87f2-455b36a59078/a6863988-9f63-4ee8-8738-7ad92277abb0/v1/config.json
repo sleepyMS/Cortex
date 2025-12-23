@@ -1,0 +1,54 @@
+{
+  "sequence_length": 60,
+  "feature_order": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "returns",
+    "log_returns",
+    "EMA_10",
+    "MACD_9_21_9",
+    "MACDh_9_21_9",
+    "MACDs_9_21_9",
+    "HMA_14"
+  ],
+  "normalization": {
+    "method": "rolling_zscore",
+    "rolling_window": 100,
+    "params": {}
+  },
+  "indicators": [
+    {
+      "type": "EMA",
+      "params": {
+        "length": 10
+      }
+    },
+    {
+      "type": "MACD",
+      "params": {
+        "fast": 9,
+        "slow": 21,
+        "signal": 9
+      }
+    },
+    {
+      "type": "HMA",
+      "params": {
+        "length": 14
+      }
+    }
+  ],
+  "use_ohlcv": true,
+  "ohlcv_columns": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "use_returns": true,
+  "use_log_returns": true
+}

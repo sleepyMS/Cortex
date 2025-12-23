@@ -180,6 +180,20 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "collapsible-down": {
+          from: { height: "0", opacity: "0" },
+          to: {
+            height: "var(--radix-collapsible-content-height)",
+            opacity: "1",
+          },
+        },
+        "collapsible-up": {
+          from: {
+            height: "var(--radix-collapsible-content-height)",
+            opacity: "1",
+          },
+          to: { height: "0", opacity: "0" },
+        },
       },
       animation: {
         // Fade
@@ -203,6 +217,9 @@ module.exports = {
         // Accordion
         "accordion-down": "accordionDown 0.2s ease-out",
         "accordion-up": "accordionUp 0.2s ease-out",
+        // Collapsible
+        "collapsible-down": "collapsible-down 0.2s ease-out",
+        "collapsible-up": "collapsible-up 0.2s ease-out",
       },
       transitionDuration: {
         DEFAULT: "200ms",

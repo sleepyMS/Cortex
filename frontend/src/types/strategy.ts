@@ -99,6 +99,19 @@ export interface PatternLogic {
   logicOperator?: LogicOperator;
 }
 
+export interface AISignalLogic {
+  id: string;
+  type: "ai_signal";
+  modelId: string;
+  modelName?: string; // 표시용
+  signalType: "buy" | "sell" | "hold";
+  evaluationMode: "threshold" | "highest";
+  minConfidence?: number; // threshold 모드용 (0.0~1.0)
+  trainingEndDate?: string; // 미래 참조 경고용
+  children?: LogicBlock[];
+  logicOperator?: LogicOperator;
+}
+
 // 모든 개별 로직 타입을 통합하는 유니온 타입
 export type LogicBlock =
   | ComparisonLogic
@@ -107,7 +120,8 @@ export type LogicBlock =
   | TrendSignalLogic
   | ChannelLogic
   | DivergenceLogic
-  | PatternLogic;
+  | PatternLogic
+  | AISignalLogic;
 
 // --- 전략의 주요 구성 요소 타입 정의 ---
 

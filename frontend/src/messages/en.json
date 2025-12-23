@@ -803,7 +803,8 @@
       "trend_signal": "Trend Signal",
       "channel": "Channel",
       "divergence": "Divergence",
-      "pattern": "Candle Pattern"
+      "pattern": "Candle Pattern",
+      "ai_signal": "AI Signal"
     },
     "logicDescription": {
       "comparison": "Compares two values (e.g., Close > 10000).",
@@ -812,7 +813,8 @@
       "trend_signal": "Checks for buy/sell signals from a trend indicator.",
       "channel": "Checks where the price is within a channel.",
       "divergence": "Checks for divergence between price and an indicator.",
-      "pattern": "Checks if a specific candle pattern has occurred."
+      "pattern": "Checks if a specific candle pattern has occurred.",
+      "ai_signal": "Use predictions from a trained AI model as a condition."
     },
     "tpslForm": {
       "title": "Take Profit / Stop Loss (TP/SL) Settings",

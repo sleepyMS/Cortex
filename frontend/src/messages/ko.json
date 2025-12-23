@@ -834,7 +834,8 @@
       "trend_signal": "추세 신호",
       "channel": "채널",
       "divergence": "다이버전스",
-      "pattern": "캔들 패턴"
+      "pattern": "캔들 패턴",
+      "ai_signal": "AI 신호"
     },
     "logicDescription": {
       "comparison": "두 값을 비교합니다 (예: 종가 > 10000).",
@@ -843,7 +844,8 @@
       "trend_signal": "추세 지표의 매수/매도 신호를 확인합니다.",
       "channel": "가격이 채널의 어느 영역에 있는지 확인합니다.",
       "divergence": "가격과 지표의 다이버전스를 확인합니다.",
-      "pattern": "특정 캔들 패턴의 발생 여부를 확인합니다."
+      "pattern": "특정 캔들 패턴의 발생 여부를 확인합니다.",
+      "ai_signal": "학습된 AI 모델의 예측 신호를 조건으로 사용합니다."
     },
     "tpslForm": {
       "title": "익절/손절(TP/SL) 설정",

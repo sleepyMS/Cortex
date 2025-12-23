@@ -31,6 +31,7 @@ import {
   ArrowRight,
   Brain,
   Settings,
+  Settings2,
   Database,
   Target,
   Sparkles,
@@ -40,7 +41,15 @@ import {
   Percent,
   Ticket,
   ListFilter,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/Collapsible";
 
 import type {
   AIModelCreateRequest,
@@ -504,6 +513,139 @@ export default function NewAIModelPage() {
                 </div>
               )}
             </div>
+
+            {/* Selected Indicators Parameter Configuration */}
+            {featureConfig.indicators.length > 0 && (
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">
+                    선택된 지표 파라미터 설정
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    각 지표의 파라미터를 조정할 수 있습니다
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {featureConfig.indicators.map((indicator, idx) => {
+                    const meta = indicatorMetadata?.find(
+                      (m) =>
+                        m.key.toUpperCase() === indicator.type.toUpperCase()
+                    );
+                    const hasParams =
+                      meta?.parameters &&
+                      Object.keys(meta.parameters).length > 0;
+
+                    return (
+                      <Collapsible key={indicator.type}>
+                        <CollapsibleTrigger asChild>
+                          <div className="p-3 bg-card rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-xs"
+                                >
+                                  {indicator.type}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {meta?.label || indicator.type}
+                                </span>
+                              </div>
+                              {hasParams && (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                              )}
+                            </div>
+                          </div>
+                        </CollapsibleTrigger>
+                        {hasParams && (
+                          <CollapsibleContent>
+                            <div className="p-3 mt-1 bg-muted/30 rounded-lg border border-dashed">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {Object.entries(meta.parameters).map(
+                                  ([paramKey, paramDef]: [string, any]) => (
+                                    <div key={paramKey} className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">
+                                        {paramKey}
+                                        {paramDef.min !== undefined &&
+                                          paramDef.max !== undefined && (
+                                            <span className="ml-1 opacity-60">
+                                              ({paramDef.min}-{paramDef.max})
+                                            </span>
+                                          )}
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        value={
+                                          indicator.params?.[paramKey] ??
+                                          paramDef.default
+                                        }
+                                        min={paramDef.min}
+                                        max={paramDef.max}
+                                        step={paramDef.step || 1}
+                                        className="h-8 text-sm"
+                                        onChange={(e) => {
+                                          const value = parseFloat(
+                                            e.target.value
+                                          );
+                                          setFeatureConfig({
+                                            ...featureConfig,
+                                            indicators:
+                                              featureConfig.indicators.map(
+                                                (ind, i) =>
+                                                  i === idx
+                                                    ? {
+                                                        ...ind,
+                                                        params: {
+                                                          ...ind.params,
+                                                          [paramKey]: isNaN(
+                                                            value
+                                                          )
+                                                            ? paramDef.default
+                                                            : value,
+                                                        },
+                                                      }
+                                                    : ind
+                                              ),
+                                          });
+                                        }}
+                                      />
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 h-7 text-xs"
+                                onClick={() => {
+                                  setFeatureConfig({
+                                    ...featureConfig,
+                                    indicators: featureConfig.indicators.map(
+                                      (ind, i) =>
+                                        i === idx
+                                          ? {
+                                              ...ind,
+                                              params: getDefaultParams(
+                                                indicator.type
+                                              ),
+                                            }
+                                          : ind
+                                    ),
+                                  });
+                                }}
+                              >
+                                <RotateCcw className="h-3 w-3 mr-1" />
+                                기본값으로 초기화
+                              </Button>
+                            </div>
+                          </CollapsibleContent>
+                        )}
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         );
 

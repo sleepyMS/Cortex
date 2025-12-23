@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
 import { Slider } from "@/components/ui/Slider";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
 import { Badge } from "@/components/ui/Badge";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import {
@@ -47,7 +48,8 @@ export interface AISignalBlockConfig {
   modelId: string;
   modelName: string;
   signalType: "buy" | "sell" | "hold";
-  minConfidence: number;
+  evaluationMode: "threshold" | "highest";
+  minConfidence?: number; // threshold 모드용
   trainingEndDate?: string;
 }
 
@@ -63,6 +65,9 @@ export function AIModelSelector({
     null
   );
   const [signalType, setSignalType] = useState<"buy" | "sell" | "hold">("buy");
+  const [evaluationMode, setEvaluationMode] = useState<"threshold" | "highest">(
+    "highest"
+  );
   const [minConfidence, setMinConfidence] = useState<number>(0.6);
 
   // AI 모델 목록 조회
@@ -94,13 +99,15 @@ export function AIModelSelector({
       modelId: selectedModel.id,
       modelName: selectedModel.name,
       signalType,
-      minConfidence,
+      evaluationMode,
+      minConfidence: evaluationMode === "threshold" ? minConfidence : undefined,
       trainingEndDate: selectedModel.trainingEndDate,
     });
 
     // Reset state
     setSelectedModel(null);
     setSignalType("buy");
+    setEvaluationMode("highest");
     setMinConfidence(0.6);
     onOpenChange(false);
   };
@@ -232,26 +239,69 @@ export function AIModelSelector({
                 </Select>
               </div>
 
-              {/* 신뢰도 임계값 */}
+              {/* 평가 모드 선택 */}
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <Label>{t("aiModelSelector.minConfidence")}</Label>
-                  <span className="text-sm font-medium text-violet-500">
-                    {Math.round(minConfidence * 100)}%
-                  </span>
-                </div>
-                <Slider
-                  value={[minConfidence]}
-                  onValueChange={(value) => setMinConfidence(value[0])}
-                  min={0.1}
-                  max={0.99}
-                  step={0.05}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("aiModelSelector.confidenceDescription")}
-                </p>
+                <Label>평가 방식</Label>
+                <RadioGroup
+                  value={evaluationMode}
+                  onValueChange={(value) =>
+                    setEvaluationMode(value as "threshold" | "highest")
+                  }
+                  className="grid grid-cols-2 gap-3"
+                >
+                  <div className="flex items-center space-x-2 p-3 rounded-md border cursor-pointer hover:bg-accent data-[state=checked]:border-violet-500 data-[state=checked]:bg-violet-500/10">
+                    <RadioGroupItem value="highest" id="highest" />
+                    <div>
+                      <Label
+                        htmlFor="highest"
+                        className="cursor-pointer font-medium"
+                      >
+                        최고 확률
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        선택한 신호가 가장 높은 확률일 때
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 rounded-md border cursor-pointer hover:bg-accent data-[state=checked]:border-violet-500 data-[state=checked]:bg-violet-500/10">
+                    <RadioGroupItem value="threshold" id="threshold" />
+                    <div>
+                      <Label
+                        htmlFor="threshold"
+                        className="cursor-pointer font-medium"
+                      >
+                        임계값 기반
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        신뢰도가 설정값 이상일 때
+                      </p>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
+
+              {/* 신뢰도 임계값 - threshold 모드에서만 표시 */}
+              {evaluationMode === "threshold" && (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>최소 신뢰도</Label>
+                    <span className="text-sm font-medium text-violet-500">
+                      {Math.round(minConfidence * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[minConfidence]}
+                    onValueChange={(value) => setMinConfidence(value[0])}
+                    min={0.1}
+                    max={0.99}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    AI 예측 확률이 이 값 이상일 때만 신호가 발생합니다
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>

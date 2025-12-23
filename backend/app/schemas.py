@@ -380,13 +380,17 @@ class AISignalLogic(BaseLogicBlock):
     """
     AI 모델 기반 신호 로직 블록.
     
-    ONNX 모델을 사용하여 BUY/HOLD/SELL 예측을 수행하고,
-    지정된 신호 타입의 확률이 임계값 이상일 때 True를 반환합니다.
+    ONNX 모델을 사용하여 BUY/HOLD/SELL 예측을 수행합니다.
+    
+    evaluation_mode:
+    - "threshold": signal_type의 확률이 min_confidence 이상일 때 True
+    - "highest": signal_type이 가장 높은 확률을 가질 때 True (argmax)
     """
     type: Literal["ai_signal"]
     model_id: str  # AI 모델 UUID
     signal_type: Literal["buy", "sell", "hold"]  # 체크할 예측 신호
-    min_confidence: float = Field(0.5, ge=0.0, le=1.0)  # 최소 신뢰도 (0.0~1.0)
+    evaluation_mode: Literal["threshold", "highest"] = "highest"  # 평가 모드
+    min_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)  # threshold 모드용 최소 신뢰도
     
     # 프론트엔드 표시용 (읽기 전용)
     model_name: Optional[str] = None

@@ -15,6 +15,7 @@ import {
   ChannelLogic,
   DivergenceLogic,
   PatternLogic,
+  AISignalLogic,
   IndicatorValue,
 } from "@/types/strategy";
 import {
@@ -28,6 +29,7 @@ import {
   Shuffle,
   Waves,
   CandlestickChart,
+  Brain,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
@@ -53,8 +55,8 @@ import { useIndicatorStore } from "@/store/indicatorStore";
 import { IndicatorMetadata } from "@/types/indicator";
 import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
+import { Slider } from "@/components/ui/Slider";
 
-// 각 로직 타입에 대한 메타데이터 (아이콘, 레이블 키) - 기존과 동일
 const LOGIC_TYPE_METADATA: {
   [key in LogicBlock["type"]]: { icon: React.ElementType; labelKey: string };
 } = {
@@ -65,6 +67,7 @@ const LOGIC_TYPE_METADATA: {
   channel: { icon: Waves, labelKey: "channel" },
   divergence: { icon: GitCompareArrows, labelKey: "divergence" },
   pattern: { icon: CandlestickChart, labelKey: "pattern" },
+  ai_signal: { icon: Brain, labelKey: "ai_signal" },
 };
 
 // 헬퍼 함수: 규칙 블록에서 현재 사용 중인 지표 객체를 추출
@@ -101,6 +104,7 @@ export function RuleBlock({
   const supportedLogics = useMemo(() => {
     const currentIndicator = getCurrentIndicator(item);
     if (item.type === "pattern") return ["pattern"];
+    if (item.type === "ai_signal") return ["ai_signal"]; // AI 모델은 ai_signal만 지원
     if (!currentIndicator) return Object.keys(LOGIC_TYPE_METADATA);
 
     // 전역 스토어의 메타데이터를 사용합니다.
@@ -116,6 +120,9 @@ export function RuleBlock({
   };
 
   const handleLogicTypeChange = (newType: LogicBlock["type"]) => {
+    // 현재 로직과 동일한 로직을 선택하면 아무 동작 없음
+    if (newType === item.type) return;
+
     let oldIndicator: IndicatorValue | null = getCurrentIndicator(item);
     let newBlock: LogicBlock;
     const baseProps = { id: item.id };
@@ -459,6 +466,80 @@ export function RuleBlock({
     </div>
   );
 
+  const renderAISignalLogic = (logic: AISignalLogic) => (
+    <div className="flex flex-col gap-3">
+      {/* 모델 이름 표시 */}
+      <div className="flex items-center gap-2 p-2 bg-violet-500/10 rounded-lg border border-violet-500/30">
+        <Brain className="h-4 w-4 text-violet-500" />
+        <span className="font-medium text-sm">
+          {logic.modelName || "AI 모델"}
+        </span>
+      </div>
+
+      {/* 설정 컨트롤 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* 신호 타입 */}
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">신호 타입</Label>
+          <Select
+            value={logic.signalType}
+            onValueChange={(val) => handleUpdateField("signalType", val)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="buy">BUY (매수)</SelectItem>
+              <SelectItem value="sell">SELL (매도)</SelectItem>
+              <SelectItem value="hold">HOLD (관망)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 평가 모드 */}
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">평가 방식</Label>
+          <Select
+            value={logic.evaluationMode}
+            onValueChange={(val) => handleUpdateField("evaluationMode", val)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="highest">최고 확률</SelectItem>
+              <SelectItem value="threshold">임계값</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 최소 신뢰도 (threshold 모드일 때만) */}
+        {logic.evaluationMode === "threshold" && (
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <Label className="text-xs text-muted-foreground">
+                최소 신뢰도
+              </Label>
+              <span className="text-xs font-medium text-violet-500">
+                {Math.round((logic.minConfidence || 0.5) * 100)}%
+              </span>
+            </div>
+            <Slider
+              value={[logic.minConfidence || 0.5]}
+              onValueChange={(val) =>
+                handleUpdateField("minConfidence", val[0])
+              }
+              min={0.1}
+              max={0.99}
+              step={0.05}
+              className="w-full"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const renderLogic = (logic: LogicBlock) => {
     switch (logic.type) {
       case "comparison":
@@ -475,6 +556,8 @@ export function RuleBlock({
         return renderDivergenceLogic(logic);
       case "pattern":
         return renderPatternLogic(logic);
+      case "ai_signal":
+        return renderAISignalLogic(logic);
       default:
         return (
           <div className="text-sm text-destructive">

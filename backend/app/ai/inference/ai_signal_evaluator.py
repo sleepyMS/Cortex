@@ -40,6 +40,7 @@ class AISignalEvaluator:
         df: pd.DataFrame,
         model_id: str,
         signal_type: str,
+        evaluation_mode: str = "highest",
         min_confidence: float = 0.5,
         model_dir: Optional[str] = None,
     ) -> pd.Series:
@@ -50,7 +51,10 @@ class AISignalEvaluator:
             df: OHLCV 데이터프레임 (time 컬럼 필수)
             model_id: AI 모델 UUID
             signal_type: "buy", "sell", "hold" 중 하나
-            min_confidence: 최소 신뢰도 (0.0~1.0)
+            evaluation_mode: "threshold" 또는 "highest"
+                - threshold: signal_type 확률이 min_confidence 이상일 때 True
+                - highest: signal_type이 가장 높은 확률(argmax)일 때 True
+            min_confidence: threshold 모드용 최소 신뢰도 (0.0~1.0)
             model_dir: 모델 디렉토리 경로 (없으면 기본 경로 사용)
             
         Returns:
@@ -88,16 +92,25 @@ class AISignalEvaluator:
         n_predictions = len(signal_probs)
         n_original = len(df)
         
+        # 전체 확률 배열도 패딩 필요 (highest 모드용)
         if n_predictions < n_original:
-            # 앞부분은 False로 패딩
-            padding = np.zeros(n_original - n_predictions)
-            signal_probs = np.concatenate([padding, signal_probs])
+            padding_len = n_original - n_predictions
+            # 단일 신호 확률 패딩
+            signal_probs = np.concatenate([np.zeros(padding_len), signal_probs])
+            # 전체 확률 배열 패딩 (highest 모드용)
+            probs = np.vstack([np.zeros((padding_len, probs.shape[1])), probs])
         elif n_predictions > n_original:
-            # 뒷부분만 사용
             signal_probs = signal_probs[-n_original:]
+            probs = probs[-n_original:]
         
-        # 6. 임계값 비교
-        condition_met = signal_probs >= min_confidence
+        # 6. 평가 모드에 따른 조건 평가
+        if evaluation_mode == "highest":
+            # argmax: signal_type이 가장 높은 확률일 때 True
+            argmax_indices = np.argmax(probs, axis=1)
+            condition_met = argmax_indices == signal_idx
+        else:
+            # threshold: signal_type 확률이 min_confidence 이상일 때 True
+            condition_met = signal_probs >= min_confidence
         
         return pd.Series(condition_met, index=df.index)
     
