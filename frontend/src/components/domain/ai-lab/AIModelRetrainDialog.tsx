@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { toast } from "sonner";
+import { useUserStore } from "@/store/userStore";
 import {
   RefreshCw,
   AlertTriangle,
@@ -52,6 +53,7 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [costData, setCostData] = useState<CostEstimationResponse | null>(null);
   const [isCheckingCost, setIsCheckingCost] = useState(false);
+  const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
 
   React.useEffect(() => {
     if (open && modelId && dateRange?.from && dateRange?.to) {
@@ -90,6 +92,8 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString(),
       });
+      // 크레딧 잔액 갱신 (백테스트와 동일한 방식)
+      syncCreditBalance();
       onSuccess?.();
     } catch (error) {
       console.error(error);

@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUserStore } from "@/store/userStore";
 
 import { createAIModel, estimateAIModelCost } from "@/lib/api/ai";
 import { Button } from "@/components/ui/Button";
@@ -218,10 +219,14 @@ export default function NewAIModelPage() {
     setEndDate(end.toISOString().split("T")[0]);
   }, []);
 
+  const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: createAIModel,
     onSuccess: (response) => {
+      // 크레딧 잔액 갱신 (백테스트와 동일한 방식)
+      syncCreditBalance();
       toast.success(t("new.step6.startSuccess"));
       router.push(`/ai-lab/${response.model.id}`);
     },

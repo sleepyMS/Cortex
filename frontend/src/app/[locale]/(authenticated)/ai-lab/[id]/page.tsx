@@ -1380,17 +1380,19 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     </Button>
                   </div>
                   {versions && (
-                    <AIModelVersionsTable
-                      modelId={modelId}
-                      versions={versions}
-                      onVersionActivated={() => {
-                        refetchModel();
-                        queryClient.invalidateQueries({
-                          queryKey: ["ai-model-versions", modelId],
-                        });
-                      }}
-                      isOptimized={model.optimizationConfig?.isEnabled}
-                    />
+                    <div className="p-6">
+                      <AIModelVersionsTable
+                        modelId={modelId}
+                        versions={versions}
+                        onVersionActivated={() => {
+                          refetchModel();
+                          queryClient.invalidateQueries({
+                            queryKey: ["ai-model-versions", modelId],
+                          });
+                        }}
+                        isOptimized={model.optimizationConfig?.isEnabled}
+                      />
+                    </div>
                   )}
                 </GlassPane>
               </TabsContent>
