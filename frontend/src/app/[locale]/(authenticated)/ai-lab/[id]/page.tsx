@@ -750,7 +750,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                                 {t("detail.training.currentTrial")}
                               </span>
                               <span className="text-xl font-bold font-mono">
-                                #{trainingStatus.currentMetrics?.trial || 0}{" "}
+                                #{trainingStatus.currentMetrics?.trial || 1}{" "}
                                 <span className="text-xs text-muted-foreground">
                                   /{" "}
                                   {trainingStatus.currentMetrics?.totalTrials ||
@@ -1198,17 +1198,26 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           {t("detail.configDetails.epochsBatch")}
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
-                          {model.trainingConfig?.epochs}{" "}
-                          <span className="text-xs font-normal text-muted-foreground">
-                            /
-                          </span>{" "}
                           {model.status !== "completed" &&
                           model.optimizationConfig?.isEnabled ? (
-                            <span className="text-sm animate-pulse text-purple-400 italic">
-                              ...
-                            </span>
+                            <>
+                              {model.optimizationConfig?.maxEpochsPerTrial ||
+                                30}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                /
+                              </span>{" "}
+                              <span className="text-sm animate-pulse text-purple-400 italic">
+                                ...
+                              </span>
+                            </>
                           ) : (
-                            model.trainingConfig?.batchSize
+                            <>
+                              {model.trainingConfig?.epochs}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                /
+                              </span>{" "}
+                              {model.trainingConfig?.batchSize}
+                            </>
                           )}
                         </div>
                       </div>
@@ -1232,10 +1241,22 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           {t("detail.configDetails.patience")}
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
-                          {model.trainingConfig?.earlyStoppingPatience}{" "}
-                          <span className="text-xs font-normal text-muted-foreground text-amber-400/70">
-                            eps
-                          </span>
+                          {model.status !== "completed" &&
+                          model.optimizationConfig?.isEnabled ? (
+                            <>
+                              5{" "}
+                              <span className="text-xs font-normal text-muted-foreground text-amber-400/70">
+                                eps
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              {model.trainingConfig?.earlyStoppingPatience}{" "}
+                              <span className="text-xs font-normal text-muted-foreground text-amber-400/70">
+                                eps
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">

@@ -1390,6 +1390,7 @@ class AIOptimizationConfigSchema(CamelCaseModel):
     """하이퍼파라미터 최적화 설정 (Optuna)"""
     is_enabled: bool = False
     n_trials: int = Field(20, ge=5, le=100)
+    max_epochs_per_trial: int = Field(30, ge=5, le=50)  # 트라이얼당 최대 에폭
     maximize_metric: str = Field("accuracy", pattern="^(accuracy|f1|return)$")
     search_space: Optional[AIOptimizationSearchSpaceSchema] = None
 

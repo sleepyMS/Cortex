@@ -965,6 +965,32 @@ export default function NewAIModelPage() {
                 </div>
 
                 <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <Label className="text-base font-medium">
+                      {t("new.step5.autoTab.maxEpochs", {
+                        value: optimizationConfig.maxEpochsPerTrial,
+                      })}
+                    </Label>
+                  </div>
+                  <Slider
+                    value={[optimizationConfig.maxEpochsPerTrial]}
+                    onValueChange={([v]) =>
+                      setOptimizationConfig((prev) => ({
+                        ...prev,
+                        maxEpochsPerTrial: v,
+                      }))
+                    }
+                    min={5}
+                    max={50}
+                    step={5}
+                    className="mt-4"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {t("new.step5.autoTab.maxEpochsDesc")}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
                   <Label className="text-base font-medium">
                     {t("new.step5.autoTab.targetMetric")}
                   </Label>

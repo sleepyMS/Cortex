@@ -104,9 +104,9 @@ class AIOptimizer:
                 dropout=dropout
             )
             
-            # 최적화 시에는 에폭 수를 제한하여 속도 향상 (기본 30에폭 또는 설정값의 30%)
-            max_epochs = self.config.training_config.get("epochs", 100)
-            trial_epochs = min(max_epochs, 30) 
+            # 자동 최적화 모드에서는 optimizationConfig의 maxEpochsPerTrial만 사용
+            # (trainingConfig.epochs는 수동 모드 전용이므로 여기서 참조하지 않음)
+            trial_epochs = self.opt_config.get("max_epochs_per_trial") or self.opt_config.get("maxEpochsPerTrial") or 30 
             
             train_config = TrainingConfig(
                 epochs=trial_epochs,
@@ -160,15 +160,16 @@ class AIOptimizer:
         
         # 진행률 보고를 위한 래퍼
         for i in range(self.n_trials):
-            study.optimize(objective, n_trials=1)
+            # 트라이얼 시작 전 진행 상황 보고 (현재 진행 중인 트라이얼 번호)
             if self.progress_callback:
-                # 전체 Trial 중 몇 번째인지 보고
-                self.progress_callback(i + 1, self.n_trials, {
+                self.progress_callback(i, self.n_trials, {
                     "phase": "optimization",
-                    "trial": i + 1,
-                    "best_value": study.best_value,
-                    "best_params": study.best_params
+                    "trial": i + 1,  # 1-indexed (진행 중인 트라이얼)
+                    "best_value": study.best_value if study.trials else 0.0,
+                    "best_params": study.best_params if study.trials else {}
                 })
+            
+            study.optimize(objective, n_trials=1)
 
         logger.info(f"Optimization completed. Best value: {study.best_value}, Best params: {study.best_params}")
         

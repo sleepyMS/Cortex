@@ -2381,6 +2381,8 @@
           "nTrials": "Trials: {value}",
           "creditEst": "Est. {value}x Credits",
           "nTrialsDesc": "More trials allow precise optimization but cost more time and credits. 20-50 is recommended.",
+          "maxEpochs": "Max Epochs per Trial: {value}",
+          "maxEpochsDesc": "Maximum training epochs per trial. Higher values are more precise but take longer.",
           "targetMetric": "Optimization Target Metric",
           "targetMetricDesc": "Decide which metric to maximize. F1-Score or Accuracy is recommended for trading.",
           "metrics": {

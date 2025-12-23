@@ -163,7 +163,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             # UI에 최적화 시작 알림을 위해 선제적으로 상태 업데이트
             training_job.current_metrics = {
                 "phase": "optimization",
-                "trial": 0,
+                "trial": 1,  # 곧 첫 번째 트라이얼 시작 (1-indexed)
                 "totalTrials": opt_config.get("n_trials") or opt_config.get("nTrials") or 20,
                 "bestValue": 0.0
             }

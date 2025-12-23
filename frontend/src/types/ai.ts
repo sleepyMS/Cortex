@@ -49,6 +49,7 @@ export interface AITrainingConfig {
 export interface AIOptimizationConfig {
   isEnabled: boolean;
   nTrials: number;
+  maxEpochsPerTrial: number; // 트라이얼당 최대 에폭 (5-50, 기본 30)
   maximizeMetric: "accuracy" | "f1" | "return";
   searchSpace: {
     hiddenSize: { min: number; max: number };
@@ -262,6 +263,7 @@ export const DEFAULT_TRAINING_CONFIG: AITrainingConfig = {
 export const DEFAULT_OPTIMIZATION_CONFIG: AIOptimizationConfig = {
   isEnabled: false,
   nTrials: 20,
+  maxEpochsPerTrial: 30,
   maximizeMetric: "accuracy",
   searchSpace: {
     hiddenSize: { min: 32, max: 256 },
