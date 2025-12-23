@@ -132,15 +132,18 @@ export const HeroContent = ({
             {/* CTA Button */}
             <motion.div variants={itemVariants} className="mt-8">
               <Link href="/strategies/new" passHref>
-                <Button
-                  size="lg"
-                  className="group relative inline-flex items-center justify-center overflow-hidden rounded-md px-8 font-medium transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]"
-                >
-                  <span className="mr-2">{ctaButton}</span>
-                  <span className="group-hover:translate-x-1 transition-transform">
-                    →
-                  </span>
-                </Button>
+                <div className="relative group inline-block">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg blur opacity-0 group-hover:opacity-75 transition duration-500" />
+                  <Button
+                    size="lg"
+                    className="relative z-10 bg-primary hover:bg-transparent hover:bg-gradient-to-r hover:from-violet-500 hover:to-fuchsia-500 text-primary-foreground shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 border-0 px-8"
+                  >
+                    <span className="mr-2">{ctaButton}</span>
+                    <span className="group-hover:translate-x-1 transition-transform">
+                      →
+                    </span>
+                  </Button>
+                </div>
               </Link>
             </motion.div>
           </motion.div>
@@ -804,8 +807,8 @@ const MockTradingTerminal = () => {
                     }}
                     labelStyle={{ color: "hsl(var(--muted-foreground))" }}
                     itemStyle={{ color: "#8b5cf6" }}
-                    formatter={(value: number) => [
-                      `$${value.toLocaleString()}`,
+                    formatter={(value: any) => [
+                      `$${Number(value).toLocaleString()}`,
                       "Balance",
                     ]}
                     labelFormatter={(label) => `Time: ${label}`}

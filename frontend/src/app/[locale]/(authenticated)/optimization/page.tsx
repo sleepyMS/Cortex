@@ -295,10 +295,18 @@ export default function OptimizationPage() {
             </p>
           </div>
           <Link href="/optimization/new">
-            <Button size="lg" className="gap-2">
-              <PlusCircle className="h-5 w-5" />
-              {t("createNewOptimization")}
-            </Button>
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg blur opacity-0 group-hover:opacity-75 transition duration-500" />
+              <Button
+                size="lg"
+                className="relative gap-2 bg-primary hover:bg-transparent hover:bg-gradient-to-r hover:from-violet-500 hover:to-fuchsia-500 text-primary-foreground shadow-lg hover:shadow-2xl transition-all duration-300 border-0"
+              >
+                <PlusCircle className="h-5 w-5 group-hover:animate-pulse" />
+                <span className="font-semibold">
+                  {t("createNewOptimization")}
+                </span>
+              </Button>
+            </div>
           </Link>
         </div>
       </div>
