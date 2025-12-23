@@ -539,53 +539,56 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     <div className="flex items-center gap-3 mb-4">
                       <div
                         className={`px-4 py-2 rounded-lg font-bold text-lg ${
-                          predictionResult.prediction === "BUY"
+                          predictionResult.predictedLabel === "BUY"
                             ? "bg-emerald-500/10 text-emerald-600"
-                            : predictionResult.prediction === "SELL"
+                            : predictionResult.predictedLabel === "SELL"
                             ? "bg-red-500/10 text-red-600"
                             : "bg-gray-500/10 text-gray-600"
                         }`}
                       >
-                        {predictionResult.prediction}
+                        {predictionResult.predictedLabel}
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        신뢰도: {(predictionResult.confidence * 100).toFixed(1)}
+                        신뢰도:{" "}
+                        {(
+                          Math.max(
+                            predictionResult.buyProbability || 0,
+                            predictionResult.holdProbability || 0,
+                            predictionResult.sellProbability || 0
+                          ) * 100
+                        ).toFixed(1)}
                         %
                       </span>
                     </div>
-                    {predictionResult.probabilities && (
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div className="text-center p-2 rounded bg-emerald-500/10">
-                          <div className="text-emerald-600 font-medium">
-                            BUY
-                          </div>
-                          <div>
-                            {(predictionResult.probabilities.buy * 100).toFixed(
-                              1
-                            )}
-                            %
-                          </div>
-                        </div>
-                        <div className="text-center p-2 rounded bg-gray-500/10">
-                          <div className="text-gray-600 font-medium">HOLD</div>
-                          <div>
-                            {(
-                              predictionResult.probabilities.hold * 100
-                            ).toFixed(1)}
-                            %
-                          </div>
-                        </div>
-                        <div className="text-center p-2 rounded bg-red-500/10">
-                          <div className="text-red-600 font-medium">SELL</div>
-                          <div>
-                            {(
-                              predictionResult.probabilities.sell * 100
-                            ).toFixed(1)}
-                            %
-                          </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="text-center p-2 rounded bg-emerald-500/10">
+                        <div className="text-emerald-600 font-medium">BUY</div>
+                        <div>
+                          {(
+                            (predictionResult.buyProbability || 0) * 100
+                          ).toFixed(1)}
+                          %
                         </div>
                       </div>
-                    )}
+                      <div className="text-center p-2 rounded bg-gray-500/10">
+                        <div className="text-gray-600 font-medium">HOLD</div>
+                        <div>
+                          {(
+                            (predictionResult.holdProbability || 0) * 100
+                          ).toFixed(1)}
+                          %
+                        </div>
+                      </div>
+                      <div className="text-center p-2 rounded bg-red-500/10">
+                        <div className="text-red-600 font-medium">SELL</div>
+                        <div>
+                          {(
+                            (predictionResult.sellProbability || 0) * 100
+                          ).toFixed(1)}
+                          %
+                        </div>
+                      </div>
+                    </div>
                   </motion.div>
                 )}
               </GlassPane>
