@@ -88,19 +88,19 @@ import type { AIModelDetail, AITrainingJob } from "@/types/ai";
 
 const STATUS_CONFIG = {
   pending: {
-    label: "대기 중",
+    label: "detail.status.pending",
     color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
   },
   training: {
-    label: "학습 중",
+    label: "detail.status.training",
     color: "bg-blue-500/10 text-blue-600 border-blue-500/20",
   },
   completed: {
-    label: "완료",
+    label: "detail.status.completed",
     color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
   },
   failed: {
-    label: "실패",
+    label: "detail.status.failed",
     color: "bg-red-500/10 text-red-600 border-red-500/20",
   },
 };
@@ -138,6 +138,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 function TrainingAnalysis({ logs }: { logs: any[] }) {
+  const t = useTranslations("AILabPage");
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
 
   if (!logs || logs.length === 0) {
@@ -145,9 +146,7 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
       <GlassPane className="p-12 mt-8 text-center bg-muted/5 border-dashed">
         <div className="opacity-40 space-y-3">
           <BarChart2 className="h-12 w-12 mx-auto text-muted-foreground" />
-          <p className="text-sm">
-            학습 로그 데이터가 아직 생성되지 않았습니다.
-          </p>
+          <p className="text-sm">{t("detail.analysis.noLogs")}</p>
         </div>
       </GlassPane>
     );
@@ -159,10 +158,10 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
         <div>
           <h3 className="text-lg font-bold flex items-center gap-2">
             <BarChart2 className="h-5 w-5 text-violet-400" />
-            학습 프로세스 분석 (Training Log Analysis)
+            {t("detail.analysis.title")}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Epoch별 Loss 수렴 및 정확도 변화 추이
+            {t("detail.analysis.subtitle")}
           </p>
         </div>
         <div className="flex bg-muted/30 p-1 rounded-lg self-start">
@@ -172,7 +171,7 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
             onClick={() => setViewMode("chart")}
             className="h-8 text-[11px] gap-2"
           >
-            <BarChart2 className="h-3 w-3" /> 차트
+            <BarChart2 className="h-3 w-3" /> {t("detail.analysis.chart")}
           </Button>
           <Button
             variant={viewMode === "table" ? "secondary" : "ghost"}
@@ -180,7 +179,7 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
             onClick={() => setViewMode("table")}
             className="h-8 text-[11px] gap-2"
           >
-            <ListChecks className="h-3 w-3" /> 테이블
+            <ListChecks className="h-3 w-3" /> {t("detail.analysis.table")}
           </Button>
         </div>
       </div>
@@ -399,11 +398,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
   const deleteMutation = useMutation({
     mutationFn: () => deleteAIModel(modelId),
     onSuccess: () => {
-      toast.success("AI 모델이 삭제되었습니다.");
+      toast.success(t("detail.actions.deleteSuccess"));
       router.push("/ai-lab");
     },
     onError: () => {
-      toast.error("모델 삭제에 실패했습니다.");
+      toast.error(t("detail.actions.deleteFail"));
     },
   });
 
@@ -413,11 +412,13 @@ export default function AIModelDetailPage({ params }: PageProps) {
     onSuccess: (_, isPublic) => {
       queryClient.invalidateQueries({ queryKey: ["ai-model", modelId] });
       toast.success(
-        isPublic ? "모델이 공개되었습니다." : "모델이 비공개로 전환되었습니다."
+        isPublic
+          ? t("detail.actions.publicSuccess")
+          : t("detail.actions.privateSuccess")
       );
     },
     onError: () => {
-      toast.error("설정 변경에 실패했습니다.");
+      toast.error(t("detail.actions.updateFail"));
     },
   });
 
@@ -464,7 +465,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
       setPredictionResult(result);
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.detail || "예측 테스트에 실패했습니다."
+        error?.response?.data?.detail || t("detail.actions.predictionFail")
       );
     } finally {
       setIsPredicting(false);
@@ -487,9 +488,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
   if (!model) {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">모델을 찾을 수 없습니다</h1>
+        <h1 className="text-2xl font-bold mb-4">{t("detail.notFound")}</h1>
         <Button onClick={() => router.push("/ai-lab")}>
-          AI Lab으로 돌아가기
+          {t("detail.backToLab")}
         </Button>
       </div>
     );
@@ -542,7 +543,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                 statusConfig.color
               )}
             >
-              {statusConfig.label}
+              {t(statusConfig.label as any)}
             </Badge>
             {model.optimizationConfig?.isEnabled && (
               <Badge
@@ -550,7 +551,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                 className="bg-violet-500/10 text-violet-400 border-violet-500/20 px-3 py-1 flex items-center gap-1.5"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Optuna Optimized
+                {t("detail.status.optunaOptimized")}
               </Badge>
             )}
             <Badge
@@ -574,7 +575,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
               <GlassPane className="p-4 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    모델 정확도
+                    {t("detail.metrics.accuracy")}
                   </span>
                   <div className="p-2 bg-emerald-500/10 rounded-lg">
                     <Target className="h-4 w-4 text-emerald-500" />
@@ -584,7 +585,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   {(model.performanceMetrics.accuracy * 100).toFixed(1)}%
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Validation Set Accuracy
+                  {t("detail.metrics.accuracyDesc")}
                 </p>
               </GlassPane>
             </motion.div>
@@ -597,7 +598,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
               <GlassPane className="p-4 border-blue-500/10 hover:border-blue-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    F1 Score
+                    {t("detail.metrics.f1Score")}
                   </span>
                   <div className="p-2 bg-blue-500/10 rounded-lg">
                     <TrendingUp className="h-4 w-4 text-blue-500" />
@@ -607,7 +608,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   {(model.performanceMetrics.f1Score * 100).toFixed(1)}%
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Weighted Average Score
+                  {t("detail.metrics.f1ScoreDesc")}
                 </p>
               </GlassPane>
             </motion.div>
@@ -620,7 +621,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
               <GlassPane className="p-4 border-violet-500/10 hover:border-violet-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    Validation Loss
+                    {t("detail.metrics.valLoss")}
                   </span>
                   <div className="p-2 bg-violet-500/10 rounded-lg">
                     <Activity className="h-4 w-4 text-violet-500" />
@@ -630,7 +631,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   {model.performanceMetrics.validationLoss?.toFixed(4) || "N/A"}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Final Loss Value
+                  {t("detail.metrics.valLossDesc")}
                 </p>
               </GlassPane>
             </motion.div>
@@ -643,7 +644,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
               <GlassPane className="p-4 border-muted hover:border-muted-foreground/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    Versions
+                    {t("detail.metrics.versions")}
                   </span>
                   <div className="p-2 bg-muted rounded-lg">
                     <HistoryIcon className="h-4 w-4 text-muted-foreground" />
@@ -653,7 +654,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   {(versions || []).length}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Checkpoints Available
+                  {t("detail.metrics.versionsDesc")}
                 </p>
               </GlassPane>
             </motion.div>
@@ -699,11 +700,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       (model.optimizationConfig?.isEnabled &&
                         trainingStatus &&
                         (trainingStatus.progressPct ?? 0) < 80)
-                        ? "Hyperparameter Optimization in Progress"
+                        ? t("detail.training.optimizationInProgress")
                         : trainingStatus?.currentMetrics?.phase ===
                           "final_training"
-                        ? "Final Model Training with Best Parameters"
-                        : "Model Training in Progress"}
+                        ? t("detail.training.finalTraining")
+                        : t("detail.training.trainingInProgress")}
                     </h2>
                     <Button
                       variant="outline"
@@ -711,14 +712,17 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       onClick={() => refetchStatus()}
                       className="bg-background/50"
                     >
-                      <RefreshCw className="h-4 w-4 mr-2" /> 새로고침
+                      <RefreshCw className="h-4 w-4 mr-2" />{" "}
+                      {t("detail.training.refresh")}
                     </Button>
                   </div>
                   {trainingStatus && (
                     <div className="space-y-6 relative z-10">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium">Total Progress</span>
+                          <span className="font-medium">
+                            {t("detail.training.totalProgress")}
+                          </span>
                           <span className="font-mono">
                             {trainingStatus.progressPct.toFixed(1)}%
                           </span>
@@ -743,7 +747,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           <>
                             <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
                               <span className="text-[10px] text-purple-400 uppercase font-bold block mb-1">
-                                Current Trial
+                                {t("detail.training.currentTrial")}
                               </span>
                               <span className="text-xl font-bold font-mono">
                                 #{trainingStatus.currentMetrics?.trial || 0}{" "}
@@ -757,8 +761,10 @@ export default function AIModelDetailPage({ params }: PageProps) {
                             </div>
                             <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
                               <span className="text-[10px] text-purple-400 uppercase font-bold block mb-1">
-                                Best Metric (
-                                {model.optimizationConfig?.maximizeMetric})
+                                {t("detail.training.bestMetric", {
+                                  metric:
+                                    model.optimizationConfig?.maximizeMetric,
+                                })}
                               </span>
                               <span className="text-xl font-bold font-mono text-purple-400">
                                 {trainingStatus.currentMetrics?.bestValue?.toFixed(
@@ -768,7 +774,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                             </div>
                             <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
                               <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                                Elapsed Time
+                                {t("detail.training.elapsedTime")}
                               </span>
                               <span className="text-lg font-bold">
                                 {elapsedTime}
@@ -779,7 +785,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           <>
                             <div className="bg-background/40 p-3 rounded-lg border border-white/5">
                               <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                                Current Epoch
+                                {t("detail.training.currentEpoch")}
                               </span>
                               <span className="text-lg font-bold">
                                 {trainingStatus.currentEpoch} /{" "}
@@ -788,7 +794,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                             </div>
                             <div className="bg-background/40 p-3 rounded-lg border border-white/5 md:col-span-2">
                               <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                                Time Elapsed
+                                {t("detail.training.timeElapsed")}
                               </span>
                               <span className="text-lg font-bold">
                                 {elapsedTime}
@@ -813,13 +819,17 @@ export default function AIModelDetailPage({ params }: PageProps) {
             {/* Feature Configuration & Feature Importance */}
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/30">
-                <TabsTrigger value="overview">모델 개요</TabsTrigger>
+                <TabsTrigger value="overview">
+                  {t("detail.tabLabels.overview")}
+                </TabsTrigger>
                 <TabsTrigger value="versions">
                   {model.optimizationConfig?.isEnabled
-                    ? "가장 우수한 시도 (Trials)"
-                    : "버전 기록"}
+                    ? t("detail.tabLabels.trials")
+                    : t("detail.tabLabels.versions")}
                 </TabsTrigger>
-                <TabsTrigger value="feature-importance">피처 분석</TabsTrigger>
+                <TabsTrigger value="feature-importance">
+                  {t("detail.tabLabels.featureImportance")}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -829,10 +839,10 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     <div className="p-6 border-b border-primary/20 bg-muted/20 flex items-center justify-between">
                       <div>
                         <h2 className="text-lg font-bold text-foreground">
-                          Prediction Playground
+                          {t("detail.prediction.title")}
                         </h2>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Live market data prediction simulation
+                          {t("detail.prediction.subtitle")}
                         </p>
                       </div>
                       <Button
@@ -845,7 +855,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         ) : (
                           <Play className="h-4 w-4 mr-2 fill-current" />
                         )}
-                        Run Prediction
+                        {t("detail.prediction.run")}
                       </Button>
                     </div>
 
@@ -854,15 +864,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         <div className="text-center space-y-3 opacity-50">
                           <Play className="h-12 w-12 mx-auto text-muted-foreground" />
                           <p className="text-sm">
-                            Click the button above to test the model with
-                            current data
+                            {t("detail.prediction.emptyTitle")}
                           </p>
                         </div>
                       ) : isPredicting ? (
                         <div className="text-center space-y-4">
                           <Loader2 className="h-10 w-10 mx-auto animate-spin text-primary" />
                           <p className="text-sm font-medium animate-pulse">
-                            Analyzing market patterns...
+                            {t("detail.prediction.analyzing")}
                           </p>
                         </div>
                       ) : (
@@ -889,7 +898,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                                 </div>
                                 <div>
                                   <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                                    Verdict Confidence
+                                    {t("detail.prediction.confidence")}
                                   </span>
                                   <div className="text-3xl font-black tabular-nums">
                                     {(
@@ -912,7 +921,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
                                   return (
                                     <div key={label} className="space-y-1">
                                       <div className="flex justify-between text-[10px] font-bold">
-                                        <span>{label}</span>
+                                        <span>
+                                          {t(
+                                            `detail.prediction.${label.toLowerCase()}` as any
+                                          )}
+                                        </span>
                                         <span>{(prob * 100).toFixed(1)}%</span>
                                       </div>
                                       <div className="h-1.5 w-full bg-muted rounded-full">
@@ -937,32 +950,32 @@ export default function AIModelDetailPage({ params }: PageProps) {
 
                             <div className="bg-background/60 p-5 rounded-xl border border-white/5 space-y-4 font-mono text-xs">
                               <h4 className="text-[10px] uppercase text-muted-foreground font-black mb-2 flex items-center gap-2">
-                                <TrendingUp className="h-3 w-3" /> Market
-                                Context
+                                <TrendingUp className="h-3 w-3" />{" "}
+                                {t("detail.prediction.marketContext")}
                               </h4>
                               <div className="flex justify-between pb-2 border-b border-white/5">
                                 <span className="text-muted-foreground">
-                                  Symbol
+                                  {t("detail.prediction.symbol")}
                                 </span>
                                 <span>{model.trainingSymbol}</span>
                               </div>
                               <div className="flex justify-between pb-2 border-b border-white/5">
                                 <span className="text-muted-foreground">
-                                  Timeframe
+                                  {t("detail.prediction.timeframe")}
                                 </span>
                                 <span>{model.trainingTimeframe}</span>
                               </div>
                               <div className="flex justify-between pb-2 border-b border-white/5">
                                 <span className="text-muted-foreground">
-                                  Source
+                                  {t("detail.prediction.source")}
                                 </span>
                                 <span className="text-emerald-500">
-                                  Real-time WebSocket
+                                  {t("detail.prediction.sourceValue")}
                                 </span>
                               </div>
                               <div className="flex justify-between pt-2">
                                 <span className="text-muted-foreground">
-                                  Timestamp
+                                  {t("detail.prediction.timestamp")}
                                 </span>
                                 <span>{format(new Date(), "HH:mm:ss")}</span>
                               </div>
@@ -979,7 +992,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold flex items-center gap-2">
                       <Target className="h-5 w-5 text-primary" />
-                      학습 데이터셋 설정 (Dataset Config)
+                      {t("detail.configDetails.datasetTitle")}
                     </h3>
                   </div>
 
@@ -988,7 +1001,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     <div className="grid md:grid-cols-3 gap-6 pb-6 border-b border-white/5">
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Base Features (OHLCV)
+                          {t("detail.configDetails.baseFeatures")}
                         </span>
                         <div className="flex flex-wrap gap-2 pt-1">
                           <Badge
@@ -1001,8 +1014,8 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           >
                             OHLCV{" "}
                             {model.featureConfig?.useOhlcv
-                              ? "Enabled"
-                              : "Disabled"}
+                              ? t("detail.configDetails.enabled")
+                              : t("detail.configDetails.disabled")}
                           </Badge>
                           <Badge
                             variant={
@@ -1014,28 +1027,28 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           >
                             Returns{" "}
                             {model.featureConfig?.useReturns
-                              ? "Enabled"
-                              : "Disabled"}
+                              ? t("detail.configDetails.enabled")
+                              : t("detail.configDetails.disabled")}
                           </Badge>
                         </div>
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Sequence Length
+                          {t("detail.configDetails.sequenceLength")}
                         </span>
                         <div className="text-xl font-mono font-bold">
                           {model.featureConfig?.sequenceLength || 60}{" "}
                           <span className="text-xs font-normal text-muted-foreground">
-                            Candles
+                            {t("detail.configDetails.candles")}
                           </span>
                         </div>
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Label Strategy
+                          {t("detail.configDetails.labelStrategy")}
                         </span>
                         <div className="text-xl font-bold">
-                          Standard 3-Class{" "}
+                          {t("detail.configDetails.labelStrategyValue")}{" "}
                           <span className="text-xs font-normal text-muted-foreground">
                             (B/H/S)
                           </span>
@@ -1046,7 +1059,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                     {/* Indicators Table-like View */}
                     <div className="space-y-4">
                       <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
-                        Techncial Indicators & Parameters
+                        {t("detail.configDetails.technicalIndicators")}
                       </span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {model.featureConfig?.indicators &&
@@ -1091,7 +1104,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                           )
                         ) : (
                           <div className="col-span-2 text-center py-8 bg-muted/10 rounded-xl border border-dashed text-sm text-muted-foreground">
-                            No technical indicators used for this model.
+                            {t("detail.configDetails.noIndicators")}
                           </div>
                         )}
                       </div>
@@ -1105,18 +1118,18 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   <GlassPane className="p-6 border-blue-500/10 hover:border-blue-500/20 transition-all">
                     <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
                       <Layout className="h-5 w-5 text-blue-400" />
-                      모델 아키텍처 (Architecture)
+                      {t("detail.configDetails.architectureTitle")}
                     </h3>
                     <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Hidden Size
+                          {t("detail.configDetails.hiddenSize")}
                         </span>
                         <div className="text-xl font-mono font-bold text-blue-400">
                           {model.status !== "completed" &&
                           model.optimizationConfig?.isEnabled ? (
                             <span className="text-sm animate-pulse text-purple-400 italic">
-                              Searching...
+                              {t("detail.configDetails.searching")}
                             </span>
                           ) : (
                             model.architectureConfig?.hiddenSize || 64
@@ -1125,13 +1138,13 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Layers
+                          {t("detail.configDetails.layers")}
                         </span>
                         <div className="text-xl font-mono font-bold text-blue-400">
                           {model.status !== "completed" &&
                           model.optimizationConfig?.isEnabled ? (
                             <span className="text-sm animate-pulse text-purple-400 italic">
-                              Searching...
+                              {t("detail.configDetails.searching")}
                             </span>
                           ) : (
                             model.architectureConfig?.numLayers || 2
@@ -1140,13 +1153,13 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Dropout
+                          {t("detail.configDetails.dropout")}
                         </span>
                         <div className="text-xl font-mono font-bold text-blue-400">
                           {model.status !== "completed" &&
                           model.optimizationConfig?.isEnabled ? (
                             <span className="text-sm animate-pulse text-purple-400 italic">
-                              Searching...
+                              {t("detail.configDetails.searching")}
                             </span>
                           ) : (
                             `${(model.architectureConfig?.dropout || 0) * 100}%`
@@ -1155,18 +1168,18 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Bidirectional
+                          {t("detail.configDetails.bidirectional")}
                         </span>
                         <div className="text-lg font-bold">
                           {model.status !== "completed" &&
                           model.optimizationConfig?.isEnabled ? (
                             <span className="text-sm animate-pulse text-purple-400 italic">
-                              Searching...
+                              {t("detail.configDetails.searching")}
                             </span>
                           ) : model.architectureConfig?.bidirectional ? (
-                            "Enabled"
+                            t("detail.configDetails.enabled")
                           ) : (
-                            "Disabled"
+                            t("detail.configDetails.disabled")
                           )}
                         </div>
                       </div>
@@ -1177,12 +1190,12 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   <GlassPane className="p-6 border-amber-500/10 hover:border-amber-500/20 transition-all">
                     <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
                       <Zap className="h-5 w-5 text-amber-400" />
-                      학습 하이퍼파라미터
+                      {t("detail.configDetails.hyperparametersTitle")}
                     </h3>
                     <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Epochs / Batch
+                          {t("detail.configDetails.epochsBatch")}
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
                           {model.trainingConfig?.epochs}{" "}
@@ -1201,13 +1214,13 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Learning Rate
+                          {t("detail.configDetails.learningRate")}
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
                           {model.status !== "completed" &&
                           model.optimizationConfig?.isEnabled ? (
                             <span className="text-sm animate-pulse text-purple-400 italic font-sans font-normal">
-                              Auto-tuning
+                              {t("detail.configDetails.autoTuning")}
                             </span>
                           ) : (
                             model.trainingConfig?.learningRate
@@ -1216,7 +1229,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Patience
+                          {t("detail.configDetails.patience")}
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
                           {model.trainingConfig?.earlyStoppingPatience}{" "}
@@ -1227,7 +1240,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
-                          Val Split
+                          {t("detail.configDetails.valSplit")}
                         </span>
                         <div className="text-xl font-mono font-bold text-amber-400">
                           {(model.trainingConfig?.validationSplit || 0.2) * 100}
@@ -1256,11 +1269,10 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       <div>
                         <h2 className="text-lg font-bold flex items-center gap-2">
                           <Trophy className="h-5 w-5 text-yellow-500" />
-                          Optimization Results (Top 5 Trials)
+                          {t("detail.optimizationResults.title")}
                         </h2>
                         <p className="text-xs text-muted-foreground mt-1">
-                          The following hyperparameters were explored during the
-                          auto-optimization process.
+                          {t("detail.optimizationResults.desc")}
                         </p>
                       </div>
                     </div>
@@ -1268,17 +1280,27 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       <table className="w-full text-sm text-left">
                         <thead className="bg-muted/50 text-[10px] uppercase font-bold text-muted-foreground border-b">
                           <tr>
-                            <th className="px-6 py-3">Rank</th>
-                            <th className="px-6 py-3">Hidden / Layers</th>
-                            <th className="px-6 py-3">Learning Rate</th>
-                            <th className="px-6 py-3">Batch Size</th>
                             <th className="px-6 py-3">
-                              Value (
+                              {t("detail.optimizationResults.rank")}
+                            </th>
+                            <th className="px-6 py-3">
+                              {t("detail.optimizationResults.hiddenLayers")}
+                            </th>
+                            <th className="px-6 py-3">
+                              {t("detail.optimizationResults.learningRate")}
+                            </th>
+                            <th className="px-6 py-3">
+                              {t("detail.optimizationResults.batchSize")}
+                            </th>
+                            <th className="px-6 py-3">
+                              {t("detail.optimizationResults.value")} (
                               {model.optimizationConfig?.maximizeMetric ||
                                 "Metric"}
                               )
                             </th>
-                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3">
+                              {t("detail.optimizationResults.status")}
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -1331,8 +1353,8 @@ export default function AIModelDetailPage({ params }: PageProps) {
                                   className="px-6 py-12 text-center text-muted-foreground italic"
                                 >
                                   {model.status === "training"
-                                    ? "Exploring search space... results will appear here."
-                                    : "No optimization trials found."}
+                                    ? t("detail.optimizationResults.exploring")
+                                    : t("detail.optimizationResults.noTrials")}
                                 </td>
                               </tr>
                             )}
@@ -1344,14 +1366,17 @@ export default function AIModelDetailPage({ params }: PageProps) {
 
                 <GlassPane className="p-0 overflow-hidden">
                   <div className="p-6 border-b flex justify-between items-center bg-muted/10">
-                    <h2 className="text-lg font-bold">Version History</h2>
+                    <h2 className="text-lg font-bold">
+                      {t("detail.versions.history")}
+                    </h2>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setIsRetrainDialogOpen(true)}
                       className="gap-2"
                     >
-                      <RefreshCw className="h-4 w-4" /> Manual Retrain
+                      <RefreshCw className="h-4 w-4" />{" "}
+                      {t("detail.versions.manualRetrain")}
                     </Button>
                   </div>
                   {versions && (
@@ -1386,7 +1411,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
             {/* Configuration Card */}
             <GlassPane className="p-6 space-y-6">
               <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Model Configuration
+                {t("detail.config.title")}
               </h3>
 
               <div className="space-y-4">
@@ -1396,7 +1421,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground uppercase font-bold block">
-                      Training Period
+                      {t("detail.config.trainingPeriod")}
                     </span>
                     <span className="text-sm font-medium">
                       {format(new Date(model.trainingStartDate), "yy.MM.dd")} -{" "}
@@ -1411,7 +1436,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground uppercase font-bold block">
-                      Created On
+                      {t("detail.config.createdOn")}
                     </span>
                     <span className="text-sm font-medium">
                       {format(new Date(model.createdAt), "yyyy.MM.dd HH:mm")}
@@ -1425,12 +1450,14 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground uppercase font-bold block">
-                      Auto Retraining
+                      {t("detail.config.autoRetraining")}
                     </span>
                     <span className="text-sm font-medium">
                       {model.isAutoRetrainEnabled
-                        ? `${model.retrainIntervalDays}d Interval`
-                        : "Disabled"}
+                        ? t("detail.config.intervalDays", {
+                            days: model.retrainIntervalDays,
+                          })
+                        : t("detail.config.disabled")}
                     </span>
                   </div>
                 </div>
@@ -1439,7 +1466,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
               <Separator />
 
               <div className="space-y-4">
-                <h4 className="text-xs font-bold text-foreground">Features</h4>
+                <h4 className="text-xs font-bold text-foreground">
+                  {t("detail.config.features")}
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {model.featureConfig?.useOhlcv && (
                     <Badge
@@ -1475,7 +1504,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
             {/* Management Actions */}
             <GlassPane className="p-6 space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Management
+                {t("detail.management.title")}
               </h3>
               <div className="flex flex-col gap-2">
                 <Button
@@ -1486,12 +1515,13 @@ export default function AIModelDetailPage({ params }: PageProps) {
                 >
                   {model.isPublic ? (
                     <>
-                      <Lock className="h-4 w-4 text-violet-500" /> Switch to
-                      Private
+                      <Lock className="h-4 w-4 text-violet-500" />{" "}
+                      {t("detail.management.switchToPrivate")}
                     </>
                   ) : (
                     <>
-                      <Globe className="h-4 w-4 text-emerald-500" /> Make Public
+                      <Globe className="h-4 w-4 text-emerald-500" />{" "}
+                      {t("detail.management.makePublic")}
                     </>
                   )}
                 </Button>
@@ -1502,8 +1532,8 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   asChild
                 >
                   <a href={`/api/ai-models/${modelId}/download`} download>
-                    <Download className="h-4 w-4 text-blue-500" /> Download ONNX
-                    Weight
+                    <Download className="h-4 w-4 text-blue-500" />{" "}
+                    {t("detail.management.downloadOnnx")}
                   </a>
                 </Button>
 
@@ -1513,27 +1543,30 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       variant="ghost"
                       className="w-full justify-start gap-3 h-11 text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                     >
-                      <Trash2 className="h-4 w-4" /> Delete Model
+                      <Trash2 className="h-4 w-4" />{" "}
+                      {t("detail.management.deleteModel")}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete AI Model</AlertDialogTitle>
+                      <AlertDialogTitle>
+                        {t("detail.management.deleteDialog.title")}
+                      </AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete{" "}
-                        <span className="font-bold text-foreground">
-                          {model.name}
-                        </span>
-                        ? This action is permanent and cannot be undone.
+                        {t("detail.management.deleteDialog.description", {
+                          name: model.name,
+                        })}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>
+                        {t("detail.management.deleteDialog.cancel")}
+                      </AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => deleteMutation.mutate()}
                         className="bg-red-500 text-white hover:bg-red-600"
                       >
-                        Delete Permanently
+                        {t("detail.management.deleteDialog.confirm")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

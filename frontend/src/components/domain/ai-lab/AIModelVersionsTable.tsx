@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { AIModelVersion } from "@/types/ai";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { useTranslations } from "next-intl";
 import {
   Table,
   TableBody,
@@ -40,6 +41,7 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
   onVersionActivated,
   isOptimized = false,
 }) => {
+  const t = useTranslations("AILabPage");
   const [selectedVersion, setSelectedVersion] = useState<AIModelVersion | null>(
     null
   );
@@ -57,12 +59,16 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
     setIsActivating(true);
     try {
       await activateModelVersion(modelId, selectedVersion.id);
-      toast.success(`버전 ${selectedVersion.versionNumber}으로 롤백되었습니다`);
+      toast.success(
+        t("detail.versionsTable.dialog.success", {
+          version: selectedVersion.versionNumber,
+        })
+      );
       onVersionActivated();
       setIsDialogOpen(false);
     } catch (e) {
       console.error(e);
-      toast.error("버전 활성화에 실패했습니다");
+      toast.error(t("detail.versionsTable.dialog.error"));
     } finally {
       setIsActivating(false);
       setSelectedVersion(null);
@@ -75,12 +81,18 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{isOptimized ? "Trial ID" : "Version"}</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead>Training Period</TableHead>
-              <TableHead>Metrics</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead>
+                {isOptimized
+                  ? t("detail.versionsTable.trialId")
+                  : t("detail.versionsTable.version")}
+              </TableHead>
+              <TableHead>{t("detail.versionsTable.createdAt")}</TableHead>
+              <TableHead>{t("detail.versionsTable.trainingPeriod")}</TableHead>
+              <TableHead>{t("detail.versionsTable.metrics")}</TableHead>
+              <TableHead>{t("detail.versionsTable.status")}</TableHead>
+              <TableHead className="text-right">
+                {t("detail.versionsTable.action")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -113,10 +125,12 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
                       variant="default"
                       className="bg-green-500 hover:bg-green-600"
                     >
-                      Active
+                      {t("detail.versionsTable.active")}
                     </Badge>
                   ) : (
-                    <Badge variant="secondary">History</Badge>
+                    <Badge variant="secondary">
+                      {t("detail.versionsTable.history")}
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
@@ -127,8 +141,8 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
                       onClick={() => handleRollbackClick(v)}
                       title={
                         isOptimized
-                          ? "Apply this Trial"
-                          : "Rollback to this version"
+                          ? t("detail.versionsTable.applyTrial")
+                          : t("detail.versionsTable.rollbackVersion")
                       }
                       className={
                         isOptimized
@@ -137,7 +151,9 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
                       }
                     >
                       <RotateCcw className="h-4 w-4 mr-1" />
-                      {isOptimized ? "Apply" : "Rollback"}
+                      {isOptimized
+                        ? t("detail.versionsTable.apply")
+                        : t("detail.versionsTable.rollback")}
                     </Button>
                   )}
                 </TableCell>
@@ -149,7 +165,7 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
                   colSpan={6}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  No history available.
+                  {t("detail.versionsTable.empty")}
                 </TableCell>
               </TableRow>
             )}
@@ -162,19 +178,27 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isOptimized ? "시도(Trial) 적용 확인" : "버전 롤백 확인"}
+              {isOptimized
+                ? t("detail.versionsTable.dialog.applyTitle")
+                : t("detail.versionsTable.dialog.rollbackTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isOptimized
-                ? `선택한 시도(Trial #${selectedVersion?.versionNumber})의 설정을 모델에 적용하시겠습니까?`
-                : `버전 ${selectedVersion?.versionNumber}으로 롤백하시겠습니까?`}
+                ? t("detail.versionsTable.dialog.applyDesc", {
+                    version: selectedVersion?.versionNumber,
+                  })
+                : t("detail.versionsTable.dialog.rollbackDesc", {
+                    version: selectedVersion?.versionNumber,
+                  })}
               <br />
-              <br />이 버전이 활성화되면 AI 신호 생성에 사용되는 모델이
-              변경됩니다.
+              <br />
+              {t("detail.versionsTable.dialog.warning")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isActivating}>취소</AlertDialogCancel>
+            <AlertDialogCancel disabled={isActivating}>
+              {t("detail.management.deleteDialog.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmRollback}
               disabled={isActivating}
@@ -183,12 +207,16 @@ export const AIModelVersionsTable: React.FC<AIModelVersionsTableProps> = ({
               {isActivating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  롤백 중...
+                  {isOptimized
+                    ? t("detail.versionsTable.dialog.activating")
+                    : t("detail.versionsTable.dialog.rollbacking")}
                 </>
               ) : (
                 <>
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  롤백
+                  {isOptimized
+                    ? t("detail.versionsTable.dialog.confirmApply")
+                    : t("detail.versionsTable.dialog.confirmRollback")}
                 </>
               )}
             </AlertDialogAction>

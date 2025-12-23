@@ -6,7 +6,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
+import { ko, enUS } from "date-fns/locale";
+import { useLocale } from "next-intl";
 import {
   Brain,
   Clock,
@@ -68,6 +69,7 @@ const statusConfig: Record<
 
 export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
   const t = useTranslations("AILabPage");
+  const locale = useLocale();
   const config = statusConfig[model.status];
   const StatusIcon = config.icon;
 
@@ -75,7 +77,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
     try {
       return formatDistanceToNow(new Date(dateString), {
         addSuffix: true,
-        locale: ko,
+        locale: locale === "ko" ? ko : enUS,
       });
     } catch {
       return dateString;
@@ -88,7 +90,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
     const days = Math.ceil(
       (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
     );
-    return `${days}일`;
+    return `${days}${t("card.daysSuffix")}`;
   };
 
   return (

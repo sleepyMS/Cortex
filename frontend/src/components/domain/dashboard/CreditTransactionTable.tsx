@@ -9,8 +9,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
-import { format, formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
+import { format, formatDistanceToNow, Locale } from "date-fns";
+import { ko, enUS } from "date-fns/locale";
+import { useLocale } from "next-intl";
 import apiClient from "@/lib/apiClient";
 import {
   ChevronLeft,
@@ -91,6 +92,8 @@ const TransactionDetailsDialogContent = ({
   transaction: UnifiedCreditHistoryItem;
 }) => {
   const t = useTranslations("Dashboard.credits.transactionTable");
+  const locale = useLocale();
+  const dateLocale = locale === "ko" ? ko : enUS;
   const isGain = transaction.amount > 0;
 
   // '사용' 내역의 상세 정보를 불러오기 위한 쿼리
@@ -129,7 +132,7 @@ const TransactionDetailsDialogContent = ({
                 {format(new Date(transaction.expires_at), "yyyy-MM-dd HH:mm")} (
                 {formatDistanceToNow(new Date(transaction.expires_at), {
                   addSuffix: true,
-                  locale: ko,
+                  locale: dateLocale,
                 })}
                 )
               </span>
@@ -185,13 +188,16 @@ const TransactionDetailsDialogContent = ({
 };
 
 // 통합 데이터 구조에 맞는 컬럼 재정의
-const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
+const columns = (
+  t: any,
+  dateLocale: Locale
+): ColumnDef<UnifiedCreditHistoryItem>[] => [
   {
     accessorKey: "date",
     header: t("columns.date"),
     cell: ({ row }) =>
       format(new Date(row.getValue("date")), "yyyy-MM-dd HH:mm:ss", {
-        locale: ko,
+        locale: dateLocale,
       }),
   },
   {
@@ -263,6 +269,8 @@ const columns = (t: any): ColumnDef<UnifiedCreditHistoryItem>[] => [
 // 메인 컴포넌트
 export const CreditTransactionTable = () => {
   const t = useTranslations("Dashboard.credits.transactionTable");
+  const locale = useLocale();
+  const dateLocale = locale === "ko" ? ko : enUS;
   const [{ pageIndex, pageSize }, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
@@ -289,7 +297,7 @@ export const CreditTransactionTable = () => {
 
   const table = useReactTable({
     data: queryResponse?.items ?? [],
-    columns: columns(t),
+    columns: columns(t, dateLocale),
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     pageCount: queryResponse?.meta.totalPages ?? -1,
@@ -327,7 +335,7 @@ export const CreditTransactionTable = () => {
               {isLoading ? (
                 Array.from({ length: pageSize }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    {columns(t).map((col, j) => (
+                    {columns(t, dateLocale).map((col, j) => (
                       <TableCell key={`skeleton-cell-${j}`}>
                         <Skeleton className="h-6" />
                       </TableCell>
@@ -350,7 +358,7 @@ export const CreditTransactionTable = () => {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns(t).length}
+                    colSpan={columns(t, dateLocale).length}
                     className="h-48 text-center"
                   >
                     <ListX className="mx-auto h-10 w-10 text-muted-foreground mb-4" />

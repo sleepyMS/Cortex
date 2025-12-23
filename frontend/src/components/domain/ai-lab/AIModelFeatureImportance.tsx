@@ -11,12 +11,15 @@ import {
   Cell,
 } from "recharts";
 import { GlassPane } from "@/components/ui/GlassPane";
+import { useTranslations } from "next-intl";
 
 interface Props {
   featureImportance?: Record<string, number>;
 }
 
 export function AIModelFeatureImportance({ featureImportance }: Props) {
+  const t = useTranslations("AILabPage");
+
   if (!featureImportance || Object.keys(featureImportance).length === 0) {
     return (
       <GlassPane className="p-6 h-full flex flex-col items-center justify-center text-center space-y-2 min-h-[300px]">
@@ -35,11 +38,11 @@ export function AIModelFeatureImportance({ featureImportance }: Props) {
             />
           </svg>
         </div>
-        <h3 className="font-semibold">피처 중요도 데이터 없음</h3>
+        <h3 className="font-semibold">
+          {t("detail.featureImportance.emptyTitle")}
+        </h3>
         <p className="text-sm text-muted-foreground">
-          이 모델은 피처 중요도 정보를 포함하고 있지 않습니다.
-          <br />
-          (새로 학습된 모델에서만 사용 가능합니다)
+          {t("detail.featureImportance.emptyDesc")}
         </p>
       </GlassPane>
     );
@@ -55,9 +58,11 @@ export function AIModelFeatureImportance({ featureImportance }: Props) {
     <GlassPane className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold">피처 중요도 분석</h2>
+          <h2 className="text-lg font-semibold">
+            {t("detail.featureImportance.title")}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            모델 예측에 가장 큰 영향을 미친 상위 20개 피처입니다.
+            {t("detail.featureImportance.subtitle")}
           </p>
         </div>
       </div>
@@ -107,7 +112,10 @@ export function AIModelFeatureImportance({ featureImportance }: Props) {
                 marginBottom: "0.25rem",
               }}
               itemStyle={{ color: "hsl(var(--primary))" }}
-              formatter={(value: any) => [value.toFixed(4), "Importance"]}
+              formatter={(value: any) => [
+                value.toFixed(4),
+                t("detail.featureImportance.importance"),
+              ]}
             />
             <Bar dataKey="value" radius={[0, 4, 4, 0]}>
               {data.map((entry, index) => (

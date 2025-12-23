@@ -590,6 +590,8 @@
           "ATTENDANCE_DAILY": "일일 출석 보상",
           "ATTENDANCE_BONUS": "연속 출석 보너스",
           "EVENT_COUPON": "이벤트/쿠폰 지급",
+          "AI_TRAINING": "AI 모델 학습",
+          "AI_RETRAINING": "AI 모델 재학습",
           "ETC": "기타"
         },
         "creditTypes": {
@@ -1229,7 +1231,7 @@
     "sharpeRatio": "샤프 지수",
     "sharpeRatioDesc": "변동성 대비 수익률입니다. 높을수록 안정적인 투자를 의미합니다.",
     "sortinoRatio": "소르니노 지수",
-    "sortinoRatioDesc": "손실 위험에 대한 초과 수익률입니다. 하락 변동성만 위험으로 간주하며, 샤프 지수보다 하락 위험을 더 정확하게 측정합니다. 높을수록 좋습니다.",
+    "sortinoRatioDesc": "손실 위험에 대한 초과 수익률입니다. 하락 변동성만 위험으로 간주하며, 샤프 지수보다 하락 변동성을 더 정확하게 측정합니다. 높을수록 좋습니다.",
     "profitFactor": "수익비",
     "profitFactorDesc": "총 수익을 총 손실로 나눈 값입니다. 1보다 커야 수익성이 있습니다.",
     "totalTrades": "총 거래 횟수",
@@ -1385,13 +1387,12 @@
       "longestFlatDays": "최장 횡보 기간",
       "categoryTradeChars": "거래 특성",
       "avgHoldingPeriodDays": "평균 보유 기간",
-
       "tooltips": {
         "overallScore": "전략의 종합적인 성과를 나타내는 점수입니다. 수익성, 위험 조정 성과, 회복탄력성, 수익 안정성 네 가지 항목을 가중 평균하여 전략의 균형 잡힌 품질을 평가합니다.\n\n[계산 수식]\n(수익성 점수 x 0.3) +\n(위험 조정 성과 점수 x 0.3) +\n(회복탄력성 점수 x 0.3) +\n(수익 안정성 점수 x 0.1)\n\n* 수익성 = 수익 팩터 기반\n* 위험 조정 성과 = 소르티노 지수 기반\n* 회복탄력성 = 칼마 지수 기반\n* 수익 안정성 = K-Ratio 기반",
         "categoryProfit": "이 전략이 얼마나 효과적으로 수익을 창출했는지를 나타내는 지표 그룹입니다.",
         "cagr": "투자기간 동안의 연평균 복리 수익률입니다. 시간이 지남에 따라 자산이 얼마나 성장했는지를 보여주는 핵심 지표입니다.",
         "avgProfitLossRatio": "평균 수익 거래의 이익금을 평균 손실 거래의 손실금으로 나눈 값입니다. 1보다 클수록 기대 수익이 높다는 의미입니다.",
-        "kRatio": "수익률의 안정성과 일관성을 측정하는 지표입니다. K-Ratio가 높을수록 꾸준히 우상향하는 이상적인 수익 곡선에 가깝습니다.",
+        "kRatio": "수익률의 안정성과 일관성을 측정하는 지표입니다. K-Ratio가 높을수록 꾸준히 우상향하는 이상적인 수익 곡선에 가깝입니다.",
         "categoryRiskAdjusted": "단순 수익률이 아닌, 감수한 위험 대비 얼마나 높은 수익을 얻었는지를 평가하는 지표 그룹입니다.",
         "sharpeRatio": "변동성(위험) 대비 초과 수익률을 나타냅니다. 가장 널리 사용되는 위험 조정 성과 지표로, 높을수록 좋습니다.",
         "sortinoRatio": "샤프 지수와 유사하지만, 상승 변동성은 제외하고 오직 하락 변동성(실제 위험)만을 고려하여 위험 조정 수익률을 계산합니다.",
@@ -2295,7 +2296,313 @@
       "period": "학습 기간",
       "viewDetail": "상세 보기",
       "testPrediction": "예측 테스트",
-      "delete": "삭제"
+      "delete": "삭제",
+      "daysSuffix": "일"
+    },
+    "new": {
+      "title": "새 AI 모델 생성",
+      "subtitle": "단계별로 설정을 완료하여 AI 모델을 학습시킵니다.",
+      "back": "돌아가기",
+      "next": "다음",
+      "prev": "이전",
+      "steps": {
+        "basicInfo": "기본 정보",
+        "trainingData": "학습 데이터",
+        "features": "입력 피처",
+        "labeling": "라벨링 설정",
+        "modelConfig": "모델 설정",
+        "confirmation": "확인 및 시작"
+      },
+      "step1": {
+        "modelName": "모델 이름",
+        "modelNamePlaceholder": "예: BTC 1시간봉 LSTM 모델",
+        "description": "설명 (선택)",
+        "descriptionPlaceholder": "모델에 대한 간단한 설명...",
+        "modelType": "모델 타입",
+        "lstmDesc": "LSTM은 장기 패턴을 학습하는 데 효과적입니다.",
+        "gruDesc": "GRU는 LSTM보다 빠르고 가벼우며 유사한 성능을 제공합니다."
+      },
+      "step2": {
+        "symbol": "학습 심볼",
+        "timeframe": "타임프레임",
+        "timeframeDesc": "1시간봉(1h)은 노이즈를 줄이면서 충분한 데이터 양을 제공합니다.",
+        "startDate": "시작일",
+        "endDate": "종료일"
+      },
+      "step3": {
+        "basicData": "기본 데이터",
+        "ohlcv": "OHLCV 데이터",
+        "ohlcvDesc": "시가, 고가, 저가, 종가, 거래량 데이터를 학습에 사용합니다.",
+        "returns": "수익률(Returns)",
+        "returnsDesc": "가격 변화율 및 로그 수익률을 피처로 추가합니다.",
+        "technicalIndicators": "기술적 지표",
+        "selectedCount": "{count}개 선택됨",
+        "searchPlaceholder": "지표 검색...",
+        "loadingIndicators": "지표 목록 로딩 중...",
+        "paramSettings": "선택된 지표 파라미터 설정",
+        "paramSettingsDesc": "각 지표의 파라미터를 조정할 수 있습니다",
+        "resetToDefault": "기본값으로 초기화"
+      },
+      "step4": {
+        "tripleBarrierTitle": "Triple Barrier 라벨링",
+        "tripleBarrierDesc": "각 시점에서 목표 수익률(TP)에 먼저 도달하면 BUY, 손절선(SL)에 먼저 도달하면 SELL, 제한 시간 내에 둘 다 도달하지 못하면 HOLD로 라벨링합니다.",
+        "takeProfit": "Take Profit (TP):",
+        "stopLoss": "Stop Loss (SL):",
+        "horizon": "시간 제한 (Horizon): {value} 봉",
+        "horizonDesc": "{timeframe}봉 기준 약 {hours}시간"
+      },
+      "step5": {
+        "manual": "수동 설정",
+        "auto": "Optuna 자동 최적화",
+        "manualTab": {
+          "hiddenSize": "Hidden Size: {value}",
+          "hiddenSizeDesc": "LSTM 레이어의 은닉 상태 차원입니다. 크면 복잡한 패턴을 학습하지만 과적합 위험이 있습니다.",
+          "numLayers": "레이어 수: {value}",
+          "numLayersDesc": "모델의 깊이를 결정합니다. 레이어가 많을수록 복잡한 시계열 패턴을 더 잘 포착할 수 있지만, 학습 시간이 길어지고 과적합의 가능성이 높아집니다.",
+          "dropout": "Dropout: {value}%",
+          "dropoutDesc": "과적합 방지를 위해 학습 중 일부 뉴런을 무작위로 비활성화합니다.",
+          "learningRate": "Learning Rate (학습률): {value}",
+          "learningRateDesc": "가중치 업데이트 보폭을 조절합니다. 너무 크면 최적점을 찾지 못하고 요동칠 수 있으며, 너무 작으면 학습 속도가 매우 느려집니다.",
+          "epochs": "에폭 수: {value}",
+          "epochsDesc": "전체 데이터를 반복해서 학습하는 횟수입니다. 충분히 학습해야 하지만, 너무 많으면 과거 데이터에만 최적화되어 실제 미래 성능이 떨어질 수 있습니다.",
+          "slowHighPrecision": "느림 / 고정밀도",
+          "fastLowPrecision": "빠름 / 저정밀도",
+          "recommended": "권장값"
+        },
+        "autoTab": {
+          "title": "Optuna 자동 최적화 모드",
+          "desc": "인공지능이 수십 번 이상의 실험을 통해 당신의 전략과 데이터에 가장 적합한 아키텍처와 학습률을 자동으로 찾아냅니다. 최적의 성능을 끌어내기 위한 미세 조정을 자동화합니다.",
+          "nTrials": "Trial 수 (시도 횟수): {value}회",
+          "creditEst": "예상 {value}배 크레딧 소모",
+          "nTrialsDesc": "시도 횟수가 많을수록 더 정밀한 최적화가 가능하지만, 그만큼 더 많은 시간과 크레딧이 소요됩니다. 보통 20~50회 정도를 권장합니다.",
+          "targetMetric": "최적화 목표 지표",
+          "targetMetricDesc": "어떤 기준이 가장 높은 모델을 찾을지 결정합니다. 일반적인 트레이딩에는 F1-Score나 Accuracy가 추천됩니다.",
+          "metrics": {
+            "accuracy": "Validation Accuracy (정확도 극대화)",
+            "f1": "F1-Score (정밀도/재현율 균형)",
+            "return": "Expected Return (기대 수익률 극대화)"
+          },
+          "searchSpace": "하이퍼파라미터 탐색 범위 세부 설정",
+          "resetRange": "설정된 범위를 기본값으로 되돌립니다.",
+          "resetSuccess": "탐색 범위가 기본값으로 초기화되었습니다.",
+          "ranges": {
+            "hiddenSize": "Hidden Size 범위",
+            "layers": "Layers 범위",
+            "dropout": "Dropout 범위",
+            "lr": "Learning Rate 범위",
+            "batchSize": "Batch Size 범위",
+            "logScale": "LR은 로그 스케일로 조정됩니다 ({min} ~ {max})"
+          }
+        }
+      },
+      "step6": {
+        "readyTitle": "모델 학습 준비 완료",
+        "readyDesc": "설정을 확인하고 학습을 시작하세요.",
+        "costDetails": "비용 상세정보",
+        "originalCost": "정가 (Basic 기준)",
+        "planDiscount": "플랜 할인 ({value}%)",
+        "finalCost": "최종 필요 크레딧",
+        "balance": "내 크레딧 잔액",
+        "calculating": "비용 계산 중...",
+        "creating": "생성 중...",
+        "startTraining": "학습 시작 ({value} Credits)",
+        "startSuccess": "AI 모델 학습이 시작되었습니다!",
+        "createError": "모델 생성에 실패했습니다.",
+        "costError": "비용 견적을 불러오는데 실패했습니다."
+      }
+    },
+    "detail": {
+      "notFound": "모델을 찾을 수 없습니다",
+      "backToLab": "AI Lab으로 돌아가기",
+      "status": {
+        "pending": "대기 중",
+        "training": "학습 중",
+        "completed": "완료",
+        "failed": "실패",
+        "optunaOptimized": "Optuna Optimized"
+      },
+      "metrics": {
+        "accuracy": "모델 정확도",
+        "accuracyDesc": "Validation Set Accuracy",
+        "f1Score": "F1 Score",
+        "f1ScoreDesc": "Weighted Average Score",
+        "valLoss": "Validation Loss",
+        "valLossDesc": "Final Loss Value",
+        "versions": "버전",
+        "versionsDesc": "체크포인트"
+      },
+      "config": {
+        "title": "모델 구성",
+        "trainingPeriod": "학습 기간",
+        "createdOn": "생성일",
+        "autoRetraining": "자동 재학습",
+        "features": "특성",
+        "intervalDays": "{days}일 간격",
+        "disabled": "비활성화",
+        "enabled": "활성화"
+      },
+      "management": {
+        "title": "관리",
+        "switchToPrivate": "비공개로 전환",
+        "makePublic": "공개로 전환",
+        "downloadOnnx": "ONNX 가중치 다운로드",
+        "deleteModel": "모델 삭제",
+        "deleteDialog": {
+          "title": "AI 모델 삭제",
+          "description": "정말 {name} 모델을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+          "cancel": "취소",
+          "confirm": "영구 삭제"
+        }
+      },
+      "tabLabels": {
+        "overview": "모델 개요",
+        "trials": "최적화 시도",
+        "versions": "버전 기록",
+        "featureImportance": "피처 분석"
+      },
+      "prediction": {
+        "title": "예측 시뮬레이션",
+        "subtitle": "실시간 시장 데이터를 사용한 모델 예측 테스트",
+        "run": "예측 실행",
+        "analyzing": "시장 패턴 분석 중...",
+        "emptyTitle": "위 버튼을 눌러 예측을 실행하세요",
+        "emptyDesc": "현재 시장 데이터를 사용하여 모델 성능을 테스트합니다.",
+        "confidence": "예측 신뢰도",
+        "marketContext": "시장 상황",
+        "symbol": "종목",
+        "timeframe": "시간봉",
+        "source": "데이터 소스",
+        "sourceValue": "실시간 WebSocket",
+        "timestamp": "기준 시간",
+        "buy": "매수",
+        "hold": "관망",
+        "sell": "매도"
+      },
+      "configDetails": {
+        "datasetTitle": "학습 데이터셋 설정",
+        "baseFeatures": "기본 데이터",
+        "ohlcvEnabled": "OHLCV 사용",
+        "ohlcvDisabled": "OHLCV 미사용",
+        "returnsEnabled": "수익률 데이터 사용",
+        "returnsDisabled": "수익률 데이터 미사용",
+        "sequenceLength": "시퀀스 길이",
+        "candles": "개 캔들",
+        "labelStrategy": "라벨링 전략",
+        "labelStrategyValue": "표준 3분할",
+        "technicalIndicators": "기술적 지표 및 파라미터",
+        "noIndicators": "이 모델은 기술적 지표를 사용하지 않습니다.",
+        "architectureTitle": "모델 아키텍처",
+        "hiddenSize": "은닉층 크기",
+        "layers": "레이어 수",
+        "dropout": "드롭아웃",
+        "bidirectional": "양방향",
+        "enabled": "사용",
+        "disabled": "미사용",
+        "hyperparametersTitle": "학습 하이퍼파라미터",
+        "epochsBatch": "Epochs / Batch",
+        "learningRate": "학습률",
+        "patience": "조기 종료",
+        "valSplit": "검증 데이터 비율",
+        "autoTuning": "자동 최적화 중",
+        "searching": "탐색 중..."
+      },
+      "optimizationResults": {
+        "title": "최적화 결과 (상위 5개)",
+        "desc": "자동 최적화 과정에서 탐색된 하이퍼파라미터 조합 중 상위 5개 결과입니다.",
+        "rank": "순위",
+        "hiddenLayers": "Hidden / Layers",
+        "learningRate": "학습률",
+        "batchSize": "배치 크기",
+        "value": "평가 점수",
+        "status": "상태",
+        "exploring": "탐색 중... 결과가 여기에 표시됩니다.",
+        "noTrials": "최적화 시도 기록이 없습니다."
+      },
+      "featureImportance": {
+        "title": "피처 중요도 분석",
+        "subtitle": "모델 예측에 가장 큰 영향을 미친 상위 20개 피처입니다.",
+        "emptyTitle": "피처 중요도 데이터 없음",
+        "emptyDesc": "이 모델은 피처 중요도 정보를 포함하고 있지 않습니다. (새로 학습된 모델에서만 사용 가능합니다)",
+        "importance": "중요도"
+      },
+      "versionsTable": {
+        "trialId": "Trial ID",
+        "version": "버전",
+        "createdAt": "생성일",
+        "trainingPeriod": "학습 기간",
+        "metrics": "지표",
+        "status": "상태",
+        "action": "작업",
+        "active": "활성",
+        "history": "과거 기록",
+        "applyTrial": "이 시도 적용",
+        "rollbackVersion": "이 버전으로 롤백",
+        "apply": "적용",
+        "rollback": "롤백",
+        "empty": "기록이 없습니다.",
+        "dialog": {
+          "applyTitle": "시도 적용 확인",
+          "rollbackTitle": "버전 롤백 확인",
+          "applyDesc": "선택한 시도(#{version})의 설정을 모델에 적용하시겠습니까?",
+          "rollbackDesc": "버전 {version}으로 롤백하시겠습니까?",
+          "warning": "이 버전이 활성화되면 AI 신호 생성에 사용되는 모델이 변경됩니다.",
+          "activating": "적용 중...",
+          "rollbacking": "롤백 중...",
+          "confirmApply": "적용",
+          "confirmRollback": "롤백",
+          "success": "버전 {version}으로 롤백되었습니다",
+          "error": "버전 활성화에 실패했습니다"
+        }
+      },
+      "retrainDialog": {
+        "title": "AI 모델 재학습",
+        "description": "새로운 데이터 기간으로 모델을 재학습합니다. 새로운 버전이 생성됩니다.",
+        "periodLabel": "학습 데이터 기간",
+        "biasWarningTitle": "미래 데이터 참조(Look-ahead Bias) 주의",
+        "biasWarningDesc": "재학습 기간을 최신 시점까지 확장하면, 해당 기간은 백테스팅 및 최적화 검증 데이터로서의 신뢰성을 잃게 됩니다. (In-Sample 데이터 오염)",
+        "costDetails": "비용 상세정보",
+        "originalCost": "정가 (Basic 기준)",
+        "planDiscount": "플랜 할인 ({value}%)",
+        "finalCost": "최종 필요 크레딧",
+        "balance": "내 크레딧 잔액",
+        "insufficient": "크레딧 부족 (부족분: {value})",
+        "cancel": "취소",
+        "start": "재학습 시작",
+        "selectPeriodError": "학습 기간을 선택해주세요.",
+        "success": "재학습이 시작되었습니다.",
+        "fail": "재학습 시작에 실패했습니다."
+      },
+      "versions": {
+        "history": "버전 기록",
+        "manualRetrain": "수동 재학습"
+      },
+      "training": {
+        "refresh": "새로고침",
+        "optimizationInProgress": "하이퍼파라미터 최적화 진행 중",
+        "finalTraining": "최적 파라미터로 최종 학습 진행",
+        "trainingInProgress": "모델 학습 진행 중",
+        "totalProgress": "전체 진행률",
+        "currentTrial": "현재 시도",
+        "bestMetric": "최고 평가지표 ({metric})",
+        "elapsedTime": "경과 시간",
+        "currentEpoch": "현재 Epoch",
+        "timeElapsed": "소요 시간"
+      },
+      "analysis": {
+        "title": "학습 프로세스 분석",
+        "subtitle": "Epoch별 Loss 수렴 및 정확도 변화 추이",
+        "chart": "차트",
+        "table": "테이블",
+        "noLogs": "학습 로그 데이터가 아직 생성되지 않았습니다."
+      },
+      "actions": {
+        "deleteSuccess": "AI 모델이 삭제되었습니다.",
+        "deleteFail": "모델 삭제 실패",
+        "publicSuccess": "모델이 공개되었습니다.",
+        "privateSuccess": "모델이 비공개로 전환되었습니다.",
+        "updateFail": "설정 변경에 실패했습니다.",
+        "predictionFail": "예측 테스트에 실패했습니다."
+      }
     }
   }
 }

@@ -11,6 +11,7 @@ import {
   Percent,
   Ticket,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   Dialog,
@@ -43,6 +44,7 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
   initialEndDate,
   onSuccess,
 }) => {
+  const t = useTranslations("AILabPage");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: initialStartDate ? new Date(initialStartDate) : undefined,
     to: initialEndDate ? new Date(initialEndDate) : undefined,
@@ -78,7 +80,7 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
 
   const handleRetrain = async () => {
     if (!dateRange?.from || !dateRange?.to) {
-      toast.error("Please select a training period.");
+      toast.error(t("detail.retrainDialog.selectPeriodError"));
       return;
     }
 
@@ -88,12 +90,10 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString(),
       });
-      toast.success("Retraining started successfully.");
-      onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to start retraining.");
+      toast.error(t("detail.retrainDialog.fail"));
     } finally {
       setIsSubmitting(false);
     }
@@ -103,16 +103,17 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>AI 모델 재학습 (Retrain)</DialogTitle>
+          <DialogTitle>{t("detail.retrainDialog.title")}</DialogTitle>
           <DialogDescription>
-            새로운 데이터 기간으로 모델을 재학습합니다. 새로운 버전이
-            생성됩니다.
+            {t("detail.retrainDialog.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">학습 데이터 기간</h4>
+            <h4 className="text-sm font-medium">
+              {t("detail.retrainDialog.periodLabel")}
+            </h4>
             <DateRangePickerCustom
               startDate={dateRange?.from}
               endDate={dateRange?.to}
@@ -132,23 +133,23 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
           >
             <AlertTriangle className="h-4 w-4" color="orange" />
             <AlertTitle className="text-amber-500">
-              Look-ahead Bias 주의
+              {t("detail.retrainDialog.biasWarningTitle")}
             </AlertTitle>
             <AlertDescription className="text-amber-500/90 text-xs mt-1">
-              재학습 기간을 최신 시점까지 확장하면, 해당 기간은 백테스팅 및
-              최적화 검증 데이터로서의 신뢰성을 잃게 됩니다. (In-Sample 데이터
-              오염)
+              {t("detail.retrainDialog.biasWarningDesc")}
             </AlertDescription>
           </Alert>
 
           <div className="rounded-lg bg-card/50 border border-border p-4 space-y-4">
-            <h4 className="font-semibold text-sm">비용 상세정보</h4>
+            <h4 className="font-semibold text-sm">
+              {t("detail.retrainDialog.costDetails")}
+            </h4>
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4" />
-                  <span>정가 (Basic 기준)</span>
+                  <span>{t("detail.retrainDialog.originalCost")}</span>
                 </div>
                 <span>
                   {costData && !isCheckingCost
@@ -162,7 +163,9 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
                   <div className="flex items-center gap-2">
                     <Percent className="h-4 w-4" />
                     <span>
-                      플랜 할인 ({(costData.discountPct * 100).toFixed(0)}%)
+                      {t("detail.retrainDialog.planDiscount", {
+                        value: (costData.discountPct * 100).toFixed(0),
+                      })}
                     </span>
                   </div>
                   <span>
@@ -181,7 +184,7 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
             <div className="flex justify-between items-center text-violet-400">
               <div className="flex items-center gap-2 font-semibold">
                 <Ticket className="h-5 w-5" />
-                <span>최종 필요 크레딧</span>
+                <span>{t("detail.retrainDialog.finalCost")}</span>
               </div>
               <span className="text-xl font-bold">
                 {isCheckingCost ? (
@@ -193,7 +196,7 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
             </div>
 
             <div className="flex justify-between text-xs text-muted-foreground pt-2">
-              <span>내 크레딧 잔액</span>
+              <span>{t("detail.retrainDialog.balance")}</span>
               <span
                 className={
                   costData && !costData.isSufficient
@@ -207,7 +210,9 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
           </div>
           {costData && !costData.isSufficient && (
             <div className="text-xs text-red-500 font-medium text-right mt-1">
-              Insufficient Credits (Balance: {costData.userBalance})
+              {t("detail.retrainDialog.insufficient", {
+                value: costData.userBalance,
+              })}
             </div>
           )}
         </div>
@@ -218,13 +223,13 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            취소
+            {t("detail.retrainDialog.cancel")}
           </Button>
           <Button onClick={handleRetrain} disabled={isSubmitting}>
             {isSubmitting && (
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
             )}
-            재학습 시작
+            {t("detail.retrainDialog.start")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -71,12 +71,12 @@ import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 
 const STEPS = [
-  { id: 1, title: "기본 정보", icon: Brain },
-  { id: 2, title: "학습 데이터", icon: Database },
-  { id: 3, title: "입력 피처", icon: ListFilter },
-  { id: 4, title: "라벨링 설정", icon: Target },
-  { id: 5, title: "모델 설정", icon: Settings },
-  { id: 6, title: "확인 및 시작", icon: Sparkles },
+  { id: 1, title: "new.steps.basicInfo", icon: Brain },
+  { id: 2, title: "new.steps.trainingData", icon: Database },
+  { id: 3, title: "new.steps.features", icon: ListFilter },
+  { id: 4, title: "new.steps.labeling", icon: Target },
+  { id: 5, title: "new.steps.modelConfig", icon: Settings },
+  { id: 6, title: "new.steps.confirmation", icon: Sparkles },
 ];
 
 const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"];
@@ -190,7 +190,7 @@ export default function NewAIModelPage() {
           }
         } catch (e) {
           console.error(e);
-          toast.error("비용 견적을 불러오는데 실패했습니다.");
+          toast.error(t("new.step6.costError"));
         } finally {
           setIsCheckingCost(false);
         }
@@ -222,11 +222,11 @@ export default function NewAIModelPage() {
   const createMutation = useMutation({
     mutationFn: createAIModel,
     onSuccess: (response) => {
-      toast.success("AI 모델 학습이 시작되었습니다!");
+      toast.success(t("new.step6.startSuccess"));
       router.push(`/ai-lab/${response.model.id}`);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || "모델 생성에 실패했습니다.");
+      toast.error(error?.response?.data?.detail || t("new.step6.createError"));
     },
   });
 
@@ -276,26 +276,32 @@ export default function NewAIModelPage() {
         return (
           <div className="space-y-6">
             <div>
-              <Label className="text-base font-medium">모델 이름</Label>
+              <Label className="text-base font-medium">
+                {t("new.step1.modelName")}
+              </Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: BTC 1시간봉 LSTM 모델"
+                placeholder={t("new.step1.modelNamePlaceholder")}
                 className="mt-2"
               />
             </div>
             <div>
-              <Label className="text-base font-medium">설명 (선택)</Label>
+              <Label className="text-base font-medium">
+                {t("new.step1.description")}
+              </Label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="모델에 대한 간단한 설명..."
+                placeholder={t("new.step1.descriptionPlaceholder")}
                 className="mt-2"
                 rows={3}
               />
             </div>
             <div>
-              <Label className="text-base font-medium">모델 타입</Label>
+              <Label className="text-base font-medium">
+                {t("new.step1.modelType")}
+              </Label>
               <Select value={modelType} onValueChange={setModelType}>
                 <SelectTrigger className="mt-2">
                   <SelectValue />
@@ -311,8 +317,8 @@ export default function NewAIModelPage() {
               </Select>
               <p className="text-sm text-muted-foreground mt-2">
                 {modelType === "lstm"
-                  ? "LSTM은 장기 패턴을 학습하는 데 효과적입니다."
-                  : "GRU는 LSTM보다 빠르고 가벼우며 유사한 성능을 제공합니다."}
+                  ? t("new.step1.lstmDesc")
+                  : t("new.step1.gruDesc")}
               </p>
             </div>
           </div>
@@ -322,7 +328,9 @@ export default function NewAIModelPage() {
         return (
           <div className="space-y-6">
             <div>
-              <Label className="text-base font-medium">학습 심볼</Label>
+              <Label className="text-base font-medium">
+                {t("new.step2.symbol")}
+              </Label>
               <Select value={symbol} onValueChange={setSymbol}>
                 <SelectTrigger className="mt-2">
                   <SelectValue />
@@ -337,7 +345,9 @@ export default function NewAIModelPage() {
               </Select>
             </div>
             <div>
-              <Label className="text-base font-medium">타임프레임</Label>
+              <Label className="text-base font-medium">
+                {t("new.step2.timeframe")}
+              </Label>
               <Select value={timeframe} onValueChange={setTimeframe}>
                 <SelectTrigger className="mt-2">
                   <SelectValue />
@@ -351,12 +361,14 @@ export default function NewAIModelPage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground mt-2">
-                1시간봉(1h)은 노이즈를 줄이면서 충분한 데이터 양을 제공합니다.
+                {t("new.step2.timeframeDesc")}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-base font-medium">시작일</Label>
+                <Label className="text-base font-medium">
+                  {t("new.step2.startDate")}
+                </Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -365,7 +377,9 @@ export default function NewAIModelPage() {
                 />
               </div>
               <div>
-                <Label className="text-base font-medium">종료일</Label>
+                <Label className="text-base font-medium">
+                  {t("new.step2.endDate")}
+                </Label>
                 <Input
                   type="date"
                   value={endDate}
@@ -381,12 +395,14 @@ export default function NewAIModelPage() {
         return (
           <div className="space-y-6">
             <div className="space-y-4">
-              <Label className="text-base font-medium">기본 데이터</Label>
+              <Label className="text-base font-medium">
+                {t("new.step3.basicData")}
+              </Label>
               <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
                 <div className="space-y-0.5">
-                  <Label className="text-base">OHLCV 데이터</Label>
+                  <Label className="text-base">{t("new.step3.ohlcv")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    시가, 고가, 저가, 종가, 거래량 데이터를 학습에 사용합니다.
+                    {t("new.step3.ohlcvDesc")}
                   </p>
                 </div>
                 <Switch
@@ -398,9 +414,9 @@ export default function NewAIModelPage() {
               </div>
               <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
                 <div className="space-y-0.5">
-                  <Label className="text-base">수익률(Returns)</Label>
+                  <Label className="text-base">{t("new.step3.returns")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    가격 변화율 및 로그 수익률을 피처로 추가합니다.
+                    {t("new.step3.returnsDesc")}
                   </p>
                 </div>
                 <Switch
@@ -418,15 +434,19 @@ export default function NewAIModelPage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-base font-medium">기술적 지표</Label>
+                <Label className="text-base font-medium">
+                  {t("new.step3.technicalIndicators")}
+                </Label>
                 <span className="text-sm text-muted-foreground">
-                  {featureConfig.indicators.length}개 선택됨
+                  {t("new.step3.selectedCount", {
+                    count: featureConfig.indicators.length,
+                  })}
                 </span>
               </div>
 
               {/* Search */}
               <Input
-                placeholder="지표 검색..."
+                placeholder={t("new.step3.searchPlaceholder")}
                 value={indicatorSearch}
                 onChange={(e) => setIndicatorSearch(e.target.value)}
                 className="h-9"
@@ -529,7 +549,7 @@ export default function NewAIModelPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                  지표 목록 로딩 중...
+                  {t("new.step3.loadingIndicators")}
                 </div>
               )}
             </div>
@@ -539,10 +559,10 @@ export default function NewAIModelPage() {
               <div className="space-y-3 pt-4 border-t">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">
-                    선택된 지표 파라미터 설정
+                    {t("new.step3.paramSettings")}
                   </Label>
                   <span className="text-xs text-muted-foreground">
-                    각 지표의 파라미터를 조정할 수 있습니다
+                    {t("new.step3.paramSettingsDesc")}
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -655,7 +675,7 @@ export default function NewAIModelPage() {
                                 }}
                               >
                                 <RotateCcw className="h-3 w-3 mr-1" />
-                                기본값으로 초기화
+                                {t("new.step3.resetToDefault")}
                               </Button>
                             </div>
                           </CollapsibleContent>
@@ -674,17 +694,15 @@ export default function NewAIModelPage() {
           <div className="space-y-6">
             <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm">
               <p className="font-medium text-blue-600 dark:text-blue-400">
-                Triple Barrier 라벨링
+                {t("new.step4.tripleBarrierTitle")}
               </p>
               <p className="mt-1 text-muted-foreground">
-                각 시점에서 목표 수익률(TP)에 먼저 도달하면 BUY, 손절선(SL)에
-                먼저 도달하면 SELL, 제한 시간 내에 둘 다 도달하지 못하면 HOLD로
-                라벨링합니다.
+                {t("new.step4.tripleBarrierDesc")}
               </p>
             </div>
             <div>
               <Label className="text-base font-medium">
-                Take Profit (TP):{" "}
+                {t("new.step4.takeProfit")}
                 {(labelingConfig.profitTarget * 100).toFixed(1)}%
               </Label>
               <Slider
@@ -703,7 +721,8 @@ export default function NewAIModelPage() {
             </div>
             <div>
               <Label className="text-base font-medium">
-                Stop Loss (SL): {(labelingConfig.stopLoss * 100).toFixed(1)}%
+                {t("new.step4.stopLoss")}{" "}
+                {(labelingConfig.stopLoss * 100).toFixed(1)}%
               </Label>
               <Slider
                 value={[labelingConfig.stopLoss * 100]}
@@ -718,7 +737,7 @@ export default function NewAIModelPage() {
             </div>
             <div>
               <Label className="text-base font-medium">
-                시간 제한 (Horizon): {labelingConfig.horizon} 봉
+                {t("new.step4.horizon", { value: labelingConfig.horizon })}
               </Label>
               <Slider
                 value={[labelingConfig.horizon]}
@@ -731,11 +750,12 @@ export default function NewAIModelPage() {
                 className="mt-4"
               />
               <p className="text-sm text-muted-foreground mt-2">
-                {timeframe}봉 기준 약{" "}
-                {Math.round(
-                  labelingConfig.horizon * (timeframe === "1h" ? 1 : 0.5)
-                )}
-                시간
+                {t("new.step4.horizonDesc", {
+                  timeframe,
+                  hours: Math.round(
+                    labelingConfig.horizon * (timeframe === "1h" ? 1 : 0.5)
+                  ),
+                })}
               </p>
             </div>
           </div>
@@ -757,18 +777,20 @@ export default function NewAIModelPage() {
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="manual" className="flex items-center gap-2">
                   <Settings2 className="w-4 h-4" />
-                  수동 설정
+                  {t("new.step5.manual")}
                 </TabsTrigger>
                 <TabsTrigger value="auto" className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-violet-400" />
-                  Optuna 자동 최적화
+                  {t("new.step5.auto")}
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="manual" className="space-y-6">
                 <div>
                   <Label className="text-base font-medium">
-                    Hidden Size: {architectureConfig.hiddenSize}
+                    {t("new.step5.manualTab.hiddenSize", {
+                      value: architectureConfig.hiddenSize,
+                    })}
                   </Label>
                   <Slider
                     value={[architectureConfig.hiddenSize]}
@@ -784,13 +806,14 @@ export default function NewAIModelPage() {
                     className="mt-4"
                   />
                   <p className="text-sm text-muted-foreground mt-2">
-                    LSTM 레이어의 은닉 상태 차원입니다. 크면 복잡한 패턴을
-                    학습하지만 과적합 위험이 있습니다.
+                    {t("new.step5.manualTab.hiddenSizeDesc")}
                   </p>
                 </div>
                 <div>
                   <Label className="text-base font-medium">
-                    레이어 수: {architectureConfig.numLayers}
+                    {t("new.step5.manualTab.numLayers", {
+                      value: architectureConfig.numLayers,
+                    })}
                   </Label>
                   <Slider
                     value={[architectureConfig.numLayers]}
@@ -806,14 +829,14 @@ export default function NewAIModelPage() {
                     className="mt-4"
                   />
                   <p className="text-sm text-muted-foreground mt-2">
-                    모델의 깊이를 결정합니다. 레이어가 많을수록 복잡한 시계열
-                    패턴을 더 잘 포착할 수 있지만, 학습 시간이 길어지고 과적합의
-                    가능성이 높아집니다.
+                    {t("new.step5.manualTab.numLayersDesc")}
                   </p>
                 </div>
                 <div>
                   <Label className="text-base font-medium">
-                    Dropout: {(architectureConfig.dropout * 100).toFixed(0)}%
+                    {t("new.step5.manualTab.dropout", {
+                      value: (architectureConfig.dropout * 100).toFixed(0),
+                    })}
                   </Label>
                   <Slider
                     value={[architectureConfig.dropout * 100]}
@@ -829,13 +852,14 @@ export default function NewAIModelPage() {
                     className="mt-4"
                   />
                   <p className="text-sm text-muted-foreground mt-2">
-                    과적합 방지를 위해 학습 중 일부 뉴런을 무작위로
-                    비활성화합니다.
+                    {t("new.step5.manualTab.dropoutDesc")}
                   </p>
                 </div>
                 <div>
                   <Label className="text-base font-medium">
-                    Learning Rate (학습률): {trainingConfig.learningRate}
+                    {t("new.step5.manualTab.learningRate", {
+                      value: trainingConfig.learningRate,
+                    })}
                   </Label>
                   <Select
                     value={trainingConfig.learningRate.toString()}
@@ -851,25 +875,27 @@ export default function NewAIModelPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0.01">
-                        0.01 (빠름 / 저정밀도)
+                        0.01 ({t("new.step5.manualTab.fastLowPrecision")})
                       </SelectItem>
                       <SelectItem value="0.005">0.005</SelectItem>
-                      <SelectItem value="0.001">0.001 (권장값)</SelectItem>
+                      <SelectItem value="0.001">
+                        0.001 ({t("new.step5.manualTab.recommended")})
+                      </SelectItem>
                       <SelectItem value="0.0005">0.0005</SelectItem>
                       <SelectItem value="0.0001">
-                        0.0001 (느림 / 고정밀도)
+                        0.0001 ({t("new.step5.manualTab.slowHighPrecision")})
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground mt-2">
-                    가중치 업데이트 보폭을 조절합니다. 너무 크면 최적점을 찾지
-                    못하고 요동칠 수 있으며, 너무 작으면 학습 속도가 매우
-                    느려집니다.
+                    {t("new.step5.manualTab.learningRateDesc")}
                   </p>
                 </div>
                 <div>
                   <Label className="text-base font-medium">
-                    에폭 수: {trainingConfig.epochs}
+                    {t("new.step5.manualTab.epochs", {
+                      value: trainingConfig.epochs,
+                    })}
                   </Label>
                   <Slider
                     value={[trainingConfig.epochs]}
@@ -882,9 +908,7 @@ export default function NewAIModelPage() {
                     className="mt-4"
                   />
                   <p className="text-sm text-muted-foreground mt-2">
-                    전체 데이터를 반복해서 학습하는 횟수입니다. 충분히 학습해야
-                    하지만, 너무 많으면 과거 데이터에만 최적화되어 실제 미래
-                    성능이 떨어질 수 있습니다.
+                    {t("new.step5.manualTab.epochsDesc")}
                   </p>
                 </div>
               </TabsContent>
@@ -896,13 +920,10 @@ export default function NewAIModelPage() {
                   </div>
                   <div className="space-y-1">
                     <h4 className="font-medium text-violet-200">
-                      Optuna 자동 최적화 모드
+                      {t("new.step5.autoTab.title")}
                     </h4>
                     <p className="text-sm text-violet-300/80 leading-relaxed">
-                      인공지능이 수십 번 이상의 실험을 통해 당신의 전략과
-                      데이터에 가장 적합한 아키텍처와 학습률을 자동으로
-                      찾아냅니다. 최적의 성능을 끌어내기 위한 미세 조정을
-                      자동화합니다.
+                      {t("new.step5.autoTab.desc")}
                     </p>
                   </div>
                 </div>
@@ -910,13 +931,17 @@ export default function NewAIModelPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-end">
                     <Label className="text-base font-medium">
-                      Trial 수 (시도 횟수): {optimizationConfig.nTrials}회
+                      {t("new.step5.autoTab.nTrials", {
+                        value: optimizationConfig.nTrials,
+                      })}
                     </Label>
                     <Badge
                       variant="outline"
                       className="text-violet-400 border-violet-400/30"
                     >
-                      예상 {optimizationConfig.nTrials}배 크레딧 소모
+                      {t("new.step5.autoTab.creditEst", {
+                        value: optimizationConfig.nTrials,
+                      })}
                     </Badge>
                   </div>
                   <Slider
@@ -930,15 +955,13 @@ export default function NewAIModelPage() {
                     className="mt-4"
                   />
                   <p className="text-sm text-muted-foreground">
-                    시도 횟수가 많을수록 더 정밀한 최적화가 가능하지만, 그만큼
-                    더 많은 시간과 크레딧이 소요됩니다. 보통 20~50회 정도를
-                    권장합니다.
+                    {t("new.step5.autoTab.nTrialsDesc")}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <Label className="text-base font-medium">
-                    최적화 목표 지표
+                    {t("new.step5.autoTab.targetMetric")}
                   </Label>
                   <Select
                     value={optimizationConfig.maximizeMetric}
@@ -954,19 +977,18 @@ export default function NewAIModelPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="accuracy">
-                        Validation Accuracy (정확도 극대화)
+                        {t("new.step5.autoTab.metrics.accuracy")}
                       </SelectItem>
                       <SelectItem value="f1">
-                        F1-Score (정밀도/재현율 균형)
+                        {t("new.step5.autoTab.metrics.f1")}
                       </SelectItem>
                       <SelectItem value="return">
-                        Expected Return (기대 수익률 극대화)
+                        {t("new.step5.autoTab.metrics.return")}
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">
-                    어떤 기준이 가장 높은 모델을 찾을지 결정합니다. 일반적인
-                    트레이딩에는 F1-Score나 Accuracy가 추천됩니다.
+                    {t("new.step5.autoTab.targetMetricDesc")}
                   </p>
                 </div>
 
@@ -976,7 +998,7 @@ export default function NewAIModelPage() {
                       <div className="flex items-center justify-between">
                         <h5 className="text-sm font-medium flex items-center gap-2">
                           <Settings className="w-4 h-4 text-violet-400" />
-                          하이퍼파라미터 탐색 범위 세부 설정
+                          {t("new.step5.autoTab.searchSpace")}
                         </h5>
                         <ChevronDown className="w-4 h-4 text-muted-foreground" />
                       </div>
@@ -985,7 +1007,7 @@ export default function NewAIModelPage() {
                   <CollapsibleContent className="space-y-6 p-4 rounded-xl border border-muted/20 bg-muted/5">
                     <div className="flex justify-between items-center mb-2 pb-2 border-b border-muted/20">
                       <p className="text-xs text-muted-foreground">
-                        설정된 범위를 기본값으로 되돌립니다.
+                        {t("new.step5.autoTab.resetRange")}
                       </p>
                       <Button
                         variant="ghost"
@@ -998,18 +1020,18 @@ export default function NewAIModelPage() {
                             searchSpace:
                               DEFAULT_OPTIMIZATION_CONFIG.searchSpace,
                           }));
-                          toast.success(
-                            "탐색 범위가 기본값으로 초기화되었습니다."
-                          );
+                          toast.success(t("new.step5.autoTab.resetSuccess"));
                         }}
                       >
                         <RotateCcw className="w-3 h-3" />
-                        기본값으로 초기화
+                        {t("new.step3.resetToDefault")}
                       </Button>
                     </div>
                     <div className="space-y-4">
                       <div className="flex justify-between text-sm">
-                        <Label>Hidden Size 범위</Label>
+                        <Label>
+                          {t("new.step5.autoTab.ranges.hiddenSize")}
+                        </Label>
                         <span className="font-mono text-violet-400">
                           {optimizationConfig.searchSpace.hiddenSize.min} ~{" "}
                           {optimizationConfig.searchSpace.hiddenSize.max}
@@ -1037,7 +1059,7 @@ export default function NewAIModelPage() {
 
                     <div className="space-y-4">
                       <div className="flex justify-between text-sm">
-                        <Label>Layers 범위</Label>
+                        <Label>{t("new.step5.autoTab.ranges.layers")}</Label>
                         <span className="font-mono text-violet-400">
                           {optimizationConfig.searchSpace.numLayers.min} ~{" "}
                           {optimizationConfig.searchSpace.numLayers.max}
@@ -1065,7 +1087,7 @@ export default function NewAIModelPage() {
 
                     <div className="space-y-4">
                       <div className="flex justify-between text-sm">
-                        <Label>Dropout 범위</Label>
+                        <Label>{t("new.step5.autoTab.ranges.dropout")}</Label>
                         <span className="font-mono text-violet-400">
                           {(
                             optimizationConfig.searchSpace.dropout.min * 100
@@ -1099,7 +1121,7 @@ export default function NewAIModelPage() {
 
                     <div className="space-y-4">
                       <div className="flex justify-between text-sm">
-                        <Label>Learning Rate 범위</Label>
+                        <Label>{t("new.step5.autoTab.ranges.lr")}</Label>
                         <span className="font-mono text-violet-400">
                           {optimizationConfig.searchSpace.learningRate.min} ~{" "}
                           {optimizationConfig.searchSpace.learningRate.max}
@@ -1131,13 +1153,16 @@ export default function NewAIModelPage() {
                         step={0.1}
                       />
                       <p className="text-[10px] text-muted-foreground text-center">
-                        LR은 로그 스케일로 조정됩니다 (1e-5 ~ 1e-1)
+                        {t("new.step5.autoTab.ranges.logScale", {
+                          min: "1e-5",
+                          max: "1e-1",
+                        })}
                       </p>
                     </div>
 
                     <div className="space-y-4">
                       <div className="flex justify-between text-sm">
-                        <Label>Batch Size 범위</Label>
+                        <Label>{t("new.step5.autoTab.ranges.batchSize")}</Label>
                         <span className="font-mono text-violet-400">
                           {optimizationConfig.searchSpace.batchSize.min} ~{" "}
                           {optimizationConfig.searchSpace.batchSize.max}
@@ -1177,31 +1202,41 @@ export default function NewAIModelPage() {
                 <Sparkles className="h-8 w-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold mt-4">
-                모델 학습 준비 완료
+                {t("new.step6.readyTitle")}
               </h3>
               <p className="text-muted-foreground mt-2">
-                설정을 확인하고 학습을 시작하세요.
+                {t("new.step6.readyDesc")}
               </p>
             </div>
             <div className="grid gap-4">
               <div className="flex justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-muted-foreground">모델 이름</span>
+                <span className="text-muted-foreground">
+                  {t("new.step1.modelName")}
+                </span>
                 <span className="font-medium">{name}</span>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-muted-foreground">모델 타입</span>
+                <span className="text-muted-foreground">
+                  {t("new.step1.modelType")}
+                </span>
                 <span className="font-medium">{modelType.toUpperCase()}</span>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-muted-foreground">학습 심볼</span>
+                <span className="text-muted-foreground">
+                  {t("new.step2.symbol")}
+                </span>
                 <span className="font-medium">{symbol}</span>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-muted-foreground">타임프레임</span>
+                <span className="text-muted-foreground">
+                  {t("new.step2.timeframe")}
+                </span>
                 <span className="font-medium">{timeframe}</span>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-muted-foreground">학습 기간</span>
+                <span className="text-muted-foreground">
+                  {t("card.period")}
+                </span>
                 <span className="font-medium">
                   {startDate} ~ {endDate}
                 </span>
@@ -1214,13 +1249,15 @@ export default function NewAIModelPage() {
                 </span>
               </div>
               <div className="rounded-lg bg-card/50 border border-border p-4 space-y-4">
-                <h4 className="font-semibold text-sm">비용 상세정보</h4>
+                <h4 className="font-semibold text-sm">
+                  {t("new.step6.costDetails")}
+                </h4>
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4" />
-                      <span>정가 (Basic 기준)</span>
+                      <span>{t("new.step6.originalCost")}</span>
                     </div>
                     <span>
                       {costData && !isCheckingCost
@@ -1234,7 +1271,9 @@ export default function NewAIModelPage() {
                       <div className="flex items-center gap-2">
                         <Percent className="h-4 w-4" />
                         <span>
-                          플랜 할인 ({(costData.discountPct * 100).toFixed(0)}%)
+                          {t("new.step6.planDiscount", {
+                            value: (costData.discountPct * 100).toFixed(0),
+                          })}
                         </span>
                       </div>
                       <span>
@@ -1253,7 +1292,7 @@ export default function NewAIModelPage() {
                 <div className="flex justify-between items-center text-violet-400">
                   <div className="flex items-center gap-2 font-semibold">
                     <Ticket className="h-5 w-5" />
-                    <span>최종 필요 크레딧</span>
+                    <span>{t("new.step6.finalCost")}</span>
                   </div>
                   <span className="text-xl font-bold">
                     {isCheckingCost ? (
@@ -1265,7 +1304,7 @@ export default function NewAIModelPage() {
                 </div>
 
                 <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                  <span>내 크레딧 잔액</span>
+                  <span>{t("new.step6.balance")}</span>
                   <span
                     className={
                       costData && !costData.isSufficient
@@ -1289,12 +1328,10 @@ export default function NewAIModelPage() {
       <div className="mb-8">
         <Button variant="ghost" onClick={() => router.back()} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          돌아가기
+          {t("new.back")}
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">새 AI 모델 생성</h1>
-        <p className="text-muted-foreground mt-2">
-          단계별로 설정을 완료하여 AI 모델을 학습시킵니다.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("new.title")}</h1>
+        <p className="text-muted-foreground mt-2">{t("new.subtitle")}</p>
       </div>
 
       {/* Progress Steps */}
@@ -1334,7 +1371,7 @@ export default function NewAIModelPage() {
                         : "text-muted-foreground"
                     }`}
                   >
-                    {s.title}
+                    {t(s.title as any)}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
@@ -1372,14 +1409,14 @@ export default function NewAIModelPage() {
             disabled={step === 1}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            이전
+            {t("new.prev")}
           </Button>
           {step < 6 ? (
             <Button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
             >
-              다음
+              {t("new.next")}
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
@@ -1390,18 +1427,19 @@ export default function NewAIModelPage() {
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  생성 중...
+                  {t("new.step6.creating")}
                 </>
               ) : isCheckingCost ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  비용 계산 중...
+                  {t("new.step6.calculating")}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  학습 시작 ({costData?.finalCost?.toLocaleString() ?? 0}{" "}
-                  Credits)
+                  {t("new.step6.startTraining", {
+                    value: costData?.finalCost?.toLocaleString() ?? 0,
+                  })}
                 </>
               )}
             </Button>

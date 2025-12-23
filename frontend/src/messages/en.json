@@ -590,6 +590,8 @@
           "ATTENDANCE_DAILY": "Daily Attendance Reward",
           "ATTENDANCE_BONUS": "Consecutive Attendance Bonus",
           "EVENT_COUPON": "Event/Coupon Grant",
+          "AI_TRAINING": "AI Model Training",
+          "AI_RETRAINING": "AI Model Retraining",
           "ETC": "Other"
         },
         "creditTypes": {
@@ -2300,7 +2302,313 @@
       "period": "Training Period",
       "viewDetail": "View Detail",
       "testPrediction": "Test Prediction",
-      "delete": "Delete"
+      "delete": "Delete",
+      "daysSuffix": " days"
+    },
+    "new": {
+      "title": "Create New AI Model",
+      "subtitle": "Complete the steps to train your AI model.",
+      "back": "Back",
+      "next": "Next",
+      "prev": "Previous",
+      "steps": {
+        "basicInfo": "Basic Info",
+        "trainingData": "Training Data",
+        "features": "Input Features",
+        "labeling": "Labeling",
+        "modelConfig": "Model Config",
+        "confirmation": "Confirm & Start"
+      },
+      "step1": {
+        "modelName": "Model Name",
+        "modelNamePlaceholder": "e.g. BTC 1h LSTM Model",
+        "description": "Description (Optional)",
+        "descriptionPlaceholder": "Brief description of the model...",
+        "modelType": "Model Type",
+        "lstmDesc": "LSTM is effective for learning long-term patterns.",
+        "gruDesc": "GRU is faster and lighter than LSTM with similar performance."
+      },
+      "step2": {
+        "symbol": "Symbol",
+        "timeframe": "Timeframe",
+        "timeframeDesc": "1h timeframe provides sufficient data with less noise.",
+        "startDate": "Start Date",
+        "endDate": "End Date"
+      },
+      "step3": {
+        "basicData": "Basic Data",
+        "ohlcv": "OHLCV Data",
+        "ohlcvDesc": "Use Open, High, Low, Close, Volume for training.",
+        "returns": "Returns",
+        "returnsDesc": "Add price rate of change and log returns as features.",
+        "technicalIndicators": "Technical Indicators",
+        "selectedCount": "{count} selected",
+        "searchPlaceholder": "Search indicators...",
+        "loadingIndicators": "Loading indicators...",
+        "paramSettings": "Indicator Parameter Settings",
+        "paramSettingsDesc": "Adjust parameters for each selected indicator",
+        "resetToDefault": "Reset to Default"
+      },
+      "step4": {
+        "tripleBarrierTitle": "Triple Barrier Labeling",
+        "tripleBarrierDesc": "Labels as BUY if TP is hit first, SELL if SL is hit first, HOLD if neither is hit within the horizon.",
+        "takeProfit": "Take Profit (TP):",
+        "stopLoss": "Stop Loss (SL):",
+        "horizon": "Time Horizon: {value} bars",
+        "horizonDesc": "Approx. {hours} hours for {timeframe} bars"
+      },
+      "step5": {
+        "manual": "Manual Config",
+        "auto": "Optuna Auto-Optimization",
+        "manualTab": {
+          "hiddenSize": "Hidden Size: {value}",
+          "hiddenSizeDesc": "Dimension of LSTM hidden state. Larger size learns complex patterns but risks overfitting.",
+          "numLayers": "Num Layers: {value}",
+          "numLayersDesc": "Determines model depth. More layers capture complex patterns but increase training time and overfitting risk.",
+          "dropout": "Dropout: {value}%",
+          "dropoutDesc": "Randomly deactivates neurons during training to prevent overfitting.",
+          "learningRate": "Learning Rate: {value}",
+          "learningRateDesc": "Step size for weight updates. Too large causes instability; too small slows down training.",
+          "epochs": "Epochs: {value}",
+          "epochsDesc": "Number of passes through the entire dataset. Too many can lead to overfitting on past data.",
+          "slowHighPrecision": "Slow / High Precision",
+          "fastLowPrecision": "Fast / Low Precision",
+          "recommended": "Recommended"
+        },
+        "autoTab": {
+          "title": "Optuna Auto-Optimization Mode",
+          "desc": "AI automatically finds the best architecture and learning rate through dozens of trials. Automates fine-tuning for optimal performance.",
+          "nTrials": "Trials: {value}",
+          "creditEst": "Est. {value}x Credits",
+          "nTrialsDesc": "More trials allow precise optimization but cost more time and credits. 20-50 is recommended.",
+          "targetMetric": "Optimization Target Metric",
+          "targetMetricDesc": "Decide which metric to maximize. F1-Score or Accuracy is recommended for trading.",
+          "metrics": {
+            "accuracy": "Validation Accuracy (Maximize Accuracy)",
+            "f1": "F1-Score (Balanced Precision/Recall)",
+            "return": "Expected Return (Maximize Returns)"
+          },
+          "searchSpace": "Hyperparameter Search Space Settings",
+          "resetRange": "Reset ranges to default values.",
+          "resetSuccess": "Search space reset to default.",
+          "ranges": {
+            "hiddenSize": "Hidden Size Range",
+            "layers": "Layers Range",
+            "dropout": "Dropout Range",
+            "lr": "Learning Rate Range",
+            "batchSize": "Batch Size Range",
+            "logScale": "LR is adjusted on a log scale ({min} ~ {max})"
+          }
+        }
+      },
+      "step6": {
+        "readyTitle": "Ready to Train",
+        "readyDesc": "Review settings and start training.",
+        "costDetails": "Cost Details",
+        "originalCost": "Standard Price (Basic)",
+        "planDiscount": "Plan Discount ({value}%)",
+        "finalCost": "Final Cost",
+        "balance": "My Credit Balance",
+        "calculating": "Calculating...",
+        "creating": "Creating...",
+        "startTraining": "Start Training ({value} Credits)",
+        "startSuccess": "AI Model training started!",
+        "createError": "Failed to create model.",
+        "costError": "Failed to estimate cost."
+      }
+    },
+    "detail": {
+      "notFound": "Model Not Found",
+      "backToLab": "Back to AI Lab",
+      "status": {
+        "pending": "Pending",
+        "training": "Training",
+        "completed": "Completed",
+        "failed": "Failed",
+        "optunaOptimized": "Optuna Optimized"
+      },
+      "metrics": {
+        "accuracy": "Model Accuracy",
+        "accuracyDesc": "Validation Set Accuracy",
+        "f1Score": "F1 Score",
+        "f1ScoreDesc": "Weighted Average Score",
+        "valLoss": "Validation Loss",
+        "valLossDesc": "Final Loss Value",
+        "versions": "Versions",
+        "versionsDesc": "Checkpoints Available"
+      },
+      "config": {
+        "title": "Model Config",
+        "trainingPeriod": "Training Period",
+        "createdOn": "Created On",
+        "autoRetraining": "Auto Retraining",
+        "features": "Features",
+        "intervalDays": "{days}d Interval",
+        "disabled": "Disabled",
+        "enabled": "Enabled"
+      },
+      "management": {
+        "title": "Management",
+        "switchToPrivate": "Switch to Private",
+        "makePublic": "Make Public",
+        "downloadOnnx": "Download ONNX Weight",
+        "deleteModel": "Delete Model",
+        "deleteDialog": {
+          "title": "Delete AI Model",
+          "description": "Are you sure you want to delete {name}? This action cannot be undone.",
+          "cancel": "Cancel",
+          "confirm": "Delete Permanently"
+        }
+      },
+      "tabLabels": {
+        "overview": "Overview",
+        "trials": "Top Trials",
+        "versions": "History",
+        "featureImportance": "Analysis"
+      },
+      "prediction": {
+        "title": "Prediction Playground",
+        "subtitle": "Live market data prediction simulation",
+        "run": "Run Prediction",
+        "analyzing": "Analyzing market patterns...",
+        "emptyTitle": "Click the button above to test the model with current data",
+        "emptyDesc": "Test model performance using real-time market data.",
+        "confidence": "Verdict Confidence",
+        "marketContext": "Market Context",
+        "symbol": "Symbol",
+        "timeframe": "Timeframe",
+        "source": "Source",
+        "sourceValue": "Real-time WebSocket",
+        "timestamp": "Timestamp",
+        "buy": "BUY",
+        "hold": "HOLD",
+        "sell": "SELL"
+      },
+      "configDetails": {
+        "datasetTitle": "Dataset Config",
+        "baseFeatures": "Base Features (OHLCV)",
+        "ohlcvEnabled": "OHLCV Enabled",
+        "ohlcvDisabled": "OHLCV Disabled",
+        "returnsEnabled": "Returns Enabled",
+        "returnsDisabled": "Returns Disabled",
+        "sequenceLength": "Sequence Length",
+        "candles": "Candles",
+        "labelStrategy": "Label Strategy",
+        "labelStrategyValue": "Standard 3-Class (B/H/S)",
+        "technicalIndicators": "Technical Indicators & Parameters",
+        "noIndicators": "No technical indicators used for this model.",
+        "architectureTitle": "Model Architecture",
+        "hiddenSize": "Hidden Size",
+        "layers": "Layers",
+        "dropout": "Dropout",
+        "bidirectional": "Bidirectional",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hyperparametersTitle": "Training Hyperparameters",
+        "epochsBatch": "Epochs / Batch",
+        "learningRate": "Learning Rate",
+        "patience": "Patience",
+        "valSplit": "Val Split",
+        "autoTuning": "Auto-tuning",
+        "searching": "Searching..."
+      },
+      "optimizationResults": {
+        "title": "Optimization Results (Top 5 Trials)",
+        "desc": "The following hyperparameters were explored during the auto-optimization process.",
+        "rank": "Rank",
+        "hiddenLayers": "Hidden / Layers",
+        "learningRate": "Learning Rate",
+        "batchSize": "Batch Size",
+        "value": "Value",
+        "status": "Status",
+        "exploring": "Exploring search space... results will appear here.",
+        "noTrials": "No optimization trials found."
+      },
+      "featureImportance": {
+        "title": "Feature Importance Analysis",
+        "subtitle": "Top 20 features with the highest impact on model prediction.",
+        "emptyTitle": "No Feature Importance Data",
+        "emptyDesc": "This model does not contain feature importance information. (Available only for newly trained models)",
+        "importance": "Importance"
+      },
+      "versionsTable": {
+        "trialId": "Trial ID",
+        "version": "Version",
+        "createdAt": "Created At",
+        "trainingPeriod": "Training Period",
+        "metrics": "Metrics",
+        "status": "Status",
+        "action": "Action",
+        "active": "Active",
+        "history": "History",
+        "applyTrial": "Apply this Trial",
+        "rollbackVersion": "Rollback to this version",
+        "apply": "Apply",
+        "rollback": "Rollback",
+        "empty": "No history available.",
+        "dialog": {
+          "applyTitle": "Confirm Trial Application",
+          "rollbackTitle": "Confirm Version Rollback",
+          "applyDesc": "Do you want to apply the settings of Trial #{version} to the model?",
+          "rollbackDesc": "Do you want to rollback to version {version}?",
+          "warning": "Activating this version will change the model used for AI signal generation.",
+          "activating": "Applying...",
+          "rollbacking": "Rolling back...",
+          "confirmApply": "Apply",
+          "confirmRollback": "Rollback",
+          "success": "Rolled back to version {version}",
+          "error": "Failed to activate version"
+        }
+      },
+      "retrainDialog": {
+        "title": "Retrain AI Model",
+        "description": "Retrain model with a new data period. A new version will be created.",
+        "periodLabel": "Training Data Period",
+        "biasWarningTitle": "Caution: Look-ahead Bias",
+        "biasWarningDesc": "Extending the retraining period to the latest time point will compromise its reliability as backtesting/validation data. (In-Sample Data Contamination)",
+        "costDetails": "Cost Details",
+        "originalCost": "Standard Price (Basic)",
+        "planDiscount": "Plan Discount ({value}%)",
+        "finalCost": "Final Required Credits",
+        "balance": "My Credit Balance",
+        "insufficient": "Insufficient Credits (Balance: {value})",
+        "cancel": "Cancel",
+        "start": "Start Retraining",
+        "selectPeriodError": "Please select a training period.",
+        "success": "Retraining started successfully.",
+        "fail": "Failed to start retraining."
+      },
+      "versions": {
+        "history": "Version History",
+        "manualRetrain": "Manual Retrain"
+      },
+      "training": {
+        "refresh": "Refresh",
+        "optimizationInProgress": "Hyperparameter Optimization in Progress",
+        "finalTraining": "Final Model Training with Best Parameters",
+        "trainingInProgress": "Model Training in Progress",
+        "totalProgress": "Total Progress",
+        "currentTrial": "Current Trial",
+        "bestMetric": "Best Metric ({metric})",
+        "elapsedTime": "Elapsed Time",
+        "currentEpoch": "Current Epoch",
+        "timeElapsed": "Time Elapsed"
+      },
+      "analysis": {
+        "title": "Training Log Analysis",
+        "subtitle": "Loss Convergence and Accuracy by Epoch",
+        "chart": "Chart",
+        "table": "Table",
+        "noLogs": "No training log data created yet."
+      },
+      "actions": {
+        "deleteSuccess": "AI Model deleted.",
+        "deleteFail": "Failed to delete model.",
+        "publicSuccess": "Model is now public.",
+        "privateSuccess": "Model is now private.",
+        "updateFail": "Failed to update settings.",
+        "predictionFail": "Prediction test failed."
+      }
     }
   }
 }
