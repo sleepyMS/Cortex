@@ -692,8 +692,8 @@ export function StrategyEditorPanel({
 
       {/* Header with close button - fixed at top */}
       <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -702,11 +702,12 @@ export function StrategyEditorPanel({
             >
               <X className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-bold tracking-tight text-foreground">
                 {isEditMode ? t("editTitle") : t("title")}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <div className="h-4 w-[1px] bg-border/50"></div>
+              <p className="text-xs text-muted-foreground">
                 {tPage("splitView.keyboardShortcut")}
               </p>
             </div>
