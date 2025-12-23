@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -93,7 +93,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
   const [isRetrainDialogOpen, setIsRetrainDialogOpen] = useState(false);
 
   // Fetch model data
-  const { data: model, isLoading } = useQuery({
+  const {
+    data: model,
+    isLoading,
+    refetch: refetchModel,
+  } = useQuery({
     queryKey: ["ai-model", modelId],
     queryFn: () => getAIModelDetail(modelId),
   });
@@ -105,6 +109,20 @@ export default function AIModelDetailPage({ params }: PageProps) {
     enabled: model?.status === "training" || model?.status === "pending",
     refetchInterval: model?.status === "training" ? 5000 : false,
   });
+
+  // Effect to detect training completion and refresh model data
+  useEffect(() => {
+    if (
+      trainingStatus?.status === "completed" ||
+      trainingStatus?.status === "failed"
+    ) {
+      // Training finished, refresh model data to update UI
+      refetchModel();
+      queryClient.invalidateQueries({
+        queryKey: ["ai-model-versions", modelId],
+      });
+    }
+  }, [trainingStatus?.status, refetchModel, queryClient, modelId]);
 
   // Fetch model versions
   const { data: versions, refetch: refetchVersions } = useQuery({
