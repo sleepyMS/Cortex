@@ -95,7 +95,8 @@ class GRUClassifier(BaseAIModel):
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         config: Optional[TrainingConfig] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        labeling_config: Optional[Dict[str, Any]] = None
     ) -> TrainingResult:
         """
         모델 학습
@@ -158,6 +159,7 @@ class GRUClassifier(BaseAIModel):
         # 학습 기록
         train_loss_history = []
         val_loss_history = []
+        accuracy_history = []
         best_val_loss = float('inf')
         best_epoch = 0
         patience_counter = 0
@@ -186,12 +188,18 @@ class GRUClassifier(BaseAIModel):
             train_loss_history.append(avg_train_loss)
             
             # Validation
+            acc = 0.0
             if has_validation:
                 self.model.eval()
                 with torch.no_grad():
                     val_outputs = self.model(X_val_t)
                     val_loss = criterion(val_outputs, y_val_t).item()
                     val_loss_history.append(val_loss)
+                    
+                    # 정확도 계산
+                    preds = val_outputs.argmax(dim=1).cpu().numpy()
+                    acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
+                    accuracy_history.append(acc)
                     
                     # 스케줄러 업데이트
                     scheduler.step(val_loss)
@@ -211,16 +219,10 @@ class GRUClassifier(BaseAIModel):
             else:
                 val_loss = avg_train_loss
                 val_loss_history.append(val_loss)
+                accuracy_history.append(0.0)
             
             # 진행률 콜백
             if progress_callback:
-                acc = 0.0
-                if has_validation:
-                    with torch.no_grad():
-                        val_outputs = self.model(X_val_t)
-                        preds = val_outputs.argmax(dim=1).cpu().numpy()
-                        acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
-
                 metrics = {
                     "train_loss": avg_train_loss,
                     "val_loss": val_loss,
@@ -233,6 +235,7 @@ class GRUClassifier(BaseAIModel):
             logger.info(
                 f"Epoch {epoch + 1}/{config.epochs} - "
                 f"Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, "
+                f"Accuracy: {acc:.4f}, "
                 f"Best Val Loss: {best_val_loss:.4f}, Patience: {patience_counter}/{config.early_stopping_patience}"
             )
         
@@ -241,7 +244,7 @@ class GRUClassifier(BaseAIModel):
             self.model.load_state_dict(best_model_state)
         
         # 최종 메트릭 계산
-        final_metrics = self._compute_metrics(X_val_t, y_val_t) if has_validation else {}
+        final_metrics = self._compute_metrics(X_val_t, y_val_t, labeling_config) if has_validation else {}
         
         training_time = time.time() - start_time
         self._is_trained = True
@@ -254,10 +257,11 @@ class GRUClassifier(BaseAIModel):
             best_epoch=best_epoch,
             best_val_loss=best_val_loss,
             training_time_seconds=training_time,
-            final_metrics=final_metrics
+            final_metrics=final_metrics,
+            accuracy_history=accuracy_history
         )
     
-    def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor) -> Dict[str, Any]:
+    def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor, labeling_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """평가 메트릭 계산"""
         self.model.eval()
         with torch.no_grad():
@@ -265,6 +269,36 @@ class GRUClassifier(BaseAIModel):
             probs = torch.softmax(outputs, dim=1).cpu().numpy()
             preds = outputs.argmax(dim=1).cpu().numpy()
             y_true = y.cpu().numpy()
+        
+        # Expected Return 계산
+        # 사용자가 설정한 profit_target, stop_loss 값 사용 (없으면 기본값)
+        # BUY(0), HOLD(1), SELL(2)
+        # 올바른 BUY/SELL 예측 → +profit_target
+        # 잘못된 BUY/SELL 예측 → -stop_loss
+        # HOLD 예측 → 0%
+        profit_target = labeling_config.get("profitTarget", 0.02) if labeling_config else 0.02
+        stop_loss = labeling_config.get("stopLoss", 0.01) if labeling_config else 0.01
+        
+        total_return = 0.0
+        trade_count = 0
+        
+        for pred, true_label in zip(preds, y_true):
+            if pred == 0:  # BUY 예측
+                trade_count += 1
+                if true_label == 0:  # 실제 BUY → 맞음
+                    total_return += profit_target
+                else:  # 틀림
+                    total_return -= stop_loss
+            elif pred == 2:  # SELL 예측
+                trade_count += 1
+                if true_label == 2:  # 실제 SELL → 맞음
+                    total_return += profit_target
+                else:  # 틀림
+                    total_return -= stop_loss
+            # HOLD(1) 예측은 거래 안함 → 수익도 손실도 0
+        
+        # 평균 기대 수익률 (트레이드 당)
+        expected_return_per_trade = total_return / max(trade_count, 1)
         
         return {
             "accuracy": float(accuracy_score(y_true, preds)),
@@ -277,6 +311,9 @@ class GRUClassifier(BaseAIModel):
             "precision_macro": float(precision_score(y_true, preds, average='macro', zero_division=0)),
             "recall_macro": float(recall_score(y_true, preds, average='macro', zero_division=0)),
             "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
+            "expected_return": float(total_return),  # 총 기대 수익률
+            "expected_return_per_trade": float(expected_return_per_trade),  # 트레이드 당 기대 수익률
+            "trade_count": int(trade_count),  # 총 거래 횟수
         }
     
     def predict(self, X: np.ndarray) -> np.ndarray:

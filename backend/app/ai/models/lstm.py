@@ -93,7 +93,8 @@ class LSTMClassifier(BaseAIModel):
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         config: Optional[TrainingConfig] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        labeling_config: Optional[Dict[str, Any]] = None
     ) -> TrainingResult:
         """
         모델 학습
@@ -241,7 +242,7 @@ class LSTMClassifier(BaseAIModel):
             self.model.load_state_dict(best_model_state)
         
         # 최종 메트릭 계산
-        final_metrics = self._compute_metrics(X_val_t, y_val_t) if has_validation else {}
+        final_metrics = self._compute_metrics(X_val_t, y_val_t, labeling_config) if has_validation else {}
         
         training_time = time.time() - start_time
         self._is_trained = True
@@ -258,7 +259,7 @@ class LSTMClassifier(BaseAIModel):
             accuracy_history=accuracy_history
         )
     
-    def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor) -> Dict[str, Any]:
+    def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor, labeling_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """평가 메트릭 계산"""
         self.model.eval()
         with torch.no_grad():
@@ -266,6 +267,36 @@ class LSTMClassifier(BaseAIModel):
             probs = torch.softmax(outputs, dim=1).cpu().numpy()
             preds = outputs.argmax(dim=1).cpu().numpy()
             y_true = y.cpu().numpy()
+        
+        # Expected Return 계산
+        # 사용자가 설정한 profit_target, stop_loss 값 사용 (없으면 기본값)
+        # BUY(0), HOLD(1), SELL(2)
+        # 올바른 BUY/SELL 예측 → +profit_target
+        # 잘못된 BUY/SELL 예측 → -stop_loss
+        # HOLD 예측 → 0%
+        profit_target = labeling_config.get("profitTarget", 0.02) if labeling_config else 0.02
+        stop_loss = labeling_config.get("stopLoss", 0.01) if labeling_config else 0.01
+        
+        total_return = 0.0
+        trade_count = 0
+        
+        for pred, true_label in zip(preds, y_true):
+            if pred == 0:  # BUY 예측
+                trade_count += 1
+                if true_label == 0:  # 실제 BUY → 맞음
+                    total_return += profit_target
+                else:  # 틀림
+                    total_return -= stop_loss
+            elif pred == 2:  # SELL 예측
+                trade_count += 1
+                if true_label == 2:  # 실제 SELL → 맞음
+                    total_return += profit_target
+                else:  # 틀림
+                    total_return -= stop_loss
+            # HOLD(1) 예측은 거래 안함 → 수익도 손실도 0
+        
+        # 평균 기대 수익률 (트레이드 당)
+        expected_return_per_trade = total_return / max(trade_count, 1)
         
         return {
             "accuracy": float(accuracy_score(y_true, preds)),
@@ -278,6 +309,9 @@ class LSTMClassifier(BaseAIModel):
             "precision_macro": float(precision_score(y_true, preds, average='macro', zero_division=0)),
             "recall_macro": float(recall_score(y_true, preds, average='macro', zero_division=0)),
             "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
+            "expected_return": float(total_return),  # 총 기대 수익률
+            "expected_return_per_trade": float(expected_return_per_trade),  # 트레이드 당 기대 수익률
+            "trade_count": int(trade_count),  # 총 거래 횟수
         }
     
     def predict(self, X: np.ndarray) -> np.ndarray:

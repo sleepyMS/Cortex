@@ -11,7 +11,8 @@
     "EMA_20",
     "MACD_12_26_9",
     "MACDh_12_26_9",
-    "MACDs_12_26_9"
+    "MACDs_12_26_9",
+    "RSI_14"
   ],
   "normalization": {
     "method": "rolling_zscore",
@@ -31,6 +32,12 @@
         "fast": 12,
         "slow": 26,
         "signal": 9
+      }
+    },
+    {
+      "type": "RSI",
+      "params": {
+        "length": 14
       }
     }
   ],

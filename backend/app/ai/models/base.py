@@ -65,7 +65,8 @@ class BaseAIModel(ABC):
         y_train: np.ndarray,
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
-        config: Optional[TrainingConfig] = None
+        config: Optional[TrainingConfig] = None,
+        labeling_config: Optional[Dict[str, Any]] = None
     ) -> TrainingResult:
         """모델 학습"""
         pass

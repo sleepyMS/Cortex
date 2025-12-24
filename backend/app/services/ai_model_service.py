@@ -189,9 +189,15 @@ class AIModelService:
         if not model:
             return False
         
+        import shutil
+        
+        # AI 모델 저장 기본 경로
+        AI_MODELS_BASE_PATH = Path(__file__).parent.parent.parent / "ai_models"
+        
+        folder_deleted = False
+        
         # 파일 삭제 (모델 폴더 전체 삭제)
         if model.model_weights_path:
-            import shutil
             version_dir = Path(model.model_weights_path).parent  # v1, v2 등 버전 폴더
             model_dir = version_dir.parent  # model_id 폴더 (모든 버전 포함)
             user_model_dir = model_dir.parent  # user_id 폴더
@@ -200,11 +206,25 @@ class AIModelService:
             if model_dir.exists() and model_dir.name == str(model.id):
                 shutil.rmtree(model_dir, ignore_errors=True)
                 logger.info(f"Deleted model folder: {model_dir}")
+                folder_deleted = True
             
             # 사용자 폴더가 비어있으면 삭제
             if user_model_dir.exists() and not any(user_model_dir.iterdir()):
                 user_model_dir.rmdir()
                 logger.info(f"Deleted empty user folder: {user_model_dir}")
+        
+        # Fallback: model_weights_path로 삭제 못했으면 직접 경로 구성해서 삭제 시도
+        if not folder_deleted:
+            fallback_model_dir = AI_MODELS_BASE_PATH / str(user_id) / str(model.id)
+            if fallback_model_dir.exists():
+                shutil.rmtree(fallback_model_dir, ignore_errors=True)
+                logger.info(f"Deleted model folder (fallback): {fallback_model_dir}")
+                
+                # 사용자 폴더가 비어있으면 삭제
+                user_model_dir = fallback_model_dir.parent
+                if user_model_dir.exists() and not any(user_model_dir.iterdir()):
+                    user_model_dir.rmdir()
+                    logger.info(f"Deleted empty user folder: {user_model_dir}")
         
         # DB 삭제 (CASCADE로 버전 및 관련 Job도 삭제됨)
         await self.db.delete(model)

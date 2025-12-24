@@ -142,7 +142,8 @@ class AIOptimizer:
                 X_train, y_train,
                 X_val, y_val,
                 train_config,
-                progress_callback=trial_callback
+                progress_callback=trial_callback,
+                labeling_config=self.config.labeling_config
             )
             
             # 목표 지표 선택
@@ -151,7 +152,7 @@ class AIOptimizer:
             elif self.maximize_metric == "f1":
                 score = result.final_metrics.get("f1_macro", 0)
             elif self.maximize_metric == "return":
-                score = result.final_metrics.get("accuracy", 0) 
+                score = result.final_metrics.get("expected_return", 0)
             else:
                 score = result.final_metrics.get("accuracy", 0)
             
