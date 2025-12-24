@@ -1,12 +1,12 @@
-"use client";
-
 import * as React from "react";
-import { Check } from "lucide-react";
+import { Check, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface Step {
   title: string;
   description?: string;
+  icon?: LucideIcon;
 }
 
 interface StepsProps {
@@ -18,59 +18,77 @@ interface StepsProps {
 
 export function Steps({ steps, currentStep, className, onChange }: StepsProps) {
   return (
-    <div className={cn("relative", className)}>
-      <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10" />
-      <div
-        className="absolute top-4 left-0 h-0.5 bg-primary -z-10 transition-all duration-300 ease-in-out"
-        style={{
-          width: `${(currentStep / (steps.length - 1)) * 100}%`,
-        }}
-      />
-      <div className="flex justify-between">
-        {steps.map((step, index) => {
-          const isCompleted = index < currentStep;
-          const isCurrent = index === currentStep;
-          const isClickable = onChange && index <= currentStep;
+    <div className={cn("relative mb-8", className)}>
+      <div className="flex items-center justify-between relative">
+        {steps.map((s, i) => {
+          const Icon = s.icon;
+          const isActive = currentStep === i;
+          const isCompleted = currentStep > i;
 
           return (
-            <div
-              key={step.title}
-              className={cn(
-                "flex flex-col items-center gap-2 bg-background px-2",
-                isClickable && "cursor-pointer"
-              )}
-              onClick={() => isClickable && onChange(index)}
-            >
+            <React.Fragment key={i}>
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-300",
-                  isCompleted || isCurrent
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-muted-foreground text-muted-foreground bg-background"
+                  "flex flex-col items-center cursor-pointer transition-all",
+                  isActive && "scale-110"
                 )}
+                onClick={() => isCompleted && onChange?.(i)}
               >
-                {isCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <span className="text-sm font-medium">{index + 1}</span>
-                )}
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <span
+                <div
                   className={cn(
-                    "text-xs font-medium transition-colors duration-300",
-                    isCurrent ? "text-primary" : "text-muted-foreground"
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative z-10",
+                    isCompleted
+                      ? "bg-emerald-500 text-white"
+                      : isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                   )}
                 >
-                  {step.title}
+                  {isCompleted ? (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 20,
+                      }}
+                    >
+                      <Check className="h-5 w-5" />
+                    </motion.div>
+                  ) : Icon ? (
+                    <Icon className="h-5 w-5" />
+                  ) : (
+                    <span className="text-sm font-semibold">{i + 1}</span>
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "text-xs mt-3 hidden sm:block transition-colors duration-300 max-w-[80px] text-center leading-tight",
+                    isActive
+                      ? "text-primary font-medium"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {s.title}
                 </span>
-                {step.description && (
-                  <span className="text-[10px] text-muted-foreground hidden md:block">
-                    {step.description}
+                {s.description && (
+                  <span className="text-[10px] text-muted-foreground hidden md:block mt-1 text-center">
+                    {s.description}
                   </span>
                 )}
               </div>
-            </div>
+              {i < steps.length - 1 && (
+                <div className="flex-1 h-0.5 mx-2 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-emerald-500 origin-left"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: isCompleted ? 1 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  />
+                </div>
+              )}
+            </React.Fragment>
           );
         })}
       </div>

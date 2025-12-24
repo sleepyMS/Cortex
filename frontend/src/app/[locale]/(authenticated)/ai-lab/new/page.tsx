@@ -6,6 +6,7 @@ import * as React from "react";
 import { useState } from "react";
 import { differenceInDays } from "date-fns";
 import { useRouter } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1374,11 +1375,14 @@ export default function NewAIModelPage() {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
+      <div className="mb-6">
+        <Link
+          href="/ai-lab"
+          className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
           {t("new.back")}
-        </Button>
+        </Link>
         <h1 className="text-3xl font-bold tracking-tight">{t("new.title")}</h1>
         <p className="text-muted-foreground mt-2">{t("new.subtitle")}</p>
       </div>

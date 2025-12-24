@@ -10,9 +10,20 @@ import { StrategySelectionStep } from "./steps/StrategySelectionStep";
 import { ParameterConfigurationStep } from "./steps/ParameterConfigurationStep";
 import { ExchangeSetupStep } from "./steps/ExchangeSetupStep";
 import { ReviewStep } from "./steps/ReviewStep";
-import { ChevronRight, ChevronLeft } from "lucide-react";
 import { RiskManagementStep } from "./steps/RiskManagementStep";
+import { GlassPane } from "@/components/ui/GlassPane";
+import {
+  ChevronRight,
+  ChevronLeft,
+  Layout,
+  Target,
+  Settings2,
+  Wallet,
+  ShieldCheck,
+  ClipboardCheck,
+} from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 import { Loader2 } from "lucide-react";
@@ -72,12 +83,12 @@ export function BotWizard() {
   };
 
   const steps = [
-    { id: "mode", title: t("steps.mode") },
-    { id: "strategy", title: t("steps.strategy") },
-    { id: "parameters", title: t("steps.parameters") },
-    { id: "exchange", title: t("steps.exchange") },
-    { id: "risk", title: t("steps.risk") },
-    { id: "review", title: t("steps.review") },
+    { title: t("steps.mode"), icon: Layout },
+    { title: t("steps.strategy"), icon: Target },
+    { title: t("steps.parameters"), icon: Settings2 },
+    { title: t("steps.exchange"), icon: Wallet },
+    { title: t("steps.risk"), icon: ShieldCheck },
+    { title: t("steps.review"), icon: ClipboardCheck },
   ];
 
   const nextStep = () => {
@@ -195,7 +206,19 @@ export function BotWizard() {
       />
 
       {/* Step Content */}
-      <Card className="p-6 min-h-[400px]">{renderStep()}</Card>
+      <GlassPane className="p-6 md:p-8 min-h-[400px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {renderStep()}
+          </motion.div>
+        </AnimatePresence>
+      </GlassPane>
 
       {/* Navigation Buttons */}
       <div className="flex justify-between">
