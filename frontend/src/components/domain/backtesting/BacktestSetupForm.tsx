@@ -146,10 +146,7 @@ export function BacktestSetupForm() {
       leverage: 1,
       feePct: 0.05,
       slippagePct: 0.01,
-      dateRange: {
-        from: startOfDay(addDays(new Date(), -365)),
-        to: startOfDay(new Date()),
-      },
+      dateRange: undefined, // 전략 선택 후 자동 설정됨
       overrides: [],
       trailingStopEnabled: false,
     },
@@ -295,6 +292,50 @@ export function BacktestSetupForm() {
         (await apiClient.get(`/strategies/${watchedStrategyId}`)).data,
       enabled: !!watchedStrategyId,
     });
+
+  // 데이터 가용 날짜 범위 조회 (전략에서 사용하는 가장 작은 타임프레임 기준)
+  const { data: dataAvailability } = useQuery<{
+    ticker: string;
+    timeframe: string;
+    minDate: string | null;
+    maxDate: string | null;
+  }>({
+    queryKey: ["strategyDataAvailability", watchedStrategyId],
+    queryFn: async () => {
+      const res = await apiClient.get(
+        `/strategies/${watchedStrategyId}/data-availability`
+      );
+      return res.data;
+    },
+    enabled: !!watchedStrategyId,
+  });
+
+  const minStartDate = dataAvailability?.minDate
+    ? new Date(dataAvailability.minDate)
+    : undefined;
+
+  // 전략 선택 시 자동으로 1년 기간 설정 (또는 가능한 최대 범위)
+  useEffect(() => {
+    if (!watchedStrategyId || !dataAvailability) return;
+
+    // 이미 날짜가 설정되어 있으면 건드리지 않음 (재실행 시)
+    const currentDateRange = methods.getValues("dateRange");
+    if (currentDateRange?.from && currentDateRange?.to) return;
+
+    const today = startOfDay(new Date());
+    const oneYearAgo = startOfDay(addDays(today, -365));
+    const minDate = dataAvailability.minDate
+      ? new Date(dataAvailability.minDate)
+      : oneYearAgo;
+
+    // 시작일: 1년 전 또는 데이터 최소 날짜 중 더 늦은 날짜
+    const startDate = minDate > oneYearAgo ? startOfDay(minDate) : oneYearAgo;
+
+    methods.setValue("dateRange", {
+      from: startDate,
+      to: today,
+    });
+  }, [watchedStrategyId, dataAvailability, methods]);
 
   // --- [핵심 해결책] useRef를 사용한 의존성 분리 ---
   const replaceRef = useRef(replace);
@@ -573,6 +614,12 @@ export function BacktestSetupForm() {
                             onEndDateChange={(date) =>
                               field.onChange({ ...field.value, to: date })
                             }
+                            onRangeChange={(from, to) =>
+                              field.onChange({ from, to })
+                            }
+                            minStartDate={minStartDate}
+                            disabled={!watchedStrategyId}
+                            placeholder="전략을 먼저 선택하세요"
                           />
                           <FormMessage className="pt-1" />
                         </FormItem>

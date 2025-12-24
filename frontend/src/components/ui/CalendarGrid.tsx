@@ -74,7 +74,14 @@ export function CalendarGrid({
     setCurrentMonth(setYear(currentMonth, parseInt(year)));
   };
 
-  const years = Array.from({ length: 101 }, (_, i) => currentYear - 50 + i);
+  // 연도 범위: minDate~maxDate 또는 현재 연도까지만 표시
+  const currentActualYear = new Date().getFullYear();
+  const minYear = minDate ? getYear(minDate) : currentActualYear - 50;
+  const maxYear = maxDate ? getYear(maxDate) : currentActualYear;
+  const years = Array.from(
+    { length: maxYear - minYear + 1 },
+    (_, i) => minYear + i
+  );
   const months = Array.from({ length: 12 }, (_, i) => new Date(currentYear, i));
 
   const navigateMonth = (direction: -1 | 1) => {

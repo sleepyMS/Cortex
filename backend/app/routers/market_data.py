@@ -49,3 +49,24 @@ async def get_ohlcv(
     except Exception as e:
         logger.error(f"Error fetching OHLCV for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="시세 정보 조회 중 서버 오류가 발생했습니다.")
+
+
+@router.get("/data-range")
+async def get_data_range(
+    ticker: str = Query(..., description="코인 티커 (예: BTCUSDT)"),
+    timeframe: str = Query(..., description="타임프레임 (예: 1h, 4h, 1d)"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    지정된 티커와 타임프레임에 대해 DB에 존재하는 데이터의 날짜 범위를 반환합니다.
+    """
+    try:
+        date_range = await market_data_service.get_data_date_range(
+            db=db,
+            ticker=ticker,
+            timeframe=timeframe
+        )
+        return date_range
+    except Exception as e:
+        logger.error(f"Error fetching data range for {ticker}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="데이터 범위 조회 중 서버 오류가 발생했습니다.")

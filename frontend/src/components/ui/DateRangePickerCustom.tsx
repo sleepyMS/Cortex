@@ -24,6 +24,10 @@ interface DateRangePickerCustomProps {
   endDate: Date | undefined;
   onStartDateChange: (date: Date | undefined) => void;
   onEndDateChange: (date: Date | undefined) => void;
+  onRangeChange?: (from: Date | undefined, to: Date | undefined) => void;
+  minStartDate?: Date;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
 export function DateRangePickerCustom({
@@ -32,6 +36,10 @@ export function DateRangePickerCustom({
   endDate,
   onStartDateChange,
   onEndDateChange,
+  onRangeChange,
+  minStartDate,
+  disabled = false,
+  placeholder = "날짜 범위를 선택하세요",
 }: DateRangePickerCustomProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const locale = useLocale();
@@ -50,8 +58,20 @@ export function DateRangePickerCustom({
 
   const handlePreset = (days: number) => {
     const today = startOfDay(new Date());
-    onStartDateChange(addDays(today, -days));
-    onEndDateChange(today);
+    let targetStart = addDays(today, -days);
+
+    // minStartDate 제한 적용
+    if (minStartDate && targetStart < minStartDate) {
+      targetStart = startOfDay(minStartDate);
+    }
+
+    // 두 날짜를 한 번에 변경 (React state 배치 문제 해결)
+    if (onRangeChange) {
+      onRangeChange(targetStart, today);
+    } else {
+      onStartDateChange(targetStart);
+      onEndDateChange(today);
+    }
     setIsOpen(false);
   };
 
@@ -62,9 +82,11 @@ export function DateRangePickerCustom({
           <Button
             id="date"
             variant={"outline"}
+            disabled={disabled}
             className={cn(
               "w-full justify-start text-left font-normal h-10",
-              !startDate && !endDate && "text-muted-foreground"
+              !startDate && !endDate && "text-muted-foreground",
+              disabled && "cursor-not-allowed opacity-50"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -78,7 +100,7 @@ export function DateRangePickerCustom({
                 format(startDate, "y.MM.dd")
               )
             ) : (
-              <span>날짜 범위를 선택하세요</span>
+              <span>{placeholder}</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -119,15 +141,11 @@ export function DateRangePickerCustom({
               지난 1년
             </Button>
             <Button
-              onClick={() => {
-                onStartDateChange(undefined);
-                onEndDateChange(undefined);
-                setIsOpen(false);
-              }}
+              onClick={() => handlePreset(365)}
               variant="ghost"
-              className="justify-start text-sm h-8 text-destructive hover:text-destructive"
+              className="justify-start text-sm h-8 text-muted-foreground hover:text-foreground"
             >
-              초기화
+              기본값으로 초기화
             </Button>
           </div>
 
@@ -140,7 +158,8 @@ export function DateRangePickerCustom({
               setCurrentMonth={setStartMonth}
               selectedDate={startDate}
               onSelectDate={(date) => onStartDateChange(date)}
-              maxDate={endDate ? addDays(endDate, -1) : undefined}
+              minDate={minStartDate}
+              maxDate={endDate ? addDays(endDate, -1) : startOfDay(new Date())}
             />
 
             <div className="px-2 hidden lg:flex">
@@ -156,6 +175,7 @@ export function DateRangePickerCustom({
               selectedDate={endDate}
               onSelectDate={(date) => onEndDateChange(date)}
               minDate={startDate ? addDays(startDate, 1) : undefined}
+              maxDate={startOfDay(new Date())}
             />
           </div>
         </PopoverContent>

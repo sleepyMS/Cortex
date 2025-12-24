@@ -96,8 +96,42 @@ class MarketDataService:
         # 인덱스(시간) 기준으로 정렬 및 중복 제거
         df_sorted = df.sort_index(ascending=True)
         df_unique = df_sorted[~df_sorted.index.duplicated(keep='last')]
-        
         return df_unique
+
+    async def get_data_date_range(
+        self,
+        db: AsyncSession,
+        ticker: str,
+        timeframe: str
+    ) -> dict:
+        """
+        특정 티커와 타임프레임에 대해 DB에 존재하는 데이터의 최소/최대 날짜를 반환합니다.
+        """
+        if timeframe not in ALLOWED_TIMEFRAMES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported timeframe.")
+
+        table_name = f"ohlcv_{timeframe}"
+        
+        sql_query = text(f"""
+            SELECT MIN(time) as min_date, MAX(time) as max_date
+            FROM {table_name}
+            WHERE ticker = :ticker
+        """)
+        
+        try:
+            result = await db.execute(sql_query, {"ticker": ticker})
+            row = result.mappings().first()
+            
+            if not row or row['min_date'] is None:
+                return {"minDate": None, "maxDate": None}
+            
+            return {
+                "minDate": row['min_date'].isoformat() if row['min_date'] else None,
+                "maxDate": row['max_date'].isoformat() if row['max_date'] else None
+            }
+        except Exception as e:
+            logger.error(f"Error fetching date range for {ticker} ({timeframe}): {e}", exc_info=True)
+            return {"minDate": None, "maxDate": None}
 
     async def get_latest_data(self, db: AsyncSession, ticker: str, timeframe: str, limit: int = 1000) -> pd.DataFrame:
         """

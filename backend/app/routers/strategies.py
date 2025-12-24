@@ -171,6 +171,49 @@ async def get_strategy_summary(
     # strategy 객체에 longEntryRules 등이 있더라도 자동으로 필터링되어 반환됩니다.
     return strategy
 
+
+@router.get(
+    "/{strategy_id}/data-availability",
+    summary="Get data availability range for a strategy"
+)
+async def get_strategy_data_availability(
+    strategy_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    전략에서 사용하는 가장 작은 타임프레임을 기준으로 DB 데이터 가용 범위를 조회합니다.
+    """
+    from ..utils.strategy_utils import get_min_timeframe_minutes, convert_minutes_to_timeframe_string
+    from ..services.market_data_service import market_data_service
+    
+    # 1. 전략 조회
+    strategy = await strategy_service.get_strategy_for_user(db, strategy_id=strategy_id, user=current_user)
+    
+    # 2. 가장 작은 타임프레임 결정
+    min_tf_minutes = get_min_timeframe_minutes(strategy, default_timeframe='1h')
+    target_timeframe = convert_minutes_to_timeframe_string(min_tf_minutes)
+    
+    # 3. 대상 코인 결정 (target_coins는 딕셔너리 리스트)
+    ticker = "BTCUSDT"
+    if strategy.target_coins and len(strategy.target_coins) > 0:
+        first_coin = strategy.target_coins[0]
+        ticker = first_coin.get("ticker") if isinstance(first_coin, dict) else first_coin.ticker
+    
+    # 4. 해당 타임프레임의 데이터 범위 조회
+    date_range = await market_data_service.get_data_date_range(
+        db=db,
+        ticker=ticker,
+        timeframe=target_timeframe
+    )
+    
+    return {
+        "ticker": ticker,
+        "timeframe": target_timeframe,
+        "minDate": date_range.get("minDate"),
+        "maxDate": date_range.get("maxDate")
+    }
+
 @router.get("/{strategy_id}", response_model=schemas.Strategy, summary="Get a specific strategy by ID")
 async def get_strategy_by_id(
     strategy_id: uuid.UUID,
