@@ -23,11 +23,15 @@ class AIOptimizer:
         self,
         config: TrainingPipelineConfig,
         optimization_config: Dict[str, Any],
-        progress_callback: Optional[Callable[[int, int, Dict], None]] = None
+        progress_callback: Optional[Callable[[int, int, Dict], None]] = None,
+        best_model_dir: Optional[str] = None
     ):
         self.config = config
         self.opt_config = optimization_config
         self.progress_callback = progress_callback
+        self.best_model_dir = best_model_dir
+        self.best_value = -float('inf')
+        
         self.n_trials = optimization_config.get("n_trials") or optimization_config.get("nTrials") or 20
         self.maximize_metric = optimization_config.get("maximize_metric") or optimization_config.get("maximizeMetric") or "accuracy"
         self.search_space = optimization_config.get("search_space") or optimization_config.get("searchSpace") or {}
@@ -147,10 +151,43 @@ class AIOptimizer:
             elif self.maximize_metric == "f1":
                 score = result.final_metrics.get("f1_macro", 0)
             elif self.maximize_metric == "return":
-                # 기대 수익률 계산 로직이 필요할 수 있으나 일단 accuracy로 대체 또는 metric에서 추출
                 score = result.final_metrics.get("accuracy", 0) 
             else:
                 score = result.final_metrics.get("accuracy", 0)
+            
+            # Best Score 갱신 시 모델 저장
+            if score > self.best_value:
+                self.best_value = score
+                if self.best_model_dir:
+                    import json
+                    from pathlib import Path
+                    
+                    try:
+                        save_path = Path(self.best_model_dir)
+                        save_path.mkdir(parents=True, exist_ok=True)
+                        
+                        # 1. PyTorch 모델 저장
+                        model.save(str(save_path / "model.pt"))
+                        
+                        # 2. ONNX export (sample input shape 필요)
+                        # FeatureConfig에서 sequence_length 가져오기
+                        seq_len = self.config.feature_config.get("sequence_length", 60)
+                        # Batch size 1로 설정하여 export
+                        model.to_onnx(str(save_path / "model.onnx"), (1, seq_len, input_size))
+                        
+                        # 3. Metrics 저장
+                        with open(save_path / "training_result.json", "w") as f:
+                            # datetime 객체 등을 문자열로 변환처리 필요할 수 있음
+                            json.dump(asdict(result), f, default=str)
+                            
+                        # 4. Feature Config 저장 (Predictor 초기화용)
+                        # feature_store_config는 optimize() 시작 시 fit_transform에서 생성됨
+                        with open(save_path / "config.json", "w") as f:
+                            json.dump(feature_store_config, f, indent=2, default=str)
+                            
+                        logger.info(f"New best model saved at trial {trial.number} (score: {score:.4f})")
+                    except Exception as e:
+                        logger.error(f"Failed to save best model artifacts: {e}")
                 
             return score
 

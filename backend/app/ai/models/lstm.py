@@ -156,6 +156,7 @@ class LSTMClassifier(BaseAIModel):
         # 학습 기록
         train_loss_history = []
         val_loss_history = []
+        accuracy_history = []
         best_val_loss = float('inf')
         best_epoch = 0
         patience_counter = 0
@@ -184,12 +185,18 @@ class LSTMClassifier(BaseAIModel):
             train_loss_history.append(avg_train_loss)
             
             # Validation
+            acc = 0.0
             if has_validation:
                 self.model.eval()
                 with torch.no_grad():
                     val_outputs = self.model(X_val_t)
                     val_loss = criterion(val_outputs, y_val_t).item()
                     val_loss_history.append(val_loss)
+                    
+                    # 정확도 계산
+                    preds = val_outputs.argmax(dim=1).cpu().numpy()
+                    acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
+                    accuracy_history.append(acc)
                     
                     # 스케줄러 업데이트
                     scheduler.step(val_loss)
@@ -209,16 +216,10 @@ class LSTMClassifier(BaseAIModel):
             else:
                 val_loss = avg_train_loss
                 val_loss_history.append(val_loss)
+                accuracy_history.append(0.0)
             
             # 진행률 콜백
             if progress_callback:
-                acc = 0.0
-                if has_validation:
-                    with torch.no_grad():
-                        val_outputs = self.model(X_val_t)
-                        preds = val_outputs.argmax(dim=1).cpu().numpy()
-                        acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
-
                 metrics = {
                     "train_loss": avg_train_loss,
                     "val_loss": val_loss,
@@ -231,6 +232,7 @@ class LSTMClassifier(BaseAIModel):
             logger.info(
                 f"Epoch {epoch + 1}/{config.epochs} - "
                 f"Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, "
+                f"Accuracy: {acc:.4f}, "
                 f"Best Val Loss: {best_val_loss:.4f}, Patience: {patience_counter}/{config.early_stopping_patience}"
             )
         
@@ -252,7 +254,8 @@ class LSTMClassifier(BaseAIModel):
             best_epoch=best_epoch,
             best_val_loss=best_val_loss,
             training_time_seconds=training_time,
-            final_metrics=final_metrics
+            final_metrics=final_metrics,
+            accuracy_history=accuracy_history
         )
     
     def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor) -> Dict[str, Any]:

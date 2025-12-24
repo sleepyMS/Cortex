@@ -42,6 +42,7 @@ class TrainingResult:
     best_val_loss: float
     training_time_seconds: float
     final_metrics: Dict[str, Any]
+    accuracy_history: list = None
 
 
 class BaseAIModel(ABC):

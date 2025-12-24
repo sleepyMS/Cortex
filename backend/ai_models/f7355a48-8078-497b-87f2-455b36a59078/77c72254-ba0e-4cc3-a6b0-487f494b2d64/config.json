@@ -8,7 +8,10 @@
     "volume",
     "returns",
     "log_returns",
-    "EMA_20"
+    "EMA_20",
+    "MACD_12_26_9",
+    "MACDh_12_26_9",
+    "MACDs_12_26_9"
   ],
   "normalization": {
     "method": "rolling_zscore",
@@ -20,6 +23,14 @@
       "type": "EMA",
       "params": {
         "length": 20
+      }
+    },
+    {
+      "type": "MACD",
+      "params": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
       }
     }
   ],

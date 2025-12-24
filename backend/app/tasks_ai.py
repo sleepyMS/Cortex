@@ -5,12 +5,16 @@ AI 모델 학습을 비동기로 처리하는 Celery 태스크입니다.
 """
 import logging
 import traceback
+import shutil
+import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 
 from celery import shared_task
 from sqlalchemy.orm import Session
+import numpy as np
 
 from .celery_app import celery_app
 from .database import SyncSessionLocal, AsyncSessionLocal
@@ -153,29 +157,37 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             training_end_date=ai_model.training_end_date.isoformat(),
         )
 
-        # 4.3 하이퍼파라미터 최적화 (Optuna) 처리
-        opt_config = ai_model.optimization_config
-        is_opt_enabled = False
-        if opt_config:
-            is_opt_enabled = opt_config.get("is_enabled") or opt_config.get("isEnabled")
-
-        if is_opt_enabled:
-            # UI에 최적화 시작 알림을 위해 선제적으로 상태 업데이트
-            training_job.current_metrics = {
-                "phase": "optimization",
-                "trial": 1,  # 곧 첫 번째 트라이얼 시작 (1-indexed)
-                "totalTrials": opt_config.get("n_trials") or opt_config.get("nTrials") or 20,
-                "bestValue": 0.0
-            }
-            training_job.progress_pct = 1 # 0%가 아닌 1%로 설정하여 시작됨을 알림
+        # 4. 최적화 (Optimized)
+        optimization_config = ai_model.optimization_config
+        if optimization_config and optimization_config.get("is_enabled"):
+            # Update Phase
+            training_job.status = "optimizing"
             db.commit()
             
-            from .ai.training.optimizer import AIOptimizer
-            
+            # 최적화 진행률 콜백
             def opt_progress_callback(trial_num, total_trials, metrics):
-                # 최적화 단계를 0~80%로 배분
-                progress = int((trial_num / total_trials) * 80)
-                training_job.progress_pct = progress
+                # 0~80% 구간 사용
+                progress = (trial_num / total_trials) * 80
+                training_job.progress_pct = int(progress)
+                training_job.current_metrics = metrics
+                
+                # Check for NaN values in metrics to avoid JSON serialization errors
+                if metrics.get("best_params"):
+                     for k, v in metrics["best_params"].items():
+                          if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+                               metrics["best_params"][k] = 0
+
+                # Trial log update (optional)
+                if "trial_log" in metrics:
+                   pass # TODO: Add per-trial logs if needed
+
+                # Update history
+                if "best_value" in metrics:
+                   # 이전 optimization_result 가져와서 업데이트하거나 새로 덮어쓰기
+                   pass
+
+                # Store optimization progress in history or logs if needed
+                # Here we just update the current_metrics field for realtime UI
                 training_job.current_metrics = {
                     "phase": "optimization",
                     "trial": trial_num,
@@ -184,10 +196,17 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                 }
                 db.commit()
 
+            # Best Model 저장을 위한 임시 경로 설정
+            best_model_temp_dir = save_dir / "optimization_best"
+            if best_model_temp_dir.exists():
+                shutil.rmtree(best_model_temp_dir) # Clean start
+
+            from .ai.training.optimizer import AIOptimizer
             optimizer = AIOptimizer(
                 config=pipeline_config,
-                optimization_config=opt_config,
-                progress_callback=opt_progress_callback
+                optimization_config=optimization_config,
+                progress_callback=opt_progress_callback,
+                best_model_dir=str(best_model_temp_dir)
             )
             
             # 최적화 실행
@@ -223,52 +242,108 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         # 4.5 버전 결정
         last_version = db.query(AIModelVersion).filter(AIModelVersion.model_id == model_id).order_by(AIModelVersion.version_number.desc()).first()
         next_version_num = (last_version.version_number + 1) if last_version else 1
-
-        # 5. 최종 모델 학습 실행
-        logger.info(f"Starting final training (Version {next_version_num}) with best/selected parameters for model {model_id}")
         
-        # 진행률 콜백 업데이트 (최종 학습 phase)
-        original_callback = progress_callback
-        def final_progress_callback(step, total, metrics):
-            # 최종 학습 단계를 80~100%로 배분
-            base_progress = 80
-            if metrics.get("phase") == "training" and "epoch" in metrics:
-                epoch_progress = metrics["epoch"] / metrics.get("total_epochs", 100)
-                progress = base_progress + (epoch_progress * 20)
-                # Client에게는 final_training 상태임을 알림
-                metrics["phase"] = "final_training"
-                
-                # Epoch 완료 시 로그 저장
-                if metrics.get("train_loss") is not None:
-                     # 기존 로그 가져오기 (없으면 빈 리스트)
-                    current_logs = list(training_job.epoch_logs or [])
-                    
-                    # 중복 저장 방지 (같은 에폭이 이미 있는지 확인)
-                    epoch = metrics["epoch"]
-                    if not any(log.get("epoch") == epoch for log in current_logs):
-                        new_log = {
-                            "epoch": epoch,
-                            "trainLoss": metrics.get("train_loss"),
-                            "valLoss": metrics.get("val_loss"),
-                            "accuracy": metrics.get("val_accuracy") or metrics.get("accuracy"), # 모델에 따라 다를 수 있음
-                            "timestamp": datetime.utcnow().isoformat()
-                        }
-                        current_logs.append(new_log)
-                        training_job.epoch_logs = current_logs
-                        
-            else:
-                progress = base_progress
+        # 5. 최종 모델 결정 (재학습 vs Best Trial 사용)
+        final_model_ready = False
+        result = {}
+        
+        # Best Trial 모델이 존재하면 재학습 건너뛰고 사용
+        best_model_temp_dir = save_dir / "optimization_best"
+        if optimization_config and optimization_config.get("is_enabled") and (best_model_temp_dir / "model.pt").exists():
+            logger.info("Found optimized best model artifacts. Skipping final retraining and using the best trial model.")
             
-            training_job.progress_pct = int(min(progress, 99))
-            original_callback(step, total, metrics)
+            # 1. 파일 이동
+            save_dir.mkdir(parents=True, exist_ok=True)
+            
+            # model.pt, model.onnx 등 이동
+            for item in best_model_temp_dir.iterdir():
+                if item.is_file():
+                    shutil.copy2(item, save_dir / item.name)
+                    
+            # 2. Result 로드
+            with open(save_dir / "training_result.json", "r") as f:
+                result = json.load(f)
+                
+            # Result path 업데이트
+            result["model_path"] = str(save_dir / "model.onnx")
+            result["version_number"] = next_version_num
+            
+            # 3. Epoch Logs 복원 (Frontend 차트용)
+            metrics_data = result.get("final_metrics", {}) # This might be just final values, check structure
+            # TrainingResult(dataclass)가 asdict로 저장됨.
+            # 구조: { "train_loss_history": [...], "val_loss_history": [...], ... }
+            
+            train_loss_hist = result.get("train_loss_history", [])
+            val_loss_hist = result.get("val_loss_history", [])
+            accuracy_hist = result.get("accuracy_history", []) # 만약 있다면
+            
+            reconstructed_logs = []
+            for i in range(len(train_loss_hist)):
+                log = {
+                    "epoch": i + 1,
+                    "train_loss": train_loss_hist[i],
+                    "val_loss": val_loss_hist[i] if i < len(val_loss_hist) else None,
+                    "accuracy": accuracy_hist[i] if i < len(accuracy_hist) else None,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                reconstructed_logs.append(log)
+            
+            training_job.epoch_logs = reconstructed_logs
+            
+            final_model_ready = True
+            
+            # Clean up temp dir
+            shutil.rmtree(best_model_temp_dir)
+            
+            # Set progress to 100%
+            training_job.progress_pct = 99
+            
+        else:
+            # 5. 최종 모델 학습 실행 (기존 로직)
+            logger.info(f"Starting final training (Version {next_version_num}) with best/selected parameters for model {model_id}")
+            
+            # 진행률 콜백 업데이트 (최종 학습 phase)
+            original_callback = progress_callback
+            def final_progress_callback(step, total, metrics):
+                # 최종 학습 단계를 80~100%로 배분
+                base_progress = 80
+                if metrics.get("phase") == "training" and "epoch" in metrics:
+                    epoch_progress = metrics["epoch"] / metrics.get("total_epochs", 100)
+                    progress = base_progress + (epoch_progress * 20)
+                    # Client에게는 final_training 상태임을 알림
+                    metrics["phase"] = "final_training"
+                    
+                    # Epoch 완료 시 로그 저장
+                    if metrics.get("train_loss") is not None:
+                         # 기존 로그 가져오기 (없으면 빈 리스트)
+                        current_logs = list(training_job.epoch_logs or [])
+                        
+                        # 중복 저장 방지 (같은 에폭이 이미 있는지 확인)
+                        epoch = metrics["epoch"]
+                        if not any(log.get("epoch") == epoch for log in current_logs):
+                            new_log = {
+                                "epoch": epoch,
+                                "trainLoss": metrics.get("train_loss"),
+                                "valLoss": metrics.get("val_loss"),
+                                "accuracy": metrics.get("val_accuracy") or metrics.get("accuracy"), # 모델에 따라 다를 수 있음
+                                "timestamp": datetime.utcnow().isoformat()
+                            }
+                            current_logs.append(new_log)
+                            training_job.epoch_logs = current_logs
+                            
+                else:
+                    progress = base_progress
+                
+                training_job.progress_pct = int(min(progress, 99))
+                original_callback(step, total, metrics)
 
-        trainer = AIModelTrainer(
-            config=pipeline_config,
-            save_dir=str(save_dir),
-            progress_callback=final_progress_callback
-        )
-        
-        result = trainer.train(df, version_number=next_version_num)
+            trainer = AIModelTrainer(
+                config=pipeline_config,
+                save_dir=str(save_dir),
+                progress_callback=final_progress_callback
+            )
+            
+            result = trainer.train(df, version_number=next_version_num)
         
         # 6. 성공 - 결과 저장
         ai_model.status = AIModelStatus.COMPLETED
@@ -329,7 +404,6 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     # 파일 삭제 시도
                     try:
                         import os
-                        import shutil
                         path_obj = Path(v.model_weights_path)
                         if path_obj.exists():
                             os.remove(path_obj)
