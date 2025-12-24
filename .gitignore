@@ -21,3 +21,6 @@ node_modules/
 *.log
 
 backend/venv/
+
+# AI Models (user data)
+backend/ai_models/*/

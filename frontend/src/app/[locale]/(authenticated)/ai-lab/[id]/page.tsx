@@ -1162,7 +1162,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
                               {t("detail.configDetails.searching")}
                             </span>
                           ) : (
-                            `${(model.architectureConfig?.dropout || 0) * 100}%`
+                            `${(
+                              (model.architectureConfig?.dropout || 0) * 100
+                            ).toFixed(2)}%`
                           )}
                         </div>
                       </div>
@@ -1232,7 +1234,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                               {t("detail.configDetails.autoTuning")}
                             </span>
                           ) : (
-                            model.trainingConfig?.learningRate
+                            model.trainingConfig?.learningRate?.toFixed(6)
                           )}
                         </div>
                       </div>
