@@ -236,6 +236,17 @@ export default function NewAIModelPage() {
   });
 
   const handleSubmit = () => {
+    // 자동 최적화 모드일 경우, 수동 탭의 설정(특히 Epochs 등)을 무시하고
+    // 검증된 프로덕션 기본값을 강제 적용하여 최종 학습의 안정성을 보장합니다.
+    const finalTrainingConfig = optimizationConfig.isEnabled
+      ? {
+          ...trainingConfig,
+          epochs: 100,
+          earlyStoppingPatience: 10,
+          validationSplit: 0.2,
+        }
+      : trainingConfig;
+
     const payload: AIModelCreateRequest = {
       name,
       description: description || undefined,
@@ -247,7 +258,7 @@ export default function NewAIModelPage() {
       architectureConfig,
       featureConfig,
       labelingConfig,
-      trainingConfig,
+      trainingConfig: finalTrainingConfig,
       optimizationConfig,
     };
     createMutation.mutate(payload);

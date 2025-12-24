@@ -237,6 +237,25 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                 progress = base_progress + (epoch_progress * 20)
                 # Client에게는 final_training 상태임을 알림
                 metrics["phase"] = "final_training"
+                
+                # Epoch 완료 시 로그 저장
+                if metrics.get("train_loss") is not None:
+                     # 기존 로그 가져오기 (없으면 빈 리스트)
+                    current_logs = list(training_job.epoch_logs or [])
+                    
+                    # 중복 저장 방지 (같은 에폭이 이미 있는지 확인)
+                    epoch = metrics["epoch"]
+                    if not any(log.get("epoch") == epoch for log in current_logs):
+                        new_log = {
+                            "epoch": epoch,
+                            "trainLoss": metrics.get("train_loss"),
+                            "valLoss": metrics.get("val_loss"),
+                            "accuracy": metrics.get("val_accuracy") or metrics.get("accuracy"), # 모델에 따라 다를 수 있음
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        current_logs.append(new_log)
+                        training_job.epoch_logs = current_logs
+                        
             else:
                 progress = base_progress
             
