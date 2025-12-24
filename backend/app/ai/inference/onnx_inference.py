@@ -89,14 +89,27 @@ class ONNXInferenceSession:
         # Float32로 변환
         X = X.astype(np.float32)
         
-        # 추론 실행
-        outputs = self.session.run(None, {input_name: X})
-        logits = outputs[0]
+        # 배치 크기가 1인 모델에 대해 다중 샘플이 들어온 경우 반복 처리
+        if len(X) > 1:
+            probs_list = []
+            for i in range(len(X)):
+                # (1, seq_len, features) 형태로 슬라이싱
+                sample = X[i:i+1]
+                outputs = self.session.run(None, {input_name: sample})
+                logits = outputs[0]
+                prob = self._softmax(logits)
+                probs_list.append(prob)
+            
+            # (n_samples, 3) 형태로 결합
+            return np.vstack(probs_list)
+        else:
+            # 단일 샘플 (또는 모델이 배치를 지원하는 경우)
+            outputs = self.session.run(None, {input_name: X})
+            logits = outputs[0]
         
         # Softmax 적용하여 확률로 변환
-        probs = self._softmax(logits)
-        
-        return probs
+            probs = self._softmax(logits)
+            return probs
     
     def predict_from_ohlcv(self, df, batch_size: int = 100) -> Dict[str, np.ndarray]:
         """

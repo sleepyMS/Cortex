@@ -158,6 +158,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         )
 
         # 4. 최적화 (Optimized)
+        from .ai.inference.onnx_inference import AIModelRegistry
         optimization_config = ai_model.optimization_config
         if optimization_config and optimization_config.get("is_enabled"):
             # Update Phase
@@ -435,6 +436,13 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         db.commit()
         
         logger.info(f"Training completed for model {model_id}")
+        
+        # [Critical] Clear inference cache to ensure next backtest uses the new model
+        try:
+            AIModelRegistry.clear_cache(model_id)
+            logger.info(f"Cleared inference cache for model {model_id}")
+        except Exception as e:
+            logger.warning(f"Failed to clear inference cache: {e}")
         
         return {
             "status": "completed",
