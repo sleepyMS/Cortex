@@ -42,7 +42,12 @@ export function Header() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      const offset = window.scrollY;
+      if (offset > 20) {
+        setScrolled(true);
+      } else if (offset < 10) {
+        setScrolled(false);
+      }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
