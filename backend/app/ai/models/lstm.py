@@ -378,15 +378,20 @@ class LSTMClassifier(BaseAIModel):
         
         self.model.eval()
         
-        # 샘플 입력 생성
+        # 샘플 입력 생성 - batch_size=1로 고정 (LSTM 호환성)
         if sample_input_shape is None:
-            sample_input_shape = (1, 60, self.config.input_size)  # 기본값
+            sample_input_shape = (1, 60, self.config.input_size)
+        else:
+            # batch_size를 항상 1로 강제 (LSTM hidden state 경고 방지)
+            sample_input_shape = (1, sample_input_shape[1], sample_input_shape[2])
         
         dummy_input = torch.randn(*sample_input_shape).to(self.device)
         
         save_path = Path(path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         
+        # LSTM의 경우 batch_size를 동적으로 하면 hidden state 관련 경고 발생
+        # 예측 시 항상 batch_size=1을 사용하므로 동적 axes 제거
         torch.onnx.export(
             self.model,
             dummy_input,
@@ -396,10 +401,6 @@ class LSTMClassifier(BaseAIModel):
             do_constant_folding=True,
             input_names=['input'],
             output_names=['output'],
-            dynamic_axes={
-                'input': {0: 'batch_size'},
-                'output': {0: 'batch_size'}
-            },
             dynamo=False  # Use legacy export for compatibility
         )
         logger.info(f"Model exported to ONNX: {save_path}")

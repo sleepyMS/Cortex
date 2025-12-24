@@ -1047,10 +1047,23 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
                           {t("detail.configDetails.labelStrategy")}
                         </span>
-                        <div className="text-xl font-bold">
-                          {t("detail.configDetails.labelStrategyValue")}{" "}
-                          <span className="text-xs font-normal text-muted-foreground">
-                            (B/H/S)
+                        <div className="text-sm font-mono font-bold flex flex-wrap gap-x-3 gap-y-1">
+                          <span className="text-emerald-400">
+                            TP:{" "}
+                            {(
+                              (model.labelingConfig?.profitTarget || 0.02) * 100
+                            ).toFixed(1)}
+                            %
+                          </span>
+                          <span className="text-red-400">
+                            SL:{" "}
+                            {(
+                              (model.labelingConfig?.stopLoss || 0.01) * 100
+                            ).toFixed(1)}
+                            %
+                          </span>
+                          <span className="text-blue-400">
+                            H: {model.labelingConfig?.horizon || 24}
                           </span>
                         </div>
                       </div>
