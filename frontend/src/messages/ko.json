@@ -2299,6 +2299,10 @@
       "delete": "삭제",
       "daysSuffix": "일"
     },
+    "validations": {
+      "durationMinError": "학습 기간은 최소 30일 이상이어야 합니다.",
+      "dateOrderError": "종료일은 시작일보다 이후여야 합니다."
+    },
     "new": {
       "title": "새 AI 모델 생성",
       "subtitle": "단계별로 설정을 완료하여 AI 모델을 학습시킵니다.",

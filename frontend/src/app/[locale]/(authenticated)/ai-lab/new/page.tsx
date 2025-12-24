@@ -4,6 +4,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { differenceInDays } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
@@ -1364,6 +1365,23 @@ export default function NewAIModelPage() {
     }
   };
 
+  const validateAndProceed = () => {
+    if (step === 2) {
+      if (startDate && endDate) {
+        if (new Date(endDate) <= new Date(startDate)) {
+          toast.error(t("validations.dateOrderError"));
+          return;
+        }
+        const days = differenceInDays(new Date(endDate), new Date(startDate));
+        if (days < 30) {
+          toast.error(t("validations.durationMinError"));
+          return;
+        }
+      }
+    }
+    setStep((s) => s + 1);
+  };
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       {/* Header */}
@@ -1454,10 +1472,7 @@ export default function NewAIModelPage() {
             {t("new.prev")}
           </Button>
           {step < 6 ? (
-            <Button
-              onClick={() => setStep((s) => s + 1)}
-              disabled={!canProceed()}
-            >
+            <Button onClick={validateAndProceed} disabled={!canProceed()}>
               {t("new.next")}
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>

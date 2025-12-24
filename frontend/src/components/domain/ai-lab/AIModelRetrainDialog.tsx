@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { useUserStore } from "@/store/userStore";
@@ -84,6 +84,18 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
     if (!dateRange?.from || !dateRange?.to) {
       toast.error(t("detail.retrainDialog.selectPeriodError"));
       return;
+    }
+
+    if (dateRange.from && dateRange.to) {
+      if (dateRange.to <= dateRange.from) {
+        toast.error(t("validations.dateOrderError"));
+        return;
+      }
+      const days = differenceInDays(dateRange.to, dateRange.from);
+      if (days < 30) {
+        toast.error(t("validations.durationMinError"));
+        return;
+      }
     }
 
     try {

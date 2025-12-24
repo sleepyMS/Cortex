@@ -2305,6 +2305,10 @@
       "delete": "Delete",
       "daysSuffix": " days"
     },
+    "validations": {
+      "durationMinError": "Training period must be at least 30 days.",
+      "dateOrderError": "End date must be after start date."
+    },
     "new": {
       "title": "Create New AI Model",
       "subtitle": "Complete the steps to train your AI model.",
