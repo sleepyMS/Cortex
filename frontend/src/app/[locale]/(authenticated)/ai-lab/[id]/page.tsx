@@ -1387,37 +1387,40 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   </GlassPane>
                 )}
 
-                <GlassPane className="p-0 overflow-hidden">
-                  <div className="p-6 border-b flex justify-between items-center bg-muted/10">
-                    <h2 className="text-lg font-bold">
-                      {t("detail.versions.history")}
-                    </h2>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsRetrainDialogOpen(true)}
-                      className="gap-2"
-                    >
-                      <RefreshCw className="h-4 w-4" />{" "}
-                      {t("detail.versions.manualRetrain")}
-                    </Button>
-                  </div>
-                  {versions && (
-                    <div className="p-6">
-                      <AIModelVersionsTable
-                        modelId={modelId}
-                        versions={versions}
-                        onVersionActivated={() => {
-                          refetchModel();
-                          queryClient.invalidateQueries({
-                            queryKey: ["ai-model-versions", modelId],
-                          });
-                        }}
-                        isOptimized={model.optimizationConfig?.isEnabled}
-                      />
+                {/* Version History - Hide when optimization is enabled (showing trial results instead) */}
+                {!model.optimizationConfig?.isEnabled && (
+                  <GlassPane className="p-0 overflow-hidden">
+                    <div className="p-6 border-b flex justify-between items-center bg-muted/10">
+                      <h2 className="text-lg font-bold">
+                        {t("detail.versions.history")}
+                      </h2>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsRetrainDialogOpen(true)}
+                        className="gap-2"
+                      >
+                        <RefreshCw className="h-4 w-4" />{" "}
+                        {t("detail.versions.manualRetrain")}
+                      </Button>
                     </div>
-                  )}
-                </GlassPane>
+                    {versions && (
+                      <div className="p-6">
+                        <AIModelVersionsTable
+                          modelId={modelId}
+                          versions={versions}
+                          onVersionActivated={() => {
+                            refetchModel();
+                            queryClient.invalidateQueries({
+                              queryKey: ["ai-model-versions", modelId],
+                            });
+                          }}
+                          isOptimized={model.optimizationConfig?.isEnabled}
+                        />
+                      </div>
+                    )}
+                  </GlassPane>
+                )}
               </TabsContent>
 
               <TabsContent value="feature-importance">

@@ -185,6 +185,12 @@ class AIOptimizer:
                         # feature_store_config는 optimize() 시작 시 fit_transform에서 생성됨
                         with open(save_path / "config.json", "w") as f:
                             json.dump(feature_store_config, f, indent=2, default=str)
+                        
+                        # 5. Feature Importance 계산 및 저장
+                        feature_names = feature_store_config.get("feature_order", [])
+                        feature_importance = self._calculate_feature_importance(model, X_val, feature_names)
+                        with open(save_path / "feature_importance.json", "w") as f:
+                            json.dump(feature_importance, f, indent=2)
                             
                         logger.info(f"New best model saved at trial {trial.number} (score: {score:.4f})")
                     except Exception as e:
@@ -223,3 +229,65 @@ class AIOptimizer:
                 } for t in study.trials
             ]
         }
+
+    def _calculate_feature_importance(self, model, X_val: np.ndarray, feature_names: list) -> Dict[str, float]:
+        """Integrated Gradients를 사용한 피처 중요도 계산"""
+        try:
+            import torch
+            from captum.attr import IntegratedGradients
+            
+            # 모델 평가 모드
+            model.model.eval()
+            
+            # 1. 샘플링 (Validation Data 중 최대 20개 - 메모리 절약)
+            n_samples = min(20, len(X_val))
+            if n_samples == 0 or len(feature_names) == 0:
+                logger.warning(f"Skipping feature importance: samples={n_samples}, features={len(feature_names)}")
+                return {}
+                
+            # 랜덤 샘플링
+            indices = np.random.choice(len(X_val), n_samples, replace=False)
+            X_sample = torch.tensor(X_val[indices], dtype=torch.float32).to(model.device)
+            
+            # 2. Baseline (Zero tensor)
+            baseline = torch.zeros_like(X_sample)
+            
+            # 3. Integrated Gradients 인스턴스
+            ig = IntegratedGradients(model.model)
+            
+            # 4. 중요도 계산 (Target: Buy class = index 2 가정)
+            # Triple Barrier Labeler: -1(Sell), 0(Hold), 1(Buy) -> 0, 1, 2
+            target_class = 2 
+            
+            attributions, delta = ig.attribute(
+                inputs=X_sample,
+                baselines=baseline,
+                target=target_class,
+                return_convergence_delta=True
+            )
+            
+            # 5. 집계 (Absolute values -> Batch Mean -> Sequence Mean)
+            # attributions: (batch, seq, features)
+            importances = torch.mean(torch.abs(attributions), dim=0) # (seq, feat)
+            importances = torch.mean(importances, dim=0) # (feat,)
+            
+            # 6. 결과 매핑
+            importance_dict = {}
+            importances_np = importances.detach().cpu().numpy()
+            
+            for i, name in enumerate(feature_names):
+                if i < len(importances_np):
+                     importance_dict[name] = float(importances_np[i])
+            
+            # 중요도 순 정렬 (내림차순)
+            sorted_importances = dict(sorted(importance_dict.items(), key=lambda item: item[1], reverse=True))
+            
+            logger.info(f"Top 5 important features: {list(sorted_importances.keys())[:5]}")
+            return sorted_importances
+            
+        except ImportError:
+            logger.warning("Captum library not found. Skipping feature importance calculation.")
+            return {}
+        except Exception as e:
+            logger.error(f"Error calculating feature importance: {e}")
+            return {}

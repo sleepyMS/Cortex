@@ -290,6 +290,14 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             
             training_job.epoch_logs = reconstructed_logs
             
+            # 4. Feature Importance 로드 (if exists)
+            feature_importance_path = save_dir / "feature_importance.json"
+            if feature_importance_path.exists():
+                with open(feature_importance_path, "r") as f:
+                    result["feature_importance"] = json.load(f)
+            else:
+                result["feature_importance"] = {}
+            
             final_model_ready = True
             
             # Clean up temp dir
