@@ -156,9 +156,11 @@ export const OptimizationJobCard = ({
     <TooltipProvider delayDuration={100}>
       <Card
         className={cn(
-          "group flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-border/50 bg-card/50 hover:bg-card hover:border-primary/20",
+          "group flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/40 bg-card/40 backdrop-blur-md hover:bg-card/60 hover:border-primary/30",
+          status === "running" &&
+            "ring-1 ring-primary/20 shadow-[0_0_20px_rgba(139,92,246,0.1)]",
           (status === "failed" || status === "canceled") &&
-            "opacity-70 hover:opacity-100"
+            "opacity-80 hover:opacity-100"
         )}
       >
         <Link
@@ -224,8 +226,7 @@ export const OptimizationJobCard = ({
                 <div className="space-y-1 text-center">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help w-full">
-                      <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground mb-1">
-                        <Target className="h-3 w-3" />
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
                         {t("bestScore")}
                       </div>
                     </TooltipTrigger>
@@ -248,7 +249,7 @@ export const OptimizationJobCard = ({
                 <div className="space-y-1 text-center border-l border-border/50">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help w-full">
-                      <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground mb-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
                         {t("bestReturn")}
                       </div>
                     </TooltipTrigger>
@@ -271,7 +272,7 @@ export const OptimizationJobCard = ({
                 <div className="space-y-1 text-center border-l border-border/50">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help w-full">
-                      <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground mb-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
                         {t("bestMdd")}
                       </div>
                     </TooltipTrigger>

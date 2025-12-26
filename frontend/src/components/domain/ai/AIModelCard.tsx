@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { formatDistanceToNow } from "date-fns";
 import { ko, enUS } from "date-fns/locale";
 import { useLocale } from "next-intl";
+import { motion } from "framer-motion";
 import {
   Brain,
   Clock,
@@ -94,49 +95,58 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
   };
 
   return (
-    <Link href={`/ai-lab/${model.id}`} className="block group">
-      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1 hover:bg-card">
+    <Link href={`/ai-lab/${model.id}`} className="block group h-full">
+      <div className="relative flex flex-col h-full overflow-hidden rounded-2xl border border-border/50 bg-card/40 backdrop-blur-md transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:border-primary/30 hover:-translate-y-1.5 hover:bg-card/60">
         {/* Training progress bar for active training */}
         {model.status === "training" && (
-          <div className="absolute top-0 left-0 right-0">
-            <Progress value={50} className="h-1 rounded-none" />
+          <div className="absolute top-0 left-0 right-0 z-20">
+            <div className="h-1 w-full bg-primary/10 overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              />
+            </div>
           </div>
         )}
 
-        <div className="relative p-5 space-y-4">
+        <div className="relative p-6 flex flex-col flex-grow space-y-5">
           {/* Header */}
-          <div className="flex justify-between items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <h3 className="font-bold text-lg leading-tight text-foreground truncate group-hover:text-primary transition-colors">
                 {model.name}
               </h3>
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge
                   variant="secondary"
-                  className="bg-primary/5 text-primary border-primary/10 text-[10px] h-5"
+                  className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold uppercase tracking-wider h-5 px-2 rounded-full"
                 >
-                  {model.modelType.toUpperCase()}
+                  {model.modelType}
                 </Badge>
                 {model.isOptimized && (
                   <Badge
                     variant="outline"
-                    className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px] h-5 flex items-center gap-1 px-1.5"
+                    className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px] h-5 flex items-center gap-1.5 px-2 rounded-full animate-pulse"
                   >
                     <Sparkles className="h-3 w-3" />
                     Optuna
                   </Badge>
                 )}
-                <span className="text-[11px] font-mono text-muted-foreground ml-1">
-                  {model.trainingSymbol}
-                </span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 border border-border/50">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                    {model.trainingSymbol}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Status Badge */}
-            <Badge
-              variant="outline"
+            <div
               className={cn(
-                "flex items-center gap-1 font-medium border-0",
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-current/20 backdrop-blur-md",
                 config.bgColor,
                 config.color
               )}
@@ -148,59 +158,71 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                 )}
               />
               {t(`status.${model.status}`)}
-            </Badge>
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/30">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
+          {/* Stats Box */}
+          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/20 border border-border/50 group-hover:bg-muted/30 transition-colors">
+            <div className="space-y-1.5 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {t("card.timeframe")}
               </p>
-              <p className="text-sm font-semibold mt-1">
+              <p className="text-sm font-extrabold text-foreground tracking-tight">
                 {model.trainingTimeframe}
               </p>
             </div>
-            <div className="text-center border-l border-border/50">
-              <p className="text-xs text-muted-foreground">
+            <div className="space-y-1.5 text-center border-l border-border/50">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {t("card.period")}
               </p>
-              <p className="text-sm font-semibold mt-1">{trainingPeriod()}</p>
+              <p className="text-sm font-extrabold text-foreground tracking-tight">
+                {trainingPeriod()}
+              </p>
             </div>
           </div>
 
           {/* Description */}
           {model.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {model.description}
+            <p className="text-sm text-muted-foreground/80 line-clamp-2 leading-relaxed italic group-hover:text-muted-foreground transition-colors">
+              "{model.description}"
             </p>
           )}
 
-          {/* Footer */}
-          <div className="flex justify-between items-center pt-2 border-t border-border/50">
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {formatDate(model.createdAt)}
-            </span>
+          {/* Spacer to push footer down */}
+          <div className="flex-grow" />
 
-            <div className="flex items-center gap-1">
+          {/* Footer */}
+          <div className="flex justify-between items-center pt-5 border-t border-border/40">
+            <div className="flex items-center gap-2 text-muted-foreground/60">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-medium tracking-tight">
+                {formatDate(model.createdAt)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <ChevronRight className="h-4 w-4 text-primary" />
+              </div>
+
               {/* Actions dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 transition-opacity hover:bg-muted/50"
+                    className="h-9 w-9 rounded-full hover:bg-muted/50 transition-colors"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <MoreVertical className="h-4.5 w-4.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
+                  className="rounded-xl border-border/40 shadow-2xl"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -208,9 +230,14 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                 >
                   {model.status === "completed" && (
                     <DropdownMenuItem asChild>
-                      <Link href={`/ai-lab/${model.id}?test=true`}>
-                        <PlayCircle className="h-4 w-4 mr-2" />
-                        {t("card.testPrediction")}
+                      <Link
+                        href={`/ai-lab/${model.id}?test=true`}
+                        className="cursor-pointer"
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2.5 text-primary" />
+                        <span className="font-semibold">
+                          {t("card.testPrediction")}
+                        </span>
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -223,11 +250,11 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                     disabled={isDeleting}
                   >
                     {isDeleting ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 mr-2.5 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-4 w-4 mr-2.5" />
                     )}
-                    {t("card.delete")}
+                    <span className="font-semibold">{t("card.delete")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
