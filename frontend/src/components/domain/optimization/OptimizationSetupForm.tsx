@@ -16,7 +16,7 @@ import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
-import { addDays, startOfDay } from "date-fns";
+import { addDays, startOfDay, format } from "date-fns";
 import Link from "next/link";
 import {
   PlusCircle,
@@ -279,6 +279,55 @@ export function OptimizationSetupForm() {
       enabled: !!strategyId,
     });
 
+  // --- [New] 데이터 가용성 및 AI 제한 조회 ---
+  const { data: dataAvailability } = useQuery<{
+    ticker: string;
+    timeframe: string;
+    minDate: string | null;
+    maxDate: string | null;
+    restrictedRanges: { start: string; end: string; reason: string }[];
+  }>({
+    queryKey: ["strategyDataAvailability", strategyId],
+    queryFn: async () => {
+      const res = await apiClient.get(
+        `/strategies/${strategyId}/data-availability`
+      );
+      return res.data;
+    },
+    enabled: !!strategyId,
+  });
+
+  const minStartDate = dataAvailability?.minDate
+    ? new Date(dataAvailability.minDate)
+    : undefined;
+
+  const restrictedRanges = dataAvailability?.restrictedRanges || [];
+
+  // 전략 선택 시 자동으로 1년 기간 설정 (또는 가능한 최대 범위)
+  useEffect(() => {
+    if (!strategyId || !dataAvailability) return;
+
+    // 이미 날짜가 설정되어 있고, 기본값이 아니라면(사용자가 변경했을 수 있음) 건너뛰기?
+    // 하지만 전략을 바꿨다면 리셋하는게 맞음.
+    // 여기서는 useWatch로 가져온 dateRange 값이 변경될 때마다 실행되지 않도록 주의 필요.
+    // 하지만 useEffect 의존성에 strategyId가 있어서 전략 변경 시 실행됨.
+
+    // 단순하게 전략 변경 시 자동 설정:
+    const today = startOfDay(new Date());
+    const oneYearAgo = startOfDay(addDays(today, -365));
+    const minDate = dataAvailability.minDate
+      ? new Date(dataAvailability.minDate)
+      : oneYearAgo;
+
+    // 시작일: 1년 전 또는 데이터 최소 날짜 중 더 늦은 날짜
+    const startDate = minDate > oneYearAgo ? startOfDay(minDate) : oneYearAgo;
+
+    setValue("dateRange", {
+      from: startDate,
+      to: today,
+    });
+  }, [strategyId, dataAvailability, setValue]);
+
   // --- 파라미터 범위 필드 초기화 ---
   const replaceRangesRef = useRef(replaceRanges);
   useEffect(() => {
@@ -500,8 +549,47 @@ export function OptimizationSetupForm() {
     },
   });
 
-  const onSubmit = (values: FormValues) =>
+  const onSubmit = (values: FormValues) => {
+    // AI 학습 데이터 기간과 겹치는지 최종 확인 (Look-ahead Bias 방지)
+    if (
+      restrictedRanges.length > 0 &&
+      values.dateRange?.from &&
+      values.dateRange?.to
+    ) {
+      const start = startOfDay(values.dateRange.from);
+      const end = startOfDay(values.dateRange.to);
+
+      const overlappedRange = restrictedRanges.find((range) => {
+        const rangeStart = startOfDay(new Date(range.start));
+        const rangeEnd = startOfDay(new Date(range.end));
+        // 기간 겹침 확인 로직
+        return start <= rangeEnd && end >= rangeStart;
+      });
+
+      if (overlappedRange) {
+        // setError는 해당 필드에 에러를 표시합니다.
+        // 현재 dateRange는 object 필드라서 root 에러 혹은 특정 path 에러로 표시
+        // formSchema의 path가 ["to"] 등으로 되어있긴 함.
+        // 여기서는 dateRange 자체에 에러를 줍니다.
+        const errorMessage = `선택한 기간이 AI 모델 학습 데이터(${
+          overlappedRange.reason
+        })와 겹칩니다. 백테스트 편향을 방지하기 위해 ${format(
+          new Date(overlappedRange.end),
+          "yyyy-MM-dd"
+        )} 이후의 날짜를 선택해주세요.`;
+
+        toast.error(errorMessage); // 토스트로도 알림
+
+        // methods.setError("dateRange", ...) 가 동작하려면 formSchema 구조상 dateRange 객체 전체에 대한 에러여야 함.
+        // 하지만 react-hook-form에서 객체 필드 자체에 에러를 주는 건 까다로울 수 있음.
+        // 단순히 toast만 띄우고 리턴해도 충분할 수 있음.
+        // 또는 dateRange.from 이나 dateRange.to 에 에러를 걸 수도 있음.
+        return;
+      }
+    }
+
     createOptimizationMutation.mutate(values);
+  };
 
   if (!isLoaded || isLoadingStrategies) {
     return (
@@ -600,6 +688,17 @@ export function OptimizationSetupForm() {
                         onEndDateChange={(date) =>
                           field.onChange({ ...field.value, to: date })
                         }
+                        onRangeChange={(from, to) =>
+                          field.onChange({ from, to })
+                        }
+                        minStartDate={minStartDate}
+                        disabled={!strategyId}
+                        placeholder={
+                          !strategyId
+                            ? "전략을 먼저 선택하세요"
+                            : "기간을 선택하세요"
+                        }
+                        restrictedRanges={restrictedRanges}
                       />
                       <FormMessage className="pt-1" />
                     </FormItem>
