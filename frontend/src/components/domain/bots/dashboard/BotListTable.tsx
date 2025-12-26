@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/AlertDialog";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export function BotListTable() {
   const t = useTranslations("LiveTrading.Dashboard.table");
@@ -110,27 +111,30 @@ export function BotListTable() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="relative overflow-hidden p-5">
-            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-muted-foreground/5 to-transparent" />
+          <div
+            key={i}
+            className="relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 space-y-6"
+          >
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
             <div className="space-y-4">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-32 rounded-lg" />
+                  <Skeleton className="h-4 w-20 rounded-md" />
                 </div>
                 <Skeleton className="h-6 w-16 rounded-full" />
               </div>
-              <div className="pt-4 border-t space-y-3">
-                <Skeleton className="h-4 w-24" />
+              <div className="pt-6 border-t border-border/40 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-20 rounded-xl" />
+                  <Skeleton className="h-20 rounded-xl" />
                 </div>
+                <Skeleton className="h-10 w-full rounded-xl" />
               </div>
             </div>
-          </Card>
+          </div>
         ))}
       </div>
     );
@@ -165,7 +169,7 @@ export function BotListTable() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {bots.map((bot, index) => (
           <motion.div
             key={bot.id}
@@ -173,10 +177,10 @@ export function BotListTable() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.05 }}
           >
-            <Link href={`/bots/${bot.id}`} className="block">
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/30 group cursor-pointer">
+            <Link href={`/bots/${bot.id}`} className="block h-full">
+              <Card className="relative h-full overflow-hidden rounded-[24px] border border-border/50 bg-card/40 backdrop-blur-md transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:border-primary/40 hover:-translate-y-1.5 hover:bg-card/60 group cursor-pointer">
                 {/* Hover gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                 <div className="relative p-5">
                   {/* Header: Status + Name + Actions */}
@@ -202,33 +206,33 @@ export function BotListTable() {
                           variant={
                             bot.status === "active" ? "default" : "secondary"
                           }
-                          className={`text-xs ${
+                          className={`text-[10px] font-bold uppercase tracking-wider h-5 px-2 rounded-full ring-1 ring-inset ${
                             bot.status === "active"
-                              ? "bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20"
+                              ? "bg-green-500/10 text-green-500 ring-green-500/20"
                               : bot.status === "error"
-                              ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-red-500/10 text-red-500 ring-red-500/20"
+                              : "bg-muted text-muted-foreground ring-border/50"
                           }`}
                         >
                           {tDetail(`status.${bot.status}` as any)}
                         </Badge>
                       </div>
-                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                      <h3 className="font-bold text-lg leading-tight text-foreground truncate group-hover:text-primary transition-colors">
                         {bot.strategy?.name || tDetail("unknownStrategy")}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <Badge
                           variant="outline"
-                          className="text-xs font-normal border-border/50"
+                          className="text-[10px] font-bold border-border/50 bg-muted/30 h-5 px-1.5"
                         >
                           {bot.ticker}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className={`text-xs font-normal ${
+                          className={`text-[10px] font-bold h-5 px-1.5 ${
                             bot.mode === "paper"
-                              ? "border-amber-500/30 text-amber-500"
-                              : "border-green-500/30 text-green-500"
+                              ? "border-amber-500/30 text-amber-500 bg-amber-500/5"
+                              : "border-green-500/30 text-green-500 bg-green-500/5"
                           }`}
                         >
                           {bot.mode === "paper"
@@ -307,17 +311,20 @@ export function BotListTable() {
                     <div className="grid grid-cols-2 gap-3">
                       {/* Total PnL */}
                       <div
-                        className={`p-3 rounded-lg ${
-                          bot.totalPnl >= 0 ? "bg-green-500/5" : "bg-red-500/5"
-                        }`}
+                        className={cn(
+                          "p-4 rounded-xl border border-border/40 transition-colors duration-300",
+                          bot.totalPnl >= 0
+                            ? "bg-green-500/5 group-hover:bg-green-500/10 border-green-500/10"
+                            : "bg-red-500/5 group-hover:bg-red-500/10 border-red-500/10"
+                        )}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           {bot.totalPnl >= 0 ? (
-                            <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                            <TrendingUp className="h-3 w-3 text-green-500" />
                           ) : (
-                            <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+                            <TrendingDown className="h-3 w-3 text-red-500" />
                           )}
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
                             {t("pnl")}
                           </span>
                         </div>
@@ -354,13 +361,16 @@ export function BotListTable() {
 
                       {/* Daily PnL */}
                       <div
-                        className={`p-3 rounded-lg ${
-                          bot.dailyPnl >= 0 ? "bg-green-500/5" : "bg-red-500/5"
-                        }`}
+                        className={cn(
+                          "p-4 rounded-xl border border-border/40 transition-colors duration-300",
+                          bot.dailyPnl >= 0
+                            ? "bg-green-500/5 group-hover:bg-green-500/10 border-green-500/10"
+                            : "bg-red-500/5 group-hover:bg-red-500/10 border-red-500/10"
+                        )}
                       >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <CircleDot className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <CircleDot className="h-3 w-3 text-muted-foreground/60" />
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
                             Today
                           </span>
                         </div>
@@ -398,9 +408,11 @@ export function BotListTable() {
 
                     {/* Balance info */}
                     <div className="mt-3 pt-3 border-t border-border/30">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Balance</span>
-                        <span className="font-medium text-foreground">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                          Balance
+                        </span>
+                        <span className="text-sm font-bold text-foreground tabular-nums">
                           $
                           {(
                             bot.currentBalance || bot.initialCapital

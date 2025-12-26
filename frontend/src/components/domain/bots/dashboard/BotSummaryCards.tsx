@@ -118,7 +118,7 @@ export function BotSummaryCards() {
       {cards.map((card, index) => (
         <Card
           key={index}
-          className="relative overflow-hidden p-6 transition-all duration-300 hover:shadow-lg hover:border-primary/30 group"
+          className="relative overflow-hidden rounded-2xl border border-border/40 bg-card/40 backdrop-blur-md p-6 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-1.5 group"
         >
           {/* Subtle gradient overlay on hover */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -126,14 +126,14 @@ export function BotSummaryCards() {
           <div className="relative flex items-start justify-between">
             <div className="space-y-2 flex-1">
               {/* Title */}
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {card.title}
               </p>
 
               {/* Value with trend indicator */}
               <div className="flex items-center gap-2">
                 <span
-                  className={`text-2xl font-bold tracking-tight ${
+                  className={`text-2xl font-black tracking-tight tabular-nums ${
                     card.trend === "up"
                       ? "text-green-500"
                       : card.trend === "down"
