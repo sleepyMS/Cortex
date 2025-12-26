@@ -445,16 +445,27 @@ function StrategiesPageContent() {
   const effectiveViewMode = isSplitView ? "list" : viewMode;
 
   return (
-    <>
-      {/* Split view layout */}
+    <AnimatePresence mode="wait">
       {isSplitView ? (
-        <div className="flex h-full overflow-hidden">
+        <motion.div
+          key="split-view"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex h-full overflow-hidden"
+        >
           {/* Left sidebar - Strategy list (hidden on mobile) */}
           <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "320px", opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            initial={{ width: 0, opacity: 0, x: -30 }}
+            animate={{ width: "320px", opacity: 1, x: 0 }}
+            exit={{ width: 0, opacity: 0, x: -20 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              mass: 0.8,
+            }}
             className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-full"
           >
             <div className="flex-shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
@@ -512,10 +523,15 @@ function StrategiesPageContent() {
 
           {/* Right panel - Strategy editor */}
           <motion.div
-            initial={{ width: "100%", opacity: 0 }}
-            animate={{ width: isSplitView ? "80%" : "100%", opacity: 1 }}
-            exit={{ width: "100%", opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              delay: 0.1,
+            }}
             className="flex-1 overflow-hidden"
           >
             <StrategyEditorPanel
@@ -523,10 +539,17 @@ function StrategiesPageContent() {
               onClose={handleCloseEditor}
             />
           </motion.div>
-        </div>
+        </motion.div>
       ) : (
         /* Normal full-width view */
-        <div className="container mx-auto max-w-7xl px-4 py-12">
+        <motion.div
+          key="normal-view"
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 260, damping: 25 }}
+          className="container mx-auto max-w-7xl px-4 py-12"
+        >
           {/* 1. Enhanced page header with gradient */}
           <div className="relative mb-12">
             <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse-slow pointer-events-none" />
@@ -880,9 +903,9 @@ function StrategiesPageContent() {
               )}
             </DialogContent>
           </Dialog>
-        </div>
+        </motion.div>
       )}
-    </>
+    </AnimatePresence>
   );
 }
 
