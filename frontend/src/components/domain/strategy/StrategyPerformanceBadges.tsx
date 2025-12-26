@@ -53,9 +53,9 @@ const MetricBadge = ({
           </span>
         </div>
       </TooltipTrigger>
-      <TooltipContent className="p-2 max-w-[200px]">
-        <p className="font-bold text-xs mb-0.5">{label}</p>
-        <p className="text-[10px] text-muted-foreground leading-tight">
+      <TooltipContent className="p-2.5 max-w-[240px]">
+        <p className="font-bold text-sm mb-1">{label}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
           {tooltip}
         </p>
       </TooltipContent>

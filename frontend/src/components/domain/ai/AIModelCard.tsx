@@ -136,7 +136,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                 )}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 border border-border/50">
                   <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">
                     {model.trainingSymbol}
                   </span>
                 </div>
@@ -146,7 +146,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
             {/* Status Badge */}
             <div
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-current/20 backdrop-blur-md",
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border border-current/20 backdrop-blur-md",
                 config.bgColor,
                 config.color
               )}
@@ -164,7 +164,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
           {/* Stats Box */}
           <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/20 border border-border/50 group-hover:bg-muted/30 transition-colors">
             <div className="space-y-1.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {t("card.timeframe")}
               </p>
               <p className="text-sm font-extrabold text-foreground tracking-tight">
@@ -172,7 +172,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
               </p>
             </div>
             <div className="space-y-1.5 text-center border-l border-border/50">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {t("card.period")}
               </p>
               <p className="text-sm font-extrabold text-foreground tracking-tight">

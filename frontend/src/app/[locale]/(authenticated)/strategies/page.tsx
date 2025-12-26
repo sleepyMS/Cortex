@@ -529,49 +529,53 @@ function StrategiesPageContent() {
         <div className="container mx-auto max-w-7xl px-4 py-12">
           {/* 1. Enhanced page header with gradient */}
           <div className="relative mb-12">
-            <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse-slow pointer-events-none" />
+            <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -z-10 pointer-events-none" />
 
-            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-8 border-b border-border/50">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                    Strategy Hub
+            <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8 pb-8 border-b border-border/40">
+              <div className="space-y-4 text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                   </span>
+                  Strategy Hub
                 </div>
                 <h1 className="text-5xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">
                   {t("title")}
                 </h1>
                 <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
                   {t("subtitle", {
-                    defaultMessage:
-                      "Craft, manage, and scale your trading algorithms with precision.",
+                    defaultMessage: "운용 전략을 정밀하게 설계하고 관리하세요.",
                   })}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center p-1 bg-muted/30 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm">
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="hidden sm:flex items-center p-1 bg-muted/30 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm">
                   <Button
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    variant={
+                      effectiveViewMode === "grid" ? "secondary" : "ghost"
+                    }
                     size="sm"
                     onClick={() => setViewMode("grid")}
                     aria-label="Grid view"
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg transition-all",
-                      viewMode === "grid" ? "shadow-sm" : ""
+                      effectiveViewMode === "grid" ? "shadow-sm" : ""
                     )}
                   >
                     <LayoutGrid className="h-4.5 w-4.5" />
                   </Button>
                   <Button
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    variant={
+                      effectiveViewMode === "list" ? "secondary" : "ghost"
+                    }
                     size="sm"
                     onClick={() => setViewMode("list")}
                     aria-label="List view"
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg transition-all",
-                      viewMode === "list" ? "shadow-sm" : ""
+                      effectiveViewMode === "list" ? "shadow-sm" : ""
                     )}
                   >
                     <List className="h-4.5 w-4.5" />
@@ -579,7 +583,7 @@ function StrategiesPageContent() {
                 </div>
                 <Button
                   size="lg"
-                  className="gap-2.5 px-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
+                  className="flex-1 md:flex-none gap-2.5 px-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
                   onClick={handleNavigateToCreate}
                 >
                   <PlusCircle className="h-5 w-5" />
@@ -625,7 +629,7 @@ function StrategiesPageContent() {
                   {/* 상태 필터 */}
                   <div className="space-y-1.5 min-w-[160px]">
                     <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 ml-1">
-                      Status
+                      Status Filter
                     </span>
                     <Select
                       value={filterStatus}

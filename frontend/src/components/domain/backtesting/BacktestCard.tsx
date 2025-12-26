@@ -260,12 +260,17 @@ export const BacktestCard = ({
               >
                 <div className="flex items-center justify-center gap-1.5 mb-2">
                   <Tooltip>
-                    <TooltipTrigger className="cursor-help inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
+                    <TooltipTrigger className="cursor-help inline-flex items-center gap-1 text-[11px] uppercase font-bold tracking-widest text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
                       {t("totalReturn")}
-                      <HelpCircle className="h-2.5 w-2.5 opacity-40" />
+                      <HelpCircle className="h-3 w-3 opacity-40" />
                     </TooltipTrigger>
-                    <TooltipContent className="text-[10px]">
-                      {t("totalReturnTooltip")}
+                    <TooltipContent className="max-w-[220px] p-2.5">
+                      <p className="font-bold text-sm mb-1">
+                        {t("totalReturn")}
+                      </p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t("totalReturnTooltip")}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -293,12 +298,15 @@ export const BacktestCard = ({
               <div className="p-4 rounded-xl border border-border/50 bg-blue-500/5 group-hover:bg-blue-500/10 border-blue-500/10 flex flex-col items-center text-center transition-colors duration-300">
                 <div className="flex items-center justify-center gap-1.5 mb-2">
                   <Tooltip>
-                    <TooltipTrigger className="cursor-help inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
+                    <TooltipTrigger className="cursor-help inline-flex items-center gap-1 text-[11px] uppercase font-bold tracking-widest text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
                       MDD
-                      <HelpCircle className="h-2.5 w-2.5 opacity-40" />
+                      <HelpCircle className="h-3 w-3 opacity-40" />
                     </TooltipTrigger>
-                    <TooltipContent className="text-[10px]">
-                      {t("mddPctTooltip")}
+                    <TooltipContent className="max-w-[220px] p-2.5">
+                      <p className="font-bold text-sm mb-1">MDD</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t("mddPctTooltip")}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>

@@ -66,7 +66,6 @@ import {
 // --- 분리된 재사용 컴포넌트 임포트 ---
 import { StrategyPerformanceBadges } from "./StrategyPerformanceBadges";
 import { KeyIndicatorBadges } from "./KeyIndicatorBadges";
-import { StrategySparkline } from "./StrategySparkline";
 
 // --- Props 타입 정의 ---
 interface StrategyCardProps {
@@ -343,21 +342,8 @@ export function StrategyCard({
 
         <Link
           href={`/strategies?edit=${strategy.id}`}
-          className="flex items-center gap-6 flex-grow p-4 truncate z-10"
+          className="flex-grow p-4 truncate z-10"
         >
-          <div className="flex-shrink-0">
-            <StrategySparkline
-              width={80}
-              height={32}
-              color={
-                strategy.latestBacktestSummary?.totalReturnPct &&
-                strategy.latestBacktestSummary.totalReturnPct >= 0
-                  ? "#10b981"
-                  : "#f43f5e"
-              }
-            />
-          </div>
-
           <div className="flex-grow truncate space-y-1">
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">
@@ -443,7 +429,7 @@ export function StrategyCard({
         href={`/strategies?edit=${strategy.id}`}
         className="flex flex-col flex-grow h-full p-6 space-y-5"
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center justify-between gap-4">
           <div className="space-y-1.5 flex-1 min-w-0">
             <h3 className="text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
               {strategy.name}
@@ -477,19 +463,6 @@ export function StrategyCard({
                 </Badge>
               )}
             </div>
-          </div>
-
-          <div className="flex-shrink-0 pt-1">
-            <StrategySparkline
-              width={70}
-              height={28}
-              color={
-                strategy.latestBacktestSummary?.totalReturnPct &&
-                strategy.latestBacktestSummary.totalReturnPct >= 0
-                  ? "#10b981"
-                  : "#f43f5e"
-              }
-            />
           </div>
         </div>
 

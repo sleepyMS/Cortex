@@ -226,11 +226,16 @@ export const OptimizationJobCard = ({
                 <div className="space-y-1 text-center">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help w-full">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
                         {t("bestScore")}
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>{t("bestScoreTooltip")}</TooltipContent>
+                    <TooltipContent className="max-w-[220px] p-2.5">
+                      <p className="font-bold text-sm mb-1">{t("bestScore")}</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t("bestScoreTooltip")}
+                      </p>
+                    </TooltipContent>
                   </Tooltip>
                   <p
                     className={cn(
@@ -249,11 +254,18 @@ export const OptimizationJobCard = ({
                 <div className="space-y-1 text-center border-l border-border/50">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help w-full">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
                         {t("bestReturn")}
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>{t("bestReturnTooltip")}</TooltipContent>
+                    <TooltipContent className="max-w-[220px] p-2.5">
+                      <p className="font-bold text-sm mb-1">
+                        {t("bestReturn")}
+                      </p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t("bestReturnTooltip")}
+                      </p>
+                    </TooltipContent>
                   </Tooltip>
                   <p
                     className={cn(
@@ -272,11 +284,16 @@ export const OptimizationJobCard = ({
                 <div className="space-y-1 text-center border-l border-border/50">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help w-full">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
                         {t("bestMdd")}
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>{t("bestMddTooltip")}</TooltipContent>
+                    <TooltipContent className="max-w-[220px] p-2.5">
+                      <p className="font-bold text-sm mb-1">{t("bestMdd")}</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t("bestMddTooltip")}
+                      </p>
+                    </TooltipContent>
                   </Tooltip>
                   <p className="text-base font-bold tracking-tight text-foreground">
                     {bestResultSummary?.mddPct?.toFixed(1) ?? "-"}%
