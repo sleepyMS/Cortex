@@ -471,91 +471,88 @@ export default function OptimizationPage() {
                 </Select>
               </div>
             </div>
-
-            {/* Active Filter Badges */}
-            {(statusFilter !== "all" ||
-              strategyFilter !== "all" ||
-              typeFilter !== "all") && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 mt-4"
-              >
-                <div className="flex items-center gap-2 mr-2">
-                  <div className="w-1 h-1 rounded-full bg-primary" />
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
-                    Active Filters
-                  </span>
-                </div>
-                {statusFilter !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-full text-[10px] font-bold"
-                  >
-                    {t(
-                      `filterStatus${
-                        statusFilter.charAt(0).toUpperCase() +
-                        statusFilter.slice(1)
-                      }` as any
-                    )}
-                    <button
-                      onClick={() => setStatusFilter("all")}
-                      className="hover:text-foreground transition-colors ml-1"
-                    >
-                      <XCircle className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {strategyFilter !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-full text-[10px] font-bold"
-                  >
-                    <span className="max-w-[120px] truncate">
-                      {
-                        strategiesData?.find((s) => s.id === strategyFilter)
-                          ?.name
-                      }
-                    </span>
-                    <button
-                      onClick={() => setStrategyFilter("all")}
-                      className="hover:text-foreground transition-colors ml-1"
-                    >
-                      <XCircle className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {typeFilter !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-full text-[10px] font-bold"
-                  >
-                    {typeFilter === "general"
-                      ? t("filterTypeGeneral")
-                      : t("filterTypeWFO")}
-                    <button
-                      onClick={() => setTypeFilter("all")}
-                      className="hover:text-foreground transition-colors ml-1"
-                    >
-                      <XCircle className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setStatusFilter("all");
-                    setStrategyFilter("all");
-                    setTypeFilter("all");
-                  }}
-                  className="h-7 px-3 text-[10px] font-bold text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all"
-                >
-                  Clear All
-                </Button>
-              </motion.div>
-            )}
           </div>
+
+          {/* Active Filter Badges - Now placed below the filter controls */}
+          {(statusFilter !== "all" ||
+            strategyFilter !== "all" ||
+            typeFilter !== "all") && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-wrap items-center gap-2 pt-4 border-t border-border/40"
+            >
+              <div className="flex items-center gap-2 mr-2">
+                <div className="w-1 h-1 rounded-full bg-primary" />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
+                  Active Filters
+                </span>
+              </div>
+              {statusFilter !== "all" && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-full text-[10px] font-bold"
+                >
+                  {t(
+                    `filterStatus${
+                      statusFilter.charAt(0).toUpperCase() +
+                      statusFilter.slice(1)
+                    }` as any
+                  )}
+                  <button
+                    onClick={() => setStatusFilter("all")}
+                    className="hover:text-foreground transition-colors ml-1"
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {strategyFilter !== "all" && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-full text-[10px] font-bold"
+                >
+                  <span className="max-w-[120px] truncate">
+                    {strategiesData?.find((s) => s.id === strategyFilter)?.name}
+                  </span>
+                  <button
+                    onClick={() => setStrategyFilter("all")}
+                    className="hover:text-foreground transition-colors ml-1"
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {typeFilter !== "all" && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-full text-[10px] font-bold"
+                >
+                  {typeFilter === "general"
+                    ? t("filterTypeGeneral")
+                    : t("filterTypeWFO")}
+                  <button
+                    onClick={() => setTypeFilter("all")}
+                    className="hover:text-foreground transition-colors ml-1"
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStatusFilter("all");
+                  setStrategyFilter("all");
+                  setTypeFilter("all");
+                }}
+                className="h-7 px-3 text-[10px] font-bold text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all"
+              >
+                Clear All
+              </Button>
+            </motion.div>
+          )}
         </div>
 
         {/* --- 메인 콘텐츠 --- */}
