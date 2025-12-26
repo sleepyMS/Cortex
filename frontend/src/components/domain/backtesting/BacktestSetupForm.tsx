@@ -146,7 +146,10 @@ export function BacktestSetupForm() {
       leverage: 1,
       feePct: 0.05,
       slippagePct: 0.01,
-      dateRange: undefined, // 전략 선택 후 자동 설정됨
+      dateRange: {
+        from: startOfDay(addDays(new Date(), -365)),
+        to: startOfDay(new Date()),
+      },
       overrides: [],
       trailingStopEnabled: false,
     },
@@ -319,12 +322,24 @@ export function BacktestSetupForm() {
   const restrictedRanges = dataAvailability?.restrictedRanges || [];
 
   // 전략 선택 시 자동으로 1년 기간 설정 (또는 가능한 최대 범위)
+  // 전략 선택 시 자동으로 1년 기간 설정 (또는 가능한 최대 범위)
   useEffect(() => {
     if (!watchedStrategyId || !dataAvailability) return;
 
-    // 이미 날짜가 설정되어 있으면 건드리지 않음 (재실행 시)
     const currentDateRange = methods.getValues("dateRange");
-    if (currentDateRange?.from && currentDateRange?.to) return;
+
+    // [New] sourceBacktest에서 로드된 날짜라면 오버라이드 하지 않음
+    if (sourceBacktest && sourceBacktest.strategyId === watchedStrategyId) {
+      const sourceFrom = new Date(sourceBacktest.parameters.startDate);
+      const sourceTo = new Date(sourceBacktest.parameters.endDate);
+      // 현재 폼 값과 소스 백테스트 값이 같다면(초기화 직후 등), 자동 변경 하지 않음
+      if (
+        currentDateRange?.from?.getTime() === sourceFrom.getTime() &&
+        currentDateRange?.to?.getTime() === sourceTo.getTime()
+      ) {
+        return;
+      }
+    }
 
     const today = startOfDay(new Date());
     const oneYearAgo = startOfDay(addDays(today, -365));
@@ -335,11 +350,19 @@ export function BacktestSetupForm() {
     // 시작일: 1년 전 또는 데이터 최소 날짜 중 더 늦은 날짜
     const startDate = minDate > oneYearAgo ? startOfDay(minDate) : oneYearAgo;
 
+    // 기존 값과 동일하면 불필요한 업데이트 방지 (선택적)
+    if (
+      currentDateRange?.from?.getTime() === startDate.getTime() &&
+      currentDateRange?.to?.getTime() === today.getTime()
+    ) {
+      return;
+    }
+
     methods.setValue("dateRange", {
       from: startDate,
       to: today,
     });
-  }, [watchedStrategyId, dataAvailability, methods]);
+  }, [watchedStrategyId, dataAvailability, methods, sourceBacktest]);
 
   // --- [핵심 해결책] useRef를 사용한 의존성 분리 ---
   const replaceRef = useRef(replace);
@@ -655,7 +678,7 @@ export function BacktestSetupForm() {
                             }
                             minStartDate={minStartDate}
                             disabled={!watchedStrategyId}
-                            placeholder="전략을 먼저 선택하세요"
+                            placeholder="기간을 선택하세요"
                             restrictedRanges={restrictedRanges}
                           />
                           <FormMessage className="pt-1" />
