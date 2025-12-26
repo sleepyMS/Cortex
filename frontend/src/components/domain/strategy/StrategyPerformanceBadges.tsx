@@ -40,23 +40,24 @@ const MetricBadge = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        {/* asChild를 제거하고, 일반 div를 트리거로 사용 (BacktestCard와 동일한 패턴) */}
         <div
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-help",
+            "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all duration-200 hover:scale-105 cursor-help shadow-sm",
             colorClass
           )}
         >
-          <Icon className="h-3.5 w-3.5" />
-          <span>
+          <Icon className="h-3.5 w-3.5 opacity-80" />
+          <span className="tabular-nums">
             {value.toFixed(2)}
             {unit}
           </span>
         </div>
       </TooltipTrigger>
-      <TooltipContent>
-        <p className="font-semibold">{label}</p>
-        <p className="text-xs text-muted-foreground">{tooltip}</p>
+      <TooltipContent className="p-2 max-w-[200px]">
+        <p className="font-bold text-xs mb-0.5">{label}</p>
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          {tooltip}
+        </p>
       </TooltipContent>
     </Tooltip>
   );

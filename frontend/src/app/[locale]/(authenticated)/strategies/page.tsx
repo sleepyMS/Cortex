@@ -16,6 +16,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 import apiClient from "@/lib/apiClient";
+import { cn } from "@/lib/utils";
 import { Strategy } from "@/types/strategy";
 
 // --- Hooks ---
@@ -34,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Badge } from "@/components/ui/Badge";
 import { Form } from "@/components/ui/Form";
 import {
   Dialog,
@@ -524,50 +526,64 @@ function StrategiesPageContent() {
         </div>
       ) : (
         /* Normal full-width view */
-        <div className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="container mx-auto max-w-7xl px-4 py-12">
           {/* 1. Enhanced page header with gradient */}
-          <div className="relative mb-10">
-            <div className="absolute inset-0 gradient-radial-subtle opacity-50 -z-10" />
-            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 pb-6 border-b">
-              <div className="space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight text-foreground">
+          <div className="relative mb-12">
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-8 border-b border-border/50">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                    Strategy Hub
+                  </span>
+                </div>
+                <h1 className="text-5xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">
                   {t("title")}
                 </h1>
-                <p className="text-muted-foreground text-lg">
+                <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
                   {t("subtitle", {
                     defaultMessage:
-                      "Manage and analyze your trading strategies",
+                      "Craft, manage, and scale your trading algorithms with precision.",
                   })}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center p-1 bg-muted/50 rounded-lg border">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center p-1 bg-muted/30 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm">
                   <Button
                     variant={viewMode === "grid" ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode("grid")}
                     aria-label="Grid view"
-                    className="h-9 w-9 p-0"
+                    className={cn(
+                      "h-9 w-9 p-0 rounded-lg transition-all",
+                      viewMode === "grid" ? "shadow-sm" : ""
+                    )}
                   >
-                    <LayoutGrid className="h-5 w-5" />
+                    <LayoutGrid className="h-4.5 w-4.5" />
                   </Button>
                   <Button
                     variant={viewMode === "list" ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode("list")}
                     aria-label="List view"
-                    className="h-9 w-9 p-0"
+                    className={cn(
+                      "h-9 w-9 p-0 rounded-lg transition-all",
+                      viewMode === "list" ? "shadow-sm" : ""
+                    )}
                   >
-                    <List className="h-5 w-5" />
+                    <List className="h-4.5 w-4.5" />
                   </Button>
                 </div>
                 <Button
                   size="lg"
-                  className="gap-2"
+                  className="gap-2.5 px-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
                   onClick={handleNavigateToCreate}
                 >
                   <PlusCircle className="h-5 w-5" />
-                  {t("createNewStrategy")}
+                  <span className="font-bold">{t("createNewStrategy")}</span>
                 </Button>
               </div>
             </div>
@@ -576,25 +592,25 @@ function StrategiesPageContent() {
           {/* 2. Content Area wrapped in GlassPane */}
           <GlassPane className="p-6 md:p-8">
             {/* Filter UI */}
-            <div className="mb-8 space-y-4">
-              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="mb-10 space-y-6">
+              <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
                 {/* 검색 입력창 */}
-                <div className="relative w-full lg:w-[300px]">
+                <div className="relative w-full lg:w-[400px] group">
                   <Input
                     placeholder={t("searchPlaceholder")}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10 bg-background/50 border-input/50 w-full transition-all focus:ring-2 focus:ring-primary/20"
+                    className="pl-11 h-12 bg-background/40 border-border/40 w-full transition-all focus:ring-4 focus:ring-primary/10 rounded-xl font-medium"
                   />
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
+                      width="20"
+                      height="20"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       className="lucide lucide-search"
@@ -605,84 +621,188 @@ function StrategiesPageContent() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
                   {/* 상태 필터 */}
-                  <Select
-                    value={filterStatus}
-                    onValueChange={(v: any) => setFilterStatus(v)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[140px] bg-background/50 border-input/50">
-                      <SelectValue placeholder={t("filterPlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("filterAll")}</SelectItem>
-                      <SelectItem value="public">
-                        {t("filterPublic")}
-                      </SelectItem>
-                      <SelectItem value="private">
-                        {t("filterPrivate")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1.5 min-w-[160px]">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 ml-1">
+                      Status
+                    </span>
+                    <Select
+                      value={filterStatus}
+                      onValueChange={(v: any) => setFilterStatus(v)}
+                    >
+                      <SelectTrigger className="w-full bg-background/40 border-border/40 h-10 rounded-lg">
+                        <SelectValue placeholder={t("filterPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("filterAll")}</SelectItem>
+                        <SelectItem value="public">
+                          {t("filterPublic")}
+                        </SelectItem>
+                        <SelectItem value="private">
+                          {t("filterPrivate")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* 지표 필터 */}
-                  <Select
-                    value={indicatorFilter}
-                    onValueChange={(v: any) => setIndicatorFilter(v)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[160px] bg-background/50 border-input/50">
-                      <SelectValue
-                        placeholder={t("indicatorFilterPlaceholder")}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {t("indicatorFilterAll")}
-                      </SelectItem>
-                      {KEY_INDICATORS.map((indicator) => (
-                        <SelectItem key={indicator} value={indicator}>
-                          {indicator}
+                  <div className="space-y-1.5 min-w-[180px]">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 ml-1">
+                      Indicators
+                    </span>
+                    <Select
+                      value={indicatorFilter}
+                      onValueChange={(v: any) => setIndicatorFilter(v)}
+                    >
+                      <SelectTrigger className="w-full bg-background/40 border-border/40 h-10 rounded-lg">
+                        <SelectValue
+                          placeholder={t("indicatorFilterPlaceholder")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          {t("indicatorFilterAll")}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        {KEY_INDICATORS.map((indicator) => (
+                          <SelectItem key={indicator} value={indicator}>
+                            {indicator}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* 정렬 */}
-                  <Select
-                    value={sortBy}
-                    onValueChange={(v: any) => setSortBy(v)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[160px] bg-background/50 border-input/50">
-                      <SelectValue placeholder={t("sortByPlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="updated_at_desc">
-                        {t("sortByLastUpdated")}
-                      </SelectItem>
-                      <SelectItem value="created_at_desc">
-                        {t("sortByNewest")}
-                      </SelectItem>
-                      <SelectItem value="name_asc">
-                        {t("sortByNameAsc")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* 필터 초기화 버튼 */}
-                  {(filterStatus !== "all" || indicatorFilter !== "all") && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setFilterStatus("all");
-                        setIndicatorFilter("all");
-                      }}
-                      className="px-3"
+                  <div className="space-y-1.5 min-w-[180px]">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 ml-1">
+                      Sort By
+                    </span>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(v: any) => setSortBy(v)}
                     >
-                      Reset
-                    </Button>
-                  )}
+                      <SelectTrigger className="w-full bg-background/40 border-border/40 h-10 rounded-lg">
+                        <SelectValue placeholder={t("sortByPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="updated_at_desc">
+                          {t("sortByLastUpdated")}
+                        </SelectItem>
+                        <SelectItem value="created_at_desc">
+                          {t("sortByNewest")}
+                        </SelectItem>
+                        <SelectItem value="name_asc">
+                          {t("sortByNameAsc")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
+
+              {/* Active Filter Badges */}
+              {(filterStatus !== "all" ||
+                indicatorFilter !== "all" ||
+                debouncedSearchTerm) && (
+                <div className="flex flex-wrap items-center gap-2 pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground mr-1">
+                    Active Filters:
+                  </span>
+                  {filterStatus !== "all" && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+                    >
+                      {filterStatus === "public"
+                        ? t("filterPublic")
+                        : t("filterPrivate")}
+                      <button
+                        onClick={() => setFilterStatus("all")}
+                        className="hover:text-foreground"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6 6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </Badge>
+                  )}
+                  {indicatorFilter !== "all" && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+                    >
+                      {indicatorFilter}
+                      <button
+                        onClick={() => setIndicatorFilter("all")}
+                        className="hover:text-foreground"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6 6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </Badge>
+                  )}
+                  {debouncedSearchTerm && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+                    >
+                      &quot;{debouncedSearchTerm}&quot;
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="hover:text-foreground"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6 6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterStatus("all");
+                      setIndicatorFilter("all");
+                      setSearchTerm("");
+                    }}
+                    className="h-6 px-2 text-[10px] font-bold text-muted-foreground hover:text-primary"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* 3. 전략 목록 */}

@@ -66,6 +66,7 @@ import {
 // --- 분리된 재사용 컴포넌트 임포트 ---
 import { StrategyPerformanceBadges } from "./StrategyPerformanceBadges";
 import { KeyIndicatorBadges } from "./KeyIndicatorBadges";
+import { StrategySparkline } from "./StrategySparkline";
 
 // --- Props 타입 정의 ---
 interface StrategyCardProps {
@@ -337,33 +338,49 @@ export function StrategyCard({
 
     // Full list view for normal page
     return (
-      <Card className="group flex items-center w-full p-4 transition-all duration-200 ease-in-out border border-border/60 hover:border-primary/20 hover:shadow-sm bg-card/50 hover:bg-card">
+      <Card className="group relative flex items-center w-full p-0 transition-all duration-300 ease-in-out border border-border/50 hover:border-primary/40 bg-card/40 backdrop-blur-md hover:bg-card/60 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
         <Link
           href={`/strategies?edit=${strategy.id}`}
-          className="flex items-center gap-6 flex-grow truncate"
+          className="flex items-center gap-6 flex-grow p-4 truncate z-10"
         >
+          <div className="flex-shrink-0">
+            <StrategySparkline
+              width={80}
+              height={32}
+              color={
+                strategy.latestBacktestSummary?.totalReturnPct &&
+                strategy.latestBacktestSummary.totalReturnPct >= 0
+                  ? "#10b981"
+                  : "#f43f5e"
+              }
+            />
+          </div>
+
           <div className="flex-grow truncate space-y-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+              <h3 className="text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">
                 {strategy.name}
               </h3>
               {strategy.marketplaceListing && (
                 <Badge
                   variant="secondary"
-                  className="bg-teal-50 text-teal-700 border-teal-200 text-[10px] px-1.5 py-0 h-5"
+                  className="bg-primary/10 text-primary border-primary/20 text-[10px] px-1.5 py-0 h-5"
                 >
                   <Store className="mr-1 h-3 w-3" />
                   {t("selling")}
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground truncate max-w-2xl">
+            <p className="text-xs text-muted-foreground truncate max-w-xl">
               {strategy.description || t("noDescription")}
             </p>
           </div>
         </Link>
-        <div className="flex items-center gap-6 flex-shrink-0 ml-4">
-          <div className="hidden xl:block">
+
+        <div className="flex items-center gap-6 flex-shrink-0 pr-6 ml-auto z-10">
+          <div className="hidden xl:block opacity-80 hover:opacity-100 transition-opacity">
             <StrategyPerformanceBadges
               summary={strategy.latestBacktestSummary}
             />
@@ -372,27 +389,27 @@ export function StrategyCard({
             <KeyIndicatorBadges strategy={strategy} />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Badge
               variant="outline"
               className={cn(
-                "flex items-center gap-1.5 h-7 px-2.5 font-normal",
+                "flex items-center gap-1.5 h-6 px-2 font-medium border-border/50",
                 strategy.isPublic
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : "bg-slate-50 text-slate-600 border-slate-200"
+                  ? "bg-blue-500/5 text-blue-500 border-blue-500/20"
+                  : "bg-muted text-muted-foreground border-border"
               )}
             >
               {strategy.isPublic ? (
-                <Globe className="h-3.5 w-3.5" />
+                <Globe className="h-3 w-3" />
               ) : (
-                <Lock className="h-3.5 w-3.5" />
+                <Lock className="h-3 w-3" />
               )}
-              <span className="text-xs">
+              <span className="text-[10px]">
                 {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
               </span>
             </Badge>
 
-            <p className="hidden sm:block text-xs text-muted-foreground w-24 text-right tabular-nums">
+            <p className="hidden md:block text-[11px] text-muted-foreground/60 w-20 text-right tabular-nums">
               {displayDateString
                 ? format(new Date(displayDateString), "yyyy.MM.dd")
                 : t("noDate")}
@@ -403,7 +420,7 @@ export function StrategyCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-primary/10"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -418,77 +435,101 @@ export function StrategyCard({
 
   // --- Grid View 렌더링 ---
   return (
-    <Card className="group flex flex-col justify-between h-full transition-all duration-300 ease-in-out border border-border/60 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 bg-card/50 hover:bg-card overflow-hidden">
+    <Card className="group relative flex flex-col justify-between h-full transition-all duration-500 ease-out border border-border/50 hover:border-primary/40 bg-card/40 backdrop-blur-md hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-primary/5 hover:-translate-y-1.5 overflow-hidden">
+      {/* Premium hover effect */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
       <Link
         href={`/strategies?edit=${strategy.id}`}
-        className="flex flex-col flex-grow h-full p-5"
+        className="flex flex-col flex-grow h-full p-6 space-y-5"
       >
-        <CardHeader className="p-0 mb-3 space-y-1">
-          <div className="flex items-start justify-between gap-4">
-            <CardTitle className="text-xl font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1.5 flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
               {strategy.name}
-            </CardTitle>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {strategy.marketplaceListing && (
-                <Badge
-                  variant="secondary"
-                  className="bg-teal-50 text-teal-700 border-teal-200 text-[10px] px-1.5 py-0 h-5"
-                >
-                  <Store className="mr-1 h-3 w-3" />
-                  {t("selling")}
-                </Badge>
-              )}
+            </h3>
+            <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
                 className={cn(
-                  "flex items-center gap-1.5 h-5 px-1.5 text-[10px] font-normal",
+                  "flex items-center gap-1 h-5 px-1.5 text-[9px] font-bold uppercase tracking-wider border-border/50",
                   strategy.isPublic
-                    ? "bg-blue-50 text-blue-700 border-blue-200"
-                    : "bg-slate-50 text-slate-600 border-slate-200"
+                    ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                    : "bg-muted text-muted-foreground"
                 )}
               >
                 {strategy.isPublic ? (
-                  <Globe className="h-3 w-3" />
+                  <Globe className="h-2.5 w-2.5" />
                 ) : (
-                  <Lock className="h-3 w-3" />
+                  <Lock className="h-2.5 w-2.5" />
                 )}
                 <span>
                   {strategy.isPublic ? t("statusPublic") : t("statusPrivate")}
                 </span>
               </Badge>
+              {strategy.marketplaceListing && (
+                <Badge
+                  variant="secondary"
+                  className="bg-primary/10 text-primary border-primary/20 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0 h-5"
+                >
+                  <Store className="mr-1 h-2.5 w-2.5" />
+                  {t("selling")}
+                </Badge>
+              )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0 flex-grow space-y-4">
-          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px] leading-relaxed">
-            {strategy.description || t("noDescription")}
-          </p>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground uppercase tracking-wider font-medium">
-              <span>Performance</span>
-            </div>
+
+          <div className="flex-shrink-0 pt-1">
+            <StrategySparkline
+              width={70}
+              height={28}
+              color={
+                strategy.latestBacktestSummary?.totalReturnPct &&
+                strategy.latestBacktestSummary.totalReturnPct >= 0
+                  ? "#10b981"
+                  : "#f43f5e"
+              }
+            />
+          </div>
+        </div>
+
+        <p className="text-sm text-muted-foreground/80 line-clamp-2 min-h-[40px] leading-relaxed">
+          {strategy.description || t("noDescription")}
+        </p>
+
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-widest font-bold opacity-60">
+            <span>Performance Analytics</span>
+          </div>
+          <div className="transform transition-transform duration-300 group-hover:translate-x-1">
             <StrategyPerformanceBadges
               summary={strategy.latestBacktestSummary}
             />
           </div>
-        </CardContent>
+        </div>
       </Link>
-      <CardFooter className="px-5 py-3 border-t bg-muted/20 flex flex-col gap-2">
-        <div className="w-full">
+
+      <CardFooter className="px-6 py-4 border-t border-border/50 bg-muted/10 flex flex-col gap-3">
+        <div className="w-full overflow-hidden">
           <KeyIndicatorBadges strategy={strategy} />
         </div>
         <div className="flex items-center justify-between w-full">
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {displayDateString
-              ? format(new Date(displayDateString), "yyyy.MM.dd")
-              : t("noDate")}
-          </p>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted-foreground/50 uppercase font-bold tracking-tighter">
+              Last Updated
+            </span>
+            <p className="text-[11px] text-muted-foreground font-medium tabular-nums">
+              {displayDateString
+                ? format(new Date(displayDateString), "yyyy.MM.dd")
+                : t("noDate")}
+            </p>
+          </div>
           <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 -mr-2"
+                className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-primary/10 -mr-2"
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
