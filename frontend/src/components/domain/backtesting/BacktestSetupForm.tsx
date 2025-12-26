@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { addDays, startOfDay } from "date-fns";
+import { addDays, startOfDay, format } from "date-fns";
 import Link from "next/link";
 import {
   PlusCircle,
@@ -299,6 +299,7 @@ export function BacktestSetupForm() {
     timeframe: string;
     minDate: string | null;
     maxDate: string | null;
+    restrictedRanges: { start: string; end: string; reason: string }[];
   }>({
     queryKey: ["strategyDataAvailability", watchedStrategyId],
     queryFn: async () => {
@@ -313,6 +314,9 @@ export function BacktestSetupForm() {
   const minStartDate = dataAvailability?.minDate
     ? new Date(dataAvailability.minDate)
     : undefined;
+
+  // AI 학습 데이터 기간 제한 목록
+  const restrictedRanges = dataAvailability?.restrictedRanges || [];
 
   // 전략 선택 시 자동으로 1년 기간 설정 (또는 가능한 최대 범위)
   useEffect(() => {
@@ -507,8 +511,40 @@ export function BacktestSetupForm() {
       ),
   });
 
-  const onSubmit = (values: FormValues) =>
+  const onSubmit = (values: FormValues) => {
+    // AI 학습 데이터 기간과 겹치는지 최종 확인 (Look-ahead Bias 방지)
+    if (
+      restrictedRanges.length > 0 &&
+      values.dateRange?.from &&
+      values.dateRange?.to
+    ) {
+      const start = startOfDay(values.dateRange.from);
+      const end = startOfDay(values.dateRange.to);
+
+      const overlappedRange = restrictedRanges.find((range) => {
+        const rangeStart = startOfDay(new Date(range.start));
+        const rangeEnd = startOfDay(new Date(range.end));
+        // 기간 겹침 확인 로직
+        // 교집합이 존재하면 True: (Start <= RangeEnd) and (End >= RangeStart)
+        return start <= rangeEnd && end >= rangeStart;
+      });
+
+      if (overlappedRange) {
+        methods.setError("dateRange", {
+          type: "manual",
+          message: `선택한 기간이 AI 모델 학습 데이터(${
+            overlappedRange.reason
+          })와 겹칩니다. 백테스트 편향을 방지하기 위해 ${format(
+            new Date(overlappedRange.end),
+            "yyyy-MM-dd"
+          )} 이후의 날짜를 선택해주세요.`,
+        });
+        return; // 제출 중단
+      }
+    }
+
     createBacktestMutation.mutate(values);
+  };
 
   if (!isLoaded) {
     return (
@@ -620,6 +656,7 @@ export function BacktestSetupForm() {
                             minStartDate={minStartDate}
                             disabled={!watchedStrategyId}
                             placeholder="전략을 먼저 선택하세요"
+                            restrictedRanges={restrictedRanges}
                           />
                           <FormMessage className="pt-1" />
                         </FormItem>

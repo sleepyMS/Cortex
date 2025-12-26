@@ -366,3 +366,52 @@ def validate_ai_lookahead_bias(
     
     return violations
 
+
+def extract_ai_training_periods(
+    strategy: Union[schemas.StrategyCreate, schemas.Strategy, Dict[str, Any]],
+    db_session
+) -> List[Dict[str, Any]]:
+    """
+    전략 내 모든 AI 모델의 학습 기간(시작~종료)을 추출합니다.
+    백테스트/최적화 시 해당 기간을 제외하기 위해 사용됩니다.
+    
+    Returns:
+        [{ 'start': datetime, 'end': datetime, 'model_name': str, 'reason': str }, ...]
+    """
+    ai_blocks = extract_ai_blocks_from_strategy(strategy)
+    
+    if not ai_blocks:
+        return []
+    
+    periods = []
+    
+    if db_session is None:
+        return []
+    
+    # DB에서 AI 모델 정보 조회
+    from ..models import AIModel
+    
+    for ai_block in ai_blocks:
+        model_id = ai_block.get('model_id')
+        if not model_id:
+            continue
+        
+        try:
+            ai_model = db_session.query(AIModel).filter(AIModel.id == model_id).first()
+            
+            if ai_model is None:
+                continue
+            
+            if ai_model.training_start_date and ai_model.training_end_date:
+                periods.append({
+                    'start': ai_model.training_start_date,
+                    'end': ai_model.training_end_date,
+                    'model_name': ai_model.name,
+                    'reason': f"AI Model '{ai_model.name}' Training Period"
+                })
+                
+        except Exception as e:
+            logger.error(f"Error extracting AI model period {model_id}: {e}")
+            
+    return periods
+

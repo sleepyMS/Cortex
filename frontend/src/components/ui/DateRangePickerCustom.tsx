@@ -28,6 +28,7 @@ interface DateRangePickerCustomProps {
   minStartDate?: Date;
   disabled?: boolean;
   placeholder?: string;
+  restrictedRanges?: { start: string; end: string; reason: string }[];
 }
 
 export function DateRangePickerCustom({
@@ -40,6 +41,7 @@ export function DateRangePickerCustom({
   minStartDate,
   disabled = false,
   placeholder = "날짜 범위를 선택하세요",
+  restrictedRanges = [],
 }: DateRangePickerCustomProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const locale = useLocale();
@@ -160,6 +162,7 @@ export function DateRangePickerCustom({
               onSelectDate={(date) => onStartDateChange(date)}
               minDate={minStartDate}
               maxDate={endDate ? addDays(endDate, -1) : startOfDay(new Date())}
+              restrictedRanges={restrictedRanges}
             />
 
             <div className="px-2 hidden lg:flex">
@@ -176,6 +179,7 @@ export function DateRangePickerCustom({
               onSelectDate={(date) => onEndDateChange(date)}
               minDate={startDate ? addDays(startDate, 1) : undefined}
               maxDate={startOfDay(new Date())}
+              restrictedRanges={restrictedRanges}
             />
           </div>
         </PopoverContent>

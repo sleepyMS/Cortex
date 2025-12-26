@@ -37,6 +37,7 @@ interface CalendarGridProps {
   onSelectDate: (date: Date) => void;
   minDate?: Date;
   maxDate?: Date;
+  restrictedRanges?: { start: string; end: string; reason: string }[];
 }
 
 export function CalendarGrid({
@@ -46,6 +47,7 @@ export function CalendarGrid({
   onSelectDate,
   minDate,
   maxDate,
+  restrictedRanges = [],
 }: CalendarGridProps) {
   const currentYear = getYear(currentMonth);
   const currentMonthIndex = getMonth(currentMonth);
@@ -61,9 +63,25 @@ export function CalendarGrid({
     (_, i) => null
   );
 
+  const isDateDisabled = (date: Date) => {
+    // 1. Min/Max 제한
+    if (minDate && isBefore(startOfDay(date), startOfDay(minDate))) return true;
+    if (maxDate && isAfter(startOfDay(date), startOfDay(maxDate))) return true;
+
+    // 2. AI 학습 기간 제한 (Restricted Ranges)
+    return restrictedRanges.some((range) => {
+      const start = startOfDay(new Date(range.start));
+      const end = startOfDay(new Date(range.end));
+      const target = startOfDay(date);
+      return target >= start && target <= end;
+    });
+  };
+
   const handleDayClick = (day: number) => {
     const newDate = new Date(currentYear, currentMonthIndex, day);
-    onSelectDate(newDate);
+    if (!isDateDisabled(newDate)) {
+      onSelectDate(newDate);
+    }
   };
 
   const handleMonthChange = (monthIdx: string) => {
@@ -168,10 +186,21 @@ export function CalendarGrid({
         ))}
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((dayNum) => {
           const date = new Date(currentYear, currentMonthIndex, dayNum);
-          const startOfMinDate = minDate ? startOfDay(minDate) : null;
-          const isDisabled =
-            (startOfMinDate && isBefore(date, startOfMinDate)) ||
-            (maxDate && isAfter(date, maxDate));
+
+          // 제한 사유 찾기
+          const restrictInfo = restrictedRanges.find((range) => {
+            const start = startOfDay(new Date(range.start));
+            const end = startOfDay(new Date(range.end));
+            const target = startOfDay(date);
+            return target >= start && target <= end;
+          });
+
+          const isDisabled = isDateDisabled(date) || !!restrictInfo; // isDateDisabled 함수가 있지만 렌더링 최적화를 위해 여기서도 체크 가능하거나 isDateDisabled만 써도 됨.
+          // 하지만 위에서 정의한 isDateDisabled 함수를 쓰는게 일관됨.
+          // 여기서는 isDateDisabled 함수를 호출하는 것으로 통일.
+
+          const disabledByFunction = isDateDisabled(date);
+
           const isSelected = selectedDate && isSameDay(date, selectedDate);
 
           return (
@@ -179,14 +208,18 @@ export function CalendarGrid({
               key={dayNum}
               type="button"
               onClick={() => handleDayClick(dayNum)}
-              disabled={isDisabled}
+              disabled={disabledByFunction}
+              title={restrictInfo ? restrictInfo.reason : undefined}
               className={cn(
                 "w-9 h-9 rounded-md flex items-center justify-center text-sm transition-colors",
                 "hover:bg-accent hover:text-accent-foreground",
                 isSelected &&
                   "bg-primary text-primary-foreground hover:bg-primary",
-                isDisabled &&
-                  "text-muted-foreground opacity-50 pointer-events-none"
+                disabledByFunction &&
+                  "text-muted-foreground opacity-50 pointer-events-none",
+                // AI 제한 기간 스타일링 (빨간색 빗금 또는 배경)
+                restrictInfo &&
+                  "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 line-through decoration-red-500/50"
               )}
             >
               {dayNum}

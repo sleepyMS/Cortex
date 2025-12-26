@@ -15,6 +15,12 @@ from ..services.marketplace_service import marketplace_service
 from ..services.signal_service import signal_service
 from ..limiter import limiter
 from ..schemas import StrategyInList 
+from ..utils.strategy_utils import (
+    get_min_timeframe_minutes, 
+    convert_minutes_to_timeframe_string, 
+    extract_ai_blocks_from_strategy
+)
+from ..services.market_data_service import market_data_service 
 
 logger = logging.getLogger(__name__)
 
@@ -184,8 +190,6 @@ async def get_strategy_data_availability(
     """
     전략에서 사용하는 가장 작은 타임프레임을 기준으로 DB 데이터 가용 범위를 조회합니다.
     """
-    from ..utils.strategy_utils import get_min_timeframe_minutes, convert_minutes_to_timeframe_string
-    from ..services.market_data_service import market_data_service
     
     # 1. 전략 조회
     strategy = await strategy_service.get_strategy_for_user(db, strategy_id=strategy_id, user=current_user)
@@ -207,11 +211,37 @@ async def get_strategy_data_availability(
         timeframe=target_timeframe
     )
     
+    # 5. [New] AI 모델 학습 데이터 기간 (Look-ahead Bias 방지)
+    restricted_ranges = []
+    
+    try:
+        ai_blocks = extract_ai_blocks_from_strategy(strategy)
+        model_ids = {block.get('model_id') for block in ai_blocks if block.get('model_id')}
+        
+        if model_ids:
+            # Async DB Query
+            query = select(models.AIModel).where(models.AIModel.id.in_(model_ids))
+            result = await db.execute(query)
+            ai_models = result.scalars().all()
+            
+            for ai_model in ai_models:
+                if ai_model.training_start_date and ai_model.training_end_date:
+                    restricted_ranges.append({
+                        "start": ai_model.training_start_date.isoformat(),
+                        "end": ai_model.training_end_date.isoformat(),
+                        "model_name": ai_model.name,
+                        "reason": f"AI Model '{ai_model.name}' Training Period"
+                    })
+    except Exception as e:
+        # AI 모델 정보 조회 실패는 치명적이지 않으므로 로깅만 하고 계속 진행
+        print(f"Error fetching AI model info: {e}")
+
     return {
         "ticker": ticker,
         "timeframe": target_timeframe,
         "minDate": date_range.get("minDate"),
-        "maxDate": date_range.get("maxDate")
+        "maxDate": date_range.get("maxDate"),
+        "restrictedRanges": restricted_ranges
     }
 
 @router.get("/{strategy_id}", response_model=schemas.Strategy, summary="Get a specific strategy by ID")
