@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useReAuth } from "@/hooks/useReAuth";
 import { Toaster } from "sonner";
 import { pick } from "lodash";
+import { SmoothScroller } from "@/components/providers/SmoothScroller";
 
 export function Providers({
   children,
@@ -56,8 +57,10 @@ export function Providers({
           // messages 객체에서 formats 키를 명시적으로 추출하여 별도의 prop으로 전달합니다.
           formats={messages.formats as any}
         >
-          {children}
-          <Toaster />
+          <SmoothScroller>
+            {children}
+            <Toaster />
+          </SmoothScroller>
         </NextIntlClientProvider>
       </QueryClientProvider>
     </ThemeProvider>

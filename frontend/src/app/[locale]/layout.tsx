@@ -36,13 +36,13 @@ export default function RootLayout({
   const messages = useMessages();
 
   return (
-    <html lang={locale} className="h-full" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>
       <body
         className={cn(
-          "min-h-full bg-background font-sans text-foreground flex flex-col",
+          "min-h-screen bg-background font-sans text-foreground flex flex-col",
           fontSans.variable
         )}
       >
