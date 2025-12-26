@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 # [중요] 여러 메서드에서 공통으로 사용되는 핵심 키를 전역 상수로 정의하여 누락 방지
 BASE_OHLCV_KEYS = {'open', 'high', 'low', 'close', 'volume'}
+WARM_UP_LIMIT = 200  # 지표 계산의 안정성을 위한 워밍업 데이터 개수
 
 INDICATOR_KIND_MAP = {
     "STOCHASTIC": "stoch",
@@ -72,8 +73,10 @@ class SignalService:
         [UI용] 요청된 기술적 지표와 관련된 모든 출력값을 계산하여 반환합니다.
         (기존 로직 100% 유지)
         """
+        # [최적화] 정확도를 위한 워밍업 포함 + 결과 슬라이싱
+        full_limit = request.limit + WARM_UP_LIMIT
         df = await market_data_service.get_latest_data(
-            db=db, ticker=request.ticker, timeframe=request.timeframe, limit=500
+            db=db, ticker=request.ticker, timeframe=request.timeframe, limit=full_limit
         )
         if df.empty:
             return {}
@@ -104,11 +107,13 @@ class SignalService:
             if key_lower in BASE_OHLCV_KEYS:
                 if key_lower in df.columns:
                     series_data = df[[key_lower, 'time']].dropna()
+                    # [수정] OHLCV 키도 요청된 limit만큼만 반환하도록 tail() 적용
                     results[key_lower] = [
                         schemas.IndicatorDataPoint(time=row['time'], value=row[key_lower])
-                        for row in series_data.to_dict('records')
+                        for row in series_data.tail(request.limit).to_dict('records')
                     ]
                 continue
+
             
             known_prefixes = OUTPUT_PREFIX_MAP.get(key_upper, [])
             if not known_prefixes: continue
@@ -127,7 +132,7 @@ class SignalService:
                                 else row[col_name]
                             )
                         )
-                        for row in series_data.to_dict('records')
+                        for row in series_data.tail(request.limit).to_dict('records')
                     ]
                     processed_columns.add(col_name)
         return results
@@ -278,16 +283,25 @@ class SignalService:
         기존 generate_signals의 하단부 로직을 그대로 옮겨왔습니다.
         """
         final_signals: List[schemas.SignalDataPoint] = []
+        
+        # [수정] UI 요청(Limit 존재)인 경우, 결과 데이터프레임을 슬라이싱하여 
+        # 워밍업 기간의 신호가 반환되지 않도록 합니다.
+        limit = getattr(rules_source, 'limit', None)
+        eval_df = df.tail(limit) if limit else df
 
         def process_rules(rules: Optional[schemas.PositionRules], signal_type: str):
             if not rules or not rules.blocks: return
-            # _parse_logic_block_to_series는 기존과 100% 동일하게 동작함
+            # _parse_logic_block_to_series는 원본 df를 사용해야 지표/이전값 참조가 정확함
+            # 하지만 결과 선택은 eval_df의 인덱스를 기준으로 수행
             block_results = [self._parse_logic_block_to_series(df, block, base_timeframe=base_timeframe) for block in rules.blocks]
             op = any if rules.logic_operator == "OR" else all
             final_series = pd.DataFrame(block_results).transpose().apply(op, axis=1)
-            signal_points = df[final_series]
+            
+            # eval_df의 인덱스에 매칭되는 신호만 추출
+            signal_points = eval_df[final_series.reindex(eval_df.index, fill_value=False)]
             for _, row in signal_points.iterrows():
                 final_signals.append(schemas.SignalDataPoint(time=int(row['time']), signal_type=signal_type))
+
 
         process_rules(rules_source.long_entry_rules, "long_entry")
         process_rules(rules_source.long_exit_rules, "long_exit")
@@ -757,7 +771,11 @@ class SignalService:
             if config_id not in indicators_by_tf[tf]: indicators_by_tf[tf][config_id] = config
 
         for tf in indicators_by_tf: indicators_by_tf[tf] = list(indicators_by_tf[tf].values())
-        return {"timeframes": sorted(list(timeframes), key=timeframe_to_minutes), "indicators": indicators_by_tf}
+        return {
+            "timeframes": sorted(list(timeframes), key=timeframe_to_minutes), 
+            "indicators": indicators_by_tf,
+            "request": request
+        }
     
     def _get_calculation_base_timeframe(self, required_timeframes: List[str]) -> str:
         return min(required_timeframes, key=timeframe_to_minutes) if required_timeframes else '1h'
@@ -771,7 +789,11 @@ class SignalService:
         if not all_timeframes: return pd.DataFrame(), '1h'
 
         calc_base_tf = self._get_calculation_base_timeframe(all_timeframes)
-        base_df = await market_data_service.get_latest_data(db, ticker, calc_base_tf, limit=2000)
+        # [최적화] 요청된 limit에 워밍업 추가
+        request_limit = getattr(configs.get('request'), 'limit', 300)
+        full_limit = request_limit + WARM_UP_LIMIT
+        
+        base_df = await market_data_service.get_latest_data(db, ticker, calc_base_tf, limit=full_limit)
         if base_df.empty: return pd.DataFrame(), calc_base_tf
         
         # [중요] 기존의 인라인 지표 계산 로직을 대체하지만, 
@@ -780,7 +802,7 @@ class SignalService:
 
         for tf in all_timeframes:
             if tf == calc_base_tf: continue
-            df_higher = await market_data_service.get_latest_data(db, ticker, tf, limit=2000)
+            df_higher = await market_data_service.get_latest_data(db, ticker, tf, limit=full_limit)
             if df_higher.empty: continue
             
             self._apply_indicators(df_higher, configs['indicators'].get(tf, []))

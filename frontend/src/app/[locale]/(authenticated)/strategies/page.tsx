@@ -246,6 +246,8 @@ function StrategiesPageContent() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length > 0 ? allPages.length : undefined,
     initialPageParam: 0,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // --- 데이터 페칭 (전략 상세 정보) ---
@@ -445,29 +447,11 @@ function StrategiesPageContent() {
   const effectiveViewMode = isSplitView ? "list" : viewMode;
 
   return (
-    <AnimatePresence mode="wait">
+    <div className="h-full">
       {isSplitView ? (
-        <motion.div
-          key="split-view"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="flex h-full overflow-hidden"
-        >
+        <div key="split-view" className="flex h-full overflow-hidden">
           {/* Left sidebar - Strategy list (hidden on mobile) */}
-          <motion.div
-            initial={{ width: 0, opacity: 0, x: -30 }}
-            animate={{ width: "320px", opacity: 1, x: 0 }}
-            exit={{ width: 0, opacity: 0, x: -20 }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-              mass: 0.8,
-            }}
-            className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-full"
-          >
+          <div className="hidden md:flex flex-col border-r bg-muted/30 overflow-hidden h-full w-[320px]">
             <div className="flex-shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1">
@@ -496,7 +480,7 @@ function StrategiesPageContent() {
                   {t("noStrategiesAvailable")}
                 </div>
               ) : (
-                strategies.map((strategy: Strategy) => (
+                strategies.map((strategy: Strategy, index: number) => (
                   <div
                     key={strategy.id}
                     className={`transition-all rounded-lg ${
@@ -519,37 +503,19 @@ function StrategiesPageContent() {
                 {isFetchingNextPage && <Spinner />}
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right panel - Strategy editor */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-              delay: 0.1,
-            }}
-            className="flex-1 overflow-hidden"
-          >
+          <div className="flex-1 overflow-hidden">
             <StrategyEditorPanel
               strategyId={editStrategyId}
               onClose={handleCloseEditor}
             />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       ) : (
         /* Normal full-width view */
-        <motion.div
-          key="normal-view"
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.98 }}
-          transition={{ type: "spring", stiffness: 260, damping: 25 }}
-          className="container mx-auto max-w-7xl px-4 py-12"
-        >
+        <div className="container mx-auto max-w-7xl px-4 py-12">
           {/* 1. Enhanced page header with gradient */}
           <div className="relative mb-12">
             <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse-slow pointer-events-none" />
@@ -903,9 +869,9 @@ function StrategiesPageContent() {
               )}
             </DialogContent>
           </Dialog>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </div>
   );
 }
 

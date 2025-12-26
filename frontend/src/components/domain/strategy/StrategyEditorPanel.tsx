@@ -92,6 +92,30 @@ const barVariants = {
   exit: { y: 60, opacity: 0 },
 } as const;
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.08,
+    },
+  },
+} as const;
+
+const itemVariants = {
+  hidden: { y: 15, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 180,
+      damping: 22,
+    },
+  },
+} as const;
+
 // --- Zod form schema ---
 const formSchema = z.object({
   name: z
@@ -137,7 +161,7 @@ const fetchOHLCVData = async (
   timeframe: string
 ): Promise<CandlestickData<UTCTimestamp>[]> => {
   const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
-    params: { ticker, timeframe, limit: 500 },
+    params: { ticker, timeframe, limit: 300 },
   });
   return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
 };
@@ -155,6 +179,7 @@ const fetchIndicatorData = async (
       ticker,
       timeframe,
       indicators: indicatorConfigs,
+      limit: 300,
     },
     { signal }
   );
@@ -175,6 +200,7 @@ const fetchSignalData = async (
     {
       ticker,
       timeframe,
+      limit: 300,
       ...rules,
     },
     { signal }
@@ -208,7 +234,32 @@ export function StrategyEditorPanel({
   const [hubSelectionMode, setHubSelectionMode] = useState<
     "full" | "indicatorOnly"
   >("full");
-  const [chartTicker, setChartTicker] = useState("BTCUSDT");
+  const [chartTicker, setChartTicker] = useState(() => {
+    // Try to get ticker from query cache immediately
+    if (strategyId) {
+      // Look through all queries that start with "userStrategies"
+      const allQueries = queryClient.getQueriesData<any>({
+        queryKey: ["userStrategies"],
+      });
+      for (const [_, queryData] of allQueries) {
+        if (!queryData) continue;
+
+        // Infinite query data is nested in pages
+        const strategyList = queryData.pages
+          ? queryData.pages.flat()
+          : queryData;
+        const cached = Array.isArray(strategyList)
+          ? strategyList.find((s: any) => s.id === strategyId)
+          : null;
+
+        if (cached && cached.targetCoins?.[0]?.ticker) {
+          return cached.targetCoins[0].ticker;
+        }
+      }
+    }
+    return "BTCUSDT";
+  });
+
   const [chartTimeframe, setChartTimeframe] = useState("1h");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
@@ -228,6 +279,23 @@ export function StrategyEditorPanel({
     queryKey: ["strategy", strategyId],
     queryFn: () => fetchStrategy(strategyId!),
     enabled: isEditMode,
+    initialData: () => {
+      if (!strategyId) return undefined;
+      const allQueries = queryClient.getQueriesData<any>({
+        queryKey: ["userStrategies"],
+      });
+      for (const [_, queryData] of allQueries) {
+        if (!queryData) continue;
+        const strategyList = queryData.pages
+          ? queryData.pages.flat()
+          : queryData;
+        const cached = Array.isArray(strategyList)
+          ? strategyList.find((s: any) => s.id === strategyId)
+          : null;
+        if (cached) return cached;
+      }
+      return undefined;
+    },
   });
 
   const isZustandDirty = useMemo(() => {
@@ -350,8 +418,23 @@ export function StrategyEditorPanel({
   );
 
   const [debouncedRules, setDebouncedRules] = useState(currentRules);
+  const isInitialRulesLoad = useRef(true);
 
   useEffect(() => {
+    // If it's the first time rules are loaded, or they are empty, skip debounce for snappier startup
+    if (isInitialRulesLoad.current) {
+      if (
+        currentRules.longEntryRules ||
+        currentRules.longExitRules ||
+        currentRules.shortEntryRules ||
+        currentRules.shortExitRules
+      ) {
+        setDebouncedRules(currentRules);
+        isInitialRulesLoad.current = false;
+        return;
+      }
+    }
+
     const timer = setTimeout(() => {
       setDebouncedRules(currentRules);
     }, 500);
@@ -381,14 +464,16 @@ export function StrategyEditorPanel({
     queryKey: ["indicators", chartTicker, chartTimeframe, indicatorConfigs],
     queryFn: ({ signal }) =>
       fetchIndicatorData(chartTicker, chartTimeframe, indicatorConfigs, signal),
-    enabled: !!ohlcvData && indicatorConfigs.length > 0,
+    enabled: indicatorConfigs.length > 0,
   });
 
   const { data: signalData, isLoading: isLoadingSignals } = useQuery({
     queryKey: ["signals", chartTicker, chartTimeframe, debouncedRules],
     queryFn: ({ signal }) =>
       fetchSignalData(chartTicker, chartTimeframe, debouncedRules, signal),
-    enabled: !!ohlcvData && !!debouncedRules,
+    enabled:
+      !!debouncedRules &&
+      (!!debouncedRules.longEntryRules || !!debouncedRules.shortEntryRules),
   });
 
   const handleAddTopLevelRule = (ruleType: StrategyType) => {
@@ -671,14 +756,8 @@ export function StrategyEditorPanel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDirty, onClose]);
 
-  if (isEditMode && isLoadingStrategy) {
-    return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Loading strategy data...</p>
-      </div>
-    );
-  }
+  // No early return for loading to avoid jarring layout shifts
+  const showContent = !isEditMode || (!!existingStrategy && !isLoadingStrategy);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -717,202 +796,255 @@ export function StrategyEditorPanel({
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="p-6">
-          <FormProvider {...formMethods}>
-            <form
-              onSubmit={formMethods.handleSubmit(onSubmit)}
-              className="space-y-8"
+        <AnimatePresence mode="popLayout">
+          {!showContent ? (
+            <motion.div
+              key="loading-skeleton"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-6 space-y-8"
             >
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-                  <div className="flex flex-col gap-8 lg:col-span-3">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>{t("form.basicInfoTitle")}</CardTitle>
-                        <CardDescription>
-                          {t("form.basicInfoDescription")}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <FormField
-                          control={formMethods.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t("form.nameLabel")}</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder={t("form.namePlaceholder")}
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={formMethods.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {t("form.descriptionLabel")}
-                              </FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder={t("form.descriptionPlaceholder")}
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={formMethods.control}
-                          name="isPublic"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                              <div className="space-y-0.5">
-                                <FormLabel>{t("form.isPublicLabel")}</FormLabel>
-                                <FormDescription>
-                                  {t("form.isPublicDescription")}
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </CardContent>
-                    </Card>
-
-                    {isEditMode && existingStrategy?.backtests && (
-                      <StrategySnapshotList
-                        backtests={existingStrategy.backtests}
-                        onRestore={handleRestoreSnapshot}
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-8 lg:col-span-2">
-                    <TargetCoinForm
-                      targetCoins={strategyState.targetCoins}
-                      setTargetCoins={strategyState.setTargetCoins}
-                    />
-                    <TpslForm form={formMethods} onModeChange={setTpslMode} />
-                  </div>
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+                <div className="flex flex-col gap-8 lg:col-span-3">
+                  <Skeleton className="h-[200px] w-full rounded-xl" />
+                  <Skeleton className="h-[400px] w-full rounded-xl" />
                 </div>
-
-                <Separator />
-
-                <GlassPane className="p-6 md:p-8">
-                  <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <h2 className="text-2xl font-bold text-foreground">
-                      {t("chartTitle")}
-                    </h2>
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={chartTicker}
-                        onValueChange={setChartTicker}
-                        disabled={strategyState.targetCoins.length === 0}
-                      >
-                        <SelectTrigger className="w-[180px] bg-background/50">
-                          <SelectValue placeholder="Select a coin" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {strategyState.targetCoins.map((coin) => (
-                            <SelectItem key={coin.ticker} value={coin.ticker}>
-                              {coin.ticker}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={chartTimeframe}
-                        onValueChange={setChartTimeframe}
-                      >
-                        <SelectTrigger className="w-[100px] bg-background/50">
-                          <SelectValue placeholder="Timeframe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[
-                            "1m",
-                            "5m",
-                            "15m",
-                            "30m",
-                            "1h",
-                            "4h",
-                            "1d",
-                            "1w",
-                            "1M",
-                          ].map((tf) => (
-                            <SelectItem key={tf} value={tf}>
-                              {tf}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="relative rounded-lg overflow-hidden border border-primary/10">
-                    {isLoadingOHLCV ? (
-                      <Skeleton className="w-full h-[400px] rounded-lg" />
-                    ) : isError ? (
-                      <div className="w-full h-[400px] rounded-lg border bg-destructive/10 flex items-center justify-center text-destructive font-semibold">
-                        Chart data could not be loaded. (
-                        {(error as Error).message})
-                      </div>
-                    ) : (
-                      <DynamicStrategyChart
-                        rules={{
-                          longEntry: strategyState.longEntryRules,
-                          longExit: strategyState.longExitRules,
-                          shortEntry: strategyState.shortEntryRules,
-                          shortExit: strategyState.shortExitRules,
-                        }}
-                        ohlcvData={ohlcvData}
-                        indicatorData={indicatorData}
-                        isLoadingIndicators={isLoadingIndicators}
-                        signalData={signalData}
-                        isLoadingSignals={isLoadingSignals}
-                      />
-                    )}
-                  </div>
-                </GlassPane>
-
-                <Separator />
-
-                <div>
-                  <h2 className="mb-4 text-2xl font-bold text-foreground">
-                    {t("rulesTitle")}
-                  </h2>
-                  <StrategyBuilderCanvas
-                    longEntryRules={strategyState.longEntryRules}
-                    longExitRules={strategyState.longExitRules}
-                    shortEntryRules={strategyState.shortEntryRules}
-                    shortExitRules={strategyState.shortExitRules}
-                    onAddTopLevelRule={handleAddTopLevelRule}
-                    onTriggerNestedAddRule={handleTriggerNestedAddRule}
-                    onTriggerOperandHub={handleTriggerOperandHub}
-                    onTriggerReplaceBlock={handleTriggerReplaceBlock}
-                    onUpdateRule={(ruleType, id, newBlock) =>
-                      strategyState.updateRule(ruleType, id, newBlock)
-                    }
-                    onDeleteRule={(ruleType, id) =>
-                      strategyState.deleteRule(ruleType, id)
-                    }
-                  />
+                <div className="flex flex-col gap-8 lg:col-span-2">
+                  <Skeleton className="h-[300px] w-full rounded-xl" />
+                  <Skeleton className="h-[200px] w-full rounded-xl" />
                 </div>
               </div>
-            </form>
-          </FormProvider>
-        </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="editor-content"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="p-6"
+            >
+              <FormProvider {...formMethods}>
+                <form
+                  onSubmit={formMethods.handleSubmit(onSubmit)}
+                  className="space-y-8"
+                >
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+                      <div className="flex flex-col gap-8 lg:col-span-3">
+                        <motion.div variants={itemVariants}>
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>{t("form.basicInfoTitle")}</CardTitle>
+                              <CardDescription>
+                                {t("form.basicInfoDescription")}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <FormField
+                                control={formMethods.control}
+                                name="name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>{t("form.nameLabel")}</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder={t("form.namePlaceholder")}
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={formMethods.control}
+                                name="description"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>
+                                      {t("form.descriptionLabel")}
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Textarea
+                                        placeholder={t(
+                                          "form.descriptionPlaceholder"
+                                        )}
+                                        {...field}
+                                        value={field.value ?? ""}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={formMethods.control}
+                                name="isPublic"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                      <FormLabel>
+                                        {t("form.isPublicLabel")}
+                                      </FormLabel>
+                                      <FormDescription>
+                                        {t("form.isPublicDescription")}
+                                      </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                      <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+
+                        {isEditMode && existingStrategy?.backtests && (
+                          <motion.div variants={itemVariants}>
+                            <StrategySnapshotList
+                              backtests={existingStrategy.backtests}
+                              onRestore={handleRestoreSnapshot}
+                            />
+                          </motion.div>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-8 lg:col-span-2">
+                        <motion.div variants={itemVariants}>
+                          <TargetCoinForm
+                            targetCoins={strategyState.targetCoins}
+                            setTargetCoins={strategyState.setTargetCoins}
+                          />
+                        </motion.div>
+                        <motion.div variants={itemVariants}>
+                          <TpslForm
+                            form={formMethods}
+                            onModeChange={setTpslMode}
+                          />
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    <motion.div variants={itemVariants}>
+                      <Separator />
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <GlassPane className="p-6 md:p-8">
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                          <h2 className="text-2xl font-bold text-foreground">
+                            {t("chartTitle")}
+                          </h2>
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={chartTicker}
+                              onValueChange={setChartTicker}
+                              disabled={strategyState.targetCoins.length === 0}
+                            >
+                              <SelectTrigger className="w-[180px] bg-background/50">
+                                <SelectValue placeholder="Select a coin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {strategyState.targetCoins.map((coin) => (
+                                  <SelectItem
+                                    key={coin.ticker}
+                                    value={coin.ticker}
+                                  >
+                                    {coin.ticker}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={chartTimeframe}
+                              onValueChange={setChartTimeframe}
+                            >
+                              <SelectTrigger className="w-[100px] bg-background/50">
+                                <SelectValue placeholder="Timeframe" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[
+                                  "1m",
+                                  "5m",
+                                  "15m",
+                                  "30m",
+                                  "1h",
+                                  "4h",
+                                  "1d",
+                                  "1w",
+                                  "1M",
+                                ].map((tf) => (
+                                  <SelectItem key={tf} value={tf}>
+                                    {tf}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="relative rounded-lg overflow-hidden border border-primary/10">
+                          {isLoadingOHLCV ? (
+                            <Skeleton className="w-full h-[400px] rounded-lg" />
+                          ) : isError ? (
+                            <div className="w-full h-[400px] rounded-lg border bg-destructive/10 flex items-center justify-center text-destructive font-semibold">
+                              Chart data could not be loaded. (
+                              {(error as Error).message})
+                            </div>
+                          ) : (
+                            <DynamicStrategyChart
+                              rules={{
+                                longEntry: strategyState.longEntryRules,
+                                longExit: strategyState.longExitRules,
+                                shortEntry: strategyState.shortEntryRules,
+                                shortExit: strategyState.shortExitRules,
+                              }}
+                              ohlcvData={ohlcvData}
+                              indicatorData={indicatorData}
+                              isLoadingIndicators={isLoadingIndicators}
+                              signalData={signalData}
+                              isLoadingSignals={isLoadingSignals}
+                            />
+                          )}
+                        </div>
+                      </GlassPane>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <Separator />
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <h2 className="mb-4 text-2xl font-bold text-foreground">
+                        {t("rulesTitle")}
+                      </h2>
+                      <StrategyBuilderCanvas
+                        longEntryRules={strategyState.longEntryRules}
+                        longExitRules={strategyState.longExitRules}
+                        shortEntryRules={strategyState.shortEntryRules}
+                        shortExitRules={strategyState.shortExitRules}
+                        onAddTopLevelRule={handleAddTopLevelRule}
+                        onTriggerNestedAddRule={handleTriggerNestedAddRule}
+                        onTriggerOperandHub={handleTriggerOperandHub}
+                        onTriggerReplaceBlock={handleTriggerReplaceBlock}
+                        onUpdateRule={(ruleType, id, newBlock) =>
+                          strategyState.updateRule(ruleType, id, newBlock)
+                        }
+                        onDeleteRule={(ruleType, id) =>
+                          strategyState.deleteRule(ruleType, id)
+                        }
+                      />
+                    </motion.div>
+                  </div>
+                </form>
+              </FormProvider>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Floating save bar */}

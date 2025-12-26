@@ -21,7 +21,7 @@ router = APIRouter(
 async def get_ohlcv(
     ticker: str = Query(..., description="코인 티커 (예: BTCUSDT)"),
     timeframe: str = Query(..., description="타임프레임 (예: 1h, 4h, 1d)"),
-    limit: int = Query(500, ge=1, le=2000, description="데이터 개수 제한"),
+    limit: int = Query(300, ge=1, le=2000, description="데이터 개수 제한"),
     since: Optional[datetime] = Query(None, description="데이터 시작 시점 (ISO 형식)"),
     db: AsyncSession = Depends(get_async_db)
 ):

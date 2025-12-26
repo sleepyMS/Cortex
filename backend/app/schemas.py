@@ -535,11 +535,20 @@ class StrategyResponseBase(CamelCaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-class StrategyInList(StrategyResponseBase):
-    """'목록' 조회를 위한 가벼운 응답 스키마"""
+class StrategySummary(StrategyResponseBase):
+    """전략의 기본 공개 요약 정보 (민감 정보 제외)"""
     latest_backtest_summary: Optional[BacktestResultSummaryForCard] = None
     marketplace_listing: Optional[MarketplaceListing] = None
-    target_coins: List[TargetCoin] = Field(default_factory=list) 
+    target_coins: List[TargetCoin] = Field(default_factory=list)
+
+class StrategyInList(StrategySummary):
+    """'목록' 조회를 위한 응답 스키마 (소유자/구매자용, 규칙 포함)"""
+    long_entry_rules: Optional[PositionRules] = None
+    long_exit_rules: Optional[PositionRules] = None
+    short_entry_rules: Optional[PositionRules] = None
+    short_exit_rules: Optional[PositionRules] = None
+    tpsl_logic: Optional[TpslLogic] = None
+    backtests: List[BacktestHistoryItem] = Field(default_factory=list)
 
 class Strategy(StrategyResponseBase):
     """'상세' 조회를 위한 완전한 응답 스키마"""
@@ -942,6 +951,7 @@ class IndicatorCalculationRequest(CamelCaseModel):
     ticker: str
     timeframe: str
     indicators: List[IndicatorConfig]
+    limit: int = Field(300, ge=1, le=1000, description="반환할 데이터 포인트 개수")
 
 class IndicatorDataPoint(CamelCaseModel):
     """계산된 지표의 단일 데이터 포인트"""
@@ -962,6 +972,7 @@ class SignalCalculationRequest(CamelCaseModel):
     """실시간 신호 계산 요청을 위한 스키마"""
     ticker: str = Field("BTCUSDT", description="대상 티커")
     timeframe: str = Field("1h", description="대상 타임프레임")
+    limit: int = Field(300, ge=1, le=1000, description="반환할 데이터 포인트 개수")
     # 사용자가 편집 중인 규칙을 그대로 받습니다.
     long_entry_rules: Optional[PositionRules] = None
     long_exit_rules: Optional[PositionRules] = None

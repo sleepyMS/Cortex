@@ -235,6 +235,12 @@ export interface StrategyInList {
   latestBacktestSummary: BacktestResultSummaryForCard | null;
   marketplaceListing: MarketplaceListing | null;
   targetCoins: TargetCoin[];
+  backtests: BacktestHistoryItem[];
+  longEntryRules: PositionRules | null;
+  longExitRules: PositionRules | null;
+  shortEntryRules: PositionRules | null;
+  shortExitRules: PositionRules | null;
+  tpslLogic: TpslLogic | null;
 }
 
 /**

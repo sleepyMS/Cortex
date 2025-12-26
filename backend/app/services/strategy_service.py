@@ -142,8 +142,13 @@ class StrategyService:
             select(models.Strategy)
             .options(
                 joinedload(models.Strategy.author),
-                # Strategy 모델의 'backtests' 관계를 함께 로드하도록 지정합니다.
-                selectinload(models.Strategy.backtests).joinedload(models.Backtest.result)
+                selectinload(models.Strategy.backtests).options(
+                    joinedload(models.Backtest.result).load_only(
+                        models.BacktestResult.total_return_pct,
+                        models.BacktestResult.win_rate_pct,
+                        models.BacktestResult.mdd_pct
+                    )
+                )
             )
             .filter(models.Strategy.id == strategy_id)
         )
@@ -214,7 +219,13 @@ class StrategyService:
             marketplace_info_subquery.c.position_type,
             marketplace_info_subquery.c.representative_backtest_id
         ).options(
-            selectinload(models.Strategy.backtests).joinedload(models.Backtest.result)
+            selectinload(models.Strategy.backtests).options(
+                joinedload(models.Backtest.result).load_only(
+                    models.BacktestResult.total_return_pct,
+                    models.BacktestResult.win_rate_pct,
+                    models.BacktestResult.mdd_pct
+                )
+            )
         ).outerjoin(
             latest_backtest_subquery,
             (models.Strategy.id == latest_backtest_subquery.c.strategy_id) & (latest_backtest_subquery.c.row_num == 1)

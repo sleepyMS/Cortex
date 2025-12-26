@@ -82,7 +82,7 @@ class MarketDataService:
         db: AsyncSession,
         ticker: str,
         timeframe: str,
-        limit: int = 500,
+        limit: int = 300,
         since: Optional[datetime] = None,
     ) -> pd.DataFrame:
         """
@@ -133,7 +133,7 @@ class MarketDataService:
             logger.error(f"Error fetching date range for {ticker} ({timeframe}): {e}", exc_info=True)
             return {"minDate": None, "maxDate": None}
 
-    async def get_latest_data(self, db: AsyncSession, ticker: str, timeframe: str, limit: int = 1000) -> pd.DataFrame:
+    async def get_latest_data(self, db: AsyncSession, ticker: str, timeframe: str, limit: int = 300) -> pd.DataFrame:
         """
         실시간 신호 계산 등을 위해 최신 데이터를 조회합니다.
         내부 표준 형식(DatetimeIndex DataFrame)으로 반환합니다.
@@ -194,7 +194,7 @@ class MarketDataService:
             logger.error(f"Error in asyncio.run for historical data fetch: {e}", exc_info=True)
             return pd.DataFrame()
 
-    def get_latest_data_sync(self, db: Session, ticker: str, timeframe: str, limit: int = 1000) -> pd.DataFrame:
+    def get_latest_data_sync(self, db: Session, ticker: str, timeframe: str, limit: int = 300) -> pd.DataFrame:
         """
         [진짜 동기 버전] Eventlet 환경에서 최신 데이터를 조회합니다.
         run_async를 사용하지 않고 순수 동기 SQL로 구현합니다.

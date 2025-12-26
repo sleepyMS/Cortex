@@ -129,7 +129,7 @@ const fetchOHLCVData = async (
   timeframe: string
 ): Promise<CandlestickData<UTCTimestamp>[]> => {
   const { data } = await apiClient.get<OHLCVData[]>("/market/ohlcv", {
-    params: { ticker, timeframe, limit: 500 },
+    params: { ticker, timeframe, limit: 300 },
   });
   return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));
 };
@@ -147,6 +147,7 @@ const fetchIndicatorData = async (
       ticker,
       timeframe,
       indicators: indicatorConfigs,
+      limit: 300,
     },
     { signal }
   );
@@ -167,6 +168,7 @@ const fetchSignalData = async (
     {
       ticker,
       timeframe,
+      limit: 300,
       ...rules,
     },
     { signal }

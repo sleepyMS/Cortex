@@ -55,7 +55,7 @@ export default function BotDetailPage() {
         params: {
           ticker: bot.ticker,
           timeframe: bot.executionInterval,
-          limit: 500,
+          limit: 300,
         },
       });
       return data.map((d) => ({ ...d, time: d.time as UTCTimestamp }));

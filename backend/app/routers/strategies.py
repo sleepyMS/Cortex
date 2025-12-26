@@ -84,7 +84,7 @@ async def get_strategies(
 
 @router.get(
     "/{strategy_id}/summary",
-    response_model=schemas.StrategyInList, # 응답 모델은 '요약' 스키마로 동일
+    response_model=schemas.StrategySummary, # 응답 모델은 '요약' 스키마로 변경 (민감 정보 제외)
     summary="Get public summary of a strategy"
 )
 async def get_strategy_summary(

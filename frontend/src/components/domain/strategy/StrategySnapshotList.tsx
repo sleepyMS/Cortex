@@ -1,3 +1,5 @@
+// file: frontend/src/components/domain/strategy/StrategySnapshotList.tsx
+
 "use client";
 
 import { useState } from "react";
@@ -56,10 +58,6 @@ export function StrategySnapshotList({
       setLoadingId(null);
     }
   };
-
-  // if (!backtests || backtests.length === 0) {
-  //   return null;
-  // }
 
   const sortedBacktests = [...backtests].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
