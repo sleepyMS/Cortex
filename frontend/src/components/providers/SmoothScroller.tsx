@@ -2,7 +2,6 @@
 
 import { ReactLenis } from "@studio-freight/react-lenis";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 
 export function SmoothScroller({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
