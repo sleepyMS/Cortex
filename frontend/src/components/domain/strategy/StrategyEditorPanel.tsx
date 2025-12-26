@@ -904,14 +904,12 @@ export function StrategyEditorPanel({
                           </Card>
                         </motion.div>
 
-                        {isEditMode && existingStrategy?.backtests && (
-                          <motion.div variants={itemVariants}>
-                            <StrategySnapshotList
-                              backtests={existingStrategy.backtests}
-                              onRestore={handleRestoreSnapshot}
-                            />
-                          </motion.div>
-                        )}
+                        <motion.div variants={itemVariants}>
+                          <StrategySnapshotList
+                            backtests={existingStrategy?.backtests ?? []}
+                            onRestore={handleRestoreSnapshot}
+                          />
+                        </motion.div>
                       </div>
                       <div className="flex flex-col gap-8 lg:col-span-2">
                         <motion.div variants={itemVariants}>
