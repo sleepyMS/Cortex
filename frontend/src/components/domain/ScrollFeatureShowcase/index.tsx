@@ -15,12 +15,11 @@ interface ScrollFeatureShowcaseProps {
     sectionTitle: string;
     sectionSubtitle: string;
     statistics: {
-      deepLearning: string;
+      aiLab: string;
+      strategyBuilder: string;
       optimization: string;
-      indicators: string;
-      backtest: string;
-      security: string;
-      trading: string;
+      backtesting: string;
+      infrastructure: string;
     };
     features: {
       aiLab: {

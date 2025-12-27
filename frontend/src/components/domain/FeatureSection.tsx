@@ -14,12 +14,11 @@ const FeatureSection = async () => {
     sectionTitle: t("sectionTitle"),
     sectionSubtitle: t("sectionSubtitle"),
     statistics: {
-      deepLearning: t("statistics.deepLearning"),
+      aiLab: t("statistics.aiLab"),
+      strategyBuilder: t("statistics.strategyBuilder"),
       optimization: t("statistics.optimization"),
-      indicators: t("statistics.indicators"),
-      backtest: t("statistics.backtest"),
-      security: t("statistics.security"),
-      trading: t("statistics.trading"),
+      backtesting: t("statistics.backtesting"),
+      infrastructure: t("statistics.infrastructure"),
     },
     techStack: {
       title: t("techStack.title"),

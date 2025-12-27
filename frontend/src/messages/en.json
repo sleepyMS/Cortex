@@ -117,12 +117,11 @@
       "title": "The Entire Investment Process in One Place",
       "subtitle": "Cortex supports every step, from brainstorming ideas and verifying strategies to automated execution and sharing.",
       "statistics": {
-        "deepLearning": "Deep Learning",
+        "aiLab": "AI Lab",
+        "strategyBuilder": "Strategy Builder",
         "optimization": "Optimization",
-        "indicators": "Indicators",
-        "backtest": "Backtest",
-        "security": "Encryption",
-        "trading": "Auto Trading"
+        "backtesting": "Backtesting",
+        "infrastructure": "Infrastructure"
       },
       "techStack": {
         "title": "Built with Proven Technology Stack"

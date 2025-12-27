@@ -1,88 +1,75 @@
+// file: src/components/domain/ScrollFeatureShowcase/StatisticsCounter.tsx
+
 "use client";
 
 import React, { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Brain, Cpu, BarChart3, Zap, Shield, Clock } from "lucide-react";
+import { Brain, Workflow, Cpu, Zap, Globe } from "lucide-react";
 
-interface StatisticsCounterProps {
+interface FeatureNavProps {
   translations: {
-    deepLearning: string;
+    aiLab: string;
+    strategyBuilder: string;
     optimization: string;
-    indicators: string;
-    backtest: string;
-    security: string;
-    trading: string;
+    backtesting: string;
+    infrastructure: string;
   };
 }
 
-// Feature badge component (no animated counter needed for text features)
-const FeatureBadge: React.FC<{
+const FeatureNavItem: React.FC<{
   icon: React.ReactNode;
-  value: string;
   label: string;
   delay: number;
   inView: boolean;
   color: string;
-}> = ({ icon, value, label, delay, inView, color }) => (
+}> = ({ icon, label, delay, inView, color }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={inView ? { opacity: 1, y: 0 } : {}}
     transition={{ duration: 0.5, delay }}
-    className="text-center group"
+    className="flex flex-col items-center gap-3 group cursor-pointer"
   >
     <div
-      className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${color} mb-3`}
+      className={`inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl ${color} group-hover:scale-110 transition-transform`}
     >
       {icon}
     </div>
-    <div className="text-xl md:text-2xl font-bold text-foreground mb-1">
-      {value}
-    </div>
-    <div className="text-xs md:text-sm text-muted-foreground">{label}</div>
+    <span className="text-sm md:text-base font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+      {label}
+    </span>
   </motion.div>
 );
 
-export const StatisticsCounter: React.FC<StatisticsCounterProps> = ({
+export const StatisticsCounter: React.FC<FeatureNavProps> = ({
   translations,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
-  const stats = [
+  const features = [
     {
-      icon: <Brain className="w-5 h-5 text-violet-400" />,
-      value: "LSTM/GRU",
-      label: translations.deepLearning,
+      icon: <Brain className="w-6 h-6 md:w-7 md:h-7 text-violet-400" />,
+      label: translations.aiLab,
       color: "bg-violet-500/10 border border-violet-500/30",
     },
     {
-      icon: <Cpu className="w-5 h-5 text-orange-400" />,
-      value: "TPE",
+      icon: <Workflow className="w-6 h-6 md:w-7 md:h-7 text-blue-400" />,
+      label: translations.strategyBuilder,
+      color: "bg-blue-500/10 border border-blue-500/30",
+    },
+    {
+      icon: <Cpu className="w-6 h-6 md:w-7 md:h-7 text-orange-400" />,
       label: translations.optimization,
       color: "bg-orange-500/10 border border-orange-500/30",
     },
     {
-      icon: <BarChart3 className="w-5 h-5 text-blue-400" />,
-      value: "30+",
-      label: translations.indicators,
-      color: "bg-blue-500/10 border border-blue-500/30",
+      icon: <Zap className="w-6 h-6 md:w-7 md:h-7 text-green-400" />,
+      label: translations.backtesting,
+      color: "bg-green-500/10 border border-green-500/30",
     },
     {
-      icon: <Zap className="w-5 h-5 text-yellow-400" />,
-      value: "1분",
-      label: translations.backtest,
-      color: "bg-yellow-500/10 border border-yellow-500/30",
-    },
-    {
-      icon: <Shield className="w-5 h-5 text-emerald-400" />,
-      value: "AES-256",
-      label: translations.security,
-      color: "bg-emerald-500/10 border border-emerald-500/30",
-    },
-    {
-      icon: <Clock className="w-5 h-5 text-cyan-400" />,
-      value: "24/7",
-      label: translations.trading,
+      icon: <Globe className="w-6 h-6 md:w-7 md:h-7 text-cyan-400" />,
+      label: translations.infrastructure,
       color: "bg-cyan-500/10 border border-cyan-500/30",
     },
   ];
@@ -93,19 +80,18 @@ export const StatisticsCounter: React.FC<StatisticsCounterProps> = ({
       initial={{ opacity: 0, y: 30 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6 }}
-      className="py-16 px-6 md:px-12 border-y border-border/30 bg-gradient-to-r from-violet-500/5 via-transparent to-violet-500/5"
+      className="py-12 px-6 md:px-12 border-y border-border/30 bg-gradient-to-r from-violet-500/5 via-transparent to-violet-500/5"
     >
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-6 md:gap-8">
-          {stats.map((stat, index) => (
-            <FeatureBadge
-              key={stat.label}
-              icon={stat.icon}
-              value={stat.value}
-              label={stat.label}
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center gap-4 md:gap-8">
+          {features.map((feature, index) => (
+            <FeatureNavItem
+              key={feature.label}
+              icon={feature.icon}
+              label={feature.label}
               delay={index * 0.1}
               inView={inView}
-              color={stat.color}
+              color={feature.color}
             />
           ))}
         </div>
