@@ -215,7 +215,7 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.25, 0.5], [0, 1]);
+  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
   const [progressValue, setProgressValue] = React.useState(0);
 
   React.useEffect(() => {
@@ -226,8 +226,9 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
 
   return (
     <section
+      id="section-ailab"
       ref={containerRef}
-      className="relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[30px] relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent pointer-events-none" />

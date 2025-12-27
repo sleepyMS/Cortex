@@ -1,7 +1,15 @@
+// file: src/components/domain/ScrollFeatureShowcase/sections/StrategyBuilderSection.tsx
+
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import React, { useRef } from "react";
+import {
+  motion,
+  useInView,
+  useScroll,
+  useTransform,
+  MotionValue,
+} from "framer-motion";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/Button";
 import {
@@ -25,7 +33,35 @@ interface StrategyBuilderSectionProps {
 }
 
 // Block Assembly Visual Component
-const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
+// Optimized to use MotionValue directly to avoid React re-renders on scroll
+const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
+  progress,
+}) => {
+  // Transformations for each animation step
+  // Step 0: Container appears (0.2)
+  const containerOpacity = useTransform(progress, [0.15, 0.25], [0, 1]);
+  const containerY = useTransform(progress, [0.15, 0.25], [50, 0]);
+
+  // Step 1: Crossover Block (0.3)
+  const crossoverOpacity = useTransform(progress, [0.25, 0.35], [0, 1]);
+  const crossoverX = useTransform(progress, [0.25, 0.35], [-50, 0]);
+
+  // Step 2: Crossover Items (0.4 - 0.5)
+  const ema1Scale = useTransform(progress, [0.35, 0.45], [0, 1]);
+  const compareScale = useTransform(progress, [0.4, 0.5], [0, 1]);
+  const ema2Scale = useTransform(progress, [0.45, 0.55], [0, 1]);
+
+  // Step 3: State Block (0.6)
+  const stateOpacity = useTransform(progress, [0.55, 0.65], [0, 1]);
+  const stateX = useTransform(progress, [0.55, 0.65], [-50, 0]);
+
+  // Step 4: State Items (0.7)
+  const rsiOpacity = useTransform(progress, [0.65, 0.75], [0, 1]);
+
+  // Step 5: Valid Banner (0.8)
+  const bannerOpacity = useTransform(progress, [0.75, 0.85], [0, 1]);
+  const bannerHeight = useTransform(progress, [0.75, 0.85], [0, 40]); // approx 40px height
+
   return (
     <div className="relative w-full h-full min-h-[450px] p-6 overflow-hidden">
       {/* Background Grid */}
@@ -33,12 +69,7 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
 
       {/* Assembled Strategy Block */}
       <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{
-          opacity: progress > 0.2 ? 1 : 0,
-          y: progress > 0.2 ? 0 : 50,
-        }}
-        transition={{ duration: 0.6 }}
+        style={{ opacity: containerOpacity, y: containerY }}
         className="relative z-10"
       >
         {/* Strategy Header */}
@@ -58,12 +89,7 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
           <div className="p-4 space-y-3">
             {/* Crossover Block */}
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{
-                opacity: progress > 0.3 ? 1 : 0,
-                x: progress > 0.3 ? 0 : -50,
-              }}
-              transition={{ duration: 0.5 }}
+              style={{ opacity: crossoverOpacity, x: crossoverX }}
               className="bg-background border border-border/60 rounded-md overflow-hidden"
             >
               <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
@@ -76,8 +102,7 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
               <div className="p-3 border-l-[3px] border-l-violet-500">
                 <div className="flex items-center gap-2 flex-wrap">
                   <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: progress > 0.4 ? 1 : 0 }}
+                    style={{ scale: ema1Scale }}
                     className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center gap-1"
                   >
                     <span className="font-medium">EMA</span>
@@ -85,15 +110,13 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
                     <Settings className="w-3 h-3 text-muted-foreground" />
                   </motion.div>
                   <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: progress > 0.45 ? 1 : 0 }}
+                    style={{ scale: compareScale }}
                     className="px-2 py-1 bg-violet-500/10 rounded border border-violet-500/30 text-xs text-violet-400"
                   >
                     Crosses Above ▾
                   </motion.div>
                   <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: progress > 0.5 ? 1 : 0 }}
+                    style={{ scale: ema2Scale }}
                     className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center gap-1"
                   >
                     <span className="font-medium">EMA</span>
@@ -104,49 +127,22 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
               </div>
             </motion.div>
 
-            {/* AND Connector + State Based Block */}
+            {/* State-Based Block */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{
-                opacity: progress > 0.55 ? 1 : 0,
-                y: progress > 0.55 ? 0 : 30,
-              }}
-              transition={{ duration: 0.5 }}
-              className="flex"
+              style={{ opacity: stateOpacity, x: stateX }}
+              className="bg-background border border-border/60 rounded-md overflow-hidden"
             >
-              {/* AND Label */}
-              <div className="flex flex-col items-center w-10 shrink-0 -mt-1">
-                <div className="w-0.5 h-3 bg-violet-500/40" />
-                <div className="px-1.5 py-0.5 bg-violet-500/10 border border-violet-500/30 rounded text-[10px] font-bold text-violet-400">
-                  AND
+              <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <BarChart2 className="w-3 h-3 text-blue-400" />
+                  <span className="text-xs font-medium">State Based</span>
                 </div>
-                <div className="w-0.5 flex-1 bg-violet-500/40" />
+                <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
               </div>
-
-              {/* State Based Block */}
-              <div className="flex-1 bg-background border border-border/60 rounded-md overflow-hidden">
-                <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
-                  <div className="flex items-center gap-2">
-                    <BarChart2 className="w-3 h-3 text-violet-400" />
-                    <span className="text-xs font-medium">State Based</span>
-                  </div>
-                  <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
-                </div>
-                <div className="p-3 border-l-[3px] border-l-violet-500 space-y-2">
+              <div className="p-3 border-l-[3px] border-l-blue-500">
+                <div className="flex items-center gap-3">
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: progress > 0.6 ? 1 : 0 }}
-                    className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">RSI</span>
-                      <span className="text-muted-foreground">(14, 15m)</span>
-                    </div>
-                    <Settings className="w-3 h-3 text-muted-foreground" />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: progress > 0.65 ? 1 : 0 }}
+                    style={{ opacity: rsiOpacity }}
                     className="flex items-center gap-2"
                   >
                     <span className="text-[10px] text-muted-foreground w-8">
@@ -163,8 +159,7 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
                     </div>
                   </motion.div>
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: progress > 0.7 ? 1 : 0 }}
+                    style={{ opacity: rsiOpacity }}
                     className="flex items-center gap-2"
                   >
                     <span className="text-[10px] text-muted-foreground w-8">
@@ -182,12 +177,11 @@ const BlockAssemblyVisual: React.FC<{ progress: number }> = ({ progress }) => {
 
           {/* Strategy Valid Banner */}
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{
-              opacity: progress > 0.8 ? 1 : 0,
-              height: progress > 0.8 ? "auto" : 0,
+            style={{
+              opacity: bannerOpacity,
+              height: bannerHeight,
             }}
-            className="px-4 py-2 bg-green-500/10 border-t border-green-500/20 flex items-center justify-center gap-2"
+            className="px-4 bg-green-500/10 border-t border-green-500/20 flex items-center justify-center gap-2 overflow-hidden"
           >
             <div className="w-2 h-2 rounded-full bg-green-500" />
             <span className="text-xs font-medium text-green-500">
@@ -211,19 +205,16 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.25, 0.5], [0, 1]);
-  const [progressValue, setProgressValue] = useState(0);
-
-  useEffect(() => {
-    return progress.on("change", (v) => setProgressValue(v));
-  }, [progress]);
+  // Map scroll progress to animation range [0, 1]
+  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
 
   const highlightIcons = ["📦", "🔗", "💡"];
 
   return (
     <section
+      id="section-strategy"
       ref={containerRef}
-      className="relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[30px] relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       <div className="max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -234,7 +225,8 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
             transition={{ duration: 0.6 }}
           >
             <div className="relative rounded-2xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden shadow-2xl">
-              <BlockAssemblyVisual progress={progressValue} />
+              {/* Pass MotionValue directly to avoid re-renders */}
+              <BlockAssemblyVisual progress={progress} />
             </div>
           </motion.div>
 

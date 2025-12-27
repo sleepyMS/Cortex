@@ -158,7 +158,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
             <span className="text-violet-400">
               {Math.min(visiblePoints, 30)}
             </span>
-            <span className="text-muted-foreground">/100</span>
+            <span className="text-muted-foreground">/30</span>
           </div>
           {/* Progress Bar */}
           <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
@@ -210,7 +210,7 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.25, 0.5], [0, 1]);
+  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
   const [progressValue, setProgressValue] = useState(0);
 
   useEffect(() => {
@@ -221,8 +221,9 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
 
   return (
     <section
+      id="section-optimization"
       ref={containerRef}
-      className="relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[30px] relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent pointer-events-none" />

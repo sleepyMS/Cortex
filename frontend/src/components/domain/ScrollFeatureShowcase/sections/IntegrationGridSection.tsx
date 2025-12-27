@@ -208,8 +208,9 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
 
   return (
     <section
+      id="section-infrastructure"
       ref={containerRef}
-      className="relative py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[110px] relative py-24 px-6 md:px-12 overflow-hidden"
     >
       {/* Section Header */}
       <motion.div

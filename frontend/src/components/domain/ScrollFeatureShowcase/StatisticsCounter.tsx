@@ -2,9 +2,10 @@
 
 "use client";
 
-import React, { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Brain, Workflow, Cpu, Zap, Globe } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FeatureNavProps {
   translations: {
@@ -16,87 +17,195 @@ interface FeatureNavProps {
   };
 }
 
-const FeatureNavItem: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  delay: number;
-  inView: boolean;
-  color: string;
-}> = ({ icon, label, delay, inView, color }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={inView ? { opacity: 1, y: 0 } : {}}
-    transition={{ duration: 0.5, delay }}
-    className="flex flex-col items-center gap-3 group cursor-pointer"
-  >
-    <div
-      className={`inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl ${color} group-hover:scale-110 transition-transform`}
-    >
-      {icon}
-    </div>
-    <span className="text-sm md:text-base font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-      {label}
-    </span>
-  </motion.div>
-);
+const features = [
+  {
+    id: "section-ailab",
+    key: "aiLab",
+    icon: Brain,
+    color: "text-violet-400",
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/30",
+    glow: "shadow-[0_0_20px_rgba(139,92,246,0.4)]",
+  },
+  {
+    id: "section-strategy",
+    key: "strategyBuilder",
+    icon: Workflow,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/30",
+    glow: "shadow-[0_0_20px_rgba(59,130,246,0.4)]",
+  },
+  {
+    id: "section-optimization",
+    key: "optimization",
+    icon: Cpu,
+    color: "text-orange-400",
+    bg: "bg-orange-500/10",
+    border: "border-orange-500/30",
+    glow: "shadow-[0_0_20px_rgba(249,115,22,0.4)]",
+  },
+  {
+    id: "section-backtesting",
+    key: "backtesting",
+    icon: Zap,
+    color: "text-green-400",
+    bg: "bg-green-500/10",
+    border: "border-green-500/30",
+    glow: "shadow-[0_0_20px_rgba(34,197,94,0.4)]",
+  },
+  {
+    id: "section-infrastructure",
+    key: "infrastructure",
+    icon: Globe,
+    color: "text-cyan-400",
+    bg: "bg-cyan-500/10",
+    border: "border-cyan-500/30",
+    glow: "shadow-[0_0_20px_rgba(6,182,212,0.4)]",
+  },
+];
 
 export const StatisticsCounter: React.FC<FeatureNavProps> = ({
   translations,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const [isCompact, setIsCompact] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const features = [
-    {
-      icon: <Brain className="w-6 h-6 md:w-7 md:h-7 text-violet-400" />,
-      label: translations.aiLab,
-      color: "bg-violet-500/10 border border-violet-500/30",
-    },
-    {
-      icon: <Workflow className="w-6 h-6 md:w-7 md:h-7 text-blue-400" />,
-      label: translations.strategyBuilder,
-      color: "bg-blue-500/10 border border-blue-500/30",
-    },
-    {
-      icon: <Cpu className="w-6 h-6 md:w-7 md:h-7 text-orange-400" />,
-      label: translations.optimization,
-      color: "bg-orange-500/10 border border-orange-500/30",
-    },
-    {
-      icon: <Zap className="w-6 h-6 md:w-7 md:h-7 text-green-400" />,
-      label: translations.backtesting,
-      color: "bg-green-500/10 border border-green-500/30",
-    },
-    {
-      icon: <Globe className="w-6 h-6 md:w-7 md:h-7 text-cyan-400" />,
-      label: translations.infrastructure,
-      color: "bg-cyan-500/10 border border-cyan-500/30",
-    },
-  ];
+  // Intersection Observer to detect scroll position
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Toggle compact mode based on sentinel position relative to header (60px)
+        setIsCompact(
+          !entry.isIntersecting && entry.boundingClientRect.top < 60
+        );
+      },
+      {
+        rootMargin: "-60px 0px 0px 0px", // Offset by header height
+        threshold: 0,
+      }
+    );
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Track active section
+  useEffect(() => {
+    const sectionIds = features.map((f) => f.id);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: "-40% 0px -40% 0px", threshold: 0 }
+    );
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveSection(id);
+    }
+  };
 
   return (
-    <motion.section
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6 }}
-      className="py-12 px-6 md:px-12 border-y border-border/30 bg-gradient-to-r from-violet-500/5 via-transparent to-violet-500/5"
-    >
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center gap-4 md:gap-8">
-          {features.map((feature, index) => (
-            <FeatureNavItem
-              key={feature.label}
-              icon={feature.icon}
-              label={feature.label}
-              delay={index * 0.1}
-              inView={inView}
-              color={feature.color}
-            />
-          ))}
+    // 1. Placeholder: Maintains layout space in document flow (196px)
+    <div className="relative w-full z-40" style={{ height: 196 }}>
+      {/* Sentinel for Scroll Detection */}
+      <div ref={sentinelRef} className="absolute top-0 h-[1px] w-full" />
+
+      {/* 2. Navigation Bar: Switches between absolute (embedded) and fixed (overlay) */}
+      <nav
+        className={cn(
+          "w-full transition-[height,background-color,border-color,box-shadow] duration-500 ease-spring border-y border-border/30 overflow-hidden",
+          isCompact
+            ? "fixed top-[60px] left-0 right-0 h-[64px] bg-background/80 backdrop-blur-xl shadow-lg z-40"
+            : "absolute top-0 left-0 right-0 h-[196px] bg-gradient-to-r from-violet-500/5 via-transparent to-violet-500/5"
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto transition-all duration-500 h-full flex flex-col justify-center",
+            isCompact ? "max-w-7xl px-4" : "max-w-4xl px-6 md:px-12"
+          )}
+        >
+          <div className="flex items-center justify-between gap-2 md:gap-4">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              const label =
+                translations[feature.key as keyof typeof translations];
+              const isActive = activeSection === feature.id;
+
+              return (
+                <motion.div
+                  key={feature.key}
+                  onClick={() => scrollToSection(feature.id)}
+                  className={cn(
+                    "group cursor-pointer flex items-center gap-3 transition-all duration-500",
+                    isCompact ? "flex-row" : "flex-col"
+                  )}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {/* Icon Container */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-center rounded-2xl border transition-all duration-500",
+                      feature.bg,
+                      feature.border,
+                      isActive && feature.glow,
+                      isCompact
+                        ? "w-9 h-9 rounded-lg"
+                        : "w-14 h-14 md:w-16 md:h-16"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "transition-all duration-500",
+                        feature.color,
+                        isCompact ? "w-4 h-4" : "w-6 h-6 md:w-7 md:h-7"
+                      )}
+                    />
+                  </div>
+
+                  {/* Label */}
+                  <span
+                    className={cn(
+                      "font-medium transition-all duration-500 whitespace-nowrap",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground group-hover:text-foreground",
+                      isCompact
+                        ? "text-xs hidden md:block" // 모바일 최적화
+                        : "text-sm md:text-base"
+                    )}
+                  >
+                    {label}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </motion.section>
+      </nav>
+    </div>
   );
 };
 

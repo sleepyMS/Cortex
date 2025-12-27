@@ -389,7 +389,7 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.25, 0.5], [0, 1]);
+  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
   const [progressValue, setProgressValue] = useState(0);
 
   useEffect(() => {
@@ -400,8 +400,9 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
 
   return (
     <section
+      id="section-backtesting"
       ref={containerRef}
-      className="relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[30px] relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       <div className="max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
