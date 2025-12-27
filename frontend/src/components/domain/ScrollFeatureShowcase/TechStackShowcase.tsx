@@ -30,7 +30,7 @@ export const TechStackShowcase: React.FC<TechStackShowcaseProps> = ({
       initial={{ opacity: 0 }}
       animate={inView ? { opacity: 1 } : {}}
       transition={{ duration: 0.6 }}
-      className="py-20 px-6 md:px-12 border-t border-border/30"
+      className="py-20 px-6 md:px-12"
     >
       <div className="max-w-7xl mx-auto text-center">
         <motion.p
