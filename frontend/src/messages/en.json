@@ -116,18 +116,61 @@
       "sectionLabel": "Key Features",
       "title": "The Entire Investment Process in One Place",
       "subtitle": "Cortex supports every step, from brainstorming ideas and verifying strategies to automated execution and sharing.",
+      "statistics": {
+        "deepLearning": "Deep Learning",
+        "optimization": "Optimization",
+        "indicators": "Indicators",
+        "backtest": "Backtest",
+        "security": "Encryption",
+        "trading": "Auto Trading"
+      },
+      "techStack": {
+        "title": "Built with Proven Technology Stack"
+      },
       "features": {
+        "aiLab": {
+          "badge": "NEW",
+          "title": "Evolve Your Strategy with AI",
+          "description": "LSTM/GRU deep learning models learn market patterns while Optuna TPE engine automatically finds optimal hyperparameters.",
+          "highlights": [
+            "50+ Technical Indicators",
+            "TPE Auto-Optimization",
+            "Triple Barrier Labeling"
+          ],
+          "cta": "Create AI Model"
+        },
         "strategyBuilder": {
+          "badge": "No-Code",
           "title": "Visual Strategy Builder",
-          "description": "Turn your trading ideas into reality **without a single line of code**. Combine various technical indicators like EMA and RSI with logical blocks to build advanced quant strategies. **Maximize productivity** through our intuitive visual interface."
+          "description": "Turn your trading ideas into reality **without a single line of code**. Combine various technical indicators like EMA and RSI with logical blocks to build advanced quant strategies. **Maximize productivity** through our intuitive visual interface.",
+          "highlights": [
+            "30+ Technical Indicators",
+            "Logical Combinations",
+            "Real-time Validation"
+          ],
+          "cta": "Create Your First Strategy"
         },
         "tickBacktesting": {
+          "badge": "Tick-Level",
           "title": "High-Precision Backtesting",
-          "description": "**Realistic simulation** of slippage and commissions is just the beginning. Perform **multi-dimensional analysis** with key metrics like Sharpe and MDD, interactive charts, and detailed trade logs."
+          "description": "**Realistic simulation** of slippage and commissions is just the beginning. Perform **multi-dimensional analysis** with key metrics like Sharpe and MDD, interactive charts, and detailed trade logs.",
+          "highlights": [
+            "Complete in 1 Minute",
+            "Detailed Analysis",
+            "Real-world Risk Applied"
+          ],
+          "cta": "Start Backtesting"
         },
         "aiOptimization": {
+          "badge": "Auto-Tuning",
           "title": "ML-Based Optimization",
-          "description": "Tailored to your investment goals, **Machine Learning algorithms** find robust parameters **maximizing Sharpe Ratio**. **Prevent overfitting** with Walk-Forward Analysis."
+          "description": "Tailored to your investment goals, **Machine Learning algorithms** find robust parameters **maximizing Sharpe Ratio**. **Prevent overfitting** with Walk-Forward Analysis.",
+          "highlights": [
+            "TPE Bayesian Optimization",
+            "Walk-Forward Analysis",
+            "Multi-objective Optimization"
+          ],
+          "cta": "Start Optimization"
         },
         "exchangeConnectivity": {
           "title": "Exchange Connectivity",
