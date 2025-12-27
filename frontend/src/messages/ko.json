@@ -163,6 +163,12 @@
           ],
           "cta": "전략 최적화 시작"
         },
+        "integrationSection": {
+          "badge": "Infrastructure",
+          "title": "안전하게, 24시간, 자동으로",
+          "subtitle": "엔터프라이즈급 인프라로 당신의 전략을 안전하게 실행합니다",
+          "cta": "무료로 시작하기"
+        },
         "exchangeConnectivity": {
           "title": "거래소 연결",
           "description": "**최적화된 바이낸스 API 연결**을 지원합니다. **비수탁(Non-Custodial)** 방식으로 사용자의 자산은 거래소 안에 안전하게 보관됩니다."

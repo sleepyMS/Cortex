@@ -171,6 +171,12 @@
           ],
           "cta": "Start Optimization"
         },
+        "integrationSection": {
+          "badge": "Infrastructure",
+          "title": "Secure, 24/7, Automated",
+          "subtitle": "Execute your strategies safely with enterprise-grade infrastructure.",
+          "cta": "Start for Free"
+        },
         "exchangeConnectivity": {
           "title": "Exchange Connectivity",
           "description": "**Optimized connection** for Binance. Assets stay safe in your exchange account via **non-custodial** API delivery."

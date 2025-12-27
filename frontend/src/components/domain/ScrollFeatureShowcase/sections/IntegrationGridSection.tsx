@@ -8,11 +8,16 @@ import { Globe, ShieldCheck, CloudLightning, Lock, Zap } from "lucide-react";
 import { formatText } from "../utils/formatText";
 
 interface IntegrationGridSectionProps {
+  sectionTranslations: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    cta: string;
+  };
   exchangeTranslations: { title: string; description: string };
   securityTranslations: { title: string; description: string };
   tradingTranslations: { title: string; description: string };
 }
-
 // Exchange Card
 const ExchangeCard: React.FC<{
   title: string;
@@ -197,8 +202,8 @@ const TradingCard: React.FC<{
     </div>
   </motion.div>
 );
-
 export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
+  sectionTranslations,
   exchangeTranslations,
   securityTranslations,
   tradingTranslations,
@@ -220,14 +225,12 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
       >
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-4">
           <Zap className="w-3 h-3" />
-          Infrastructure
+          {sectionTranslations.badge}
         </div>
         <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-          안전하게, 24시간, 자동으로
+          {sectionTranslations.title}
         </h2>
-        <p className="text-muted-foreground">
-          엔터프라이즈급 인프라로 당신의 전략을 안전하게 실행합니다
-        </p>
+        <p className="text-muted-foreground">{sectionTranslations.subtitle}</p>
       </motion.div>
 
       {/* Cards Grid */}
@@ -261,7 +264,7 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
       >
         <Link href="/signup">
           <Button size="lg" className="gap-2">
-            무료로 시작하기
+            {sectionTranslations.cta}
           </Button>
         </Link>
       </motion.div>

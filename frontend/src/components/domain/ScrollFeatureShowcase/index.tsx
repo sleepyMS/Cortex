@@ -50,6 +50,12 @@ interface ScrollFeatureShowcaseProps {
         highlights: string[];
         cta: string;
       };
+      integrationSection: {
+        badge: string;
+        title: string;
+        subtitle: string;
+        cta: string;
+      };
       exchangeConnectivity: { title: string; description: string };
       security: { title: string; description: string };
       community: { title: string; description: string };
@@ -91,6 +97,7 @@ export const ScrollFeatureShowcase: React.FC<ScrollFeatureShowcaseProps> = ({
         exchangeTranslations={translations.features.exchangeConnectivity}
         securityTranslations={translations.features.security}
         tradingTranslations={translations.features.community}
+        sectionTranslations={translations.features.integrationSection}
       />
 
       {/* Tech Stack Showcase */}

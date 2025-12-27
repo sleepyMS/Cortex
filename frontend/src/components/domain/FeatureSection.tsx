@@ -68,6 +68,12 @@ const FeatureSection = async () => {
         ],
         cta: t("features.aiOptimization.cta"),
       },
+      integrationSection: {
+        badge: t("features.integrationSection.badge"),
+        title: t("features.integrationSection.title"),
+        subtitle: t("features.integrationSection.subtitle"),
+        cta: t("features.integrationSection.cta"),
+      },
       exchangeConnectivity: {
         title: t("features.exchangeConnectivity.title"),
         description: t("features.exchangeConnectivity.description"),

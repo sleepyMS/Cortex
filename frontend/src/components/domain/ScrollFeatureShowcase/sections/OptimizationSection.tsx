@@ -292,7 +292,7 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
             transition={{ duration: 0.6, delay: 0.2 }}
             className="order-1 lg:order-2"
           >
-            <div className="relative rounded-2xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden shadow-2xl shadow-orange-500/10">
+            <div className="relative rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl">
               <ParameterSpaceVisual progress={progressValue} />
             </div>
           </motion.div>
