@@ -70,7 +70,7 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
       {/* Assembled Strategy Block */}
       <motion.div
         style={{ opacity: containerOpacity, y: containerY }}
-        className="relative z-10"
+        className="relative z-10 mt-4"
       >
         {/* Strategy Header */}
         <div className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-w-md mx-auto">
@@ -134,43 +134,56 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
             >
               <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <BarChart2 className="w-3 h-3 text-blue-400" />
+                  <BarChart2 className="w-3 h-3 text-violet-400" />
                   <span className="text-xs font-medium">State Based</span>
                 </div>
                 <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
               </div>
-              <div className="p-3 border-l-[3px] border-l-blue-500">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    style={{ opacity: rsiOpacity }}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-[10px] text-muted-foreground w-8">
-                      Range
-                    </span>
-                    <div className="flex-1 flex items-center gap-1">
-                      <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs text-center">
-                        30
-                      </div>
-                      <span className="text-muted-foreground text-xs">~</span>
-                      <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs text-center">
-                        70
-                      </div>
+              <div className="p-3 border-l-[3px] border-l-violet-500 space-y-2">
+                {/* RSI Row */}
+                <motion.div
+                  style={{ opacity: rsiOpacity }}
+                  className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">RSI</span>
+                    <span className="text-muted-foreground">(14, 15m)</span>
+                  </div>
+                  <Settings className="w-3 h-3 text-muted-foreground" />
+                </motion.div>
+
+                {/* Range Row */}
+                <motion.div
+                  style={{ opacity: rsiOpacity }}
+                  className="flex items-center gap-2"
+                >
+                  <span className="text-[10px] text-muted-foreground w-8">
+                    Range
+                  </span>
+                  <div className="flex-1 flex items-center gap-1">
+                    <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs text-center">
+                      30
                     </div>
-                  </motion.div>
-                  <motion.div
-                    style={{ opacity: rsiOpacity }}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-[10px] text-muted-foreground w-8">
-                      Action
-                    </span>
-                    <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs flex items-center justify-between">
-                      <span>In Range</span>
-                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground text-xs">~</span>
+                    <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs text-center">
+                      70
                     </div>
-                  </motion.div>
-                </div>
+                  </div>
+                </motion.div>
+
+                {/* Action Row */}
+                <motion.div
+                  style={{ opacity: rsiOpacity }}
+                  className="flex items-center gap-2"
+                >
+                  <span className="text-[10px] text-muted-foreground w-8">
+                    Action
+                  </span>
+                  <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs flex items-center justify-between">
+                    <span>In Range</span>
+                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
           </div>

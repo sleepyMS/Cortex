@@ -83,7 +83,7 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
 
   // Chart dimensions
   const chartWidth = 180;
-  const chartHeight = 140;
+  const chartHeight = 160;
   const candleWidth = 5;
   const candleGap = 2;
   const chartPadding = { left: 5, top: 10, right: 5, bottom: 25 };
@@ -110,7 +110,7 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
       {/* Background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:15px_15px] rounded-xl" />
 
-      <svg className="w-full h-full" viewBox="0 0 320 180">
+      <svg className="w-full h-full" viewBox="0 0 320 200">
         {/* Price Chart Area Background */}
         <rect
           x={0}
@@ -246,7 +246,7 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           x1={190}
           y1={0}
           x2={190}
-          y2={180}
+          y2={200}
           stroke="rgba(255,255,255,0.1)"
           strokeWidth={1}
           strokeDasharray="4 4"
@@ -326,19 +326,19 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
         {/* Labels */}
         <text
           x={chartWidth / 2}
-          y={chartHeight + 5}
+          y={chartHeight}
           textAnchor="middle"
           fill="rgba(255,255,255,0.5)"
-          fontSize={9}
+          fontSize={10}
         >
           Price Chart
         </text>
         <text
           x={257}
-          y={chartHeight + 5}
+          y={chartHeight}
           textAnchor="middle"
           fill="rgba(255,255,255,0.5)"
-          fontSize={9}
+          fontSize={10}
         >
           Equity Curve
         </text>
