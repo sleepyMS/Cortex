@@ -70,12 +70,28 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
   // Equity curve points
   const equityPoints = React.useMemo(() => {
     let equity = 100;
-    return candles.map((_, i) => {
-      if (i === 4) equity += 5;
-      if (i === 11) equity += 12;
-      if (i === 16) equity += 8;
-      if (i === 20) equity += 2;
-      return equity;
+    return candles.map((candle, i) => {
+      // Base trend
+      const trend = i * 0.8;
+
+      // Random walk component + correlation to candle moves
+      const noise = (Math.random() - 0.5) * 5;
+      const candleMove = (candle.close - candle.open) / 100;
+
+      // Simulate drawdown periods
+      const isDrawdown = (i >= 7 && i <= 10) || (i >= 16 && i <= 19);
+      const penalty = isDrawdown ? -2 * ((i % 3) + 1) : 0;
+
+      // Significant jumps on signals
+      if (i === 4) equity += 4; // Buy
+      if (i === 11) equity += 8; // Sell profit
+      if (i === 16) equity -= 2; // Buy into dip
+      if (i === 20) equity += 5; // Recovery
+
+      equity += trend * 0.2 + candleMove * 0.5 + noise + penalty;
+
+      // Ensure it doesn't drop below base
+      return Math.max(equity, 80);
     });
   }, [candles]);
 
