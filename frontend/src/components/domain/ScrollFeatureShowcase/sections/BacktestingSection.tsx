@@ -365,11 +365,11 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           <div className="text-[9px] text-muted-foreground uppercase">MDD</div>
           <div className="text-sm font-mono font-bold text-red-400">-12.4%</div>
         </div>
-        <div className="bg-background/80 backdrop-blur-sm border border-violet-500/30 rounded-lg px-3 py-2 text-center">
+        <div className="bg-background/80 backdrop-blur-sm border border-emerald-500/30 rounded-lg px-3 py-2 text-center">
           <div className="text-[9px] text-muted-foreground uppercase">
             Sharpe
           </div>
-          <div className="text-sm font-mono font-bold text-violet-400">
+          <div className="text-sm font-mono font-bold text-emerald-400">
             2.84
           </div>
         </div>
@@ -436,7 +436,7 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description)}
+              {formatText(translations.description, "text-green-400")}
             </p>
 
             {/* Highlights */}
@@ -464,7 +464,11 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
 
             {/* CTA */}
             <Link href="/backtester">
-              <Button size="lg" className="gap-2">
+              <Button
+                size="lg"
+                variant="implement"
+                className="gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-xl shadow-green-500/20"
+              >
                 <Zap className="w-5 h-5" />
                 {translations.cta}
               </Button>

@@ -45,7 +45,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:20px_20px] rounded-xl" />
 
       {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-violet-500/5 rounded-xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-amber-500/5 rounded-xl" />
 
       <svg className="w-full h-full" viewBox="0 0 300 220">
         {/* Contour Lines (simplified) */}
@@ -55,7 +55,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
           rx={100}
           ry={80}
           fill="none"
-          stroke="rgba(139, 92, 246, 0.1)"
+          stroke="rgba(249, 115, 22, 0.1)"
           strokeWidth={1}
           initial={{ pathLength: 0 }}
           animate={{ pathLength: progress > 0.2 ? 1 : 0 }}
@@ -66,7 +66,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
           rx={70}
           ry={55}
           fill="none"
-          stroke="rgba(139, 92, 246, 0.2)"
+          stroke="rgba(249, 115, 22, 0.2)"
           strokeWidth={1}
           initial={{ pathLength: 0 }}
           animate={{ pathLength: progress > 0.3 ? 1 : 0 }}
@@ -77,7 +77,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
           rx={40}
           ry={30}
           fill="none"
-          stroke="rgba(139, 92, 246, 0.3)"
+          stroke="rgba(249, 115, 22, 0.3)"
           strokeWidth={1}
           initial={{ pathLength: 0 }}
           animate={{ pathLength: progress > 0.4 ? 1 : 0 }}
@@ -87,8 +87,8 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
           cy={70}
           rx={15}
           ry={12}
-          fill="rgba(139, 92, 246, 0.2)"
-          stroke="rgba(139, 92, 246, 0.5)"
+          fill="rgba(249, 115, 22, 0.2)"
+          stroke="rgba(249, 115, 22, 0.5)"
           strokeWidth={1}
           initial={{ scale: 0 }}
           animate={{ scale: progress > 0.5 ? 1 : 0 }}
@@ -104,12 +104,12 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
             fill={
               i === points.length - 1
                 ? "rgba(34, 197, 94, 0.8)"
-                : `rgba(139, 92, 246, ${0.3 + point.score * 0.5})`
+                : `rgba(249, 115, 22, ${0.3 + point.score * 0.5})`
             }
             stroke={
               i === points.length - 1
                 ? "rgba(34, 197, 94, 1)"
-                : "rgba(139, 92, 246, 0.5)"
+                : "rgba(249, 115, 22, 0.5)"
             }
             strokeWidth={i === points.length - 1 ? 2 : 1}
             initial={{ scale: 0, opacity: 0 }}
@@ -155,7 +155,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
             Trials
           </div>
           <div className="text-lg font-mono font-bold text-foreground flex items-center gap-1">
-            <span className="text-violet-400">
+            <span className="text-orange-400">
               {Math.min(visiblePoints, 30)}
             </span>
             <span className="text-muted-foreground">/30</span>
@@ -163,7 +163,7 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
           {/* Progress Bar */}
           <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-violet-500"
+              className="h-full bg-orange-500"
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(visiblePoints / 30, 1) * 100}%` }}
             />
@@ -192,8 +192,8 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
         animate={{ opacity: progress > 0.1 ? 1 : 0 }}
         className="absolute top-4 right-4 flex items-center gap-2"
       >
-        <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-        <span className="text-xs text-violet-400 font-mono">TPE Engine</span>
+        <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+        <span className="text-xs text-orange-400 font-mono">TPE Engine</span>
       </motion.div>
     </div>
   );
@@ -250,7 +250,7 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description)}
+              {formatText(translations.description, "text-orange-400")}
             </p>
 
             {/* Highlights */}
@@ -278,7 +278,11 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
 
             {/* CTA */}
             <Link href="/optimization">
-              <Button size="lg" className="gap-2">
+              <Button
+                size="lg"
+                variant="implement"
+                className="gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 shadow-xl shadow-orange-500/20"
+              >
                 <Cpu className="w-5 h-5" />
                 {translations.cta}
               </Button>

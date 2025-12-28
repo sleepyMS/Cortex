@@ -76,8 +76,8 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
         <div className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-w-md mx-auto">
           <div className="px-4 py-3 bg-muted border-b border-border flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded bg-violet-500/20 flex items-center justify-center">
-                <Workflow className="w-3 h-3 text-violet-400" />
+              <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center">
+                <Workflow className="w-3 h-3 text-blue-400" />
               </div>
               <span className="font-semibold text-sm text-foreground">
                 Long Entry Condition
@@ -94,12 +94,12 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
             >
               <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-3 h-3 text-violet-400" />
+                  <TrendingUp className="w-3 h-3 text-blue-400" />
                   <span className="text-xs font-medium">Crossover</span>
                 </div>
                 <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
               </div>
-              <div className="p-3 border-l-[3px] border-l-violet-500">
+              <div className="p-3 border-l-[3px] border-l-blue-500">
                 <div className="flex items-center gap-2 flex-wrap">
                   <motion.div
                     style={{ scale: ema1Scale }}
@@ -111,7 +111,7 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
                   </motion.div>
                   <motion.div
                     style={{ scale: compareScale }}
-                    className="px-2 py-1 bg-violet-500/10 rounded border border-violet-500/30 text-xs text-violet-400"
+                    className="px-2 py-1 bg-blue-500/10 rounded border border-blue-500/30 text-xs text-blue-400"
                   >
                     Crosses Above ▾
                   </motion.div>
@@ -134,12 +134,12 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
             >
               <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <BarChart2 className="w-3 h-3 text-violet-400" />
+                  <BarChart2 className="w-3 h-3 text-blue-400" />
                   <span className="text-xs font-medium">State Based</span>
                 </div>
                 <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
               </div>
-              <div className="p-3 border-l-[3px] border-l-violet-500 space-y-2">
+              <div className="p-3 border-l-[3px] border-l-blue-500 space-y-2">
                 {/* RSI Row */}
                 <motion.div
                   style={{ opacity: rsiOpacity }}
@@ -262,7 +262,7 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description)}
+              {formatText(translations.description, "text-blue-400")}
             </p>
 
             {/* Highlights */}
@@ -275,7 +275,11 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
                   transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
                   className="flex items-center gap-3"
                 >
-                  <span className="text-xl">{highlightIcons[index]}</span>
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+                    <span className="text-blue-400 text-lg">
+                      {highlightIcons[index]}
+                    </span>
+                  </div>
                   <span className="text-foreground font-medium">
                     {highlight}
                   </span>
@@ -285,7 +289,11 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
 
             {/* CTA */}
             <Link href="/strategies/new">
-              <Button size="lg" className="gap-2">
+              <Button
+                size="lg"
+                variant="implement"
+                className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-xl shadow-blue-500/20"
+              >
                 <Workflow className="w-5 h-5" />
                 {translations.cta}
               </Button>

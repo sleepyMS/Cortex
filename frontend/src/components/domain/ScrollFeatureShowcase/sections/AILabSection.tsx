@@ -254,8 +254,8 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
             </h2>
 
             {/* Description */}
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description)}
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+              {formatText(translations.description, "text-violet-400")}
             </p>
 
             {/* Highlights */}
@@ -283,7 +283,11 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
 
             {/* CTA */}
             <Link href="/ai-lab/new">
-              <Button size="lg" className="gap-2">
+              <Button
+                size="lg"
+                variant="implement"
+                className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-xl shadow-violet-500/20"
+              >
                 <Brain className="w-5 h-5" />
                 {translations.cta}
               </Button>

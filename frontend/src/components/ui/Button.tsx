@@ -34,6 +34,9 @@ const buttonVariants = cva(
         // [Glass] Glassmorphism style
         glass:
           "bg-background/50 backdrop-blur-sm border border-border/50 text-foreground hover:bg-background/70 hover:border-border",
+        // [Implement] Custom background via className, white text
+        implement:
+          "text-white shadow-lg hover:brightness-110 active:scale-[0.98] transition-all",
       },
       size: {
         default: "h-10 px-4 py-2",

@@ -42,7 +42,7 @@ const ExchangeCard: React.FC<{
 
       <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        {formatText(description)}
+        {formatText(description, "text-yellow-400")}
       </p>
 
       {/* Binance Connection */}
@@ -109,7 +109,7 @@ const SecurityCard: React.FC<{
 
       <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        {formatText(description)}
+        {formatText(description, "text-violet-400")}
       </p>
 
       {/* Security Badge */}
@@ -164,7 +164,7 @@ const TradingCard: React.FC<{
 
       <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        {formatText(description)}
+        {formatText(description, "text-green-400")}
       </p>
 
       {/* Terminal Log */}
@@ -230,7 +230,9 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
         <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
           {sectionTranslations.title}
         </h2>
-        <p className="text-muted-foreground">{sectionTranslations.subtitle}</p>
+        <p className="text-muted-foreground">
+          {formatText(sectionTranslations.subtitle, "text-cyan-400")}
+        </p>
       </motion.div>
 
       {/* Cards Grid */}
@@ -263,7 +265,11 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
         className="text-center mt-12"
       >
         <Link href="/signup">
-          <Button size="lg" className="gap-2">
+          <Button
+            size="lg"
+            variant="implement"
+            className="gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black shadow-xl shadow-cyan-500/20"
+          >
             {sectionTranslations.cta}
           </Button>
         </Link>
