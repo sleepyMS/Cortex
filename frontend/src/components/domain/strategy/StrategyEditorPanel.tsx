@@ -12,6 +12,7 @@ import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { Loader2, Save, X, ArrowLeft } from "lucide-react";
 import { CandlestickData, UTCTimestamp } from "lightweight-charts";
+import { useStrategyFormSync } from "@/hooks/useStrategyFormSync";
 
 // --- Custom hooks, types, utilities ---
 import { useStrategyState } from "@/hooks/useStrategyState";
@@ -228,7 +229,7 @@ export function StrategyEditorPanel({
 
   const strategyState = useStrategyState();
   const { allowedTimeframes } = useUserSubscription();
-  const [tpslMode, setTpslMode] = useState<TpslMode>("percentage");
+
   const [isHubOpen, setIsHubOpen] = useState(false);
   const [currentTarget, setCurrentTarget] = useState<TargetSlot | null>(null);
   const [hubSelectionMode, setHubSelectionMode] = useState<
@@ -298,6 +299,15 @@ export function StrategyEditorPanel({
     },
   });
 
+  const { tpslMode, setTpslMode } = useStrategyFormSync({
+    formMethods,
+    strategyState,
+    strategyId: strategyId ?? undefined,
+    isEditMode,
+    existingStrategy,
+    initialStrategyRef,
+  });
+
   const isZustandDirty = useMemo(() => {
     if (!initialStrategyRef.current) {
       return (
@@ -321,64 +331,6 @@ export function StrategyEditorPanel({
   }, [strategyState]);
 
   const isDirty = isFormDirty || isZustandDirty;
-
-  useEffect(() => {
-    if (isEditMode && existingStrategy) {
-      initialStrategyRef.current = existingStrategy;
-      formMethods.reset({
-        name: existingStrategy.name,
-        description: existingStrategy.description,
-        isPublic: existingStrategy.isPublic,
-        takeProfitPct: existingStrategy.tpslLogic?.takeProfitPct,
-        stopLossPct: existingStrategy.tpslLogic?.stopLossPct,
-        atrStopLossMultiplier:
-          existingStrategy.tpslLogic?.atrStopLossMultiplier,
-        atrTakeProfitMultiplier:
-          existingStrategy.tpslLogic?.atrTakeProfitMultiplier,
-        atrPeriod: existingStrategy.tpslLogic?.atrPeriod,
-      });
-      strategyState.setStrategy({
-        longEntryRules: existingStrategy.longEntryRules,
-        longExitRules: existingStrategy.longExitRules,
-        shortEntryRules: existingStrategy.shortEntryRules,
-        shortExitRules: existingStrategy.shortExitRules,
-        targetCoins: existingStrategy.targetCoins,
-      });
-
-      if (existingStrategy.tpslLogic?.atrPeriod) {
-        setTpslMode("atr");
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isEditMode,
-    existingStrategy,
-    formMethods.reset,
-    strategyState.setStrategy,
-  ]);
-
-  useEffect(() => {
-    if (!isEditMode) {
-      initialStrategyRef.current = null;
-      strategyState.reset();
-      formMethods.reset({
-        name: "",
-        description: "",
-        isPublic: false,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strategyId, isEditMode, strategyState.reset, formMethods.reset]);
-
-  /**
-   * Cleanup function to reset Zustand state when component unmounts
-   */
-  useEffect(() => {
-    return () => {
-      strategyState.reset();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strategyState.reset]);
 
   useEffect(() => {
     if (
