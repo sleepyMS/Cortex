@@ -19,20 +19,7 @@ export const CTAContent: React.FC<CTAContentProps> = ({
   return (
     <div className="relative z-10">
       <h2 className="text-4xl md:text-5xl font-bold mb-8 tracking-tight text-foreground">
-        {title.split(" ").map((word, i) => {
-          // Highlight key word with violet color
-          if (
-            word.toLowerCase().includes("알파") ||
-            word.toLowerCase().includes("alpha")
-          ) {
-            return (
-              <span key={i} className="text-violet-400">
-                {word}{" "}
-              </span>
-            );
-          }
-          return word + " ";
-        })}
+        {formatText(title, "text-violet-500")}
       </h2>
       <p className="text-muted-foreground max-w-2xl mx-auto mb-10 text-lg leading-relaxed">
         {formatText(subtitle)}
