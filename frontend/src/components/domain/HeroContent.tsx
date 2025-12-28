@@ -106,8 +106,8 @@ export const HeroContent = ({
               variants={itemVariants}
               className="flex items-center justify-center space-x-2 mb-6"
             >
-              <span className="px-3 py-1 rounded-full border border-violet-500/20 bg-violet-500/5 text-violet-400 text-[10px] md:text-xs font-mono uppercase tracking-widest flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></span>
+              <span className="px-3 py-1 rounded-full border border-violet-200 bg-violet-100 text-violet-600 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-400 text-[10px] md:text-xs font-mono uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-600 dark:bg-violet-500 animate-pulse"></span>
                 {versionBadge}
               </span>
             </motion.div>

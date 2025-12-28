@@ -245,7 +245,8 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
             className="order-2 lg:order-1"
           >
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-bold uppercase tracking-wider mb-6">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 border border-violet-200 text-violet-600 dark:bg-violet-500/10 dark:border-violet-500/30 dark:text-violet-400 text-xs font-bold uppercase tracking-wider mb-6">
               <Sparkles className="w-3 h-3" />
               {translations.badge}
             </div>
@@ -257,7 +258,10 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description, "text-violet-400")}
+              {formatText(
+                translations.description,
+                "text-violet-600 dark:text-violet-400"
+              )}
             </p>
 
             {/* Highlights */}

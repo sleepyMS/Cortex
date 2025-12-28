@@ -295,7 +295,7 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-wider mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 border border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400 text-xs font-bold uppercase tracking-wider mb-6">
               <Workflow className="w-3 h-3" />
               {translations.badge}
             </div>
@@ -307,7 +307,10 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description, "text-blue-400")}
+              {formatText(
+                translations.description,
+                "text-blue-600 dark:text-blue-400"
+              )}
             </p>
 
             {/* Highlights */}

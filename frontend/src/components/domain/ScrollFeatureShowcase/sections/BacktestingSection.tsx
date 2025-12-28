@@ -457,7 +457,7 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-bold uppercase tracking-wider mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 border border-green-200 text-green-600 dark:bg-green-500/10 dark:border-green-500/30 dark:text-green-400 text-xs font-bold uppercase tracking-wider mb-6">
               <Zap className="w-3 h-3" />
               {translations.badge}
             </div>
@@ -469,7 +469,10 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description, "text-green-400")}
+              {formatText(
+                translations.description,
+                "text-green-600 dark:text-green-400"
+              )}
             </p>
 
             {/* Highlights */}

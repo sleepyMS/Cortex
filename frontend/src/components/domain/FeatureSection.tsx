@@ -94,7 +94,7 @@ const FeatureSection = async () => {
       {/* Section Header */}
       <div className="mx-auto max-w-7xl px-6 py-24 md:px-12 pb-8">
         <div className="md:text-center max-w-3xl mx-auto relative z-10">
-          <div className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-sm font-medium text-violet-500 mb-4">
+          <div className="inline-flex items-center rounded-full border border-violet-200 bg-violet-100 text-violet-600 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-500 px-3 py-1 text-sm font-medium mb-4">
             {translations.sectionLabel || "Key Features"}
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl mb-6">

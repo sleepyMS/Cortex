@@ -113,7 +113,7 @@ const SecurityCard: React.FC<{
       </p>
 
       {/* Security Badge */}
-      <div className="flex items-center space-x-2 font-mono text-xs text-violet-400 bg-violet-500/10 w-fit px-3 py-1.5 rounded-full border border-violet-500/20 mb-4">
+      <div className="flex items-center space-x-2 font-mono text-xs text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-500/10 w-fit px-3 py-1.5 rounded-full border border-violet-200 dark:border-violet-500/20 mb-4">
         <Lock className="w-3 h-3" />
         <span>AES-256 Encrypted</span>
       </div>
@@ -175,7 +175,7 @@ const TradingCard: React.FC<{
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
             </span>
-            <span className="text-[10px] font-medium text-green-500 uppercase tracking-wider">
+            <span className="text-[10px] font-medium text-green-600 dark:text-green-500 uppercase tracking-wider">
               Live Execution
             </span>
           </div>
@@ -223,7 +223,7 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
         animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-center max-w-3xl mx-auto mb-16"
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-100 border border-cyan-200 text-cyan-600 dark:bg-cyan-500/10 dark:border-cyan-500/30 dark:text-cyan-400 text-xs font-bold uppercase tracking-wider mb-4">
           <Zap className="w-3 h-3" />
           {sectionTranslations.badge}
         </div>
@@ -231,7 +231,10 @@ export const IntegrationGridSection: React.FC<IntegrationGridSectionProps> = ({
           {sectionTranslations.title}
         </h2>
         <p className="text-muted-foreground">
-          {formatText(sectionTranslations.subtitle, "text-cyan-400")}
+          {formatText(
+            sectionTranslations.subtitle,
+            "text-cyan-600 dark:text-cyan-400"
+          )}
         </p>
       </motion.div>
 

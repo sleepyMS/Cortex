@@ -238,7 +238,8 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
             className="order-2 lg:order-1"
           >
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider mb-6">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 border border-orange-200 text-orange-600 dark:bg-orange-500/10 dark:border-orange-500/30 dark:text-orange-400 text-xs font-bold uppercase tracking-wider mb-6">
               <Cpu className="w-3 h-3" />
               {translations.badge}
             </div>
@@ -250,7 +251,10 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
 
             {/* Description */}
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              {formatText(translations.description, "text-orange-400")}
+              {formatText(
+                translations.description,
+                "text-orange-600 dark:text-orange-400"
+              )}
             </p>
 
             {/* Highlights */}
