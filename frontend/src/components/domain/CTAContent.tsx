@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/Button";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { formatText } from "./ScrollFeatureShowcase/utils/formatText";
 
 interface CTAContentProps {

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { useState, useEffect, Suspense } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "use-debounce";

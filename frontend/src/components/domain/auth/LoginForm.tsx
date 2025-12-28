@@ -5,13 +5,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-
+import { Link, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
-import { useRouter } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
 import apiClient from "@/lib/apiClient";
 import { useUserStore } from "@/store/userStore";
 import SocialLogins from "./SocialLogins";

@@ -2,7 +2,7 @@
 
 import { motion, Variants } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";

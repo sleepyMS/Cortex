@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
 import { useUserStore } from "@/store/userStore";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { toast } from "sonner";

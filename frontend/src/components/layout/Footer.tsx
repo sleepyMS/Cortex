@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useSearchParams, usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
 import { Twitter, Github, Linkedin } from "lucide-react";
