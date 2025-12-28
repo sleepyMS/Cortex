@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
+import { formatText } from "./ScrollFeatureShowcase/utils/formatText";
 
 interface CTAContentProps {
   title: string;
@@ -34,7 +35,7 @@ export const CTAContent: React.FC<CTAContentProps> = ({
         })}
       </h2>
       <p className="text-muted-foreground max-w-2xl mx-auto mb-10 text-lg leading-relaxed">
-        {subtitle}
+        {formatText(subtitle)}
       </p>
       <Link href="/strategies/new" passHref>
         <Button

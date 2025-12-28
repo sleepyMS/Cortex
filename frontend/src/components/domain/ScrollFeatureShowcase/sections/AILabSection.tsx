@@ -61,7 +61,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
               key={`ho-${i}-${j}`}
               x1={250}
               y1={50 + i * 55}
-              x2={420}
+              x2={400}
               y2={120 + j * 80}
               stroke="url(#lineGradient)"
               strokeWidth={1}

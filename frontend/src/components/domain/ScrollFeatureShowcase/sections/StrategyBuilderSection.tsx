@@ -86,7 +86,7 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
               </span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {t("nodes.addRule")}
+              ⊕ {t("nodes.addRule")}
             </span>
           </div>
 

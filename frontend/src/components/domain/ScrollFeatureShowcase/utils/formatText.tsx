@@ -21,7 +21,16 @@ export const formatText = (
             </span>
           );
         }
-        return <span key={index}>{part}</span>;
+        return (
+          <span key={index}>
+            {part.split("\n").map((line, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <br />}
+                {line}
+              </React.Fragment>
+            ))}
+          </span>
+        );
       })}
     </>
   );
