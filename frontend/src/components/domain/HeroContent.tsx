@@ -530,8 +530,8 @@ const MockTradingTerminal = () => {
               {/* Strategy Content */}
               <div className="p-3 space-y-2">
                 {/* Block 1: 돌파 */}
-                <div className="bg-background border border-border/60 rounded-md overflow-hidden">
-                  <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                <div className="bg-background border border-violet-500/30 rounded-md overflow-hidden">
+                  <div className="px-2 py-1.5 flex items-center justify-between border-b border-violet-500/20 bg-violet-500/5">
                     <div className="flex items-center gap-1.5">
                       <TrendingUp size={10} className="text-violet-400" />
                       <span className="text-[10px] font-medium text-foreground">
@@ -540,7 +540,7 @@ const MockTradingTerminal = () => {
                     </div>
                     <MoreHorizontal
                       size={10}
-                      className="text-muted-foreground"
+                      className="text-muted-foreground/50"
                     />
                   </div>
                   <div className="p-2 border-l-[3px] border-l-violet-500">
@@ -562,7 +562,7 @@ const MockTradingTerminal = () => {
                   </div>
                 </div>
 
-                {/* AND Connector + Block 2: 상태 기반 */}
+                {/* AND Connector + Block 2: AI Signal */}
                 <div className="flex">
                   {/* AND Label */}
                   <div className="flex flex-col items-center w-8 shrink-0 -mt-1">
@@ -573,59 +573,88 @@ const MockTradingTerminal = () => {
                     <div className="w-0.5 flex-1 bg-violet-500/40"></div>
                   </div>
 
-                  {/* Indented Block 2 */}
-                  <div className="flex-1 bg-background border border-border/60 rounded-md overflow-hidden">
-                    <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                  {/* Indented Block 2: AI Signal Block */}
+                  <div className="flex-1 bg-background border border-violet-500/30 rounded-md overflow-hidden">
+                    {/* Header */}
+                    <div className="px-2 py-1.5 flex items-center justify-between border-b border-violet-500/20 bg-violet-500/5">
                       <div className="flex items-center gap-1.5">
-                        <BarChart2 size={10} className="text-violet-400" />
-                        <span className="text-[10px] font-medium text-foreground">
-                          {t("nodes.stateBased")}
+                        <Brain size={10} className="text-violet-400" />
+                        <span className="text-[10px] font-semibold text-foreground">
+                          {t("aiBlock.header")}
                         </span>
                       </div>
                       <MoreHorizontal
                         size={10}
-                        className="text-muted-foreground"
+                        className="text-muted-foreground/50"
                       />
                     </div>
-                    <div className="p-2 border-l-[3px] border-l-violet-500 space-y-1.5">
-                      {/* RSI Row */}
-                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">RSI</span>
-                          <span className="text-muted-foreground">
-                            (14, 15m)
-                          </span>
-                        </div>
-                        <Settings size={8} className="text-muted-foreground" />
-                      </div>
-                      {/* Range Row */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[8px] text-muted-foreground w-6">
-                          {t("nodes.range")}
-                        </span>
-                        <div className="flex-1 flex items-center gap-1">
-                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
-                            30
+
+                    <div className="p-2 border-l-[3px] border-l-violet-500 space-y-2">
+                      {/* Top Row: Model Info & Actions */}
+                      <div className="flex gap-1.5">
+                        {/* Model Card */}
+                        <div className="flex-1 bg-violet-500/10 rounded border border-violet-500/20 p-1.5 flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded bg-violet-500/20 flex items-center justify-center shrink-0">
+                            <Brain size={10} className="text-violet-400" />
                           </div>
-                          <span className="text-muted-foreground text-[9px]">
-                            ~
-                          </span>
-                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
-                            70
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[9px] font-bold text-foreground leading-tight">
+                              {t("aiBlock.model.name")}
+                            </span>
+                            <span className="text-[8px] text-muted-foreground truncate">
+                              {t("aiBlock.model.type")}
+                            </span>
                           </div>
                         </div>
+
+                        {/* Actions */}
+                        <div className="flex bg-muted/40 rounded p-0.5 border border-border h-fit self-center">
+                          <div className="px-1.5 py-0.5 rounded bg-violet-500/20 text-[8px] font-bold text-violet-400 shadow-sm border border-violet-500/20">
+                            {t("aiBlock.actions.buy")}
+                          </div>
+                          <div className="px-1.5 py-0.5 text-[8px] text-muted-foreground/50 font-medium">
+                            {t("aiBlock.actions.sell")}
+                          </div>
+                          <div className="px-1.5 py-0.5 text-[8px] text-muted-foreground/50 font-medium">
+                            {t("aiBlock.actions.hold")}
+                          </div>
+                        </div>
                       </div>
-                      {/* Action Row */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[8px] text-muted-foreground w-6">
-                          {t("nodes.action")}
-                        </span>
-                        <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
-                          <span>{t("values.inRange")}</span>
-                          <ChevronDown
-                            size={8}
-                            className="text-muted-foreground"
-                          />
+
+                      {/* Second Row: Settings */}
+                      <div className="flex gap-1.5 text-[9px]">
+                        {/* Evaluation Method */}
+                        <div className="flex-[0_0_40%] space-y-0.5">
+                          <span className="text-[8px] text-muted-foreground block pl-0.5">
+                            {t("aiBlock.settings.evalMethod")}
+                          </span>
+                          <div className="w-full bg-muted/40 border border-border rounded px-1.5 py-1 flex justify-between items-center text-foreground">
+                            <span className="truncate">
+                              {t("aiBlock.settings.thresholdBased")}
+                            </span>
+                            <ChevronDown size={8} className="opacity-50" />
+                          </div>
+                        </div>
+
+                        {/* Confidence Slider */}
+                        <div className="flex-1 space-y-0.5">
+                          <div className="flex justify-between items-center px-0.5">
+                            <span className="text-[8px] text-muted-foreground">
+                              {t("aiBlock.settings.minConfidence")}
+                            </span>
+                            <span className="text-[8px] text-violet-400 font-medium">
+                              50%
+                            </span>
+                          </div>
+                          <div className="relative w-full h-3 flex items-center">
+                            <div className="w-full h-1 bg-muted/40 rounded-full overflow-hidden">
+                              <div className="h-full w-[52%] bg-violet-500 rounded-full" />
+                            </div>
+                            <div className="absolute left-[52%] top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-background border border-violet-500 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)] z-10" />
+                          </div>
+                          <span className="text-[8px] text-muted-foreground/70 block truncate pt-0.5 px-0.5">
+                            {t("aiBlock.settings.confidenceDesc")}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -666,8 +695,8 @@ const MockTradingTerminal = () => {
               {/* Strategy Content */}
               <div className="p-3 space-y-2">
                 {/* Block 1: 돌파 */}
-                <div className="bg-background border border-border/60 rounded-md overflow-hidden">
-                  <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                <div className="bg-background border border-rose-500/30 rounded-md overflow-hidden">
+                  <div className="px-2 py-1.5 flex items-center justify-between border-b border-rose-500/20 bg-rose-500/5">
                     <div className="flex items-center gap-1.5">
                       <TrendingUp
                         size={10}
@@ -679,7 +708,7 @@ const MockTradingTerminal = () => {
                     </div>
                     <MoreHorizontal
                       size={10}
-                      className="text-muted-foreground"
+                      className="text-muted-foreground/50"
                     />
                   </div>
                   <div className="p-2 border-l-[3px] border-l-rose-500">
@@ -712,59 +741,88 @@ const MockTradingTerminal = () => {
                     <div className="w-0.5 flex-1 bg-rose-500/40"></div>
                   </div>
 
-                  {/* Indented Block 2 */}
-                  <div className="flex-1 bg-background border border-border/60 rounded-md overflow-hidden">
-                    <div className="px-2 py-1.5 flex items-center justify-between border-b border-border/40">
+                  {/* Indented Block 2: AI Signal Block */}
+                  <div className="flex-1 bg-background border border-rose-500/30 rounded-md overflow-hidden">
+                    {/* Header */}
+                    <div className="px-2 py-1.5 flex items-center justify-between border-b border-rose-500/20 bg-rose-500/5">
                       <div className="flex items-center gap-1.5">
-                        <BarChart2 size={10} className="text-rose-400" />
-                        <span className="text-[10px] font-medium text-foreground">
-                          {t("nodes.stateBased")}
+                        <Brain size={10} className="text-rose-400" />
+                        <span className="text-[10px] font-semibold text-foreground">
+                          {t("aiBlock.header")}
                         </span>
                       </div>
                       <MoreHorizontal
                         size={10}
-                        className="text-muted-foreground"
+                        className="text-muted-foreground/50"
                       />
                     </div>
-                    <div className="p-2 border-l-[3px] border-l-rose-500 space-y-1.5">
-                      {/* RSI Row */}
-                      <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">RSI</span>
-                          <span className="text-muted-foreground">
-                            (14, 15m)
-                          </span>
-                        </div>
-                        <Settings size={8} className="text-muted-foreground" />
-                      </div>
-                      {/* Range Row */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[8px] text-muted-foreground w-6">
-                          {t("nodes.range")}
-                        </span>
-                        <div className="flex-1 flex items-center gap-1">
-                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
-                            70
+
+                    <div className="p-2 border-l-[3px] border-l-rose-500 space-y-2">
+                      {/* Top Row: Model Info & Actions */}
+                      <div className="flex gap-1.5">
+                        {/* Model Card */}
+                        <div className="flex-1 bg-rose-500/10 rounded border border-rose-500/20 p-1.5 flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded bg-rose-500/20 flex items-center justify-center shrink-0">
+                            <Brain size={10} className="text-rose-400" />
                           </div>
-                          <span className="text-muted-foreground text-[9px]">
-                            ~
-                          </span>
-                          <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
-                            90
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[9px] font-bold text-foreground leading-tight">
+                              {t("aiBlock.model.name")}
+                            </span>
+                            <span className="text-[8px] text-muted-foreground truncate">
+                              {t("aiBlock.model.type")}
+                            </span>
                           </div>
                         </div>
+
+                        {/* Actions */}
+                        <div className="flex bg-muted/40 rounded p-0.5 border border-border h-fit self-center">
+                          <div className="px-1.5 py-0.5 rounded bg-rose-500/20 text-[8px] font-bold text-rose-400 shadow-sm border border-rose-500/20">
+                            {t("aiBlock.actions.sell")}
+                          </div>
+                          <div className="px-1.5 py-0.5 text-[8px] text-muted-foreground/50 font-medium">
+                            {t("aiBlock.actions.buy")}
+                          </div>
+                          <div className="px-1.5 py-0.5 text-[8px] text-muted-foreground/50 font-medium">
+                            {t("aiBlock.actions.hold")}
+                          </div>
+                        </div>
                       </div>
-                      {/* Action Row */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[8px] text-muted-foreground w-6">
-                          {t("nodes.action")}
-                        </span>
-                        <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
-                          <span>{t("values.breakAbove")}</span>
-                          <ChevronDown
-                            size={8}
-                            className="text-muted-foreground"
-                          />
+
+                      {/* Second Row: Settings */}
+                      <div className="flex gap-1.5 text-[9px]">
+                        {/* Evaluation Method */}
+                        <div className="flex-[0_0_40%] space-y-0.5">
+                          <span className="text-[8px] text-muted-foreground block pl-0.5">
+                            {t("aiBlock.settings.evalMethod")}
+                          </span>
+                          <div className="w-full bg-muted/40 border border-border rounded px-1.5 py-1 flex justify-between items-center text-foreground">
+                            <span className="truncate">
+                              {t("aiBlock.settings.thresholdBased")}
+                            </span>
+                            <ChevronDown size={8} className="opacity-50" />
+                          </div>
+                        </div>
+
+                        {/* Confidence Slider */}
+                        <div className="flex-1 space-y-0.5">
+                          <div className="flex justify-between items-center px-0.5">
+                            <span className="text-[8px] text-muted-foreground">
+                              {t("aiBlock.settings.minConfidence")}
+                            </span>
+                            <span className="text-[8px] text-rose-400 font-medium">
+                              75%
+                            </span>
+                          </div>
+                          <div className="relative w-full h-3 flex items-center">
+                            <div className="w-full h-1 bg-muted/40 rounded-full overflow-hidden">
+                              <div className="h-full w-[77%] bg-rose-500 rounded-full" />
+                            </div>
+                            <div className="absolute left-[77%] top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-background border border-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.5)] z-10" />
+                          </div>
+                          <span className="text-[8px] text-muted-foreground/70 block truncate pt-0.5 px-0.5">
+                            {t("aiBlock.settings.confidenceDesc")}
+                          </span>
                         </div>
                       </div>
                     </div>

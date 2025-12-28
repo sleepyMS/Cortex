@@ -17,9 +17,10 @@ import {
   Settings,
   MoreHorizontal,
   TrendingUp,
-  BarChart2,
   ChevronDown,
+  Brain,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { formatText } from "../utils/formatText";
 
 interface StrategyBuilderSectionProps {
@@ -37,6 +38,7 @@ interface StrategyBuilderSectionProps {
 const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
   progress,
 }) => {
+  const t = useTranslations("Landing.StrategyBuilderMockUI");
   // Transformations for each animation step
   // Step 0: Container appears (0.2)
   const containerOpacity = useTransform(progress, [0.15, 0.25], [0, 1]);
@@ -80,32 +82,36 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
                 <Workflow className="w-3 h-3 text-blue-400" />
               </div>
               <span className="font-semibold text-sm text-foreground">
-                Long Entry Condition
+                {t("nodes.longEntry")}
               </span>
             </div>
-            <span className="text-xs text-muted-foreground">⊕ Add Rule</span>
+            <span className="text-xs text-muted-foreground">
+              {t("nodes.addRule")}
+            </span>
           </div>
 
           <div className="p-4 space-y-3">
             {/* Crossover Block */}
             <motion.div
               style={{ opacity: crossoverOpacity, x: crossoverX }}
-              className="bg-background border border-border/60 rounded-md overflow-hidden"
+              className="bg-background border border-blue-500/30 rounded-md overflow-hidden"
             >
-              <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
+              <div className="px-3 py-2 flex items-center justify-between border-b border-blue-500/20 bg-blue-500/5">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-3 h-3 text-blue-400" />
-                  <span className="text-xs font-medium">Crossover</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {t("nodes.crossover")}
+                  </span>
                 </div>
-                <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
+                <MoreHorizontal className="w-3 h-3 text-muted-foreground/50" />
               </div>
               <div className="p-3 border-l-[3px] border-l-blue-500">
                 <div className="flex items-center gap-2 flex-wrap">
                   <motion.div
                     style={{ scale: ema1Scale }}
-                    className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center gap-1"
+                    className="flex-1 px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center justify-center gap-1"
                   >
-                    <span className="font-medium">EMA</span>
+                    <span className="font-medium">{t("indicators.ema")}</span>
                     <span className="text-muted-foreground">(10, 15m)</span>
                     <Settings className="w-3 h-3 text-muted-foreground" />
                   </motion.div>
@@ -113,13 +119,13 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
                     style={{ scale: compareScale }}
                     className="px-2 py-1 bg-blue-500/10 rounded border border-blue-500/30 text-xs text-blue-400"
                   >
-                    Crosses Above ▾
+                    {t("values.crossesAbove")} ▾
                   </motion.div>
                   <motion.div
                     style={{ scale: ema2Scale }}
-                    className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center gap-1"
+                    className="flex-1 px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center justify-center gap-1"
                   >
-                    <span className="font-medium">EMA</span>
+                    <span className="font-medium">{t("indicators.ema")}</span>
                     <span className="text-muted-foreground">(20, 15m)</span>
                     <Settings className="w-3 h-3 text-muted-foreground" />
                   </motion.div>
@@ -127,63 +133,102 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
               </div>
             </motion.div>
 
-            {/* State-Based Block */}
+            {/* AI Signal Block */}
             <motion.div
               style={{ opacity: stateOpacity, x: stateX }}
-              className="bg-background border border-border/60 rounded-md overflow-hidden"
+              className="bg-background border border-blue-500/30 rounded-lg overflow-hidden"
             >
-              <div className="px-3 py-2 flex items-center justify-between border-b border-border/40">
+              {/* Header */}
+              <div className="px-3 py-2 flex items-center justify-between border-b border-blue-500/20 bg-blue-500/5">
                 <div className="flex items-center gap-2">
-                  <BarChart2 className="w-3 h-3 text-blue-400" />
-                  <span className="text-xs font-medium">State Based</span>
+                  <Brain className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs font-semibold text-foreground">
+                    {t("header")}
+                  </span>
                 </div>
-                <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
+                <MoreHorizontal className="w-3 h-3 text-muted-foreground/50" />
               </div>
-              <div className="p-3 border-l-[3px] border-l-blue-500 space-y-2">
-                {/* RSI Row */}
-                <motion.div
-                  style={{ opacity: rsiOpacity }}
-                  className="px-2 py-1 bg-muted/60 rounded border border-border text-xs flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="font-medium">RSI</span>
-                    <span className="text-muted-foreground">(14, 15m)</span>
-                  </div>
-                  <Settings className="w-3 h-3 text-muted-foreground" />
-                </motion.div>
 
-                {/* Range Row */}
-                <motion.div
-                  style={{ opacity: rsiOpacity }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="text-[10px] text-muted-foreground w-8">
-                    Range
-                  </span>
-                  <div className="flex-1 flex items-center gap-1">
-                    <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs text-center">
-                      30
+              <div className="p-3 border-l-[3px] border-l-blue-500 space-y-3">
+                {/* Top Row: Model Info & Actions */}
+                <div className="flex gap-2">
+                  {/* Model Card */}
+                  <motion.div
+                    style={{ opacity: rsiOpacity }}
+                    className="flex-1 bg-blue-500/10 rounded-md border border-blue-500/20 p-2 flex items-center gap-2"
+                  >
+                    <div className="w-7 h-7 rounded bg-blue-500/20 flex items-center justify-center shrink-0">
+                      <Brain className="w-4 h-4 text-blue-400" />
                     </div>
-                    <span className="text-muted-foreground text-xs">~</span>
-                    <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs text-center">
-                      70
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-bold text-foreground leading-tight">
+                        {t("model.name")}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground truncate">
+                        {t("model.type")}
+                      </span>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
 
-                {/* Action Row */}
-                <motion.div
-                  style={{ opacity: rsiOpacity }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="text-[10px] text-muted-foreground w-8">
-                    Action
-                  </span>
-                  <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-xs flex items-center justify-between">
-                    <span>In Range</span>
-                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                  </div>
-                </motion.div>
+                  {/* Actions */}
+                  <motion.div
+                    style={{ opacity: rsiOpacity }}
+                    className="flex bg-muted/40 rounded-md p-0.5 border border-border h-fit self-center"
+                  >
+                    <div className="px-2 py-1 rounded bg-blue-500/20 text-[10px] font-bold text-blue-400 shadow-sm border border-blue-500/20">
+                      {t("actions.buy")}
+                    </div>
+                    <div className="px-2 py-1 text-[10px] text-muted-foreground/50 font-medium">
+                      {t("actions.sell")}
+                    </div>
+                    <div className="px-2 py-1 text-[10px] text-muted-foreground/50 font-medium">
+                      {t("actions.hold")}
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Second Row: Settings */}
+                <div className="flex gap-2 text-xs">
+                  {/* Evaluation Method */}
+                  <motion.div
+                    style={{ opacity: rsiOpacity }}
+                    className="flex-[0_0_40%] space-y-1"
+                  >
+                    <span className="text-[9px] text-muted-foreground block pl-0.5">
+                      {t("settings.evalMethod")}
+                    </span>
+                    <div className="w-full bg-muted/40 border border-border rounded px-2 py-1.5 flex justify-between items-center text-foreground">
+                      <span className="truncate">
+                        {t("settings.thresholdBased")}
+                      </span>
+                      <ChevronDown className="w-3 h-3 opacity-50" />
+                    </div>
+                  </motion.div>
+
+                  {/* Confidence Slider */}
+                  <motion.div
+                    style={{ opacity: rsiOpacity }}
+                    className="flex-1 space-y-1"
+                  >
+                    <div className="flex justify-between items-center px-0.5">
+                      <span className="text-[9px] text-muted-foreground">
+                        {t("settings.minConfidence")}
+                      </span>
+                      <span className="text-[10px] text-blue-400 font-medium">
+                        50%
+                      </span>
+                    </div>
+                    <div className="relative w-full h-4 flex items-center">
+                      <div className="w-full h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                        <div className="h-full w-[52%] bg-blue-500 rounded-full" />
+                      </div>
+                      <div className="absolute left-[52%] top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-background border-2 border-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] z-10" />
+                    </div>
+                    <span className="text-[8px] text-muted-foreground/70 block truncate pt-0.5 px-0.5">
+                      {t("settings.confidenceDesc")}
+                    </span>
+                  </motion.div>
+                </div>
               </div>
             </motion.div>
           </div>

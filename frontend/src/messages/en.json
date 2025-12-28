@@ -152,7 +152,54 @@
         "simulation": {
           "title": "Live Simulation",
           "active": "Active"
+        },
+        "aiBlock": {
+          "header": "AI Prediction Signal",
+          "model": {
+            "name": "1H 1Y",
+            "type": "ML Prediction Model"
+          },
+          "actions": {
+            "buy": "BUY",
+            "sell": "SELL",
+            "hold": "HOLD"
+          },
+          "settings": {
+            "evalMethod": "Eval Method",
+            "thresholdBased": "Threshold Based",
+            "minConfidence": "Min Confidence",
+            "confidenceDesc": "Signal triggers when probability ≥ value"
+          }
         }
+      }
+    },
+    "StrategyBuilderMockUI": {
+      "header": "AI Prediction Signal",
+      "model": {
+        "name": "1H 1Y",
+        "type": "ML Prediction Model"
+      },
+      "actions": {
+        "buy": "BUY",
+        "sell": "SELL",
+        "hold": "HOLD"
+      },
+      "settings": {
+        "evalMethod": "Eval Method",
+        "thresholdBased": "Threshold Based",
+        "minConfidence": "Min Confidence",
+        "confidenceDesc": "Signal triggers when probability ≥ value"
+      },
+      "nodes": {
+        "longEntry": "Long Entry Condition",
+        "addRule": "Add Rule",
+        "crossover": "Crossover"
+      },
+      "values": {
+        "crossesAbove": "Crosses Above"
+      },
+      "indicators": {
+        "ema": "EMA"
       }
     },
     "FeatureSection": {

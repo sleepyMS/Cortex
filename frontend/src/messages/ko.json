@@ -152,7 +152,54 @@
         "simulation": {
           "title": "실시간 시뮬레이션",
           "active": "활성"
+        },
+        "aiBlock": {
+          "header": "AI 예측 시그널",
+          "model": {
+            "name": "1시간 1년",
+            "type": "머신러닝 예측 모델"
+          },
+          "actions": {
+            "buy": "BUY",
+            "sell": "SELL",
+            "hold": "HOLD"
+          },
+          "settings": {
+            "evalMethod": "평가 방식",
+            "thresholdBased": "임계값 기반",
+            "minConfidence": "최소 신뢰도",
+            "confidenceDesc": "예측 확률이 이 값 이상일 때 신호 발생"
+          }
         }
+      }
+    },
+    "StrategyBuilderMockUI": {
+      "header": "AI 예측 시그널",
+      "model": {
+        "name": "1시간 1년",
+        "type": "머신러닝 예측 모델"
+      },
+      "actions": {
+        "buy": "BUY",
+        "sell": "SELL",
+        "hold": "HOLD"
+      },
+      "settings": {
+        "evalMethod": "평가 방식",
+        "thresholdBased": "임계값 기반",
+        "minConfidence": "최소 신뢰도",
+        "confidenceDesc": "예측 확률이 이 값 이상일 때 신호 발생"
+      },
+      "nodes": {
+        "longEntry": "매수 진입 조건",
+        "addRule": "규칙 추가",
+        "crossover": "교차"
+      },
+      "values": {
+        "crossesAbove": "상향 돌파"
+      },
+      "indicators": {
+        "ema": "EMA"
       }
     },
     "FeatureSection": {
