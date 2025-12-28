@@ -496,7 +496,7 @@ export function RuleBlock({
     const currentSignal = signalConfig[logic.signalType] || signalConfig.buy;
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 min-w-[450px] shrink-0">
         {/* 헤더: 모델 정보 + 신호 타입 선택 */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* 모델 정보 */}

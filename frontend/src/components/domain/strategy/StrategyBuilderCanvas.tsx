@@ -60,7 +60,7 @@ function RecursiveRuleRenderer({
 }: RecursiveRuleRendererProps) {
   const t = useTranslations("StrategyBuilder");
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-hidden">
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           {index > 0 && (
@@ -70,7 +70,7 @@ function RecursiveRuleRenderer({
               </span>
             </div>
           )}
-          <div className="relative">
+          <div className="relative overflow-hidden">
             <RuleBlock
               item={item}
               onUpdate={(id, newBlock) => handlers.onUpdateRule(id, newBlock)}
@@ -96,7 +96,7 @@ function RecursiveRuleRenderer({
                   <div className="w-0.5 flex-1 min-h-3 bg-primary/40"></div>
                 </div>
                 {/* Nested Rules */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <RecursiveRuleRenderer
                     items={item.children}
                     ruleType={ruleType}
