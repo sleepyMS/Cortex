@@ -21,6 +21,7 @@ const features = [
   {
     id: "section-ailab",
     key: "aiLab",
+    enLabel: "AI Lab",
     icon: Brain,
     color: "text-violet-400",
     bg: "bg-violet-500/10",
@@ -30,6 +31,7 @@ const features = [
   {
     id: "section-strategy",
     key: "strategyBuilder",
+    enLabel: "Strategy Builder",
     icon: Workflow,
     color: "text-blue-400",
     bg: "bg-blue-500/10",
@@ -39,6 +41,7 @@ const features = [
   {
     id: "section-optimization",
     key: "optimization",
+    enLabel: "Optimization",
     icon: Cpu,
     color: "text-orange-400",
     bg: "bg-orange-500/10",
@@ -48,6 +51,7 @@ const features = [
   {
     id: "section-backtesting",
     key: "backtesting",
+    enLabel: "Backtesting",
     icon: Zap,
     color: "text-green-400",
     bg: "bg-green-500/10",
@@ -57,6 +61,7 @@ const features = [
   {
     id: "section-infrastructure",
     key: "infrastructure",
+    enLabel: "Infrastructure",
     icon: Globe,
     color: "text-cyan-400",
     bg: "bg-cyan-500/10",
@@ -149,8 +154,9 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
           <div className="flex items-center justify-between gap-2 md:gap-4">
             {features.map((feature, index) => {
               const Icon = feature.icon;
-              const label =
-                translations[feature.key as keyof typeof translations];
+              const label = isCompact
+                ? feature.enLabel
+                : translations[feature.key as keyof typeof translations];
               const isActive = activeSection === feature.id;
 
               return (
