@@ -51,7 +51,7 @@ export const TechStackShowcase: React.FC<TechStackShowcaseProps> = ({
               transition={{ duration: 0.4, delay: index * 0.05 }}
               className="flex flex-col items-center gap-2 group"
             >
-              <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-muted/50 border border-border/50 flex items-center justify-center text-2xl md:text-3xl grayscale group-hover:grayscale-0 transition-all duration-300 group-hover:border-violet-500/50 group-hover:bg-violet-500/10">
+              <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-muted/50 border border-border/50 flex items-center justify-center text-2xl md:text-3xl dark:grayscale dark:group-hover:grayscale-0 transition-all duration-300 group-hover:border-violet-500/50 group-hover:bg-violet-500/10">
                 {tech.icon}
               </div>
               <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
