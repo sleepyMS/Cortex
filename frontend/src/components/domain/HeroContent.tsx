@@ -133,7 +133,7 @@ export const HeroContent = ({
 
             {/* CTA Button */}
             <motion.div variants={itemVariants} className="mt-8">
-              <Link href="/strategies/new" passHref>
+              <Link href="/strategies?create=true" passHref>
                 <div className="relative group inline-block">
                   <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg blur opacity-0 group-hover:opacity-75 transition duration-500" />
                   <Button

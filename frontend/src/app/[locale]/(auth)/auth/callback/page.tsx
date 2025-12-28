@@ -18,7 +18,7 @@ function AuthCallback() {
 
   useEffect(() => {
     const code = searchParams.get("code");
-    const state = searchParams.get("state"); // state 값 (예: /strategies/new)
+    const state = searchParams.get("state");
     const provider = localStorage.getItem("social_provider");
 
     if (hasProcessed.current) {
@@ -44,7 +44,7 @@ function AuthCallback() {
 
             const finalRedirect =
               state && state.startsWith("/") ? state : "/dashboard";
-            router.push(finalRedirect); // (예: /strategies/new 로 이동)
+            router.push(finalRedirect);
           } else {
             throw new Error("인증 토큰을 응답에서 찾을 수 없습니다.");
           }

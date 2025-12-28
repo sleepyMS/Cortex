@@ -329,7 +329,7 @@ export function DashboardOverviewTab() {
           >
             <KeyRound className="mr-2 h-4 w-4" /> {t("manageApiKeys")}
           </Button>
-          <Button onClick={() => router.push("/strategies/new")}>
+          <Button onClick={() => router.push("/strategies?create=true")}>
             <Code className="mr-2 h-4 w-4" /> {t("createNewStrategy")}
           </Button>
         </div>

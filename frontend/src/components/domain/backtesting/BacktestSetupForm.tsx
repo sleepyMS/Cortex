@@ -644,7 +644,7 @@ export function BacktestSetupForm() {
                                     {t("standard.noStrategiesFound")}
                                   </p>
                                   <Button asChild size="sm">
-                                    <Link href="/strategies/new">
+                                    <Link href="/strategies?create=true">
                                       <PlusCircle className="mr-2 h-4 w-4" />
                                       {t("standard.goToCreateStrategy")}
                                     </Link>

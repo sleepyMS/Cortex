@@ -24,7 +24,7 @@ export const CTAContent: React.FC<CTAContentProps> = ({
       <p className="text-muted-foreground max-w-2xl mx-auto mb-10 text-lg leading-relaxed">
         {formatText(subtitle)}
       </p>
-      <Link href="/strategies/new" passHref>
+      <Link href="/strategies?create=true" passHref>
         <Button
           size="lg"
           className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-md px-8 font-medium transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]"

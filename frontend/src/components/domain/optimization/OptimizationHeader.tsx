@@ -92,7 +92,7 @@ export function OptimizationHeader({ job }: OptimizationHeaderProps) {
         description: newStrategy.name,
         action: {
           label: t("viewStrategy"),
-          onClick: () => router.push(`/strategies/${newStrategy.id}/edit`),
+          onClick: () => router.push(`/strategies?edit=${newStrategy.id}`),
         },
       });
     },

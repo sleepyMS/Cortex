@@ -157,7 +157,7 @@ const EmptyState = () => {
           {t("empty.description")}
         </p>
         <div className="flex justify-center gap-4">
-          <Link href="/strategies/new">
+          <Link href="/strategies?create=true">
             <Button size="lg" className="gap-2">
               <PlusCircle className="h-5 w-5" />
               {t("empty.createButton")}

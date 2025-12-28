@@ -97,7 +97,7 @@ const PageHeader = ({
             <CardTitle className="text-2xl font-bold text-foreground">
               {backtest.strategy ? (
                 <Link
-                  href={`/strategies/${backtest.strategy.id}`}
+                  href={`/strategies?edit=${backtest.strategy.id}`}
                   className="hover:underline"
                 >
                   {backtest.strategy.name}

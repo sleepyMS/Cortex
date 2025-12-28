@@ -95,7 +95,9 @@ export function FeaturedStrategyCard({ strategy }: FeaturedStrategyCardProps) {
         <CardFooter>
           <Button asChild className="w-full">
             {/* 이 링크는 전략 '상세보기' 페이지가 아닌, 마켓플레이스 '상품' 페이지 등으로 변경될 수 있습니다. */}
-            <Link href={`/strategies/${strategy.id}`}>{t("viewStrategy")}</Link>
+            <Link href={`/strategies?edit=${strategy.id}`}>
+              {t("viewStrategy")}
+            </Link>
           </Button>
         </CardFooter>
       </Card>

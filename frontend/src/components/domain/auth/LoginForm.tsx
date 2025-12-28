@@ -65,7 +65,7 @@ export default function LoginForm() {
         // 4. 보안 검사: Open Redirect 취약점을 막기 위해
         //    redirectUrl이 존재하고, 반드시 '/'로 시작하는 내부 경로인지 확인합니다.
         if (redirectUrl && redirectUrl.startsWith("/")) {
-          router.push(redirectUrl); // 예: /strategies/new로 이동
+          router.push(redirectUrl);
         } else {
           router.push("/"); // 기본값 메인 페이지로 이동
         }

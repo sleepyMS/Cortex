@@ -1,12 +1,10 @@
 // file: frontend/i18n.ts
 
 import { notFound } from "next/navigation";
-// 👈 requestLocale 임포트 (locale 파라미터 deprecation 해결)
 import {
   getRequestConfig,
   unstable_setRequestLocale as requestLocale,
 } from "next-intl/server";
-// 👈 Pathnames는 next-intl/routing에서 임포트 (Pathnames deprecation 해결)
 import { Pathnames } from "next-intl/routing";
 
 export const locales = ["ko", "en"] as const;
@@ -18,7 +16,6 @@ export const pathnames = {
   "/signup": "/signup",
   "/dashboard": "/dashboard",
   "/strategies": "/strategies",
-  "/strategies/new": "/strategies/new",
   "/strategies/[strategyId]": "/strategies/[strategyId]",
   "/backtester": "/backtester",
   "/backtester/new": "/backtester/new",

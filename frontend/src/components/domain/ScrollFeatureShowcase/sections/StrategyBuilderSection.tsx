@@ -336,7 +336,7 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
             </div>
 
             {/* CTA */}
-            <Link href="/strategies/new">
+            <Link href="/strategies?create=true">
               <Button
                 size="lg"
                 variant="implement"
