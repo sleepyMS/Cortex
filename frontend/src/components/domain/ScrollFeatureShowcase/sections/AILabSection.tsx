@@ -230,7 +230,7 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
     <section
       id="section-ailab"
       ref={containerRef}
-      className="scroll-mt-[30px] relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent pointer-events-none" />

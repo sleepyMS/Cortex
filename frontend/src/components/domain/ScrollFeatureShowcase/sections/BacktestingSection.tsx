@@ -441,7 +441,7 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
     <section
       id="section-backtesting"
       ref={containerRef}
-      className="scroll-mt-[30px] relative min-h-screen flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       <div className="max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
