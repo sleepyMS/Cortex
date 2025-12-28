@@ -273,7 +273,7 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
                   const x = 205 + i * 4.5;
                   const y =
                     chartPadding.top +
-                    (1 - (eq - 100) / 30) *
+                    (1 - (eq - 100) / 40) *
                       (chartHeight -
                         chartPadding.top -
                         chartPadding.bottom -
@@ -295,7 +295,7 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
                   const x = 205 + i * 4.5;
                   const y =
                     chartPadding.top +
-                    (1 - (eq - 100) / 30) *
+                    (1 - (eq - 100) / 40) *
                       (chartHeight -
                         chartPadding.top -
                         chartPadding.bottom -
@@ -389,7 +389,7 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
+  const progress = useTransform(scrollYProgress, [0.15, 0.4], [0, 1]);
   const [progressValue, setProgressValue] = useState(0);
 
   useEffect(() => {
