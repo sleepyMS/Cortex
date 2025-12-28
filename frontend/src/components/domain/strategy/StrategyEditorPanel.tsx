@@ -734,13 +734,13 @@ export function StrategyEditorPanel({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (isDirty) {
       setShowCloseConfirm(true);
     } else {
       onClose();
     }
-  };
+  }, [isDirty, onClose]);
 
   const confirmClose = () => {
     setShowCloseConfirm(false);
@@ -757,8 +757,7 @@ export function StrategyEditorPanel({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDirty, onClose]);
+  }, [handleClose]);
 
   // No early return for loading to avoid jarring layout shifts
   const showContent = !isEditMode || (!!existingStrategy && !isLoadingStrategy);

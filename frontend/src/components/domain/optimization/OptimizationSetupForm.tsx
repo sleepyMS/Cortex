@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import {
   useForm,
@@ -30,7 +30,7 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import debounce from "lodash.debounce";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 import apiClient from "@/lib/apiClient";
 import { Strategy, LogicBlock } from "@/types/strategy";
@@ -453,24 +453,20 @@ export function OptimizationSetupForm() {
     onError: () => setEstimation(null),
   });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedEstimateCost = useCallback(
-    debounce(
-      (trials: number, currentStrategyId: string, currentDateRange: any) => {
-        if (
-          !currentStrategyId ||
-          !currentDateRange?.from ||
-          !currentDateRange?.to ||
-          trials <= 0
-        ) {
-          setEstimation(null);
-          return;
-        }
-        estimateCost({ trials });
-      },
-      500
-    ),
-    [estimateCost]
+  const debouncedEstimateCost = useDebouncedCallback(
+    (trials: number, currentStrategyId: string, currentDateRange: any) => {
+      if (
+        !currentStrategyId ||
+        !currentDateRange?.from ||
+        !currentDateRange?.to ||
+        trials <= 0
+      ) {
+        setEstimation(null);
+        return;
+      }
+      estimateCost({ trials });
+    },
+    500
   );
 
   useEffect(() => {

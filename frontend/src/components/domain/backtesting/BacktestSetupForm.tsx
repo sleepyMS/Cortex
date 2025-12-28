@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,7 +23,7 @@ import {
   Percent,
   Receipt,
 } from "lucide-react";
-import debounce from "lodash.debounce";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 import apiClient from "@/lib/apiClient";
 import { Strategy, LogicBlock } from "@/types/strategy";
@@ -260,10 +260,8 @@ export function BacktestSetupForm() {
     onError: () => setEstimation(null),
   });
 
-  // `estimateCost`는 useMutation에서 반환되어 참조가 안정적이므로 의존성 배열에 포함
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedEstimateCost = useCallback(
-    debounce((strategyId: string, dateRange: { from: Date; to: Date }) => {
+  const debouncedEstimateCost = useDebouncedCallback(
+    (strategyId: string, dateRange: { from: Date; to: Date }) => {
       if (!strategyId || !dateRange?.from || !dateRange?.to) {
         setEstimation(null); // 조건이 충족되지 않으면 예측값 초기화
         return;
@@ -273,8 +271,8 @@ export function BacktestSetupForm() {
         startDate: dateRange.from,
         endDate: dateRange.to,
       });
-    }, 500),
-    [estimateCost]
+    },
+    500
   );
 
   useEffect(() => {
