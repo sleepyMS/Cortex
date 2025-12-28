@@ -132,9 +132,9 @@
           "title": "Evolve Your Strategy with AI",
           "description": "LSTM/GRU deep learning models learn market patterns while Optuna TPE engine automatically finds optimal hyperparameters.",
           "highlights": [
-            "50+ Technical Indicators",
+            "Self-Validating Deep Learning",
             "TPE Auto-Optimization",
-            "Triple Barrier Labeling"
+            "Precision Signal Labeling"
           ],
           "cta": "Create AI Model"
         },
