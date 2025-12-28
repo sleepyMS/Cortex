@@ -472,7 +472,7 @@ export function RuleBlock({
       buy: {
         color: "emerald",
         label: "BUY",
-        subLabel: "매수 신호",
+        labelKey: "buySignal" as const,
         bgClass:
           "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20",
         textClass: "text-emerald-500",
@@ -480,14 +480,14 @@ export function RuleBlock({
       sell: {
         color: "rose",
         label: "SELL",
-        subLabel: "매도 신호",
+        labelKey: "sellSignal" as const,
         bgClass: "bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20",
         textClass: "text-rose-500",
       },
       hold: {
         color: "amber",
         label: "HOLD",
-        subLabel: "관망 신호",
+        labelKey: "holdSignal" as const,
         bgClass: "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20",
         textClass: "text-amber-500",
       },
@@ -506,10 +506,10 @@ export function RuleBlock({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-semibold text-sm truncate">
-                {logic.modelName || "AI 모델"}
+                {logic.modelName || t("aiSignal.defaultModelName")}
               </span>
               <span className="text-[10px] text-muted-foreground">
-                머신러닝 예측 모델
+                {t("aiSignal.modelSubtitle")}
               </span>
             </div>
           </div>
@@ -554,7 +554,9 @@ export function RuleBlock({
           `}
           >
             <div className="flex items-center justify-between mb-2">
-              <Label className="text-xs font-medium">평가 방식</Label>
+              <Label className="text-xs font-medium">
+                {t("aiSignal.evaluationModeLabel")}
+              </Label>
             </div>
             <Select
               value={logic.evaluationMode}
@@ -563,24 +565,28 @@ export function RuleBlock({
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue>
                   {logic.evaluationMode === "highest"
-                    ? "최고 확률"
-                    : "임계값 기반"}
+                    ? t("aiSignal.highestProbability")
+                    : t("aiSignal.thresholdBased")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="highest">
                   <div className="flex flex-col">
-                    <span className="font-medium">최고 확률</span>
+                    <span className="font-medium">
+                      {t("aiSignal.highestProbability")}
+                    </span>
                     <span className="text-[10px] text-muted-foreground">
-                      선택 신호가 가장 높을 때
+                      {t("aiSignal.highestProbabilityDesc")}
                     </span>
                   </div>
                 </SelectItem>
                 <SelectItem value="threshold">
                   <div className="flex flex-col">
-                    <span className="font-medium">임계값 기반</span>
+                    <span className="font-medium">
+                      {t("aiSignal.thresholdBased")}
+                    </span>
                     <span className="text-[10px] text-muted-foreground">
-                      설정값 이상일 때
+                      {t("aiSignal.thresholdBasedDesc")}
                     </span>
                   </div>
                 </SelectItem>
@@ -592,7 +598,9 @@ export function RuleBlock({
           {logic.evaluationMode === "threshold" && (
             <div className="flex-1 p-3 rounded-lg border bg-violet-500/5 border-violet-500/20">
               <div className="flex justify-between items-center mb-2">
-                <Label className="text-xs font-medium">최소 신뢰도</Label>
+                <Label className="text-xs font-medium">
+                  {t("aiSignal.minConfidenceLabel")}
+                </Label>
                 <span className="text-sm font-bold text-violet-500">
                   {Math.round((logic.minConfidence || 0.5) * 100)}%
                 </span>
@@ -608,7 +616,7 @@ export function RuleBlock({
                 className="w-full"
               />
               <p className="text-[10px] text-muted-foreground mt-2">
-                예측 확률이 이 값 이상일 때 신호 발생
+                {t("aiSignal.minConfidenceDesc")}
               </p>
             </div>
           )}
@@ -621,20 +629,24 @@ export function RuleBlock({
           ${currentSignal.bgClass} border
         `}
         >
-          <span className="text-muted-foreground">조건:</span>
-          <span className={`font-semibold ${currentSignal.textClass}`}>
-            {logic.modelName}
+          <span className="text-muted-foreground">
+            {t("aiSignal.conditionLabel")}
           </span>
-          <span className="text-muted-foreground">모델이</span>
+          <span className={`font-semibold ${currentSignal.textClass}`}>
+            {logic.modelName || t("aiSignal.defaultModelName")}
+          </span>
+          <span className="text-muted-foreground">
+            {t("aiSignal.modelSuffix")}
+          </span>
           <span className={`font-bold ${currentSignal.textClass}`}>
             {currentSignal.label}
           </span>
           <span className="text-muted-foreground">
             {logic.evaluationMode === "highest"
-              ? "을(를) 최고 확률로 예측할 때"
-              : `확률 ≥ ${Math.round(
-                  (logic.minConfidence || 0.5) * 100
-                )}%일 때`}
+              ? t("aiSignal.highestProbabilitySuffix")
+              : t("aiSignal.thresholdSuffix", {
+                  confidence: Math.round((logic.minConfidence || 0.5) * 100),
+                })}
           </span>
         </div>
       </div>

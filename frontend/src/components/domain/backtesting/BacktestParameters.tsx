@@ -87,6 +87,11 @@ const formatRuleTitle = (
           lowerBound: format(block.lowerBound),
           upperBound: format(block.upperBound),
         });
+      case "ai_signal":
+        return t("ruleTitles.ai_signal", {
+          modelName: block.modelName || block.modelId,
+          signalType: block.signalType.toUpperCase(),
+        });
       default:
         return t("ruleTitles.default", { type: block.type });
     }
@@ -483,6 +488,54 @@ const RuleDisplay = React.memo(
                 label={tRule("directionLabel")}
                 value={tRule(dirMap[block.direction] || block.direction)}
               />
+            </div>
+          );
+        }
+
+        // AI 신호 규칙
+        case "ai_signal": {
+          const signalTypeMap: Record<string, string> = {
+            buy: "buySignal",
+            sell: "sellSignal",
+            hold: "holdSignal",
+          };
+          const evalModeMap: Record<string, string> = {
+            highest: "highestProbability",
+            threshold: "thresholdBased",
+          };
+          return (
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-2 items-stretch gap-4 min-w-max sm:min-w-0">
+                {/* 모델 정보 */}
+                <div className="space-y-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={t("aiModelLabel")}
+                    value={block.modelName || block.modelId}
+                  />
+                  <ReadOnlyLogicDisplay
+                    label={tRule("signalLabel")}
+                    value={tRule(
+                      signalTypeMap[block.signalType] || block.signalType
+                    )}
+                  />
+                </div>
+                {/* 평가 설정 */}
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={t("evaluationModeLabel")}
+                    value={t(
+                      evalModeMap[block.evaluationMode] || block.evaluationMode
+                    )}
+                  />
+                  {block.evaluationMode === "threshold" &&
+                    block.minConfidence !== undefined && (
+                      <ReadOnlyLogicDisplay
+                        label={t("minConfidenceLabel")}
+                        value={`${Math.round(block.minConfidence * 100)}%`}
+                      />
+                    )}
+                </div>
+              </div>
             </div>
           );
         }

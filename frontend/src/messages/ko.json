@@ -1131,6 +1131,7 @@
     "buySignal": "매수 신호",
     "sellSignal": "매도 신호",
     "noneSignal": "신호 없음",
+    "holdSignal": "관망 신호",
     "upperChannel": "상단 채널",
     "middleChannel": "중간 채널",
     "lowerChannel": "하단 채널",
@@ -1159,7 +1160,22 @@
     "signalLabel": "신호",
     "divergenceTypeLabel": "다이버전스 타입",
     "patternKeyLabel": "패턴",
-    "directionLabel": "방향"
+    "directionLabel": "방향",
+    "aiSignal": {
+      "defaultModelName": "AI 모델",
+      "modelSubtitle": "머신러닝 예측 모델",
+      "evaluationModeLabel": "평가 방식",
+      "highestProbability": "최고 확률",
+      "thresholdBased": "임계값 기반",
+      "highestProbabilityDesc": "선택 신호가 가장 높을 때",
+      "thresholdBasedDesc": "설정값 이상일 때",
+      "minConfidenceLabel": "최소 신뢰도",
+      "minConfidenceDesc": "예측 확률이 이 값 이상일 때 신호 발생",
+      "conditionLabel": "조건:",
+      "modelSuffix": "모델이",
+      "highestProbabilitySuffix": "을(를) 최고 확률로 예측할 때",
+      "thresholdSuffix": "확률 ≥ {confidence}%일 때"
+    }
   },
   "ParameterPopover": {
     "title": "설정",
@@ -1455,6 +1471,7 @@
       "comparison": "{operandA} {operator} {operandB}",
       "crossover": "{mainLine}가 {signalLine}를 {crossDirection}",
       "state": "{indicator}가 {lowerBound}과(와) {upperBound} 사이",
+      "ai_signal": "{modelName} 모델 → {signalType} 신호",
       "default": "{type} 규칙"
     },
     "operandTitles": {
@@ -1570,8 +1587,14 @@
         "comparison": "{operandA} {operator} {operandB}",
         "crossover": "{mainLine}가 {signalLine}를 {crossDirection}",
         "state": "{indicator}가 {lowerBound}과(와) {upperBound} 사이",
+        "ai_signal": "{modelName} 모델 → {signalType} 신호",
         "default": "{type} 규칙"
       },
+      "aiModelLabel": "AI 모델",
+      "evaluationModeLabel": "평가 방식",
+      "minConfidenceLabel": "최소 신뢰도",
+      "highestProbability": "최고 확률",
+      "thresholdBased": "임계값 기반",
       "operandTitles": {
         "baseA": "기준 (A)",
         "mainLine": "메인 라인",

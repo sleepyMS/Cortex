@@ -1140,6 +1140,7 @@
     "buySignal": "Buy Signal",
     "sellSignal": "Sell Signal",
     "noneSignal": "No Signal",
+    "holdSignal": "Hold Signal",
     "upperChannel": "Upper Channel",
     "middleChannel": "Middle Channel",
     "lowerChannel": "Lower Channel",
@@ -1168,7 +1169,22 @@
     "signalLabel": "Signal",
     "divergenceTypeLabel": "Divergence Type",
     "patternKeyLabel": "Pattern",
-    "directionLabel": "Direction"
+    "directionLabel": "Direction",
+    "aiSignal": {
+      "defaultModelName": "AI Model",
+      "modelSubtitle": "ML Prediction Model",
+      "evaluationModeLabel": "Evaluation Mode",
+      "highestProbability": "Highest Probability",
+      "thresholdBased": "Threshold Based",
+      "highestProbabilityDesc": "When selected signal is highest",
+      "thresholdBasedDesc": "When above set value",
+      "minConfidenceLabel": "Min Confidence",
+      "minConfidenceDesc": "Signal triggers when probability ≥ this value",
+      "conditionLabel": "Condition:",
+      "modelSuffix": "model predicts",
+      "highestProbabilitySuffix": "with highest probability",
+      "thresholdSuffix": "probability ≥ {confidence}%"
+    }
   },
   "ParameterPopover": {
     "title": "Settings",
@@ -1464,6 +1480,7 @@
       "comparison": "{operandA} {operator} {operandB}",
       "crossover": "{mainLine} {crossDirection} {signalLine}",
       "state": "{indicator} between {lowerBound} and {upperBound}",
+      "ai_signal": "{modelName} Model → {signalType} Signal",
       "default": "{type} rule"
     },
     "operandTitles": {
@@ -1579,8 +1596,14 @@
         "comparison": "{operandA} {operator} {operandB}",
         "crossover": "{mainLine} {crossDirection} {signalLine}",
         "state": "{indicator} between {lowerBound} and {upperBound}",
+        "ai_signal": "{modelName} Model → {signalType} Signal",
         "default": "{type} rule"
       },
+      "aiModelLabel": "AI Model",
+      "evaluationModeLabel": "Evaluation Mode",
+      "minConfidenceLabel": "Min Confidence",
+      "highestProbability": "Highest Probability",
+      "thresholdBased": "Threshold Based",
       "operandTitles": {
         "baseA": "Base (A)",
         "mainLine": "Main Line",
