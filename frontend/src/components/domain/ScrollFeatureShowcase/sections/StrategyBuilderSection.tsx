@@ -264,7 +264,7 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
   });
 
   // Map scroll progress to animation range [0, 1]
-  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
+  const progress = useTransform(scrollYProgress, [0.1, 0.5], [0, 1]);
 
   const highlightIcons = ["📦", "🔗", "💡"];
 
