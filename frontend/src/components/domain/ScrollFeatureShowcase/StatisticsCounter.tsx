@@ -125,26 +125,29 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
     }
   }, [isCompact]);
 
-  // Intersection Observer to detect scroll position
+  // Scroll Listener to detect scroll position (Optimized with requestAnimationFrame)
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Toggle compact mode based on sentinel position relative to header (60px)
-        setIsCompact(
-          !entry.isIntersecting && entry.boundingClientRect.top < 60
-        );
-      },
-      {
-        rootMargin: "-60px 0px 0px 0px", // Offset by header height
-        threshold: 0,
+    let tick = false;
+
+    const handleScroll = () => {
+      if (!tick) {
+        window.requestAnimationFrame(() => {
+          if (sentinelRef.current) {
+            const { top } = sentinelRef.current.getBoundingClientRect();
+            // Check if the top of the component is above the header (60px)
+            setIsCompact(top < 60);
+          }
+          tick = false;
+        });
+        tick = true;
       }
-    );
+    };
 
-    if (sentinelRef.current) {
-      observer.observe(sentinelRef.current);
-    }
+    // Initial check
+    handleScroll();
 
-    return () => observer.disconnect();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Track active section
