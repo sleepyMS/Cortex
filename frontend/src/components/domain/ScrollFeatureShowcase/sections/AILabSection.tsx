@@ -40,7 +40,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
           hiddenNodes.map((_, j) => (
             <motion.line
               key={`ih-${i}-${j}`}
-              x1={80}
+              x1={90}
               y1={80 + i * 80}
               x2={250}
               y2={50 + j * 55}
@@ -61,7 +61,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
               key={`ho-${i}-${j}`}
               x1={250}
               y1={50 + i * 55}
-              x2={400}
+              x2={410}
               y2={120 + j * 80}
               stroke="url(#lineGradient)"
               strokeWidth={1}
@@ -90,7 +90,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
             transition={{ duration: 0.4, delay: i * 0.1 }}
           >
             <rect
-              x={20}
+              x={30}
               y={65 + i * 80}
               width={60}
               height={30}
@@ -100,7 +100,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
               strokeWidth={1}
             />
             <text
-              x={50}
+              x={60}
               y={80 + i * 80}
               dominantBaseline="middle"
               textAnchor="middle"
@@ -144,7 +144,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
               transition={{ duration: 0.4, delay: i * 0.1 }}
             >
               <rect
-                x={400}
+                x={410}
                 y={105 + i * 80}
                 width={50}
                 height={30}
@@ -162,7 +162,7 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
                 strokeWidth={isActive ? 2 : 1}
               />
               <text
-                x={425}
+                x={435}
                 y={120 + i * 80}
                 dominantBaseline="middle"
                 textAnchor="middle"
