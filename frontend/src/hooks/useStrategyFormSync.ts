@@ -79,7 +79,7 @@ export function useStrategyFormSync({
   useEffect(() => {
     if (isEditMode && existingStrategy) {
       initialStrategyRef.current = existingStrategy;
-      formMethods.reset({
+      resetForm({
         name: existingStrategy.name,
         description: existingStrategy.description,
         isPublic: existingStrategy.isPublic,
@@ -91,7 +91,7 @@ export function useStrategyFormSync({
           existingStrategy.tpslLogic?.atrTakeProfitMultiplier,
         atrPeriod: existingStrategy.tpslLogic?.atrPeriod,
       });
-      strategyState.setStrategy({
+      setStrategy({
         longEntryRules: existingStrategy.longEntryRules,
         longExitRules: existingStrategy.longExitRules,
         shortEntryRules: existingStrategy.shortEntryRules,
@@ -108,6 +108,7 @@ export function useStrategyFormSync({
     resetForm,
     setStrategy,
     initialStrategyRef,
+    setTpslMode,
   ]);
 
   // Effect 2: 생성 모드 진입 또는 strategyId 변경 시 리셋
@@ -115,7 +116,7 @@ export function useStrategyFormSync({
     if (!isEditMode) {
       initialStrategyRef.current = null;
       strategyState.reset();
-      formMethods.reset({
+      resetForm({
         name: "",
         description: "",
         isPublic: false,
@@ -126,7 +127,7 @@ export function useStrategyFormSync({
   // Effect 3: 언마운트 시 Zustand 클린업
   useEffect(() => {
     return () => {
-      strategyState.reset();
+      reset();
     };
   }, [reset]);
 

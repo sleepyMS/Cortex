@@ -293,10 +293,18 @@ class OptimizationService:
         if sort_by == "trial_id":
             order = desc(models.OptimizationTrial.trial_id) if sort_desc else asc(models.OptimizationTrial.trial_id)
             query = query.order_by(order)
-        elif sort_by == "score": # 점수 기준 정렬 기능 추가
-             score_col = models.OptimizationTrial.metrics['backtest_score'].astext.cast(Float)
-             order = desc(score_col) if sort_desc else asc(score_col)
-             query = query.order_by(order)
+        elif sort_by == "score":
+            score_col = models.OptimizationTrial.metrics['backtest_score'].astext.cast(Float)
+            order = desc(score_col) if sort_desc else asc(score_col)
+            query = query.order_by(order)
+        elif sort_by == "total_return":
+            tr_col = models.OptimizationTrial.metrics['total_return_pct'].astext.cast(Float)
+            order = desc(tr_col) if sort_desc else asc(tr_col)
+            query = query.order_by(order)
+        elif sort_by == "mdd":
+            mdd_col = models.OptimizationTrial.metrics['mdd_pct'].astext.cast(Float)
+            order = desc(mdd_col) if sort_desc else asc(mdd_col)
+            query = query.order_by(order)
 
         # 페이지네이션 적용
         query = query.offset((page - 1) * limit).limit(limit)

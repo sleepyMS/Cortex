@@ -45,8 +45,7 @@ export function StrategySelectionStep({
     if (fullStrategy && fullStrategy.id === data.strategyId) {
       updateData({ selectedStrategy: fullStrategy });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullStrategy, data.strategyId]);
+  }, [fullStrategy, data.strategyId, updateData]);
 
   const handleSelect = (strategyId: string) => {
     // Optimistically set the ID, selectedStrategy will be null until fetched

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -78,9 +78,9 @@ export function BotWizard() {
   const [data, setData] = useState<WizardData>(INITIAL_DATA);
   const t = useTranslations("LiveTrading.Wizard");
 
-  const updateData = (updates: Partial<WizardData>) => {
+  const updateData = useCallback((updates: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   const steps = [
     { title: t("steps.mode"), icon: Layout },

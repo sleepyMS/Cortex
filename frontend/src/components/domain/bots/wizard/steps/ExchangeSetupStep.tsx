@@ -49,8 +49,7 @@ export function ExchangeSetupStep({
       const amount = Math.floor(balance * (allocationPct / 100));
       updateData({ initialCapital: amount });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balance, allocationPct, data.mode]);
+  }, [balance, allocationPct, data.mode, updateData]);
 
   return (
     <div className="space-y-8">

@@ -344,8 +344,7 @@ export const TrialsTable = ({
         },
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, jobId]
+    [t, jobId, onTrialClick]
   );
 
   const table = useReactTable({
