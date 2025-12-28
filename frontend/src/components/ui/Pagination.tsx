@@ -28,12 +28,14 @@ const PaginationContent = React.forwardRef<
     {...props}
   />
 ));
+PaginationContent.displayName = "PaginationContent";
 const PaginationItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => (
   <li ref={ref} className={cn("", className)} {...props} />
 ));
+PaginationItem.displayName = "PaginationItem";
 
 type PaginationLinkProps = { isActive?: boolean } & Pick<ButtonProps, "size"> &
   React.ComponentProps<"a">;

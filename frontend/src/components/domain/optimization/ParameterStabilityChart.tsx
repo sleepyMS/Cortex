@@ -173,11 +173,13 @@ export const ParameterStabilityChart = ({
                   borderRadius: "var(--radius)",
                   fontSize: "12px",
                 }}
-                formatter={(value: number, name: string) => [
+                formatter={(value, name) => [
                   // 값 포맷팅 (Raw/Normalized)
-                  mode === "normalized" ? `${value.toFixed(1)}%` : value,
+                  mode === "normalized"
+                    ? `${Number(value ?? 0).toFixed(1)}%`
+                    : value,
                   // [수정] 라벨을 공통 유틸리티로 생성
-                  getReadableParamLabel(name, strategy),
+                  getReadableParamLabel(String(name ?? ""), strategy),
                 ]}
               />
               {/* [핵심 수정] 범례 포매터 변경 */}

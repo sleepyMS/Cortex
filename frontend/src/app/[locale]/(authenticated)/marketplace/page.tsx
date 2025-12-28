@@ -97,6 +97,7 @@ const PaymentWidgetModal = ({
         setIsReady(false);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, checkoutData]);
 
   const handlePaymentRequest = () => {

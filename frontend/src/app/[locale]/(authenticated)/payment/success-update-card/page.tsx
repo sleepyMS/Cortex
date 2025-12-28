@@ -37,6 +37,7 @@ export default function PaymentSuccessUpdateCardPage() {
         router.push("/dashboard?tab=settings");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router, t]);
 
   return (

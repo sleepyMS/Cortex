@@ -69,8 +69,11 @@ export function IndicatorHub({
     staleTime: 30000,
   });
 
-  const completedModels =
-    aiModels?.filter((m: AIModelSummary) => m.status === "completed") || [];
+  const completedModels = useMemo(
+    () =>
+      aiModels?.filter((m: AIModelSummary) => m.status === "completed") || [],
+    [aiModels]
+  );
 
   const categories = useMemo(() => {
     if (!indicatorMetadata) return showAICategory ? ["All", "AI"] : ["All"];
@@ -99,6 +102,7 @@ export function IndicatorHub({
     return completedModels.filter((m: AIModelSummary) =>
       m.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, completedModels]);
 
   const logicTypeTranslations: { [key: string]: string } = {

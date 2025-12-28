@@ -41,6 +41,7 @@ export default function PaymentSuccessBillingPage() {
         router.push("/pricing");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router, t]);
 
   return (

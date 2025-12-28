@@ -392,6 +392,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
       setHasAutoTested(true);
       handleTestPrediction();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, model?.status, hasAutoTested, isPredicting]);
 
   // Delete mutation

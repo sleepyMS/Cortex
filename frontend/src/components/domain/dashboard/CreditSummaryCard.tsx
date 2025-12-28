@@ -173,7 +173,9 @@ export function CreditSummaryCard() {
                 </Pie>
                 <RechartsTooltip
                   formatter={(value, name) => [
-                    value.toLocaleString(),
+                    typeof value === "number"
+                      ? value.toLocaleString()
+                      : String(value ?? 0),
                     t(name as "purchased" | "bonus"),
                   ]}
                   wrapperStyle={{ zIndex: 1000 }}

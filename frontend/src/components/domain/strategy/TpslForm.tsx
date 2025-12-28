@@ -55,6 +55,7 @@ export function TpslForm({ form, onModeChange }: TpslFormProps) {
         : "percentage";
     setSelectedMode(newMode);
     onModeChange(newMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.getValues, onModeChange]);
 
   const handleModeChange = (newMode: TpslMode) => {

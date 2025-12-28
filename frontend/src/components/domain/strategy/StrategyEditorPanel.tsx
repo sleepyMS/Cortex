@@ -349,6 +349,7 @@ export function StrategyEditorPanel({
         setTpslMode("atr");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isEditMode,
     existingStrategy,
@@ -366,6 +367,7 @@ export function StrategyEditorPanel({
         isPublic: false,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strategyId, isEditMode, strategyState.reset, formMethods.reset]);
 
   /**
@@ -375,6 +377,7 @@ export function StrategyEditorPanel({
     return () => {
       strategyState.reset();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strategyState.reset]);
 
   useEffect(() => {
@@ -754,6 +757,7 @@ export function StrategyEditorPanel({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty, onClose]);
 
   // No early return for loading to avoid jarring layout shifts

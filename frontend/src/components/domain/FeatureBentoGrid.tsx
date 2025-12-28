@@ -89,7 +89,7 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
     });
   };
 
-  const updateLines = () => {
+  const updateLines = React.useCallback(() => {
     if (
       !containerRef.current ||
       !leftCrossoverRef.current ||
@@ -148,7 +148,7 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
     } ${endState.y}`;
 
     setLinesSafe({ crossover: pathCrossover, state: pathState });
-  };
+  }, []);
 
   useEffect(() => {
     // Initial update
@@ -170,7 +170,7 @@ export const FeatureBentoGrid: React.FC<FeatureBentoGridProps> = ({
       cancelAnimationFrame(animationFrameId);
       clearTimeout(timer);
     };
-  }, []);
+  }, [updateLines]);
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8 h-auto">

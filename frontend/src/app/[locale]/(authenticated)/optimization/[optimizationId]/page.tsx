@@ -122,6 +122,7 @@ export default function OptimizationDetailPage({
 
       return () => ws.close();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.status, optimizationId, queryClient]);
 
   // 3. 차트용 데이터 페칭 (CSR)

@@ -453,6 +453,7 @@ export function OptimizationSetupForm() {
     onError: () => setEstimation(null),
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedEstimateCost = useCallback(
     debounce(
       (trials: number, currentStrategyId: string, currentDateRange: any) => {

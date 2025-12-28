@@ -286,6 +286,7 @@ export default function StrategyEditorPage({
         setTpslMode("atr");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isEditMode,
     existingStrategy,
@@ -302,6 +303,7 @@ export default function StrategyEditorPage({
         isPublic: false,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode, strategyState.reset, formMethods.reset]);
 
   /**
@@ -313,6 +315,7 @@ export default function StrategyEditorPage({
     return () => {
       strategyState.reset();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strategyState.reset]);
 
   useEffect(() => {

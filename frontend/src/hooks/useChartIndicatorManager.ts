@@ -295,8 +295,12 @@ export function useChartIndicatorManager({
       if (width > 0) mainChart.resize(width, mainChartHeight);
     });
     resizeObserver.observe(container);
+
+    // Capture ref value for cleanup
+    const indicatorManager = indicatorManagerRef.current;
+
     return () => {
-      indicatorManagerRef.current.forEach((state) => {
+      indicatorManager.forEach((state) => {
         state.series.forEach((series) => {
           try {
             (state.paneChart || chartRef.current)?.removeSeries(series);
@@ -315,7 +319,7 @@ export function useChartIndicatorManager({
       }
       chartRef.current = null;
       candlestickSeriesRef.current = null;
-      indicatorManagerRef.current.clear();
+      indicatorManager.clear();
       markersPluginRef.current = null;
     };
   }, [mainChartContainerRef, mainChartHeight, setupChart, resolvedTheme]);
@@ -986,7 +990,7 @@ export function useChartIndicatorManager({
           }
           return { time: signal.time, position, color, shape, text };
         })
-        .filter((marker) => marker !== null);
+        .filter((marker) => marker !== null) as SeriesMarker<Time>[];
 
       let psarMarkers: SeriesMarker<Time>[] = [];
       if (indicatorData) {

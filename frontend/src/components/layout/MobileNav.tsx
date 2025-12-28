@@ -142,7 +142,6 @@ export function MobileNav() {
     // 쿼리 스트링을 유지하면서 언어 전환
     const queryString = searchParams.toString();
     const fullPath = queryString ? `${pathname}?${queryString}` : pathname;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     router.replace(fullPath as any, { locale: newLocale });
   };
 

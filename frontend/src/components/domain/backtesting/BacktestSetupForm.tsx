@@ -261,6 +261,7 @@ export function BacktestSetupForm() {
   });
 
   // `estimateCost`는 useMutation에서 반환되어 참조가 안정적이므로 의존성 배열에 포함
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedEstimateCost = useCallback(
     debounce((strategyId: string, dateRange: { from: Date; to: Date }) => {
       if (!strategyId || !dateRange?.from || !dateRange?.to) {

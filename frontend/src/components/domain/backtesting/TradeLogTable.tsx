@@ -86,14 +86,17 @@ export const TradeLogTable = ({
   const isServerPaginated = !!pagination;
 
   // 서버 사이드 정렬 핸들러
-  const handleServerSort = (field: string) => {
-    if (!pagination) return;
-    const newOrder =
-      pagination.sortBy === field && pagination.sortOrder === "desc"
-        ? "asc"
-        : "desc";
-    pagination.onSortChange(field, newOrder);
-  };
+  const handleServerSort = React.useCallback(
+    (field: string) => {
+      if (!pagination) return;
+      const newOrder =
+        pagination.sortBy === field && pagination.sortOrder === "desc"
+          ? "asc"
+          : "desc";
+      pagination.onSortChange(field, newOrder);
+    },
+    [pagination]
+  );
 
   const columns: ColumnDef<TradeLog>[] = React.useMemo(
     () => [

@@ -441,7 +441,7 @@ export function BacktestContent({
         ws.close();
       };
     }
-  }, [backtest?.status, backtestId, queryClient]);
+  }, [backtest, backtestId, queryClient]);
 
   // Shared Handlers (Recreate logic from PageHeader if needed or pass down)
   // Since PageHeader is internal, we can duplicate the simple handlers or move them out.

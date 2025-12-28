@@ -210,6 +210,7 @@ export default function NewAIModelPage() {
     architectureConfig.numLayers,
     optimizationConfig.isEnabled,
     optimizationConfig.nTrials,
+    t,
   ]);
 
   // Set default dates (1 year period)

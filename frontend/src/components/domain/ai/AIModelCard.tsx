@@ -184,7 +184,9 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
           {/* Description */}
           {model.description && (
             <p className="text-sm text-muted-foreground/80 line-clamp-2 leading-relaxed italic group-hover:text-muted-foreground transition-colors">
-              "{model.description}"
+              {'"'}
+              {model.description}
+              {'"'}
             </p>
           )}
 
