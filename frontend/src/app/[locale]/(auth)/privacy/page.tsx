@@ -309,8 +309,8 @@ export default function PrivacyPage() {
       {/* 제6조의2 자동화된 결정 */}
       <section id="article-6-2">
         <h2>제6조의2 (자동화된 의사결정에 대한 권리 안내)</h2>
-        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 my-2">
-          <p className="text-sm">
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-6 my-6">
+          <p className="text-sm m-0 leading-relaxed">
             회사는 효율적인 투자 전략 제공을 위해{" "}
             <strong>인공지능(AI) 및 알고리즘을 이용한 자동화된 분석</strong>을
             수행할 수 있습니다.
@@ -435,9 +435,9 @@ export default function PrivacyPage() {
           관련한 정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이
           개인정보 보호책임자(CPO)를 지정하고 있습니다.
         </p>
-        <div className="rounded-lg border border-border bg-muted/50 p-4 mt-4">
-          <h3 className="font-semibold mb-2">개인정보 보호책임자</h3>
-          <ul className="space-y-1 text-sm">
+        <div className="rounded-lg border border-border bg-muted/50 p-6 md:p-8">
+          <h3 className="text-xl font-bold mt-0 mb-6">개인정보 보호책임자</h3>
+          <ul className="space-y-3 text-sm mt-0 ml-0 pl-0 list-none">
             <li>
               <strong>성명:</strong> 최민석
             </li>
@@ -462,8 +462,8 @@ export default function PrivacyPage() {
           개인정보분쟁조정위원회, 한국인터넷진흥원 개인정보침해신고센터 등에
           분쟁해결이나 상담 등을 신청할 수 있습니다.
         </p>
-        <div className="rounded-lg border border-border bg-muted/50 p-4 mt-4">
-          <ul className="text-sm space-y-2">
+        <div className="rounded-lg border border-border bg-muted/50 p-6 md:p-8">
+          <ul className="text-sm space-y-4 mt-0 ml-0 pl-0 list-none">
             <li>
               <strong>개인정보분쟁조정위원회:</strong> 1833-6972
               (www.kopico.go.kr)

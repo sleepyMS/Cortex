@@ -315,8 +315,8 @@ export default function TermsPage() {
       {/* 제11조 책임의 제한 - 투자 면책 */}
       <section id="article-11">
         <h2>제11조 (책임의 제한 및 투자 면책)</h2>
-        <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 my-4">
-          <h3 className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400 mb-2">
+        <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-6 md:p-8 my-8">
+          <h3 className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400 mt-0 mb-4">
             ⚠️ 투자 위험 고지 (Investment Disclaimer)
           </h3>
           <p className="text-sm text-red-600 dark:text-red-300">
@@ -488,10 +488,10 @@ export default function TermsPage() {
       {/* 회사 정보 */}
       <section
         id="company-info"
-        className="mt-12 rounded-lg border border-border bg-muted/50 p-6"
+        className="mt-16 rounded-lg border border-border bg-muted/50 p-6 md:p-8"
       >
-        <h3 className="text-lg font-semibold mb-4">회사 정보</h3>
-        <ul className="space-y-2 text-sm text-muted-foreground">
+        <h3 className="text-xl font-bold mt-0 mb-6">회사 정보</h3>
+        <ul className="space-y-3 text-sm text-muted-foreground mt-0 ml-0 pl-0 list-none">
           <li>
             <strong>상호:</strong> [회사명]
           </li>
