@@ -19,36 +19,54 @@ interface BacktestingSectionProps {
 
 // Backtest Chart Visual
 const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
-  // Generate sample candles with realistic price movement
+  // Fixed candle data for consistent visualization
   const candles = React.useMemo(() => {
-    const data: {
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-      color: string;
-    }[] = [];
-    let price = 42000; // Start price like BTC
-    for (let i = 0; i < 24; i++) {
-      const volatility = 200 + Math.random() * 300;
-      const direction = Math.random() > 0.45 ? 1 : -1;
-      const change = direction * volatility;
-      const open = price;
-      price = price + change;
-      const close = price;
-      const wickUp = Math.random() * 150;
-      const wickDown = Math.random() * 150;
+    const startPrice = 42000;
+    // Hardcoded patterns: [change, wickUp, wickDown]
+    // Hardcoded patterns: [change, wickUp, wickDown]
+    const patterns = [
+      [150, 50, 50],
+      [180, 80, 40],
+      [-80, 40, 60],
+      [220, 100, 50],
+      [300, 120, 60], // Initial rise - moderate
+      [-150, 40, 100],
+      [-200, 30, 120],
+      [-100, 50, 80],
+      [80, 60, 40],
+      [180, 80, 50], // Volatility
+      [250, 150, 60],
+      [200, 100, 50],
+      [-80, 40, 60],
+      [-180, 50, 100],
+      [-300, 40, 150], // Peak and drop
+      [-100, 30, 80],
+      [150, 80, 40],
+      [200, 120, 60],
+      [250, 140, 50],
+      [150, 90, 40], // Recovery
+      [-50, 50, 60],
+      [100, 70, 40],
+      [120, 80, 40],
+      [80, 40, 50], // Stabilization
+    ];
+
+    let currentPrice = startPrice;
+    return patterns.map(([change, wickUp, wickDown]) => {
+      const open = currentPrice;
+      const close = currentPrice + change;
       const high = Math.max(open, close) + wickUp;
       const low = Math.min(open, close) - wickDown;
-      data.push({
+      currentPrice = close;
+
+      return {
         open,
         high,
         low,
         close,
         color: close >= open ? "#22c55e" : "#ef4444",
-      });
-    }
-    return data;
+      };
+    });
   }, []);
 
   // Calculate price range for proper scaling
@@ -71,24 +89,23 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
   const equityPoints = React.useMemo(() => {
     let equity = 100;
     return candles.map((candle, i) => {
-      // Base trend
-      const trend = i * 0.8;
+      // Base trend - steadily increasing
+      const trend = i * 0.6;
 
-      // Random walk component + correlation to candle moves
-      const noise = (Math.random() - 0.5) * 5;
-      const candleMove = (candle.close - candle.open) / 100;
+      // Correlate to candle moves
+      const candleMove = (candle.close - candle.open) / 120;
 
-      // Simulate drawdown periods
+      // Deterministic penalty for drawdown periods
       const isDrawdown = (i >= 7 && i <= 10) || (i >= 16 && i <= 19);
-      const penalty = isDrawdown ? -2 * ((i % 3) + 1) : 0;
+      const penalty = isDrawdown ? -1.2 * ((i % 3) + 1) : 0;
 
-      // Significant jumps on signals
-      if (i === 4) equity += 4; // Buy
-      if (i === 11) equity += 8; // Sell profit
-      if (i === 16) equity -= 2; // Buy into dip
-      if (i === 20) equity += 5; // Recovery
+      // Significant jumps on signals - balanced growth
+      if (i === 4) equity += 3.5; // Buy
+      if (i === 11) equity += 7; // Sell profit
+      if (i === 16) equity -= 1.2; // Buy into dip
+      if (i === 20) equity += 4.5; // Recovery
 
-      equity += trend * 0.2 + candleMove * 0.5 + noise + penalty;
+      equity += trend * 0.2 + candleMove * 0.5 + penalty;
 
       // Ensure it doesn't drop below base
       return Math.max(equity, 80);
