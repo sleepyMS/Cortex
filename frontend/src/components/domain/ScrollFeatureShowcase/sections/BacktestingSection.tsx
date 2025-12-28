@@ -150,7 +150,8 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           y={chartPadding.top}
           width={chartWidth}
           height={chartHeight - chartPadding.top - chartPadding.bottom}
-          fill="rgba(0,0,0,0.2)"
+          fill="rgba(0,0,0,0.03)"
+          className="dark:fill-black/30"
           rx={4}
         />
 
@@ -166,7 +167,8 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
               y1={yPos}
               x2={chartWidth}
               y2={yPos}
-              stroke="rgba(255,255,255,0.05)"
+              stroke="currentColor"
+              className="text-foreground/5 dark:text-white/5"
               strokeWidth={1}
             />
           );
@@ -280,7 +282,8 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           y1={0}
           x2={190}
           y2={200}
-          stroke="rgba(255,255,255,0.1)"
+          stroke="currentColor"
+          className="text-foreground/10 dark:text-white/10"
           strokeWidth={1}
           strokeDasharray="4 4"
         />
@@ -291,7 +294,8 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           y={chartPadding.top}
           width={115}
           height={chartHeight - chartPadding.top - chartPadding.bottom}
-          fill="rgba(0,0,0,0.2)"
+          fill="rgba(0,0,0,0.03)"
+          className="dark:fill-black/30"
           rx={4}
         />
 
@@ -361,7 +365,8 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           x={chartWidth / 2}
           y={chartHeight}
           textAnchor="middle"
-          fill="rgba(255,255,255,0.5)"
+          fill="currentColor"
+          className="text-muted-foreground/60"
           fontSize={10}
         >
           Price Chart
@@ -370,7 +375,8 @@ const BacktestChartVisual: React.FC<{ progress: number }> = ({ progress }) => {
           x={257}
           y={chartHeight}
           textAnchor="middle"
-          fill="rgba(255,255,255,0.5)"
+          fill="currentColor"
+          className="text-muted-foreground/60"
           fontSize={10}
         >
           Equity Curve

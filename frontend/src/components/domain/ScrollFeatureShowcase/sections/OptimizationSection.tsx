@@ -122,7 +122,8 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
         <text
           x={150}
           y={215}
-          fill="rgba(255,255,255,0.5)"
+          fill="currentColor"
+          className="text-muted-foreground/50"
           fontSize={10}
           textAnchor="middle"
         >
@@ -131,7 +132,8 @@ const ParameterSpaceVisual: React.FC<{ progress: number }> = ({ progress }) => {
         <text
           x={10}
           y={110}
-          fill="rgba(255,255,255,0.5)"
+          fill="currentColor"
+          className="text-muted-foreground/50"
           fontSize={10}
           textAnchor="middle"
           transform="rotate(-90, 10, 110)"
