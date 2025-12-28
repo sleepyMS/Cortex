@@ -34,7 +34,6 @@ interface PlanSchema {
   name: "Basic" | "Trader" | "Pro";
   price: number;
   features: PlanFeature;
-  // 👈 API 응답 구조에 맞게 features 객체 밖에 정의합니다.
   creditSurchargeMultiplier: number;
   monthlyCreditReward: number;
 }
@@ -43,13 +42,13 @@ interface PlanSchema {
 interface PricingComparisonTableProps {
   plans: PlanSchema[] | undefined;
   isLoading: boolean;
-  baselineMultiplier: number; // 👈 Basic 플랜의 부가율을 props로 받음
+  baselineMultiplier: number;
 }
 
 export const PricingComparisonTable = ({
   plans,
   isLoading,
-  baselineMultiplier, // 👈 props 사용
+  baselineMultiplier,
 }: PricingComparisonTableProps) => {
   // 3. i18n 훅을 올바른 범위로 분리
   const t = useTranslations("Pricing.comparison");
@@ -88,7 +87,7 @@ export const PricingComparisonTable = ({
     "Credit Benefits": <Sparkles className="h-6 w-6" />,
   };
 
-  // --- 6. [핵심] renderValue 함수: 동적 포맷팅 로직 ---
+  // --- 6. renderValue 함수: 동적 포맷팅 로직 ---
   const renderValue = (
     plan: PlanSchema | undefined,
     featureKey: string // i18n에서 받은 key (e.g., "maxStrategies")
@@ -178,77 +177,80 @@ export const PricingComparisonTable = ({
   return (
     <div className="w-full overflow-x-auto">
       <div className="container mx-auto max-w-5xl py-12">
-        {/* 테이블 헤더 */}
-        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-border pb-4 sticky top-0 z-10">
-          <div className="text-muted-foreground">
-            {t("tableHeader.features")}
-          </div>
-          <div className="text-center text-muted-foreground">
-            {t("basicLabel")}
-          </div>
-          <div className="text-center text-muted-foreground">
-            {t("traderLabel")}
-          </div>
-          <div className="text-center text-primary">{t("proLabel")}</div>
-        </div>
-
-        {/* 로딩 상태 처리 */}
-        {isLoading && (
-          <div className="flex justify-center items-center h-64">
-            <Spinner size="lg" />
-          </div>
-        )}
-
-        {/* 동적 데이터 렌더링 */}
-        {!isLoading &&
-          plans &&
-          featureCategories.map((category: any, catIndex: number) => (
-            <div key={catIndex} className="mb-8">
-              <h3 className="text-2xl font-bold text-foreground mb-4 flex items-center gap-3 border-l-4 border-primary pl-4">
-                {iconMap[category.category as keyof typeof iconMap]}{" "}
-                {category.category}
-              </h3>
-              <div className="space-y-2">
-                {category.features.map((feature: any, featIndex: number) => {
-                  // i18n의 'key' (e.g., "maxStrategies")
-                  const featureKey = feature.key;
-                  // API 데이터 (e.g., PlanSchema for "Basic")
-                  const basicPlan = planMap.Basic;
-                  const traderPlan = planMap.Trader;
-                  const proPlan = planMap.Pro;
-
-                  return (
-                    <div
-                      key={featIndex}
-                      className="grid grid-cols-[1fr] md:grid-cols-[2fr_1fr_1fr_1fr] items-center p-4 rounded-xl bg-card border border-border"
-                    >
-                      <div className="font-semibold text-foreground">
-                        {feature.name}
-                      </div>
-                      <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
-                        <span className="md:hidden font-bold text-foreground">
-                          {t("basicLabel")}:
-                        </span>
-                        {renderValue(basicPlan, featureKey)}
-                      </div>
-                      <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
-                        <span className="md:hidden font-bold text-foreground">
-                          {t("traderLabel")}:
-                        </span>
-                        {renderValue(traderPlan, featureKey)}
-                      </div>
-                      <div className="flex justify-between md:justify-center items-center md:text-center text-primary font-bold md:col-span-1 border-t md:border-t-0 border-border pt-2 md:pt-0">
-                        <span className="md:hidden font-bold text-foreground">
-                          {t("proLabel")}:
-                        </span>
-                        {renderValue(proPlan, featureKey)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+        {/* Glass Pane Wrapper */}
+        <div className="rounded-3xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-background/50 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
+          {/* 테이블 헤더 */}
+          <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-black/5 dark:border-white/10 pb-4 sticky top-0 z-10">
+            <div className="text-muted-foreground">
+              {t("tableHeader.features")}
             </div>
-          ))}
+            <div className="text-center text-muted-foreground">
+              {t("basicLabel")}
+            </div>
+            <div className="text-center text-muted-foreground">
+              {t("traderLabel")}
+            </div>
+            <div className="text-center text-primary">{t("proLabel")}</div>
+          </div>
+
+          {/* 로딩 상태 처리 */}
+          {isLoading && (
+            <div className="flex justify-center items-center h-64">
+              <Spinner size="lg" />
+            </div>
+          )}
+
+          {/* 동적 데이터 렌더링 */}
+          {!isLoading &&
+            plans &&
+            featureCategories.map((category: any, catIndex: number) => (
+              <div key={catIndex} className="mb-8 last:mb-0">
+                <h3 className="text-2xl font-bold text-foreground mb-4 flex items-center gap-3 border-l-4 border-primary pl-4">
+                  {iconMap[category.category as keyof typeof iconMap]}{" "}
+                  {category.category}
+                </h3>
+                <div className="space-y-2">
+                  {category.features.map((feature: any, featIndex: number) => {
+                    // i18n의 'key' (e.g., "maxStrategies")
+                    const featureKey = feature.key;
+                    // API 데이터 (e.g., PlanSchema for "Basic")
+                    const basicPlan = planMap.Basic;
+                    const traderPlan = planMap.Trader;
+                    const proPlan = planMap.Pro;
+
+                    return (
+                      <div
+                        key={featIndex}
+                        className="grid grid-cols-[1fr] md:grid-cols-[2fr_1fr_1fr_1fr] items-center p-4 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                      >
+                        <div className="font-semibold text-foreground">
+                          {feature.name}
+                        </div>
+                        <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-black/5 dark:border-white/10 pt-2 md:pt-0">
+                          <span className="md:hidden font-bold text-foreground">
+                            {t("basicLabel")}:
+                          </span>
+                          {renderValue(basicPlan, featureKey)}
+                        </div>
+                        <div className="flex justify-between md:justify-center items-center md:text-center text-muted-foreground md:col-span-1 border-t md:border-t-0 border-black/5 dark:border-white/10 pt-2 md:pt-0">
+                          <span className="md:hidden font-bold text-foreground">
+                            {t("traderLabel")}:
+                          </span>
+                          {renderValue(traderPlan, featureKey)}
+                        </div>
+                        <div className="flex justify-between md:justify-center items-center md:text-center text-primary font-bold md:col-span-1 border-t md:border-t-0 border-black/5 dark:border-white/10 pt-2 md:pt-0">
+                          <span className="md:hidden font-bold text-foreground">
+                            {t("proLabel")}:
+                          </span>
+                          {renderValue(proPlan, featureKey)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+        </div>
       </div>
     </div>
   );

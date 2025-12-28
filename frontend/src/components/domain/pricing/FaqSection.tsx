@@ -30,45 +30,47 @@ export function FaqSection({ faqItems }: FaqSectionProps) {
         <h2 className="text-3xl font-bold text-center mb-10 text-foreground">
           {t("faq.title")}
         </h2>
-        <div className="space-y-4">
-          {faqItems.map((item, index) => (
-            <div
-              key={index}
-              className="rounded-lg overflow-hidden shadow-sm dark:bg-white/5 border border-border dark:border-white/10"
-            >
-              {/* 질문 영역 */}
-              <button
-                className="w-full flex justify-between items-center p-4 text-left focus:outline-none"
-                onClick={() => toggleItem(index)}
+        <div className="rounded-3xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-background/50 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
+          <div className="space-y-4">
+            {faqItems.map((item, index) => (
+              <div
+                key={index}
+                className="rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
               >
-                <span className="font-medium text-foreground">
-                  {item.question}
-                </span>
-                <ChevronDown
-                  className={`h-5 w-5 text-gray-400 transition-transform duration-300 ${
-                    openIndex === index ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
+                {/* 질문 영역 */}
+                <button
+                  className="w-full flex justify-between items-center p-4 md:p-5 text-left focus:outline-none"
+                  onClick={() => toggleItem(index)}
+                >
+                  <span className="font-medium text-foreground text-lg">
+                    {item.question}
+                  </span>
+                  <ChevronDown
+                    className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${
+                      openIndex === index ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
-              {/* 답변 영역 */}
-              <AnimatePresence initial={false}>
-                {openIndex === index && (
-                  <motion.div
-                    key="content"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                  >
-                    <div className="px-4 pb-4 text-muted-foreground text-sm leading-relaxed">
-                      {item.answer}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+                {/* 답변 영역 */}
+                <AnimatePresence initial={false}>
+                  {openIndex === index && (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                    >
+                      <div className="px-4 pb-5 md:px-5 text-muted-foreground leading-relaxed">
+                        {item.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
