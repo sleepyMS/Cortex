@@ -101,7 +101,8 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
             />
             <text
               x={50}
-              y={85 + i * 80}
+              y={80 + i * 80}
+              dominantBaseline="middle"
               textAnchor="middle"
               fill="rgba(139, 92, 246, 1)"
               fontSize={10}
@@ -162,7 +163,8 @@ const NeuralNetworkVisual: React.FC<{ progress: number }> = ({ progress }) => {
               />
               <text
                 x={425}
-                y={125 + i * 80}
+                y={120 + i * 80}
+                dominantBaseline="middle"
                 textAnchor="middle"
                 fill={
                   isActive ? "rgba(34, 197, 94, 1)" : "rgba(139, 92, 246, 1)"

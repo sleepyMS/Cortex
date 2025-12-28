@@ -108,7 +108,52 @@
       "titleLine2": "Less Emotion, More Strategy.",
       "subtitle": "Validate your investment ideas and automate them 24/7 on Cortex, the all-in-one quant platform for individual investors.",
       "ctaButton": "Build Your Strategy for Free",
-      "versionBadge": "Cortex Beta"
+      "versionBadge": "Cortex Beta",
+      "MockUI": {
+        "header": {
+          "mainStrategy": "Main Strategy",
+          "systemOperational": "System Operational",
+          "deploy": "DEPLOY"
+        },
+        "sidebar": {
+          "logicBlocks": "Logic Blocks",
+          "items": {
+            "comparison": "Comparison",
+            "crossover": "Crossover",
+            "stateCheck": "State Check",
+            "threshold": "Threshold",
+            "timeFilter": "Time Filter",
+            "volumeCheck": "Volume Check",
+            "riskManager": "Risk Manager",
+            "positionSize": "Position Size",
+            "aiSignal": "AI Prediction Signal"
+          },
+          "memory": "Memory"
+        },
+        "nodes": {
+          "marketData": "Market Data",
+          "symbol": "Symbol",
+          "timeframe": "Timeframe",
+          "longEntry": "Long Entry Condition",
+          "shortEntry": "Short Entry Condition",
+          "addRule": "Add Rule",
+          "crossover": "Crossover",
+          "stateBased": "State Based",
+          "range": "Range",
+          "action": "Action",
+          "and": "AND"
+        },
+        "values": {
+          "crossesAbove": "Crosses Above",
+          "crossesBelow": "Crosses Below",
+          "inRange": "In Range",
+          "breakAbove": "Break Above"
+        },
+        "simulation": {
+          "title": "Live Simulation",
+          "active": "Active"
+        }
+      }
     },
     "FeatureSection": {
       "sectionTitle": "A Complete Quantitative Stack",

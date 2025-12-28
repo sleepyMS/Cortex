@@ -25,6 +25,7 @@ const HeroSection = async () => {
         titleLine2={t("titleLine2")}
         subtitle={subtitle}
         ctaButton={ctaButton}
+        versionBadge={t("versionBadge")}
       />
     </section>
   );

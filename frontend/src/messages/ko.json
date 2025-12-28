@@ -108,7 +108,52 @@
       "titleLine2": "감정은 빼고, 전략은 더하고.",
       "subtitle": "개인 투자자를 위한 올인원 퀀트 플랫폼, Cortex에서 당신의 투자 아이디어를 검증하고 24시간 자동화하세요.",
       "ctaButton": "무료로 나만의 전략 만들기",
-      "versionBadge": "Cortex Beta"
+      "versionBadge": "Cortex Beta",
+      "MockUI": {
+        "header": {
+          "mainStrategy": "EMA 돌파 전략",
+          "systemOperational": "시스템 정상 가동",
+          "deploy": "배포"
+        },
+        "sidebar": {
+          "logicBlocks": "로직 블록",
+          "items": {
+            "comparison": "비교",
+            "crossover": "교차 (크로스오버)",
+            "stateCheck": "상태 확인",
+            "threshold": "임계값",
+            "timeFilter": "시간 필터",
+            "volumeCheck": "거래량 확인",
+            "riskManager": "리스크 관리",
+            "positionSize": "포지션 크기",
+            "aiSignal": "AI 예측 시그널"
+          },
+          "memory": "메모리"
+        },
+        "nodes": {
+          "marketData": "시장 데이터",
+          "symbol": "심볼",
+          "timeframe": "타임프레임",
+          "longEntry": "매수 진입 조건",
+          "shortEntry": "매도 진입 조건",
+          "addRule": "규칙 추가",
+          "crossover": "교차",
+          "stateBased": "상태 기반",
+          "range": "범위",
+          "action": "액션",
+          "and": "AND"
+        },
+        "values": {
+          "crossesAbove": "상향 돌파",
+          "crossesBelow": "하향 돌파",
+          "inRange": "범위 내",
+          "breakAbove": "상단 돌파"
+        },
+        "simulation": {
+          "title": "실시간 시뮬레이션",
+          "active": "활성"
+        }
+      }
     },
     "FeatureSection": {
       "sectionTitle": "완벽한 퀀트 스택",

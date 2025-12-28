@@ -4,6 +4,7 @@ import { motion, Variants } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import {
   Activity,
@@ -29,6 +30,7 @@ import {
   Target,
   Scale,
   ShieldCheck,
+  Brain,
 } from "lucide-react";
 import {
   AreaChart,
@@ -258,6 +260,7 @@ const MockConnector = ({
 
 /** Mock Trading Terminal Component */
 const MockTradingTerminal = () => {
+  const t = useTranslations("Landing.Hero.MockUI");
   const [hoveredBlock, setHoveredBlock] = useState<
     "market" | "long" | "short" | null
   >(null);
@@ -272,18 +275,22 @@ const MockTradingTerminal = () => {
           </div>
           <div className="h-4 w-[1px] bg-border"></div>
           <div className="flex items-center gap-2 px-2 py-1 bg-muted rounded border border-border text-foreground cursor-pointer hover:bg-muted/80">
-            <span className="font-medium text-violet-400">Main Strategy</span>
+            <span className="font-medium text-violet-400">
+              {t("header.mainStrategy")}
+            </span>
             <ChevronDown size={12} className="opacity-50" />
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            System Operational
+            {t("header.systemOperational")}
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded cursor-pointer hover:bg-violet-500/20 transition-colors">
             <Play size={10} fill="currentColor" />
-            <span className="font-bold tracking-wide">DEPLOY</span>
+            <span className="font-bold tracking-wide">
+              {t("header.deploy")}
+            </span>
           </div>
         </div>
       </div>
@@ -308,18 +315,19 @@ const MockTradingTerminal = () => {
         {/* Secondary Sidebar - Nodes */}
         <div className="w-48 border-r border-border bg-background flex-col hidden lg:flex">
           <div className="p-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
-            Logic Blocks
+            {t("sidebar.logicBlocks")}
           </div>
           <div className="p-2 space-y-1 overflow-y-auto flex-1">
             {[
-              { icon: GitCompareArrows, label: "Comparison" },
-              { icon: TrendingUp, label: "Crossover" },
-              { icon: BarChart2, label: "State Check" },
-              { icon: Target, label: "Threshold" },
-              { icon: Clock, label: "Time Filter" },
-              { icon: Activity, label: "Volume Check" },
-              { icon: ShieldCheck, label: "Risk Manager" },
-              { icon: Scale, label: "Position Size" },
+              { icon: GitCompareArrows, label: t("sidebar.items.comparison") },
+              { icon: TrendingUp, label: t("sidebar.items.crossover") },
+              { icon: BarChart2, label: t("sidebar.items.stateCheck") },
+              { icon: Target, label: t("sidebar.items.threshold") },
+              { icon: Clock, label: t("sidebar.items.timeFilter") },
+              { icon: Activity, label: t("sidebar.items.volumeCheck") },
+              { icon: ShieldCheck, label: t("sidebar.items.riskManager") },
+              { icon: Scale, label: t("sidebar.items.positionSize") },
+              { icon: Brain, label: t("sidebar.items.aiSignal") },
             ].map((item, i) => (
               <div
                 key={i}
@@ -336,7 +344,7 @@ const MockTradingTerminal = () => {
           {/* Bottom Status Panel */}
           <div className="p-3 border-t border-border/50 bg-background/50 mt-auto">
             <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-              <span>Memory</span>
+              <span>{t("sidebar.memory")}</span>
               <span>24%</span>
             </div>
             <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
@@ -462,20 +470,24 @@ const MockTradingTerminal = () => {
             >
               <div className="px-3 py-2 bg-muted border-b border-border flex justify-between items-center">
                 <div className="font-bold text-foreground flex items-center gap-2 text-xs">
-                  <BarChart2 size={12} className="text-purple-400" /> Market
-                  Data
+                  <BarChart2 size={12} className="text-purple-400" />{" "}
+                  {t("nodes.marketData")}
                 </div>
                 <MoreHorizontal size={12} className="text-muted-foreground" />
               </div>
               <div className="p-3 space-y-2">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Symbol</span>
+                  <span className="text-muted-foreground">
+                    {t("nodes.symbol")}
+                  </span>
                   <span className="bg-background px-2 py-0.5 rounded text-purple-300 font-mono">
                     BTC-USDT
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Timeframe</span>
+                  <span className="text-muted-foreground">
+                    {t("nodes.timeframe")}
+                  </span>
                   <span className="bg-background px-2 py-0.5 rounded text-purple-300 font-mono">
                     15m
                   </span>
@@ -506,12 +518,12 @@ const MockTradingTerminal = () => {
                     <CheckCircle2 size={10} className="text-violet-400" />
                   </div>
                   <span className="font-semibold text-foreground text-xs">
-                    Long Entry Condition
+                    {t("nodes.longEntry")}
                   </span>
                   <ArrowUp size={10} className="text-violet-400" />
                 </div>
                 <span className="text-[9px] text-muted-foreground">
-                  ⊕ Add Rule
+                  ⊕ {t("nodes.addRule")}
                 </span>
               </div>
 
@@ -523,7 +535,7 @@ const MockTradingTerminal = () => {
                     <div className="flex items-center gap-1.5">
                       <TrendingUp size={10} className="text-violet-400" />
                       <span className="text-[10px] font-medium text-foreground">
-                        Crossover
+                        {t("nodes.crossover")}
                       </span>
                     </div>
                     <MoreHorizontal
@@ -539,7 +551,7 @@ const MockTradingTerminal = () => {
                         <Settings size={8} className="text-muted-foreground" />
                       </div>
                       <div className="px-1.5 py-1 bg-violet-500/10 rounded border border-violet-500/30 text-[9px] text-violet-400">
-                        Crosses Above ▾
+                        {t("values.crossesAbove")} ▾
                       </div>
                       <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
                         <span className="font-medium">EMA</span>
@@ -556,7 +568,7 @@ const MockTradingTerminal = () => {
                   <div className="flex flex-col items-center w-8 shrink-0 -mt-1">
                     <div className="w-0.5 h-2 bg-violet-500/40"></div>
                     <div className="px-1 py-0.5 bg-violet-500/10 border border-violet-500/30 rounded text-[8px] font-bold text-violet-400">
-                      AND
+                      {t("nodes.and")}
                     </div>
                     <div className="w-0.5 flex-1 bg-violet-500/40"></div>
                   </div>
@@ -567,7 +579,7 @@ const MockTradingTerminal = () => {
                       <div className="flex items-center gap-1.5">
                         <BarChart2 size={10} className="text-violet-400" />
                         <span className="text-[10px] font-medium text-foreground">
-                          State Based
+                          {t("nodes.stateBased")}
                         </span>
                       </div>
                       <MoreHorizontal
@@ -589,7 +601,7 @@ const MockTradingTerminal = () => {
                       {/* Range Row */}
                       <div className="flex items-center gap-1">
                         <span className="text-[8px] text-muted-foreground w-6">
-                          Range
+                          {t("nodes.range")}
                         </span>
                         <div className="flex-1 flex items-center gap-1">
                           <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
@@ -606,10 +618,10 @@ const MockTradingTerminal = () => {
                       {/* Action Row */}
                       <div className="flex items-center gap-1">
                         <span className="text-[8px] text-muted-foreground w-6">
-                          Action
+                          {t("nodes.action")}
                         </span>
                         <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
-                          <span>In Range</span>
+                          <span>{t("values.inRange")}</span>
                           <ChevronDown
                             size={8}
                             className="text-muted-foreground"
@@ -642,12 +654,12 @@ const MockTradingTerminal = () => {
                     <CheckCircle2 size={10} className="text-rose-400" />
                   </div>
                   <span className="font-semibold text-foreground text-xs">
-                    Short Entry Condition
+                    {t("nodes.shortEntry")}
                   </span>
                   <ArrowDown size={10} className="text-rose-400" />
                 </div>
                 <span className="text-[9px] text-muted-foreground">
-                  ⊕ Add Rule
+                  ⊕ {t("nodes.addRule")}
                 </span>
               </div>
 
@@ -662,7 +674,7 @@ const MockTradingTerminal = () => {
                         className="text-rose-400 rotate-180"
                       />
                       <span className="text-[10px] font-medium text-foreground">
-                        Crossover
+                        {t("nodes.crossover")}
                       </span>
                     </div>
                     <MoreHorizontal
@@ -678,7 +690,7 @@ const MockTradingTerminal = () => {
                         <Settings size={8} className="text-muted-foreground" />
                       </div>
                       <div className="px-1.5 py-1 bg-rose-500/10 rounded border border-rose-500/30 text-[9px] text-rose-400">
-                        Crosses Below ▾
+                        {t("values.crossesBelow")} ▾
                       </div>
                       <div className="px-2 py-1 bg-muted/60 rounded border border-border text-[9px] flex items-center gap-1">
                         <span className="font-medium">EMA</span>
@@ -695,7 +707,7 @@ const MockTradingTerminal = () => {
                   <div className="flex flex-col items-center w-8 shrink-0 -mt-1">
                     <div className="w-0.5 h-2 bg-rose-500/40"></div>
                     <div className="px-1 py-0.5 bg-rose-500/10 border border-rose-500/30 rounded text-[8px] font-bold text-rose-400">
-                      AND
+                      {t("nodes.and")}
                     </div>
                     <div className="w-0.5 flex-1 bg-rose-500/40"></div>
                   </div>
@@ -706,7 +718,7 @@ const MockTradingTerminal = () => {
                       <div className="flex items-center gap-1.5">
                         <BarChart2 size={10} className="text-rose-400" />
                         <span className="text-[10px] font-medium text-foreground">
-                          State Based
+                          {t("nodes.stateBased")}
                         </span>
                       </div>
                       <MoreHorizontal
@@ -728,7 +740,7 @@ const MockTradingTerminal = () => {
                       {/* Range Row */}
                       <div className="flex items-center gap-1">
                         <span className="text-[8px] text-muted-foreground w-6">
-                          Range
+                          {t("nodes.range")}
                         </span>
                         <div className="flex-1 flex items-center gap-1">
                           <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] text-center">
@@ -745,10 +757,10 @@ const MockTradingTerminal = () => {
                       {/* Action Row */}
                       <div className="flex items-center gap-1">
                         <span className="text-[8px] text-muted-foreground w-6">
-                          Action
+                          {t("nodes.action")}
                         </span>
                         <div className="flex-1 px-2 py-0.5 bg-muted/60 rounded border border-border text-[9px] flex items-center justify-between">
-                          <span>Break Above</span>
+                          <span>{t("values.breakAbove")}</span>
                           <ChevronDown
                             size={8}
                             className="text-muted-foreground"
@@ -766,10 +778,12 @@ const MockTradingTerminal = () => {
         {/* Right Sidebar - Analytics */}
         <div className="w-80 border-l border-border bg-background flex flex-col z-10 hidden xl:flex">
           <div className="p-3 border-b border-border flex justify-between items-center">
-            <span className="font-bold text-foreground">Live Simulation</span>
+            <span className="font-bold text-foreground">
+              {t("simulation.title")}
+            </span>
             <div className="flex items-center gap-1 text-[10px] text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">
               <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></div>
-              Active
+              {t("simulation.active")}
             </div>
           </div>
 
