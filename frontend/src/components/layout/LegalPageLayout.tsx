@@ -4,8 +4,7 @@
 
 import React from "react";
 import { Link } from "@/i18n/navigation";
-import { ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { ArrowLeft } from "lucide-react";
 
 interface LegalPageLayoutProps {
   children: React.ReactNode;
@@ -31,11 +30,12 @@ export function LegalPageLayout({
       {/* 헤더 영역 */}
       <div className="border-b border-border/40 bg-muted/30">
         <div className="container mx-auto max-w-4xl px-4 py-8">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="mb-4 -ml-2">
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              홈으로 돌아가기
-            </Button>
+          <Link
+            href="/"
+            className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            홈으로 돌아가기
           </Link>
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             {title}
