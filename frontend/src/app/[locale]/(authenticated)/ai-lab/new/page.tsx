@@ -56,6 +56,7 @@ import {
 
 import type {
   AIModelCreateRequest,
+  AIModelType,
   AIArchitectureConfig,
   AIFeatureConfig,
   AILabelingConfig,
@@ -105,6 +106,7 @@ export default function NewAIModelPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [modelType, setModelType] = useState("lstm");
+  const [taskType, setTaskType] = useState<AIModelType>("classification");
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [timeframe, setTimeframe] = useState("1h");
   const [startDate, setStartDate] = useState("");
@@ -239,17 +241,36 @@ export default function NewAIModelPage() {
   });
 
   const handleSubmit = () => {
+    // 분류/회귀 모델에 따라 다른 labelingConfig 구성
+    let finalLabelingConfig: AILabelingConfig;
+    if (taskType === "classification") {
+      // 분류 모델: Triple Barrier 방식 - profitTarget, stopLoss 필요
+      finalLabelingConfig = {
+        ...labelingConfig,
+        method: "triple_barrier",
+      };
+    } else {
+      // 회귀 모델: profitTarget, stopLoss는 분류 전용이므로 제외
+      finalLabelingConfig = {
+        method: "regression",
+        targetType: labelingConfig.targetType || "return_pct",
+        horizon: labelingConfig.horizon,
+        // profitTarget, stopLoss를 명시적으로 제외
+      };
+    }
+
     const payload: AIModelCreateRequest = {
       name,
       description: description || undefined,
       modelType,
+      taskType,
       trainingSymbol: symbol,
       trainingTimeframe: timeframe,
       trainingStartDate: new Date(startDate).toISOString(),
       trainingEndDate: new Date(endDate).toISOString(),
       architectureConfig,
       featureConfig,
-      labelingConfig,
+      labelingConfig: finalLabelingConfig,
       trainingConfig,
       optimizationConfig,
     };
@@ -265,7 +286,15 @@ export default function NewAIModelPage() {
       case 3:
         return featureConfig.indicators.length > 0;
       case 4:
-        return labelingConfig.profitTarget > 0 && labelingConfig.stopLoss > 0;
+      case 4:
+        if (taskType === "classification") {
+          return (
+            (labelingConfig.profitTarget ?? 0) > 0 &&
+            (labelingConfig.stopLoss ?? 0) > 0
+          );
+        } else {
+          return !!labelingConfig.targetType && labelingConfig.horizon > 0;
+        }
       case 5:
         return optimizationConfig.isEnabled
           ? optimizationConfig.nTrials > 0 &&
@@ -327,6 +356,30 @@ export default function NewAIModelPage() {
                 {modelType === "lstm"
                   ? t("new.step1.lstmDesc")
                   : t("new.step1.gruDesc")}
+              </p>
+            </div>
+            <div>
+              <Label className="text-base font-medium">
+                {t("new.step1.taskType")}
+              </Label>
+              <Tabs
+                value={taskType}
+                onValueChange={(v) => setTaskType(v as AIModelType)}
+                className="w-full mt-2"
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="classification">
+                    {t("new.step1.classification")}
+                  </TabsTrigger>
+                  <TabsTrigger value="regression">
+                    {t("new.step1.regression")}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <p className="text-sm text-muted-foreground mt-2">
+                {taskType === "classification"
+                  ? t("new.step1.classificationDesc")
+                  : t("new.step1.regressionDesc")}
               </p>
             </div>
           </div>
@@ -698,76 +751,146 @@ export default function NewAIModelPage() {
         );
 
       case 4:
-        return (
-          <div className="space-y-6">
-            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm">
-              <p className="font-medium text-blue-600 dark:text-blue-400">
-                {t("new.step4.tripleBarrierTitle")}
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                {t("new.step4.tripleBarrierDesc")}
-              </p>
+        if (taskType === "classification") {
+          return (
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm">
+                <p className="font-medium text-blue-600 dark:text-blue-400">
+                  {t("new.step4.tripleBarrierTitle")}
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {t("new.step4.tripleBarrierDesc")}
+                </p>
+              </div>
+              <div>
+                <Label className="text-base font-medium">
+                  {t("new.step4.takeProfit")}
+                  {((labelingConfig.profitTarget ?? 0.02) * 100).toFixed(1)}%
+                </Label>
+                <Slider
+                  value={[(labelingConfig.profitTarget ?? 0.02) * 100]}
+                  onValueChange={([v]) =>
+                    setLabelingConfig((prev) => ({
+                      ...prev,
+                      profitTarget: v / 100,
+                    }))
+                  }
+                  min={0.5}
+                  max={10}
+                  step={0.1}
+                  className="mt-4"
+                />
+              </div>
+              <div>
+                <Label className="text-base font-medium">
+                  {t("new.step4.stopLoss")}{" "}
+                  {((labelingConfig.stopLoss ?? 0.01) * 100).toFixed(1)}%
+                </Label>
+                <Slider
+                  value={[(labelingConfig.stopLoss ?? 0.01) * 100]}
+                  onValueChange={([v]) =>
+                    setLabelingConfig((prev) => ({
+                      ...prev,
+                      stopLoss: v / 100,
+                    }))
+                  }
+                  min={0.5}
+                  max={10}
+                  step={0.1}
+                  className="mt-4"
+                />
+              </div>
+              <div>
+                <Label className="text-base font-medium">
+                  {t("new.step4.horizon", { value: labelingConfig.horizon })}
+                </Label>
+                <Slider
+                  value={[labelingConfig.horizon]}
+                  onValueChange={([v]) =>
+                    setLabelingConfig((prev) => ({ ...prev, horizon: v }))
+                  }
+                  min={6}
+                  max={72}
+                  step={1}
+                  className="mt-4"
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t("new.step4.horizonDesc", {
+                    timeframe,
+                    hours: Math.round(
+                      labelingConfig.horizon * (timeframe === "1h" ? 1 : 0.5)
+                    ),
+                  })}
+                </p>
+              </div>
             </div>
-            <div>
-              <Label className="text-base font-medium">
-                {t("new.step4.takeProfit")}
-                {(labelingConfig.profitTarget * 100).toFixed(1)}%
-              </Label>
-              <Slider
-                value={[labelingConfig.profitTarget * 100]}
-                onValueChange={([v]) =>
-                  setLabelingConfig((prev) => ({
-                    ...prev,
-                    profitTarget: v / 100,
-                  }))
-                }
-                min={0.5}
-                max={10}
-                step={0.1}
-                className="mt-4"
-              />
+          );
+        } else {
+          return (
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg bg-teal-500/10 border border-teal-500/20 text-sm">
+                <p className="font-medium text-teal-600 dark:text-teal-400">
+                  {t("new.step4.regressionTitle")}
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {t("new.step4.regressionDesc")}
+                </p>
+              </div>
+              <div>
+                <Label className="text-base font-medium">
+                  {t("new.step4.targetType")}
+                </Label>
+                <Select
+                  value={labelingConfig.targetType ?? "return_pct"}
+                  onValueChange={(v) =>
+                    setLabelingConfig((prev) => ({
+                      ...prev,
+                      targetType: v as any,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="return_pct">
+                      {t("new.step4.return_pct")}
+                    </SelectItem>
+                    <SelectItem value="price_change">
+                      {t("new.step4.price_change")}
+                    </SelectItem>
+                    <SelectItem value="volatility">
+                      {t("new.step4.volatility")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-base font-medium">
+                  {t("new.step4.horizon", { value: labelingConfig.horizon })}
+                </Label>
+                <Slider
+                  value={[labelingConfig.horizon]}
+                  onValueChange={([v]) =>
+                    setLabelingConfig((prev) => ({ ...prev, horizon: v }))
+                  }
+                  min={1}
+                  max={24}
+                  step={1}
+                  className="mt-4"
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t("new.step4.horizonDesc", {
+                    timeframe,
+                    hours: Math.round(
+                      labelingConfig.horizon * (timeframe === "1h" ? 1 : 0.5)
+                    ),
+                  })}
+                </p>
+              </div>
             </div>
-            <div>
-              <Label className="text-base font-medium">
-                {t("new.step4.stopLoss")}{" "}
-                {(labelingConfig.stopLoss * 100).toFixed(1)}%
-              </Label>
-              <Slider
-                value={[labelingConfig.stopLoss * 100]}
-                onValueChange={([v]) =>
-                  setLabelingConfig((prev) => ({ ...prev, stopLoss: v / 100 }))
-                }
-                min={0.5}
-                max={10}
-                step={0.1}
-                className="mt-4"
-              />
-            </div>
-            <div>
-              <Label className="text-base font-medium">
-                {t("new.step4.horizon", { value: labelingConfig.horizon })}
-              </Label>
-              <Slider
-                value={[labelingConfig.horizon]}
-                onValueChange={([v]) =>
-                  setLabelingConfig((prev) => ({ ...prev, horizon: v }))
-                }
-                min={6}
-                max={72}
-                step={1}
-                className="mt-4"
-              />
-              <p className="text-sm text-muted-foreground mt-2">
-                {t("new.step4.horizonDesc", {
-                  timeframe,
-                  hours: Math.round(
-                    labelingConfig.horizon * (timeframe === "1h" ? 1 : 0.5)
-                  ),
-                })}
-              </p>
-            </div>
-          </div>
-        );
+          );
+        }
 
       case 5:
         return (
@@ -1010,15 +1133,31 @@ export default function NewAIModelPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="accuracy">
-                        {t("new.step5.autoTab.metrics.accuracy")}
-                      </SelectItem>
-                      <SelectItem value="f1">
-                        {t("new.step5.autoTab.metrics.f1")}
-                      </SelectItem>
-                      <SelectItem value="return">
-                        {t("new.step5.autoTab.metrics.return")}
-                      </SelectItem>
+                      {taskType === "classification" ? (
+                        <>
+                          <SelectItem value="accuracy">
+                            {t("new.step5.autoTab.metrics.accuracy")}
+                          </SelectItem>
+                          <SelectItem value="f1">
+                            {t("new.step5.autoTab.metrics.f1")}
+                          </SelectItem>
+                          <SelectItem value="return">
+                            {t("new.step5.autoTab.metrics.return")}
+                          </SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="rmse">
+                            {t("new.step5.metricsRegression.rmse")}
+                          </SelectItem>
+                          <SelectItem value="mae">
+                            {t("new.step5.metricsRegression.mae")}
+                          </SelectItem>
+                          <SelectItem value="r2">
+                            {t("new.step5.metricsRegression.r2")}
+                          </SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">
@@ -1275,13 +1414,34 @@ export default function NewAIModelPage() {
                   {startDate} ~ {endDate}
                 </span>
               </div>
-              <div className="flex justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-muted-foreground">TP / SL</span>
-                <span className="font-medium">
-                  {(labelingConfig.profitTarget * 100).toFixed(1)}% /{" "}
-                  {(labelingConfig.stopLoss * 100).toFixed(1)}%
-                </span>
-              </div>
+              {taskType === "classification" ? (
+                <div className="flex justify-between p-3 rounded-lg bg-muted/50">
+                  <span className="text-muted-foreground">TP / SL</span>
+                  <span className="font-medium">
+                    {((labelingConfig.profitTarget ?? 0) * 100).toFixed(1)}% /{" "}
+                    {((labelingConfig.stopLoss ?? 0) * 100).toFixed(1)}%
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between p-3 rounded-lg bg-muted/50">
+                    <span className="text-muted-foreground">
+                      {t("new.step4.targetType")}
+                    </span>
+                    <span className="font-medium">
+                      {t(`new.step4.${labelingConfig.targetType}`)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between p-3 rounded-lg bg-muted/50">
+                    <span className="text-muted-foreground">
+                      {t("new.step4.horizon", { value: "" })}
+                    </span>
+                    <span className="font-medium">
+                      {labelingConfig.horizon}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="rounded-lg bg-card/50 border border-border p-4 space-y-4">
                 <h4 className="font-semibold text-sm">
                   {t("new.step6.costDetails")}

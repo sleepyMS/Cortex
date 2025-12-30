@@ -137,9 +137,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-function TrainingAnalysis({ logs }: { logs: any[] }) {
+function TrainingAnalysis({
+  logs,
+  taskType,
+}: {
+  logs: any[];
+  taskType?: string;
+}) {
   const t = useTranslations("AILabPage");
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const isRegression = taskType === "regression";
 
   if (!logs || logs.length === 0) {
     return (
@@ -232,8 +239,12 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
                 fontSize={10}
                 tickLine={false}
                 axisLine={false}
-                domain={[0, 1]}
-                tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+                domain={isRegression ? ["auto", "auto"] : [0, 1]}
+                tickFormatter={(value) =>
+                  isRegression
+                    ? value.toFixed(4)
+                    : `${(value * 100).toFixed(0)}%`
+                }
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend
@@ -264,12 +275,24 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
                 fill="url(#colorVal)"
                 activeDot={{ r: 4, strokeWidth: 0 }}
               />
-              {logs[0]?.accuracy !== undefined && (
+              {logs[0]?.accuracy != null && (
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="accuracy"
-                  name="Val Accuracy"
+                  name={isRegression ? "Dir. Acc" : "Val Accuracy"}
+                  stroke={isRegression ? "#60a5fa" : "#10b981"}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              )}
+              {isRegression && logs[0]?.rmse != null && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="rmse"
+                  name="Val RMSE"
                   stroke="#10b981"
                   strokeWidth={2}
                   dot={false}
@@ -287,7 +310,12 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
                 <th className="text-left py-3 px-4 font-black">Epoch</th>
                 <th className="text-right py-3 px-4 font-black">Train Loss</th>
                 <th className="text-right py-3 px-4 font-black">Val Loss</th>
-                <th className="text-right py-3 px-4 font-black">Accuracy</th>
+                <th className="text-right py-3 px-4 font-black">
+                  {isRegression ? "RMSE" : "Accuracy"}
+                </th>
+                {isRegression && (
+                  <th className="text-right py-3 px-4 font-black">Dir. Acc</th>
+                )}
                 <th className="text-right py-3 px-4 font-black">Time</th>
               </tr>
             </thead>
@@ -307,7 +335,15 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
                     {log.valLoss?.toFixed(6) || "-"}
                   </td>
                   <td className="text-right py-3 px-4">
-                    {log.accuracy !== undefined ? (
+                    {isRegression ? (
+                      log.rmse != null ? (
+                        <span className="text-emerald-400 font-bold">
+                          {log.rmse.toFixed(4)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )
+                    ) : log.accuracy != null ? (
                       <span className="text-emerald-400 font-bold">
                         {(log.accuracy * 100).toFixed(2)}%
                       </span>
@@ -315,6 +351,17 @@ function TrainingAnalysis({ logs }: { logs: any[] }) {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
+                  {isRegression && (
+                    <td className="text-right py-3 px-4">
+                      {log.accuracy != null ? (
+                        <span className="text-blue-400 font-bold">
+                          {(log.accuracy * 100).toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
+                  )}
                   <td className="text-right py-3 px-4 text-muted-foreground opacity-50 text-[10px]">
                     {format(new Date(log.timestamp), "HH:mm:ss", {
                       locale: ko,
@@ -576,17 +623,25 @@ export default function AIModelDetailPage({ params }: PageProps) {
               <GlassPane className="p-4 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    {t("detail.metrics.accuracy")}
+                    {model.taskType === "regression"
+                      ? "RMSE"
+                      : t("detail.metrics.accuracy")}
                   </span>
                   <div className="p-2 bg-emerald-500/10 rounded-lg">
                     <Target className="h-4 w-4 text-emerald-500" />
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-emerald-500">
-                  {(model.performanceMetrics.accuracy * 100).toFixed(1)}%
+                  {model.taskType === "regression"
+                    ? model.trainingMetrics?.rmse?.toFixed(4) || "N/A"
+                    : `${(model.performanceMetrics.accuracy * 100).toFixed(
+                        1
+                      )}%`}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {t("detail.metrics.accuracyDesc")}
+                  {model.taskType === "regression"
+                    ? "Root Mean Square Error"
+                    : t("detail.metrics.accuracyDesc")}
                 </p>
               </GlassPane>
             </motion.div>
@@ -883,70 +938,152 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         >
                           <div className="grid md:grid-cols-2 gap-8 items-center">
                             <div className="space-y-4">
-                              <div className="flex items-center gap-4">
-                                <div
-                                  className={cn(
-                                    "h-20 w-20 rounded-2xl flex items-center justify-center text-2xl font-black shadow-2xl",
-                                    predictionResult.predictedLabel === "BUY"
-                                      ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                                      : predictionResult.predictedLabel ===
-                                        "SELL"
-                                      ? "bg-red-500 text-white shadow-red-500/20"
-                                      : "bg-slate-500 text-white shadow-slate-500/20"
-                                  )}
-                                >
-                                  {predictionResult.predictedLabel}
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
-                                    {t("detail.prediction.confidence")}
-                                  </span>
-                                  <div className="text-3xl font-black tabular-nums">
-                                    {(
-                                      Math.max(
-                                        predictionResult.buyProbability || 0,
-                                        predictionResult.holdProbability || 0,
-                                        predictionResult.sellProbability || 0
-                                      ) * 100
-                                    ).toFixed(1)}
-                                    %
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="space-y-3 pt-4">
-                                {["BUY", "HOLD", "SELL"].map((label) => {
-                                  const prob =
-                                    predictionResult[
-                                      `${label.toLowerCase()}Probability`
-                                    ] || 0;
-                                  return (
-                                    <div key={label} className="space-y-1">
-                                      <div className="flex justify-between text-[10px] font-bold">
-                                        <span>
-                                          {t(
-                                            `detail.prediction.${label.toLowerCase()}` as any
-                                          )}
-                                        </span>
-                                        <span>{(prob * 100).toFixed(1)}%</span>
-                                      </div>
-                                      <div className="h-1.5 w-full bg-muted rounded-full">
-                                        <motion.div
-                                          initial={{ width: 0 }}
-                                          animate={{ width: `${prob * 100}%` }}
-                                          className={cn(
-                                            "h-full rounded-full transition-all duration-1000",
-                                            label === "BUY"
-                                              ? "bg-emerald-500"
-                                              : label === "SELL"
-                                              ? "bg-red-500"
-                                              : "bg-slate-400"
-                                          )}
-                                        />
+                              {model.taskType === "regression" ? (
+                                /* Regression Visualization */
+                                <div className="space-y-6">
+                                  <div className="flex items-center gap-4">
+                                    <div
+                                      className={cn(
+                                        "h-20 w-20 rounded-2xl flex items-center justify-center text-xl font-black shadow-2xl",
+                                        (predictionResult.predictedValue || 0) >
+                                          0
+                                          ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                                          : (predictionResult.predictedValue ||
+                                              0) < 0
+                                          ? "bg-red-500 text-white shadow-red-500/20"
+                                          : "bg-slate-500 text-white shadow-slate-500/20"
+                                      )}
+                                    >
+                                      {(predictionResult.predictedValue || 0) >
+                                      0 ? (
+                                        <TrendingUp className="h-8 w-8" />
+                                      ) : (
+                                        <TrendingDown className="h-8 w-8" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                                        Predicted Return
+                                      </span>
+                                      <div
+                                        className={cn(
+                                          "text-3xl font-black tabular-nums",
+                                          (predictionResult.predictedValue ||
+                                            0) > 0
+                                            ? "text-emerald-400"
+                                            : "text-red-400"
+                                        )}
+                                      >
+                                        {(
+                                          (predictionResult.predictedValue ||
+                                            0) * 100
+                                        ).toFixed(2)}
+                                        %
                                       </div>
                                     </div>
-                                  );
-                                })}
-                              </div>
+                                  </div>
+                                  {predictionResult.confidenceInterval && (
+                                    <div className="space-y-2 pt-2">
+                                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                                        Confidence Interval (95%)
+                                      </span>
+                                      <div className="flex items-center gap-2 text-xs font-mono">
+                                        <span className="text-red-300">
+                                          {(
+                                            predictionResult.confidenceInterval
+                                              .lower * 100
+                                          ).toFixed(2)}
+                                          %
+                                        </span>
+                                        <div className="h-1 flex-1 bg-white/10 rounded-full mx-2" />
+                                        <span className="text-emerald-300">
+                                          {(
+                                            predictionResult.confidenceInterval
+                                              .upper * 100
+                                          ).toFixed(2)}
+                                          %
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                /* Classification Visualization */
+                                <>
+                                  <div className="flex items-center gap-4">
+                                    <div
+                                      className={cn(
+                                        "h-20 w-20 rounded-2xl flex items-center justify-center text-2xl font-black shadow-2xl",
+                                        predictionResult.predictedLabel ===
+                                          "BUY"
+                                          ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                                          : predictionResult.predictedLabel ===
+                                            "SELL"
+                                          ? "bg-red-500 text-white shadow-red-500/20"
+                                          : "bg-slate-500 text-white shadow-slate-500/20"
+                                      )}
+                                    >
+                                      {predictionResult.predictedLabel}
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                                        {t("detail.prediction.confidence")}
+                                      </span>
+                                      <div className="text-3xl font-black tabular-nums">
+                                        {(
+                                          Math.max(
+                                            predictionResult.buyProbability ||
+                                              0,
+                                            predictionResult.holdProbability ||
+                                              0,
+                                            predictionResult.sellProbability ||
+                                              0
+                                          ) * 100
+                                        ).toFixed(1)}
+                                        %
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-3 pt-4">
+                                    {["BUY", "HOLD", "SELL"].map((label) => {
+                                      const prob =
+                                        predictionResult[
+                                          `${label.toLowerCase()}Probability`
+                                        ] || 0;
+                                      return (
+                                        <div key={label} className="space-y-1">
+                                          <div className="flex justify-between text-[10px] font-bold">
+                                            <span>
+                                              {t(
+                                                `detail.prediction.${label.toLowerCase()}` as any
+                                              )}
+                                            </span>
+                                            <span>
+                                              {(prob * 100).toFixed(1)}%
+                                            </span>
+                                          </div>
+                                          <div className="h-1.5 w-full bg-muted rounded-full">
+                                            <motion.div
+                                              initial={{ width: 0 }}
+                                              animate={{
+                                                width: `${prob * 100}%`,
+                                              }}
+                                              className={cn(
+                                                "h-full rounded-full transition-all duration-1000",
+                                                label === "BUY"
+                                                  ? "bg-emerald-500"
+                                                  : label === "SELL"
+                                                  ? "bg-red-500"
+                                                  : "bg-slate-400"
+                                              )}
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              )}
                             </div>
 
                             <div className="bg-background/60 p-5 rounded-xl border border-white/5 space-y-4 font-mono text-xs">
@@ -1048,25 +1185,44 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
                           {t("detail.configDetails.labelStrategy")}
                         </span>
-                        <div className="text-sm font-mono font-bold flex flex-wrap gap-x-3 gap-y-1">
-                          <span className="text-emerald-400">
-                            TP:{" "}
-                            {(
-                              (model.labelingConfig?.profitTarget || 0.02) * 100
-                            ).toFixed(1)}
-                            %
-                          </span>
-                          <span className="text-red-400">
-                            SL:{" "}
-                            {(
-                              (model.labelingConfig?.stopLoss || 0.01) * 100
-                            ).toFixed(1)}
-                            %
-                          </span>
-                          <span className="text-blue-400">
-                            H: {model.labelingConfig?.horizon || 24}
-                          </span>
-                        </div>
+                        {(model.taskType || "classification") ===
+                        "classification" ? (
+                          <div className="text-sm font-mono font-bold flex flex-wrap gap-x-3 gap-y-1">
+                            <span className="text-emerald-400">
+                              TP:{" "}
+                              {(
+                                (model.labelingConfig?.profitTarget || 0.02) *
+                                100
+                              ).toFixed(1)}
+                              %
+                            </span>
+                            <span className="text-red-400">
+                              SL:{" "}
+                              {(
+                                (model.labelingConfig?.stopLoss || 0.01) * 100
+                              ).toFixed(1)}
+                              %
+                            </span>
+                            <span className="text-blue-400">
+                              H: {model.labelingConfig?.horizon || 24}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-sm font-mono font-bold flex flex-wrap gap-x-3 gap-y-1">
+                            <span className="text-emerald-400">
+                              Target:{" "}
+                              {t(
+                                `new.step4.${
+                                  model.labelingConfig?.targetType ||
+                                  "return_pct"
+                                }`
+                              )}
+                            </span>
+                            <span className="text-blue-400">
+                              H: {model.labelingConfig?.horizon || 24}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1295,6 +1451,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                       ? trainingStatus?.epochLogs
                       : model.latestTrainingJob?.epochLogs) || []
                   }
+                  taskType={model.taskType}
                 />
               </TabsContent>
 
@@ -1622,6 +1779,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
         open={isRetrainDialogOpen}
         onOpenChange={setIsRetrainDialogOpen}
         modelId={modelId}
+        taskType={model.taskType}
         initialStartDate={model.trainingStartDate}
         initialEndDate={model.trainingEndDate}
         onSuccess={() => {

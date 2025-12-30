@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/Select";
 import { Brain, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { getMyAIModels } from "@/lib/api/ai";
-import { AIModelSummary } from "@/types/ai";
+import { AIModelSummary, AIModelType } from "@/types/ai";
 import { cn } from "@/lib/utils";
 
 interface AIModelSelectorProps {
@@ -42,15 +42,21 @@ interface AIModelSelectorProps {
   onOpenChange: (isOpen: boolean) => void;
   onSelect: (config: AISignalBlockConfig) => void;
   backtestStartDate?: Date; // 미래 참조 검증용
+  taskType?: AIModelType; // 모델 필터링용
 }
 
 export interface AISignalBlockConfig {
   modelId: string;
   modelName: string;
+  taskType: AIModelType;
   signalType: "buy" | "sell" | "hold";
-  evaluationMode: "threshold" | "highest";
+  evaluationMode: "threshold" | "highest" | "direction" | "confidence";
   minConfidence?: number; // threshold 모드용
   trainingEndDate?: string;
+  // MC Dropout Confidence 모드용
+  useUncertainty?: boolean;
+  mcDropoutSamples?: number;
+  uncertaintyThreshold?: number;
 }
 
 export function AIModelSelector({
@@ -58,6 +64,7 @@ export function AIModelSelector({
   onOpenChange,
   onSelect,
   backtestStartDate,
+  taskType,
 }: AIModelSelectorProps) {
   const t = useTranslations("StrategyBuilder");
 
@@ -83,7 +90,12 @@ export function AIModelSelector({
   });
 
   const completedModels =
-    models?.filter((m: AIModelSummary) => m.status === "completed") || [];
+    models?.filter((m: AIModelSummary) => {
+      if (m.status !== "completed") return false;
+      if (taskType && (m.taskType || "classification") !== taskType)
+        return false;
+      return true;
+    }) || [];
 
   // 미래 참조 검증
   const hasLookaheadBias = (model: AIModelSummary): boolean => {
@@ -98,8 +110,12 @@ export function AIModelSelector({
     onSelect({
       modelId: selectedModel.id,
       modelName: selectedModel.name,
+      taskType: selectedModel.taskType || "classification",
       signalType,
-      evaluationMode,
+      evaluationMode:
+        (selectedModel.taskType || "classification") === "regression"
+          ? "direction"
+          : evaluationMode,
       minConfidence: evaluationMode === "threshold" ? minConfidence : undefined,
       trainingEndDate: selectedModel.trainingEndDate,
     });
@@ -173,6 +189,18 @@ export function AIModelSelector({
                               <CheckCircle2 className="h-4 w-4 text-violet-500" />
                             )}
                             <span className="font-medium">{model.name}</span>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] h-5 px-1.5 ml-2",
+                                (model.taskType || "classification") ===
+                                  "classification"
+                                  ? "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
+                                  : "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
+                              )}
+                            >
+                              {(model.taskType || "classification").slice(0, 4)}
+                            </Badge>
                           </div>
                           {hasLookahead && (
                             <Badge variant="destructive" className="text-xs">
@@ -304,6 +332,17 @@ export function AIModelSelector({
               )}
             </>
           )}
+
+          {/* 회귀 모델 설정 안내 */}
+          {selectedModel &&
+            (selectedModel.taskType || "classification") === "regression" && (
+              <div className="p-4 rounded-lg bg-muted text-sm text-center text-muted-foreground">
+                <p>{t("aiModelSelector.regressionNotice")}</p>
+                <p className="text-xs mt-1 opacity-70">
+                  {t("aiModelSelector.regressionNoticeDesc")}
+                </p>
+              </div>
+            )}
         </div>
 
         <DialogFooter>

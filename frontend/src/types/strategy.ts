@@ -104,9 +104,36 @@ export interface AISignalLogic {
   type: "ai_signal";
   modelId: string;
   modelName?: string; // 표시용
-  signalType: "buy" | "sell" | "hold";
-  evaluationMode: "threshold" | "highest";
-  minConfidence?: number; // threshold 모드용 (0.0~1.0)
+
+  // 모델에서 자동 설정 (읽기 전용 - IndicatorHub에서 모델 선택 시 채워짐)
+  taskType?: "classification" | "regression";
+  predictionTarget?: string; // "signal" | "return_pct" | "price_change" | "volatility"
+
+  // 분류 모델용: 어떤 신호를 조건으로 사용할지
+  signalType?: "buy" | "sell" | "hold";
+
+  // 공통 평가 방식
+  // - highest: (분류) 해당 신호가 가장 높은 확률일 때
+  // - threshold: (분류) 확률 >= minConfidence / (회귀) 예측값 조건 충족 시
+  // - direction: (회귀) 예측값이 양수/음수일 때
+  // - confidence: (회귀) MC Dropout 95% 신뢰구간 기반
+  evaluationMode: "threshold" | "highest" | "direction" | "confidence";
+
+  // 분류 - threshold 모드용
+  minConfidence?: number; // 0.0~1.0
+
+  // 회귀 - threshold 모드용
+  threshold?: number; // 예측값 임계값 (예: 2.0 → 2% 이상)
+  conditionOperator?: ">" | "<" | ">=" | "<=";
+
+  // 회귀 - direction 모드용
+  directionSignal?: "positive" | "negative"; // 양수/음수 예측을 조건으로
+
+  // 회귀 - confidence 모드용 (MC Dropout)
+  useUncertainty?: boolean; // MC Dropout 사용 여부
+  mcDropoutSamples?: number; // MC Dropout 샘플 수 (5-50, 기본값: 10)
+  uncertaintyThreshold?: number; // 최대 허용 불확실성 (이 값 이상이면 신호 무시)
+
   trainingEndDate?: string; // 미래 참조 경고용
   children?: LogicBlock[];
   logicOperator?: LogicOperator;

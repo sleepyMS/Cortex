@@ -41,7 +41,8 @@ interface IndicatorHubProps {
   onAIModelSelect?: (
     modelId: string,
     modelName: string,
-    logicType: string
+    logicType: string,
+    taskType: "classification" | "regression"
   ) => void;
   selectionMode?: "full" | "indicatorOnly";
   showAICategory?: boolean;
@@ -145,7 +146,14 @@ export function IndicatorHub({
       // AI 모델인 경우
       const model = selectedItem.item.model;
       if (onAIModelSelect) {
-        onAIModelSelect(model.id, model.name, logicType);
+        onAIModelSelect(
+          model.id,
+          model.name,
+          logicType,
+          (model.taskType || "classification") as
+            | "classification"
+            | "regression"
+        );
       }
     } else {
       // 일반 지표인 경우
@@ -282,8 +290,19 @@ export function IndicatorHub({
                             <p className="text-xs text-muted-foreground mt-1">
                               {model.trainingSymbol} · {model.trainingTimeframe}
                             </p>
-                            <Badge variant="secondary" className="mt-1 text-xs">
-                              AI 모델
+                            <Badge
+                              variant="outline"
+                              className={`mt-1 text-xs ${
+                                (model.taskType || "classification") ===
+                                "regression"
+                                  ? "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
+                                  : "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
+                              }`}
+                            >
+                              {(model.taskType || "classification") ===
+                              "regression"
+                                ? "회귀"
+                                : "분류"}
                             </Badge>
                           </div>
                         ))}
@@ -324,6 +343,20 @@ export function IndicatorHub({
                                   학습: {model.trainingStartDate?.slice(0, 10)}{" "}
                                   ~ {model.trainingEndDate?.slice(0, 10)}
                                 </p>
+                                <Badge
+                                  variant="outline"
+                                  className={`mt-1 text-xs ${
+                                    (model.taskType || "classification") ===
+                                    "regression"
+                                      ? "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
+                                      : "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
+                                  }`}
+                                >
+                                  {(model.taskType || "classification") ===
+                                  "regression"
+                                    ? "회귀"
+                                    : "분류"}
+                                </Badge>
                               </div>
                             ))
                           )}

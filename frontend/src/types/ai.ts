@@ -1,6 +1,18 @@
 // file: src/types/ai.ts
 // AI 모델 관련 TypeScript 타입 정의
 
+// AI 모델 타입 (분류 vs 회귀)
+export type AIModelType = "classification" | "regression";
+
+// 라벨링 메서드 타입
+export type AILabelingMethod = "triple_barrier" | "regression";
+
+// 회귀 예측 대상 타입
+export type AIRegressionTargetType =
+  | "return_pct"
+  | "price_change"
+  | "volatility";
+
 // AI 모델 상태
 export type AIModelStatus = "pending" | "training" | "completed" | "failed";
 
@@ -20,12 +32,17 @@ export interface AIFeatureConfig {
   useLogReturns: boolean;
 }
 
-// 라벨링 설정 (Triple Barrier)
+// 라벨링 설정 (분류: Triple Barrier, 회귀: 직접 예측)
 export interface AILabelingConfig {
-  method: string;
+  method: AILabelingMethod;
   horizon: number;
-  profitTarget: number;
-  stopLoss: number;
+
+  // 분류용 (triple_barrier)
+  profitTarget?: number;
+  stopLoss?: number;
+
+  // 회귀용 (regression)
+  targetType?: AIRegressionTargetType;
 }
 
 // 아키텍처 설정
@@ -50,7 +67,7 @@ export interface AIOptimizationConfig {
   isEnabled: boolean;
   nTrials: number;
   maxEpochsPerTrial: number; // 트라이얼당 최대 에폭 (5-50, 기본 30)
-  maximizeMetric: "accuracy" | "f1" | "return";
+  maximizeMetric: "accuracy" | "f1" | "return" | "rmse" | "mae" | "r2";
   searchSpace: {
     hiddenSize: { min: number; max: number };
     numLayers: { min: number; max: number };
@@ -64,7 +81,8 @@ export interface AIOptimizationConfig {
 export interface AIModelCreateRequest {
   name: string;
   description?: string;
-  modelType: string;
+  modelType: string; // 아키텍처 (lstm/gru)
+  taskType: AIModelType; // 분류/회귀
   architectureConfig: AIArchitectureConfig;
   featureConfig: AIFeatureConfig;
   labelingConfig: AILabelingConfig;
@@ -91,12 +109,17 @@ export interface AITrainingJob {
     trial?: number;
     totalTrials?: number;
     bestValue?: number;
+    // Regression Metrics
+    rmse?: number;
+    mae?: number;
+    r2?: number;
   };
   epochLogs?: Array<{
     epoch: number;
     trainLoss: number;
     valLoss: number;
     accuracy?: number;
+    rmse?: number;
     timestamp: string;
   }>;
   optimizationResult?: any;
@@ -123,7 +146,13 @@ export interface AIModelSummary {
   id: string;
   name: string;
   description?: string;
-  modelType: string;
+  modelType: string; // 아키텍처 타입 (예: "LSTM_Classifier")
+
+  // AI 작업 타입 (분류/회귀 구분)
+  taskType?: AIModelType; // "classification" | "regression"
+  predictionTarget?: string; // "signal" | "return_pct" | "price_change" | "volatility"
+  predictionHorizon?: number; // 예측 기간 (캔들 수)
+
   status: AIModelStatus;
   trainingSymbol: string;
   trainingTimeframe: string;
@@ -148,6 +177,12 @@ export interface AIModelDetail extends AIModelSummary {
     precisionMacro?: number;
     recallMacro?: number;
     confusionMatrix?: number[][];
+    // Regression Metrics
+    rmse?: number;
+    mae?: number;
+    r2?: number;
+    ic?: number;
+    directionalAccuracy?: number;
   };
   validationMetrics?: {
     labelStats?: {
@@ -209,6 +244,12 @@ export interface AIPredictionResponse {
   predictedLabel: "BUY" | "HOLD" | "SELL";
 }
 
+export interface AIRegressionPredictionResponse {
+  predictedValue: number;
+  predictionTarget: AIRegressionTargetType;
+  confidenceInterval?: { lower: number; upper: number };
+}
+
 export interface AIModelCostEstimationRequest {
   trainingType: "new" | "retrain";
   startDate?: string;
@@ -250,6 +291,7 @@ export const DEFAULT_LABELING_CONFIG: AILabelingConfig = {
   horizon: 24,
   profitTarget: 0.02,
   stopLoss: 0.01,
+  targetType: "return_pct", // 회귀 기본값
 };
 
 export const DEFAULT_TRAINING_CONFIG: AITrainingConfig = {

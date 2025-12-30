@@ -125,6 +125,21 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                 >
                   {model.modelType}
                 </Badge>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-wider h-5 px-2 rounded-full border",
+                    (model.taskType || "classification") === "classification"
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                      : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800"
+                  )}
+                >
+                  {t(
+                    (model.taskType || "classification") === "classification"
+                      ? "card.classificationBadge"
+                      : "card.regressionBadge"
+                  )}
+                </Badge>
                 {model.isOptimized && (
                   <Badge
                     variant="outline"

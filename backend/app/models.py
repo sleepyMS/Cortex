@@ -798,10 +798,9 @@ class AIModel(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    
-    # 모델 아키텍처 설정
-    model_type = Column(String(50), nullable=False)  # 'lstm', 'gru', 'tft'
+    description = Column(String, nullable=True)
+    model_type = Column(String(50), nullable=False) # lstm, gru, tft, etc.
+    task_type = Column(String(50), default="classification", server_default="classification", nullable=False) # classification, regression
     architecture_config = Column(JSONB, nullable=False)  # hidden_size, num_layers, dropout 등
     
     # Feature Store - 학습에 사용된 피처 설정 (핵심!)

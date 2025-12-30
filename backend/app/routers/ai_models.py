@@ -5,7 +5,7 @@ AI 모델 CRUD 및 학습 관리 API 엔드포인트
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import FileResponse
@@ -92,6 +92,7 @@ async def create_ai_model(
             training_timeframe=payload.training_timeframe,
             training_start_date=payload.training_start_date,
             training_end_date=payload.training_end_date,
+            task_type=payload.task_type,
             optimization_config=payload.optimization_config.model_dump() if payload.optimization_config else None,
         )
         
@@ -186,7 +187,7 @@ async def get_training_status(
     return schemas.AITrainingJobResponse.model_validate(job)
 
 
-@router.post("/{model_id}/predict", response_model=schemas.AIPredictionResponse)
+@router.post("/{model_id}/predict", response_model=Union[schemas.AIPredictionResponse, schemas.AIRegressionPredictionResponse])
 async def test_prediction(
     model_id: str,
     payload: schemas.AIPredictionRequest,
@@ -235,7 +236,10 @@ async def test_prediction(
         # 예측
         result = session.get_latest_prediction(df)
         
-        return schemas.AIPredictionResponse(**result)
+        if result.get("task_type") == "regression":
+            return schemas.AIRegressionPredictionResponse(**result)
+        else:
+            return schemas.AIPredictionResponse(**result)
         
     except Exception as e:
         logger.error(f"Prediction failed: {e}")

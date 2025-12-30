@@ -47,11 +47,27 @@ class AIOptimizer:
         temp_trainer = AIModelTrainer(self.config, save_dir="/tmp/cortex_optuna")
         
         # Step 1: 라벨링
-        labeling_params = self.config.labeling_config.copy()
-        if 'method' in labeling_params: del labeling_params['method']
-        from ..labeling.triple_barrier import TripleBarrierLabeler, TripleBarrierConfig
-        labeler = TripleBarrierLabeler(TripleBarrierConfig(**labeling_params))
+        if self.config.task_type == "regression":
+            from ..labeling.regression_labeling import RegressionLabeler, RegressionLabelingConfig
+            labeling_params = self.config.labeling_config.copy()
+            # Filter params for RegressionLabelingConfig
+            accepted_keys = {'target_type', 'horizon', 'use_log_returns'}
+            filtered_params = {k: v for k, v in labeling_params.items() if k in accepted_keys}
+            labeler = RegressionLabeler(RegressionLabelingConfig(**filtered_params))
+        else:
+            from ..labeling.triple_barrier import TripleBarrierLabeler, TripleBarrierConfig
+            labeling_params = self.config.labeling_config.copy()
+            if 'method' in labeling_params: del labeling_params['method']
+            labeler = TripleBarrierLabeler(TripleBarrierConfig(**labeling_params))
+        
         labels = labeler.generate_labels(df)
+        
+        # Step 1.5: Regression 모델을 위한 RobustScaler 자동 적용
+        if self.config.task_type == "regression":
+            original_norm = self.config.feature_config.get("normalization", "rolling_zscore")
+            if original_norm != "robust":
+                self.config.feature_config["normalization"] = "robust"
+                logger.info(f"Regression mode: Auto-applying RobustScaler (was: {original_norm})")
         
         # Step 2: 피처 추출
         from ..preprocessing.feature_engineer import FeatureEngineer, FeatureConfig
@@ -105,7 +121,8 @@ class AIOptimizer:
                 input_size=input_size,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
-                dropout=dropout
+                dropout=dropout,
+                task_type=self.config.task_type
             )
             
             # 자동 최적화 모드에서는 optimizationConfig의 maxEpochsPerTrial만 사용
@@ -153,6 +170,12 @@ class AIOptimizer:
                 score = result.final_metrics.get("f1_macro", 0)
             elif self.maximize_metric == "return":
                 score = result.final_metrics.get("expected_return", 0)
+            elif self.maximize_metric == "rmse":
+                 # RMSE는 Minimize 대상이므로 음수로 변환하여 Maximize 문제로 취급하거나
+                 # Optuna direction을 minimize로 설정해야 함.
+                 score = -result.final_metrics.get("rmse", float('inf'))
+            elif self.maximize_metric == "r2":
+                 score = result.final_metrics.get("r2", -float('inf'))
             else:
                 score = result.final_metrics.get("accuracy", 0)
             
@@ -255,14 +278,21 @@ class AIOptimizer:
             # 3. Integrated Gradients 인스턴스
             ig = IntegratedGradients(model.model)
             
-            # 4. 중요도 계산 (Target: Buy class = index 2 가정)
-            # Triple Barrier Labeler: -1(Sell), 0(Hold), 1(Buy) -> 0, 1, 2
-            target_class = 2 
+            # 4. 중요도 계산
+            # Target 설정:
+            # - 분류(Classification): target class index (e.g., 2=Buy)
+            # - 회귀(Regression): 0 (output is scalar)
+            
+            if self.config.task_type == "regression":
+                target_idx = 0
+            else:
+                # Triple Barrier Labeler: 2 = Buy (Assume)
+                target_idx = 2 
             
             attributions, delta = ig.attribute(
                 inputs=X_sample,
                 baselines=baseline,
-                target=target_class,
+                target=target_idx,
                 return_convergence_delta=True
             )
             

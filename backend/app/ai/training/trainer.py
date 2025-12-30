@@ -7,7 +7,7 @@ import logging
 import json
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional, Callable, List
+from typing import Dict, Any, Optional, Callable, List, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
@@ -18,6 +18,7 @@ from ..models.base import ModelConfig, TrainingConfig, TrainingResult
 from ..models.lstm import LSTMClassifier
 from ..models.gru import GRUClassifier
 from ..labeling.triple_barrier import TripleBarrierLabeler, TripleBarrierConfig
+from ..labeling.regression_labeling import RegressionLabeler, RegressionLabelingConfig
 from ..preprocessing.feature_engineer import FeatureEngineer, FeatureConfig
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class TrainingPipelineConfig:
     """전체 학습 파이프라인 설정"""
     # 모델 설정
     model_type: str = "lstm"
+    task_type: str = "classification" # classification, regression
     architecture_config: Dict[str, Any] = None
     
     # 피처 설정
@@ -113,17 +115,49 @@ class AIModelTrainer:
         logger.info(f"Starting training pipeline for {self.config.training_symbol}")
         logger.info(f"Data shape: {df.shape}")
         
+        # Step 0: Regression 모델을 위한 자동 설정
+        if self.config.task_type == "regression":
+            # RobustScaler 자동 적용 (crypto fat tail outliers 처리)
+            original_norm = self.config.feature_config.get("normalization", "rolling_zscore")
+            if original_norm != "robust":
+                self.config.feature_config["normalization"] = "robust"
+                logger.info(f"Regression mode: Auto-applying RobustScaler (was: {original_norm})")
+        
         # Step 1: 라벨링
         current_step += 1
         self._report_progress(current_step, total_steps, {"phase": "labeling"})
         
-        labeling_params = self.config.labeling_config.copy()
-        if 'method' in labeling_params:
-            del labeling_params['method']
-        labeling_config = TripleBarrierConfig(**labeling_params)
-        self.labeler = TripleBarrierLabeler(labeling_config)
-        labels = self.labeler.generate_labels(df)
-        label_stats = self.labeler.get_label_stats(labels)
+        if self.config.task_type == "regression":
+            # Regression Labeling
+            labeling_params = self.config.labeling_config.copy()
+            
+            # Filter params for RegressionLabelingConfig
+            # accepted_keys determined from RegressionLabelingConfig definition
+            accepted_keys = {'target_type', 'horizon'} # Add any others if needed
+            filtered_params = {k: v for k, v in labeling_params.items() if k in accepted_keys}
+            
+            # Use provided keys matching RegressionLabelingConfig
+            reg_config = RegressionLabelingConfig(**filtered_params)
+            logger.info(f"Using RegressionLabeler with config: {reg_config}")
+            self.labeler = RegressionLabeler(reg_config)
+            labels = self.labeler.generate_labels(df) # Series
+            
+            # Regression stats
+            label_stats = {
+                "mean": float(labels.mean()),
+                "std": float(labels.std()), 
+                "min": float(labels.min()),
+                "max": float(labels.max())
+            }
+        else:
+            # Classification Labeling (Triple Barrier)
+            labeling_params = self.config.labeling_config.copy()
+            if 'method' in labeling_params:
+                del labeling_params['method']
+            labeling_config = TripleBarrierConfig(**labeling_params)
+            self.labeler = TripleBarrierLabeler(labeling_config)
+            labels = self.labeler.generate_labels(df)
+            label_stats = self.labeler.get_label_stats(labels)
         
         logger.info(f"Labeling completed: {label_stats}")
         
@@ -146,6 +180,9 @@ class AIModelTrainer:
         self.feature_engineer = FeatureEngineer(feature_config)
         X, y, feature_store_config = self.feature_engineer.fit_transform(df, labels)
         
+        # Validate and clean data (Targeting NaNs/Infs)
+        X, y = self._validate_and_clean_data(X, y)
+        
         logger.info(f"Feature extraction completed: X={X.shape}, y={y.shape}")
         
         # Step 3: Train/Val 분할
@@ -167,9 +204,18 @@ class AIModelTrainer:
         
         # 모델 설정
         input_size = X.shape[2]  # 피처 수
+        num_classes = 3
+        if self.config.task_type == "regression":
+            num_classes = 1
+            
         model_config = ModelConfig(
-            input_size=input_size,
-            **self.config.architecture_config
+            input_size=X.shape[2],
+            hidden_size=self.config.architecture_config.get("hidden_size", 64),
+            num_layers=self.config.architecture_config.get("num_layers", 2),
+            num_classes=num_classes,
+            dropout=self.config.architecture_config.get("dropout", 0.2),
+            bidirectional=self.config.architecture_config.get("bidirectional", False),
+            task_type=self.config.task_type
         )
         
         # 모델 생성 및 학습
@@ -318,7 +364,10 @@ class AIModelTrainer:
             
             # 4. 중요도 계산 (Target: Buy class = index 2 가정)
             # Triple Barrier Labeler: -1(Sell), 0(Hold), 1(Buy) -> 0, 1, 2
-            target_class = 2 
+            if self.config.task_type == "regression":
+                target_class = 0 # Single output for regression
+            else:
+                target_class = 2 # Classification target (Buy) 
             
             attributions, delta = ig.attribute(
                 inputs=X_sample,
@@ -352,4 +401,32 @@ class AIModelTrainer:
         except Exception as e:
             logger.error(f"Error calculating feature importance: {e}")
             return {}
+
+    def _validate_and_clean_data(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        데이터 유효성 검사 및 정제 (NaN/Inf 제거)
+        """
+        # Check for NaN/Inf in X
+        x_invalid = np.isnan(X).any(axis=(1, 2)) | np.isinf(X).any(axis=(1, 2))
+        
+        # Check for NaN/Inf in y
+        if y.ndim == 1:
+            y_invalid = np.isnan(y) | np.isinf(y)
+        else:
+            y_invalid = np.isnan(y).any(axis=1) | np.isinf(y).any(axis=1)
+            
+        invalid_mask = x_invalid | y_invalid
+        
+        if invalid_mask.any():
+            n_removed = invalid_mask.sum()
+            total = len(X)
+            logger.warning(f"Removing {n_removed}/{total} samples containing NaN/Inf values")
+            
+            X = X[~invalid_mask]
+            y = y[~invalid_mask]
+            
+            if len(X) == 0:
+                raise ValueError("All data samples contained NaN/Inf values and were removed.")
+                
+        return X, y
 

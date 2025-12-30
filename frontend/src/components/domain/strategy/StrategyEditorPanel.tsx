@@ -508,18 +508,24 @@ export function StrategyEditorPanel({
   const handleAIModelSelect = (
     modelId: string,
     modelName: string,
-    logicType: string
+    logicType: string,
+    taskType: "classification" | "regression" = "classification"
   ) => {
     if (!currentTarget) return;
+
+    // 분류 모델과 회귀 모델에 따라 다른 기본값 설정
+    const isRegression = taskType === "regression";
 
     const newBlock: AISignalLogic = {
       id: crypto.randomUUID(),
       type: "ai_signal",
       modelId,
       modelName,
-      signalType: "buy", // 기본값, RuleBlock에서 수정 가능
-      evaluationMode: "highest", // 기본값
-      minConfidence: 0.5,
+      taskType,
+      signalType: isRegression ? undefined : "buy", // 회귀 모델은 signalType 불필요
+      evaluationMode: isRegression ? "direction" : "highest", // 회귀: direction, 분류: highest
+      directionSignal: isRegression ? "positive" : undefined, // 회귀: 양수 기본값
+      minConfidence: isRegression ? undefined : 0.5, // 분류만 minConfidence 사용
     };
 
     if (currentTarget.type === "top-level") {

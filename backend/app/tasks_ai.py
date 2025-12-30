@@ -98,9 +98,26 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         save_dir = AI_MODELS_BASE_PATH / str(ai_model.user_id) / str(ai_model.id)
         save_dir.mkdir(parents=True, exist_ok=True)
         
+        # Helper function to sanitize metrics for JSON serialization
+        def sanitize_metric_value(v):
+            if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+                return None
+            return v
+
+        def sanitize_metrics(metrics: Dict[str, Any]) -> Dict[str, Any]:
+            if not metrics:
+                return {}
+            return {
+                k: sanitize_metric_value(v) if not isinstance(v, dict) else sanitize_metrics(v)
+                for k, v in metrics.items()
+            }
+
         # 진행률 콜백
         def progress_callback(step: int, total: int, metrics: Dict[str, Any]):
             try:
+                # Sanitize metrics first to avoid JSON errors with NaN/Inf
+                metrics = sanitize_metrics(metrics)
+
                 # 진행률 계산
                 base_progress = (step - 1) / total * 100
                 
@@ -128,6 +145,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                         "train_loss": metrics.get("train_loss"),
                         "val_loss": metrics.get("val_loss"),
                         "accuracy": metrics.get("accuracy"),
+                        "rmse": metrics.get("rmse"),  # Added RMSE
                         "timestamp": datetime.utcnow().isoformat()
                     }
                     if training_job.epoch_logs is None:
@@ -147,6 +165,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         # 파이프라인 설정
         pipeline_config = TrainingPipelineConfig(
             model_type=ai_model.model_type,
+            task_type=ai_model.task_type,
             architecture_config=ai_model.architecture_config,
             feature_config=ai_model.feature_config,
             labeling_config=ai_model.labeling_config,
@@ -317,6 +336,9 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                 # 최종 학습 단계를 80~100%로 배분
                 base_progress = 80
                 if metrics.get("phase") == "training" and "epoch" in metrics:
+                    # Sanitize metrics inside final callback as well just in case
+                    metrics = sanitize_metrics(metrics)
+
                     epoch_progress = metrics["epoch"] / metrics.get("total_epochs", 100)
                     progress = base_progress + (epoch_progress * 20)
                     # Client에게는 final_training 상태임을 알림
@@ -335,6 +357,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                                 "trainLoss": metrics.get("train_loss"),
                                 "valLoss": metrics.get("val_loss"),
                                 "accuracy": metrics.get("val_accuracy") or metrics.get("accuracy"), # 모델에 따라 다를 수 있음
+                                "rmse": metrics.get("rmse"), # For regression
                                 "timestamp": datetime.utcnow().isoformat()
                             }
                             current_logs.append(new_log)

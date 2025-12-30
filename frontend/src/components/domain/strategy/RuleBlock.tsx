@@ -467,7 +467,9 @@ export function RuleBlock({
   );
 
   const renderAISignalLogic = (logic: AISignalLogic) => {
-    // 신호 타입별 색상 및 아이콘 설정
+    const isRegression = logic.taskType === "regression";
+
+    // 분류 모델: 신호 타입별 설정
     const signalConfig = {
       buy: {
         color: "emerald",
@@ -493,8 +495,321 @@ export function RuleBlock({
       },
     };
 
-    const currentSignal = signalConfig[logic.signalType] || signalConfig.buy;
+    // 회귀 모델: 방향별 설정
+    const directionConfig = {
+      positive: {
+        label: t("aiSignal.positiveDirection"),
+        bgClass: "bg-emerald-500/10 border-emerald-500/30",
+        textClass: "text-emerald-500",
+      },
+      negative: {
+        label: t("aiSignal.negativeDirection"),
+        bgClass: "bg-rose-500/10 border-rose-500/30",
+        textClass: "text-rose-500",
+      },
+    };
 
+    // 조건 연산자 설정
+    const operatorConfig = {
+      ">": ">",
+      "<": "<",
+      ">=": "≥",
+      "<=": "≤",
+    };
+
+    const currentSignal =
+      signalConfig[logic.signalType || "buy"] || signalConfig.buy;
+    const currentDirection =
+      directionConfig[logic.directionSignal || "positive"] ||
+      directionConfig.positive;
+
+    // 회귀 모델 UI
+    if (isRegression) {
+      return (
+        <div className="space-y-4 min-w-[450px] shrink-0">
+          {/* 헤더: 모델 정보 + 뱃지 */}
+          <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 rounded-lg border border-teal-500/20">
+            <div className="p-1.5 bg-teal-500/20 rounded-md">
+              <Brain className="h-4 w-4 text-teal-400" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-sm truncate">
+                {logic.modelName || t("aiSignal.defaultModelName")}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {t("aiSignal.regressionSubtitle")}
+                {logic.predictionTarget && (
+                  <span className="ml-1 opacity-70">
+                    ({logic.predictionTarget})
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="ml-auto px-2 py-1 rounded-md bg-teal-500/20 text-teal-500 text-xs font-bold">
+              {t("aiSignal.regressionBadge")}
+            </div>
+          </div>
+
+          {/* 평가 모드 선택 */}
+          <div className="flex flex-col sm:flex-row items-stretch gap-3">
+            <div
+              className={`
+              flex-1 p-3 rounded-lg border transition-all
+              ${
+                logic.evaluationMode === "direction"
+                  ? "bg-teal-500/5 border-teal-500/30"
+                  : "bg-muted/30 border-border/50"
+              }
+            `}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs font-medium">
+                  {t("aiSignal.evaluationModeLabel")}
+                </Label>
+              </div>
+              <Select
+                value={logic.evaluationMode}
+                onValueChange={(val) =>
+                  handleUpdateField("evaluationMode", val)
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue>
+                    {logic.evaluationMode === "direction"
+                      ? t("aiSignal.directionBased")
+                      : logic.evaluationMode === "confidence"
+                      ? t("aiSignal.confidenceBased")
+                      : t("aiSignal.thresholdBased")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="direction">
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {t("aiSignal.directionBased")}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {t("aiSignal.directionBasedDesc")}
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="threshold">
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {t("aiSignal.thresholdBased")}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {t("aiSignal.thresholdBasedDesc")}
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="confidence">
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {t("aiSignal.confidenceBased")}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {t("aiSignal.confidenceBasedDesc")}
+                      </span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Direction 모드: 방향 선택 */}
+            {logic.evaluationMode === "direction" && (
+              <div className="flex-1 p-3 rounded-lg border bg-muted/30 border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-medium">
+                    {t("aiSignal.directionLabel")}
+                  </Label>
+                </div>
+                <div className="flex rounded-lg border border-border/50 overflow-hidden">
+                  {(["positive", "negative"] as const).map((dir) => {
+                    const config = directionConfig[dir];
+                    const isActive = logic.directionSignal === dir;
+                    return (
+                      <button
+                        key={dir}
+                        type="button"
+                        onClick={() =>
+                          handleUpdateField("directionSignal", dir)
+                        }
+                        className={`
+                          flex-1 px-3 py-2 text-xs font-medium transition-all duration-200
+                          ${
+                            isActive
+                              ? `${config.bgClass} ${config.textClass}`
+                              : "bg-background hover:bg-accent text-muted-foreground"
+                          }
+                        `}
+                      >
+                        {config.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Threshold 모드: 연산자 + 임계값 */}
+            {logic.evaluationMode === "threshold" && (
+              <>
+                <div className="w-24 p-3 rounded-lg border bg-muted/30 border-border/50">
+                  <Label className="text-xs font-medium mb-2 block">
+                    {t("aiSignal.conditionOperatorLabel")}
+                  </Label>
+                  <Select
+                    value={logic.conditionOperator || ">"}
+                    onValueChange={(val) =>
+                      handleUpdateField("conditionOperator", val)
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue>
+                        {
+                          operatorConfig[
+                            (logic.conditionOperator as keyof typeof operatorConfig) ||
+                              ">"
+                          ]
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value=">">&gt;</SelectItem>
+                      <SelectItem value="<">&lt;</SelectItem>
+                      <SelectItem value=">=">≥</SelectItem>
+                      <SelectItem value="<=">≤</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1 p-3 rounded-lg border bg-teal-500/5 border-teal-500/20">
+                  <div className="flex justify-between items-center mb-2">
+                    <Label className="text-xs font-medium">
+                      {t("aiSignal.thresholdLabel")}
+                    </Label>
+                    <span className="text-sm font-bold text-teal-500">
+                      {logic.threshold || 0}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[logic.threshold || 0]}
+                    onValueChange={(val) =>
+                      handleUpdateField("threshold", val[0])
+                    }
+                    min={-10}
+                    max={10}
+                    step={0.5}
+                    className="w-full"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    {t("aiSignal.thresholdDesc")}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Confidence 모드: MC Dropout 설정 */}
+            {logic.evaluationMode === "confidence" && (
+              <>
+                <div className="flex-1 p-3 rounded-lg border bg-muted/30 border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs font-medium">
+                      {t("aiSignal.directionLabel")}
+                    </Label>
+                  </div>
+                  <div className="flex rounded-lg border border-border/50 overflow-hidden">
+                    {(["positive", "negative"] as const).map((dir) => {
+                      const config = directionConfig[dir];
+                      const isActive = logic.directionSignal === dir;
+                      return (
+                        <button
+                          key={dir}
+                          type="button"
+                          onClick={() =>
+                            handleUpdateField("directionSignal", dir)
+                          }
+                          className={`
+                            flex-1 px-3 py-2 text-xs font-medium transition-all duration-200
+                            ${
+                              isActive
+                                ? `${config.bgClass} ${config.textClass}`
+                                : "bg-background hover:bg-accent text-muted-foreground"
+                            }
+                          `}
+                        >
+                          {config.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex-1 p-3 rounded-lg border bg-purple-500/5 border-purple-500/20">
+                  <div className="flex justify-between items-center mb-2">
+                    <Label className="text-xs font-medium">
+                      {t("aiSignal.mcDropoutSamplesLabel")}
+                    </Label>
+                    <span className="text-sm font-bold text-purple-500">
+                      {logic.mcDropoutSamples || 10}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[logic.mcDropoutSamples || 10]}
+                    onValueChange={(val) =>
+                      handleUpdateField("mcDropoutSamples", val[0])
+                    }
+                    min={5}
+                    max={50}
+                    step={5}
+                    className="w-full"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    {t("aiSignal.mcDropoutSamplesDesc")}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 현재 조건 요약 */}
+          <div
+            className={`
+            flex items-center gap-2 px-3 py-2 rounded-md text-xs
+            ${currentDirection.bgClass} border
+          `}
+          >
+            <span className="text-muted-foreground">
+              {t("aiSignal.conditionLabel")}
+            </span>
+            <span className={`font-semibold ${currentDirection.textClass}`}>
+              {logic.modelName || t("aiSignal.defaultModelName")}
+            </span>
+            <span className="text-muted-foreground">
+              {logic.evaluationMode === "direction"
+                ? t("aiSignal.directionSuffix", {
+                    direction: currentDirection.label,
+                  })
+                : logic.evaluationMode === "confidence"
+                ? t("aiSignal.confidenceSuffix", {
+                    direction: currentDirection.label,
+                    samples: logic.mcDropoutSamples || 10,
+                  })
+                : t("aiSignal.regressionConditionSuffix", {
+                    operator:
+                      operatorConfig[
+                        (logic.conditionOperator as keyof typeof operatorConfig) ||
+                          ">"
+                      ],
+                    threshold: `${logic.threshold || 0}%`,
+                  })}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // 분류 모델 UI (기존 코드)
     return (
       <div className="space-y-4 min-w-[450px] shrink-0">
         {/* 헤더: 모델 정보 + 신호 타입 선택 */}
@@ -511,6 +826,9 @@ export function RuleBlock({
               <span className="text-[10px] text-muted-foreground">
                 {t("aiSignal.modelSubtitle")}
               </span>
+            </div>
+            <div className="ml-auto px-2 py-1 rounded-md bg-violet-500/20 text-violet-500 text-xs font-bold">
+              {t("aiSignal.classificationBadge")}
             </div>
           </div>
 

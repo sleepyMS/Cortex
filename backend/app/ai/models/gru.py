@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
 
@@ -118,32 +119,45 @@ class GRUClassifier(BaseAIModel):
         config = config or TrainingConfig()
         start_time = time.time()
         
-        # 데이터를 Tensor로 변환
-        X_train_t = torch.FloatTensor(X_train).to(self.device)
-        y_train_t = torch.LongTensor(y_train).to(self.device)
+        # 데이터 준비 및 Loss 설정
+        is_regression = self.config.task_type == "regression"
+        has_validation = X_val is not None and y_val is not None
         
+        if is_regression:
+            X_train_t = torch.FloatTensor(X_train).to(self.device)
+            y_train_t = torch.FloatTensor(y_train).unsqueeze(1).to(self.device) # (N, 1)
+            
+            # Regression Loss: Huber Loss (Robust to outliers)
+            criterion = nn.HuberLoss(delta=1.0)
+            
+            if has_validation:
+                X_val_t = torch.FloatTensor(X_val).to(self.device)
+                y_val_t = torch.FloatTensor(y_val).unsqueeze(1).to(self.device)
+        else:
+            # Classification
+            X_train_t = torch.FloatTensor(X_train).to(self.device)
+            y_train_t = torch.LongTensor(y_train).to(self.device)
+            
+            if has_validation:
+                X_val_t = torch.FloatTensor(X_val).to(self.device)
+                y_val_t = torch.LongTensor(y_val).to(self.device)
+
+            # 클래스 가중치 계산 (불균형 데이터 처리)
+            class_counts = np.bincount(y_train, minlength=3)
+            class_weights = 1.0 / (class_counts + 1e-6)
+            class_weights = class_weights / class_weights.sum() * 3  # 정규화
+            class_weights_t = torch.FloatTensor(class_weights).to(self.device)
+            
+            criterion = nn.CrossEntropyLoss(weight=class_weights_t)
+            
+        # DataLoader 생성 (공통)
         train_dataset = TensorDataset(X_train_t, y_train_t)
         train_loader = DataLoader(
-            train_dataset, 
-            batch_size=config.batch_size, 
-            shuffle=True,
-            drop_last=True
+            train_dataset,
+            batch_size=config.batch_size,
+            shuffle=True
         )
-        
-        # 검증 데이터 준비
-        has_validation = X_val is not None and y_val is not None
-        if has_validation:
-            X_val_t = torch.FloatTensor(X_val).to(self.device)
-            y_val_t = torch.LongTensor(y_val).to(self.device)
-        
-        # 클래스 가중치 계산 (불균형 데이터 처리)
-        class_counts = np.bincount(y_train, minlength=3)
-        class_weights = 1.0 / (class_counts + 1e-6)
-        class_weights = class_weights / class_weights.sum() * 3  # 정규화
-        class_weights_t = torch.FloatTensor(class_weights).to(self.device)
-        
-        # 손실 함수 및 옵티마이저
-        criterion = nn.CrossEntropyLoss(weight=class_weights_t)
+
         optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=config.learning_rate,
@@ -196,10 +210,24 @@ class GRUClassifier(BaseAIModel):
                     val_loss = criterion(val_outputs, y_val_t).item()
                     val_loss_history.append(val_loss)
                     
-                    # 정확도 계산
-                    preds = val_outputs.argmax(dim=1).cpu().numpy()
-                    acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
-                    accuracy_history.append(acc)
+                    # 정확도/MSE 계산
+                    if is_regression:
+                        # Calculate RMSE for reporting
+                        mse = F.mse_loss(val_outputs, y_val_t).item()
+                        rmse_val = np.sqrt(mse)
+                        
+                        # Calculate Directional Accuracy
+                        preds_np = val_outputs.detach().cpu().numpy()
+                        targets_np = y_val_t.detach().cpu().numpy()
+                        correct_dir = np.sign(preds_np) == np.sign(targets_np)
+                        da = float(np.mean(correct_dir))
+                        
+                        metrics_epoch = {"rmse": rmse_val, "accuracy": da}
+                    else:
+                        preds = val_outputs.argmax(dim=1).cpu().numpy()
+                        acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
+                        metrics_epoch = {"accuracy": acc}
+                        accuracy_history.append(acc)
                     
                     # 스케줄러 업데이트
                     scheduler.step(val_loss)
@@ -226,16 +254,21 @@ class GRUClassifier(BaseAIModel):
                 metrics = {
                     "train_loss": avg_train_loss,
                     "val_loss": val_loss,
-                    "accuracy": acc,
-                    "best_val_loss": best_val_loss
+                    "best_val_loss": best_val_loss,
+                    **metrics_epoch
                 }
                 progress_callback(epoch + 1, config.epochs, metrics)
             
             # Log every epoch for debugging
+            if is_regression:
+                metric_str = f"RMSE: {metrics_epoch.get('rmse', 0.0):.4f}"
+            else:
+                metric_str = f"Accuracy: {acc:.4f}"
+                
             logger.info(
                 f"Epoch {epoch + 1}/{config.epochs} - "
                 f"Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, "
-                f"Accuracy: {acc:.4f}, "
+                f"{metric_str}, "
                 f"Best Val Loss: {best_val_loss:.4f}, Patience: {patience_counter}/{config.early_stopping_patience}"
             )
         
@@ -262,59 +295,92 @@ class GRUClassifier(BaseAIModel):
         )
     
     def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor, labeling_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """평가 메트릭 계산"""
+        """평가 메트릭 계산 (분류/회귀 분기 처리)"""
         self.model.eval()
         with torch.no_grad():
             outputs = self.model(X)
-            probs = torch.softmax(outputs, dim=1).cpu().numpy()
-            preds = outputs.argmax(dim=1).cpu().numpy()
-            y_true = y.cpu().numpy()
-        
-        # Expected Return 계산
-        # 사용자가 설정한 profit_target, stop_loss 값 사용 (없으면 기본값)
-        # BUY(0), HOLD(1), SELL(2)
-        # 올바른 BUY/SELL 예측 → +profit_target
-        # 잘못된 BUY/SELL 예측 → -stop_loss
-        # HOLD 예측 → 0%
-        profit_target = labeling_config.get("profitTarget", 0.02) if labeling_config else 0.02
-        stop_loss = labeling_config.get("stopLoss", 0.01) if labeling_config else 0.01
-        
-        total_return = 0.0
-        trade_count = 0
-        
-        for pred, true_label in zip(preds, y_true):
-            if pred == 0:  # BUY 예측
-                trade_count += 1
-                if true_label == 0:  # 실제 BUY → 맞음
-                    total_return += profit_target
-                else:  # 틀림
-                    total_return -= stop_loss
-            elif pred == 2:  # SELL 예측
-                trade_count += 1
-                if true_label == 2:  # 실제 SELL → 맞음
-                    total_return += profit_target
-                else:  # 틀림
-                    total_return -= stop_loss
-            # HOLD(1) 예측은 거래 안함 → 수익도 손실도 0
-        
-        # 평균 기대 수익률 (트레이드 당)
-        expected_return_per_trade = total_return / max(trade_count, 1)
-        
-        return {
-            "accuracy": float(accuracy_score(y_true, preds)),
-            "f1_macro": float(f1_score(y_true, preds, average='macro', zero_division=0)),
-            "f1_per_class": {
-                "buy": float(f1_score(y_true, preds, labels=[0], average='micro', zero_division=0)),
-                "hold": float(f1_score(y_true, preds, labels=[1], average='micro', zero_division=0)),
-                "sell": float(f1_score(y_true, preds, labels=[2], average='micro', zero_division=0)),
-            },
-            "precision_macro": float(precision_score(y_true, preds, average='macro', zero_division=0)),
-            "recall_macro": float(recall_score(y_true, preds, average='macro', zero_division=0)),
-            "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
-            "expected_return": float(total_return),  # 총 기대 수익률
-            "expected_return_per_trade": float(expected_return_per_trade),  # 트레이드 당 기대 수익률
-            "trade_count": int(trade_count),  # 총 거래 횟수
-        }
+            
+            if self.config.task_type == "regression":
+                preds = outputs.cpu().numpy().flatten()
+                y_true = y.cpu().numpy().flatten()
+                
+                # Regression Metrics
+                mse = np.mean((y_true - preds) ** 2)
+                rmse = np.sqrt(mse)
+                mae = np.mean(np.abs(y_true - preds))
+                
+                # R2 Score
+                ss_res = np.sum((y_true - preds) ** 2)
+                ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+                r2 = 1 - (ss_res / (ss_tot + 1e-8))
+                
+                # Directional Accuracy (DA)
+                # 실제 방향과 예측 방향이 일치하는 비율
+                # 주의: y_true가 수익률(Return)이라고 가정
+                correct_direction = np.sign(y_true) == np.sign(preds)
+                da = np.mean(correct_direction)
+                
+                # Information Coefficient (IC) - Spearman Correlation
+                if len(preds) > 1:
+                    from scipy.stats import spearmanr
+                    ic, _ = spearmanr(y_true, preds)
+                else:
+                    ic = 0.0
+                
+                return {
+                    "rmse": float(rmse),
+                    "mae": float(mae),
+                    "r2": float(r2),
+                    "directional_accuracy": float(da),
+                    "ic": float(ic)
+                }
+                
+            else:
+                # Classification Metrics
+                probs = torch.softmax(outputs, dim=1).cpu().numpy()
+                preds = outputs.argmax(dim=1).cpu().numpy()
+                y_true = y.cpu().numpy()
+            
+                # Expected Return 계산
+                profit_target = labeling_config.get("profitTarget", 0.02) if labeling_config else 0.02
+                stop_loss = labeling_config.get("stopLoss", 0.01) if labeling_config else 0.01
+                
+                total_return = 0.0
+                trade_count = 0
+                
+                for pred, true_label in zip(preds, y_true):
+                    if pred == 0:  # BUY 예측
+                        trade_count += 1
+                        if true_label == 0:  # 실제 BUY → 맞음
+                            total_return += profit_target
+                        else:  # 틀림
+                            total_return -= stop_loss
+                    elif pred == 2:  # SELL 예측
+                        trade_count += 1
+                        if true_label == 2:  # 실제 SELL → 맞음
+                            total_return += profit_target
+                        else:  # 틀림
+                            total_return -= stop_loss
+                    # HOLD(1) 예측은 거래 안함 → 수익도 손실도 0
+                
+                # 평균 기대 수익률 (트레이드 당)
+                expected_return_per_trade = total_return / max(trade_count, 1)
+                
+                return {
+                    "accuracy": float(accuracy_score(y_true, preds)),
+                    "f1_macro": float(f1_score(y_true, preds, average='macro', zero_division=0)),
+                    "f1_per_class": {
+                        "buy": float(f1_score(y_true, preds, labels=[0], average='micro', zero_division=0)),
+                        "hold": float(f1_score(y_true, preds, labels=[1], average='micro', zero_division=0)),
+                        "sell": float(f1_score(y_true, preds, labels=[2], average='micro', zero_division=0)),
+                    },
+                    "precision_macro": float(precision_score(y_true, preds, average='macro', zero_division=0)),
+                    "recall_macro": float(recall_score(y_true, preds, average='macro', zero_division=0)),
+                    "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
+                    "expected_return": float(total_return),  # 총 기대 수익률
+                    "expected_return_per_trade": float(expected_return_per_trade),  # 트레이드 당 기대 수익률
+                    "trade_count": int(trade_count),  # 총 거래 횟수
+                }
     
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -334,9 +400,54 @@ class GRUClassifier(BaseAIModel):
         
         with torch.no_grad():
             outputs = self.model(X_t)
+        if self.config.task_type == "regression":
+            # Regression: Return raw values (or clipped/scaled if needed)
+            return outputs.cpu().numpy()
+        else:
+            # Classification: Softmax
             probs = torch.softmax(outputs, dim=1).cpu().numpy()
+            return probs
+            
+    def predict_with_uncertainty(self, X: np.ndarray, n_iter: int = 10) -> Dict[str, np.ndarray]:
+        """
+        MC Dropout을 이용한 불확실성 추정 (Regression 전용)
         
-        return probs
+        Args:
+            X: 입력 데이터
+            n_iter: 샘플링 횟수
+            
+        Returns:
+            Dict containing:
+            - mean: 평균 예측값 (N, 1)
+            - std: 표준편차 (불확실성) (N, 1)
+            - lower_bound: 95% 신뢰구간 하한 (Mean - 1.96*Std)
+            - upper_bound: 95% 신뢰구간 상한 (Mean + 1.96*Std)
+        """
+        if not self._is_trained:
+            raise ValueError("Model not trained")
+            
+        self.model.train() # Enable Dropout
+        
+        X_t = torch.FloatTensor(X).to(self.device)
+        predictions = []
+        
+        with torch.no_grad():
+            for _ in range(n_iter):
+                out = self.model(X_t)
+                predictions.append(out.cpu().numpy())
+        
+        # (n_iter, n_samples, output_dim)
+        predictions = np.array(predictions)
+        
+        mean_pred = np.mean(predictions, axis=0)
+        std_pred = np.std(predictions, axis=0)
+        
+        return {
+            "mean": mean_pred,
+            "std": std_pred,
+            "lower_bound": mean_pred - 1.96 * std_pred,
+            "upper_bound": mean_pred + 1.96 * std_pred
+        }
     
     def predict_classes(self, X: np.ndarray) -> np.ndarray:
         """예측 클래스 반환 (0=BUY, 1=HOLD, 2=SELL)"""

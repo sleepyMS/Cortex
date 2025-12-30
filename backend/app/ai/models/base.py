@@ -18,6 +18,7 @@ class ModelConfig:
     num_classes: int = 3     # 출력 클래스 수 (BUY=0, HOLD=1, SELL=2)
     dropout: float = 0.2     # 드롭아웃 비율
     bidirectional: bool = False  # 양방향 여부
+    task_type: str = "classification" # classification, regression
 
 
 @dataclass

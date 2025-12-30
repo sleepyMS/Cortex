@@ -306,6 +306,29 @@ class FeatureEngineer:
                     df[col] = (df[col] - params['min']) / (params['max'] - params['min'] + 1e-8)
             return df
         
+        elif self.config.normalization == "robust":
+            # Robust Scaler (Median/IQR) - Outlier에 강건함
+            if fit:
+                self._normalization_params = {}
+                for col in df.columns:
+                    median = df[col].median()
+                    q75 = df[col].quantile(0.75)
+                    q25 = df[col].quantile(0.25)
+                    iqr = q75 - q25
+                    if iqr == 0:
+                        iqr = 1e-8 # Prevent division by zero
+                    
+                    self._normalization_params[col] = {'median': median, 'iqr': iqr}
+                    df[col] = (df[col] - median) / iqr
+            else:
+                for col in df.columns:
+                    params = self._normalization_params.get(col, {'median': 0, 'iqr': 1})
+                    iqr = params['iqr']
+                    if iqr == 0:
+                        iqr = 1e-8
+                    df[col] = (df[col] - params['median']) / iqr
+            return df
+        
         return df
     
     def _create_sequences(self, data: np.ndarray) -> np.ndarray:

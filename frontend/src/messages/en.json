@@ -978,7 +978,7 @@
       "channel": "Channel",
       "divergence": "Divergence",
       "pattern": "Candle Pattern",
-      "ai_signal": "AI Signal"
+      "ai_signal": "AI Prediction"
     },
     "logicDescription": {
       "comparison": "Compares two values (e.g., Close > 10000).",
@@ -988,7 +988,7 @@
       "channel": "Checks where the price is within a channel.",
       "divergence": "Checks for divergence between price and an indicator.",
       "pattern": "Checks if a specific candle pattern has occurred.",
-      "ai_signal": "Use predictions from a trained AI model as a condition."
+      "ai_signal": "Use predictions from a trained AI model (classification/regression)."
     },
     "tpslForm": {
       "title": "Take Profit / Stop Loss (TP/SL) Settings",
@@ -1064,7 +1064,9 @@
       "signalHold": "HOLD Signal",
       "minConfidence": "Minimum Confidence",
       "confidenceDescription": "Condition is met only when the AI model prediction probability exceeds this value.",
-      "addBlock": "Add AI Block"
+      "addBlock": "Add AI Block",
+      "regressionNotice": "Regression models use Direction or Confidence mode.",
+      "regressionNoticeDesc": "You can change the evaluation mode in RuleBlock after adding."
     },
     "cancel": "Cancel"
   },
@@ -1173,17 +1175,36 @@
     "aiSignal": {
       "defaultModelName": "AI Model",
       "modelSubtitle": "ML Prediction Model",
+      "regressionSubtitle": "Price Prediction Regression Model",
+      "classificationBadge": "Classification",
+      "regressionBadge": "Regression",
       "evaluationModeLabel": "Evaluation Mode",
       "highestProbability": "Highest Probability",
       "thresholdBased": "Threshold Based",
+      "directionBased": "Direction Based",
       "highestProbabilityDesc": "When selected signal is highest",
       "thresholdBasedDesc": "When above set value",
+      "directionBasedDesc": "When prediction is positive/negative",
       "minConfidenceLabel": "Min Confidence",
       "minConfidenceDesc": "Signal triggers when probability ≥ this value",
+      "thresholdLabel": "Threshold",
+      "thresholdDesc": "Signal triggers when prediction meets this condition",
+      "directionLabel": "Direction",
+      "positiveDirection": "Bullish Prediction (Positive)",
+      "negativeDirection": "Bearish Prediction (Negative)",
       "conditionLabel": "Condition:",
       "modelSuffix": "model predicts",
       "highestProbabilitySuffix": "with highest probability",
-      "thresholdSuffix": "probability ≥ {confidence}%"
+      "thresholdSuffix": "probability ≥ {confidence}%",
+      "regressionConditionSuffix": "prediction {operator} {threshold}",
+      "directionSuffix": "prediction is {direction}",
+      "confidenceBased": "Confidence Interval",
+      "confidenceBasedDesc": "When 95% CI confirms direction",
+      "confidenceSuffix": "predicts {direction} with 95% confidence (samples: {samples})",
+      "mcDropoutSamplesLabel": "MC Dropout Samples",
+      "mcDropoutSamplesDesc": "Number of predictions for uncertainty estimation",
+      "predictionTargetLabel": "Prediction Target (Read-only)",
+      "conditionOperatorLabel": "Condition Operator"
     }
   },
   "ParameterPopover": {
@@ -2466,7 +2487,9 @@
       "viewDetail": "View Detail",
       "testPrediction": "Test Prediction",
       "delete": "Delete",
-      "daysSuffix": " days"
+      "daysSuffix": " days",
+      "classificationBadge": "Classification",
+      "regressionBadge": "Regression"
     },
     "validations": {
       "durationMinError": "Training period must be at least 30 days.",
@@ -2493,7 +2516,12 @@
         "descriptionPlaceholder": "Brief description of the model...",
         "modelType": "Model Type",
         "lstmDesc": "LSTM is effective for learning long-term patterns.",
-        "gruDesc": "GRU is faster and lighter than LSTM with similar performance."
+        "gruDesc": "GRU is faster and lighter than LSTM with comparable performance.",
+        "taskType": "Model Type",
+        "classification": "Classification",
+        "classificationDesc": "Predicts BUY/HOLD/SELL signals.",
+        "regression": "Regression",
+        "regressionDesc": "Predicts future returns or price changes."
       },
       "step2": {
         "symbol": "Symbol",
@@ -2522,9 +2550,20 @@
         "takeProfit": "Take Profit (TP):",
         "stopLoss": "Stop Loss (SL):",
         "horizon": "Time Horizon: {value} bars",
-        "horizonDesc": "Approx. {hours} hours for {timeframe} bars"
+        "horizonDesc": "Approx {hours} hours based on {timeframe} timeframe",
+        "regressionTitle": "Regression Target Settings",
+        "regressionDesc": "Set the target variable and prediction horizon.",
+        "targetType": "Prediction Target",
+        "return_pct": "Return (%)",
+        "price_change": "Price Change",
+        "volatility": "Volatility"
       },
       "step5": {
+        "metricsRegression": {
+          "rmse": "RMSE",
+          "mae": "MAE",
+          "r2": "R-Squared"
+        },
         "manual": "Manual Config",
         "auto": "Optuna Auto-Optimization",
         "manualTab": {

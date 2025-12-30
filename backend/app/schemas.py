@@ -385,12 +385,31 @@ class AISignalLogic(BaseLogicBlock):
     evaluation_mode:
     - "threshold": signal_type의 확률이 min_confidence 이상일 때 True
     - "highest": signal_type이 가장 높은 확률을 가질 때 True (argmax)
+    - "direction": 회귀 모델용 - 예측값 부호로 판단 (>0 BUY, <0 SELL)
+    - "confidence": 회귀 모델용 - 95% 신뢰구간 기반 (하한>0 BUY, 상한<0 SELL)
     """
     type: Literal["ai_signal"]
     model_id: str  # AI 모델 UUID
-    signal_type: Literal["buy", "sell", "hold"]  # 체크할 예측 신호
-    evaluation_mode: Literal["threshold", "highest"] = "highest"  # 평가 모드
+    
+    # Task type for determining which fields to use
+    task_type: Optional[Literal["classification", "regression"]] = "classification"
+    
+    # Classification 전용 (signalType이 필요)
+    signal_type: Optional[Literal["buy", "sell", "hold"]] = None  # 분류 모델용
+    
+    evaluation_mode: Literal["threshold", "highest", "direction", "confidence"] = "highest"
     min_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)  # threshold 모드용 최소 신뢰도
+    
+    # Regression 전용 파라미터
+    direction_signal: Optional[Literal["positive", "negative"]] = None  # direction/confidence 모드용
+    
+    # Regression MC Dropout Uncertainty 파라미터
+    use_uncertainty: bool = Field(False, description="MC Dropout 불확실성 추정 사용 여부")
+    mc_dropout_samples: int = Field(10, ge=5, le=50, description="MC Dropout 샘플 수")
+    uncertainty_threshold: Optional[float] = Field(
+        None, ge=0.0, 
+        description="최대 허용 불확실성 - 이 값 이상이면 신호 무시"
+    )
     
     # 프론트엔드 표시용 (읽기 전용)
     model_name: Optional[str] = None
@@ -1408,16 +1427,17 @@ class AIOptimizationConfigSchema(CamelCaseModel):
 
 class AIModelCreate(CamelCaseModel):
     """AI 모델 생성 요청"""
-    name: str = Field(..., min_length=3, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    model_type: str = Field("lstm", description="모델 타입 (lstm, gru)")
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = None
+    model_type: Literal["lstm", "gru", "tft", "transformer"] = "lstm"
+    task_type: Literal["classification", "regression"] = "classification"
     architecture_config: AIArchitectureConfig
     feature_config: AIFeatureConfig
     labeling_config: AILabelingConfig
     training_config: AITrainingConfigSchema
-    optimization_config: AIOptimizationConfigSchema
-    training_symbol: str = Field(..., description="학습 심볼 (예: BTCUSDT)")
-    training_timeframe: str = Field("1h", description="타임프레임")
+    optimization_config: AIOptimizationConfigSchema = Field(default_factory=lambda: AIOptimizationConfigSchema(is_enabled=False))
+    training_symbol: str
+    training_timeframe: str
     training_start_date: datetime
     training_end_date: datetime
 
@@ -1436,6 +1456,11 @@ class AITrainingMetrics(CamelCaseModel):
     precision_macro: Optional[float] = None
     recall_macro: Optional[float] = None
     confusion_matrix: Optional[List[List[int]]] = None
+    
+    # Regression Metrics
+    rmse: Optional[float] = None
+    mae: Optional[float] = None
+    r2: Optional[float] = None
 
 
 class AILabelStats(CamelCaseModel):
@@ -1455,6 +1480,7 @@ class AIEpochLog(CamelCaseModel):
     train_loss: Optional[float] = None
     val_loss: Optional[float] = None
     accuracy: Optional[float] = None
+    rmse: Optional[float] = None
     timestamp: datetime
 
 
@@ -1481,12 +1507,14 @@ class AIModelSummary(CamelCaseModel):
     name: str
     description: Optional[str] = None
     model_type: str
+    task_type: str = "classification"
     status: AIModelStatus
     training_symbol: str
     training_timeframe: str
     training_start_date: datetime
     training_end_date: datetime
-    is_public: bool
+    is_public: bool = False
+    is_optimized: bool = False
     created_at: datetime
 
 
@@ -1544,9 +1572,18 @@ class AIPredictionRequest(CamelCaseModel):
 
 
 class AIPredictionResponse(CamelCaseModel):
-    """AI 예측 결과 응답"""
+    """AI 예측 결과 응답 (분류)"""
     buy_probability: float
     hold_probability: float
     sell_probability: float
     predicted_class: int
     predicted_label: str
+    task_type: Literal["classification"] = "classification"
+
+
+class AIRegressionPredictionResponse(CamelCaseModel):
+    """AI 예측 결과 응답 (회귀)"""
+    predicted_value: float
+    predicted_target: Optional[str] = "return_pct"
+    confidence_interval: Optional[Dict[str, float]] = None
+    task_type: Literal["regression"] = "regression"

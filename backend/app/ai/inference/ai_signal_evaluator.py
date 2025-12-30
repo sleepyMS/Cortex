@@ -39,10 +39,15 @@ class AISignalEvaluator:
         self,
         df: pd.DataFrame,
         model_id: str,
-        signal_type: str,
+        signal_type: Optional[str] = None, # Optional for regression
         evaluation_mode: str = "highest",
         min_confidence: float = 0.5,
         model_dir: Optional[str] = None,
+        task_type: str = "classification", # Default to classification
+        direction_signal: Optional[str] = None, # For regression (positive/negative)
+        use_uncertainty: bool = False,
+        mc_dropout_samples: int = 10,
+        uncertainty_threshold: Optional[float] = None,
     ) -> pd.Series:
         """
         AI 모델 예측을 수행하고 조건을 평가합니다.
@@ -50,15 +55,19 @@ class AISignalEvaluator:
         Args:
             df: OHLCV 데이터프레임 (time 컬럼 필수)
             model_id: AI 모델 UUID
-            signal_type: "buy", "sell", "hold" 중 하나
-            evaluation_mode: "threshold" 또는 "highest"
+            signal_type: "buy", "sell", "hold" (classification용)
+            evaluation_mode: 평가 모드
                 - threshold: signal_type 확률이 min_confidence 이상일 때 True
                 - highest: signal_type이 가장 높은 확률(argmax)일 때 True
+                - direction: 회귀 모델용 - 예측값 부호로 판단
+                - confidence: 회귀 모델용 - 95% 신뢰구간 기반
             min_confidence: threshold 모드용 최소 신뢰도 (0.0~1.0)
-            model_dir: 모델 디렉토리 경로 (없으면 기본 경로 사용)
-            
-        Returns:
-            Boolean 시리즈: 조건 충족 시 True
+            model_dir: 모델 디렉토리 경로
+            task_type: "classification" or "regression"
+            direction_signal: "positive" or "negative" (regression용)
+            use_uncertainty: MC Dropout 불확실성 사용 여부
+            mc_dropout_samples: MC Dropout 샘플 수
+            uncertainty_threshold: 최대 허용 불확실성
         """
         if df.empty:
             return pd.Series(dtype=bool).reindex(df.index, fill_value=False)
@@ -76,7 +85,108 @@ class AISignalEvaluator:
             logger.error(f"Prediction failed for model {model_id}: {e}")
             return pd.Series(False, index=df.index)
         
-        # 3. 확률값 추출
+        # 3. 회귀 vs 분류 분기 처리
+        is_regression_pred = "predicted_value" in result and len(result["predicted_value"]) > 0
+        
+        # 명시적 task_type이 있다면 그것을 따르고, 없으면 예측 결과 구조로 추론
+        is_regression_task = (task_type == "regression") or is_regression_pred
+        
+        if is_regression_task:
+            if not is_regression_pred:
+                logger.warning(f"Model {model_id} is set as regression but returned no predicted_value")
+                return pd.Series(False, index=df.index)
+
+            pred_values = result["predicted_value"]
+            n_predictions = len(pred_values)
+            n_original = len(df)
+            
+            # Align length
+            if n_predictions < n_original:
+                padding = np.zeros(n_original - n_predictions)
+                # 앞부분을 0으로 채움 (정보 부족)
+                pred_values = np.concatenate([padding, pred_values])
+            elif n_predictions > n_original:
+                pred_values = pred_values[-n_original:]
+            
+            # 방향 신호 결정 (positive: > 0, negative: < 0)
+            target_direction = direction_signal.lower() if direction_signal else None
+            
+            # Fallback for old configs: try to infer from signal_type if direction_signal is missing
+            if not target_direction and signal_type:
+                if signal_type.lower() == "buy": target_direction = "positive"
+                elif signal_type.lower() == "sell": target_direction = "negative"
+            
+            if not target_direction:
+                # 방향을 알 수 없으면 False
+                return pd.Series(False, index=df.index)
+
+            if evaluation_mode == "direction":
+                if target_direction == "positive":
+                    condition_met = pred_values > 0
+                elif target_direction == "negative":
+                    condition_met = pred_values < 0
+                else:
+                    condition_met = np.zeros_like(pred_values, dtype=bool) # Should not happen
+                    
+            elif evaluation_mode == "confidence":
+                # MC Dropout 기반 95% 신뢰구간 평가
+                try:
+                    uncertainty_result = session.predict_with_uncertainty(
+                        df, n_samples=mc_dropout_samples
+                    )
+                    mean_pred = uncertainty_result["mean"]
+                    std_pred = uncertainty_result["std"]
+                    lower_bound = uncertainty_result["lower_bound"]
+                    upper_bound = uncertainty_result["upper_bound"]
+                    
+                    # Length alignment
+                    n_pred = len(mean_pred)
+                    if n_pred < n_original:
+                        padding_len = n_original - n_pred
+                        # 앞부분 패딩
+                        mean_pred = np.concatenate([np.zeros(padding_len), mean_pred])
+                        std_pred = np.concatenate([np.zeros(padding_len), std_pred])
+                        lower_bound = np.concatenate([np.zeros(padding_len), lower_bound])
+                        upper_bound = np.concatenate([np.zeros(padding_len), upper_bound])
+                    elif n_pred > n_original:
+                        mean_pred = mean_pred[-n_original:]
+                        std_pred = std_pred[-n_original:]
+                        lower_bound = lower_bound[-n_original:]
+                        upper_bound = upper_bound[-n_original:]
+                    
+                    # Confidence-based signal generation
+                    if target_direction == "positive":
+                        # BUY (Positive): 95% CI 하한이 0보다 커야 함 (확실한 양수)
+                        # 즉, 0이 신뢰구간 아래에 있어야 함
+                        condition_met = lower_bound > 0
+                    elif target_direction == "negative":
+                        # SELL (Negative): 95% CI 상한이 0보다 작아야 함 (확실한 음수)
+                        # 즉, 0이 신뢰구간 위에 있어야 함
+                        condition_met = upper_bound < 0
+                    else:
+                        condition_met = np.zeros(n_original, dtype=bool)
+                    
+                    # Uncertainty threshold filtering
+                    if uncertainty_threshold is not None and uncertainty_threshold > 0:
+                        high_uncertainty = std_pred > uncertainty_threshold
+                        condition_met = condition_met & ~high_uncertainty
+                        # logger.debug(f"Filtered {np.sum(high_uncertainty)} signals due to high uncertainty")
+                        
+                except Exception as e:
+                    logger.error(f"MC Dropout confidence evaluation failed: {e}")
+                    condition_met = np.zeros(n_original, dtype=bool)
+            else:
+                # Unknown regression mode
+                condition_met = np.zeros(n_original, dtype=bool)
+                
+            return pd.Series(condition_met, index=df.index)
+
+        # --- Classification Logic ---
+        
+        if not signal_type:
+             # 분류 모델인데 signal_type이 없으면 평가 불가
+             return pd.Series(False, index=df.index)
+
         probs = result.get("probabilities", np.array([]))
         if len(probs) == 0:
             return pd.Series(False, index=df.index)
@@ -87,21 +197,18 @@ class AISignalEvaluator:
         signal_probs = probs[:, signal_idx]
         
         # 5. DataFrame 인덱스와 정렬
-        # predict_from_ohlcv는 sequence_length만큼 앞부분 데이터를 사용하므로
-        # 결과 길이가 원본보다 짧을 수 있음
         n_predictions = len(signal_probs)
         n_original = len(df)
         
-        # 전체 확률 배열도 패딩 필요 (highest 모드용)
         if n_predictions < n_original:
             padding_len = n_original - n_predictions
-            # 단일 신호 확률 패딩
             signal_probs = np.concatenate([np.zeros(padding_len), signal_probs])
-            # 전체 확률 배열 패딩 (highest 모드용)
-            probs = np.vstack([np.zeros((padding_len, probs.shape[1])), probs])
+            if evaluation_mode == "highest":
+                probs = np.vstack([np.zeros((padding_len, probs.shape[1])), probs])
         elif n_predictions > n_original:
             signal_probs = signal_probs[-n_original:]
-            probs = probs[-n_original:]
+            if evaluation_mode == "highest":
+                probs = probs[-n_original:]
         
         # 6. 평가 모드에 따른 조건 평가
         if evaluation_mode == "highest":

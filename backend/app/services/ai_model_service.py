@@ -48,6 +48,7 @@ class AIModelService:
         training_timeframe: str,
         training_start_date: datetime,
         training_end_date: datetime,
+        task_type: str = "classification",
         optimization_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
@@ -56,6 +57,17 @@ class AIModelService:
         Returns:
             {"model": AIModel, "job": AITrainingJob, "task_id": str}
         """
+        # [Step 0a] Labeling Config 정리: Regression 모델에서는 분류 전용 파라미터를 자동 제거
+        if task_type == "regression":
+            invalid_keys = {"profitTarget", "stopLoss", "profit_target", "stop_loss"}
+            keys_to_remove = invalid_keys & set(labeling_config.keys())
+            if keys_to_remove:
+                logger.warning(
+                    f"Removing classification-specific fields from regression model labeling_config: {keys_to_remove}"
+                )
+                for key in keys_to_remove:
+                    del labeling_config[key]
+        
         # [Step 0] 비용 계산 및 크레딧 차감
 
         cost_estimation = await cost_calculator_service.calculate_ai_training_cost(
@@ -95,8 +107,10 @@ class AIModelService:
             name=name,
             description=description,
             model_type=model_type,
+            task_type=task_type,
             architecture_config=architecture_config,
             feature_config=feature_config,
+
             labeling_config=labeling_config,
             training_config=training_config,
             training_symbol=training_symbol,

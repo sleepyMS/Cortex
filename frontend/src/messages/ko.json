@@ -969,7 +969,7 @@
       "channel": "채널",
       "divergence": "다이버전스",
       "pattern": "캔들 패턴",
-      "ai_signal": "AI 신호"
+      "ai_signal": "AI 예측"
     },
     "logicDescription": {
       "comparison": "두 값을 비교합니다 (예: 종가 > 10000).",
@@ -979,7 +979,7 @@
       "channel": "가격이 채널의 어느 영역에 있는지 확인합니다.",
       "divergence": "가격과 지표의 다이버전스를 확인합니다.",
       "pattern": "특정 캔들 패턴의 발생 여부를 확인합니다.",
-      "ai_signal": "학습된 AI 모델의 예측 신호를 조건으로 사용합니다."
+      "ai_signal": "학습된 AI 모델(분류/회귀)의 예측을 조건으로 사용합니다."
     },
     "tpslForm": {
       "title": "익절/손절(TP/SL) 설정",
@@ -1055,7 +1055,9 @@
       "signalHold": "홀딩 (HOLD) 신호",
       "minConfidence": "최소 신뢰도",
       "confidenceDescription": "AI 모델 예측 확률이 이 값 이상일 때만 조건이 충족됩니다.",
-      "addBlock": "AI 블록 추가"
+      "addBlock": "AI 블록 추가",
+      "regressionNotice": "회귀 모델은 방향 기반 또는 신뢰구간 모드를 사용합니다.",
+      "regressionNoticeDesc": "불록 추가 후 RuleBlock에서 평가 방식을 변경할 수 있습니다."
     },
     "cancel": "취소"
   },
@@ -1164,17 +1166,36 @@
     "aiSignal": {
       "defaultModelName": "AI 모델",
       "modelSubtitle": "머신러닝 예측 모델",
+      "regressionSubtitle": "가격 예측 회귀 모델",
+      "classificationBadge": "분류",
+      "regressionBadge": "회귀",
       "evaluationModeLabel": "평가 방식",
       "highestProbability": "최고 확률",
       "thresholdBased": "임계값 기반",
+      "directionBased": "방향 기반",
       "highestProbabilityDesc": "선택 신호가 가장 높을 때",
       "thresholdBasedDesc": "설정값 이상일 때",
+      "directionBasedDesc": "예측이 양수/음수일 때",
       "minConfidenceLabel": "최소 신뢰도",
       "minConfidenceDesc": "예측 확률이 이 값 이상일 때 신호 발생",
+      "thresholdLabel": "임계값",
+      "thresholdDesc": "예측값이 이 조건을 충족할 때 신호 발생",
+      "directionLabel": "방향",
+      "positiveDirection": "상승 예측 (양수)",
+      "negativeDirection": "하락 예측 (음수)",
       "conditionLabel": "조건:",
       "modelSuffix": "모델이",
       "highestProbabilitySuffix": "을(를) 최고 확률로 예측할 때",
-      "thresholdSuffix": "확률 ≥ {confidence}%일 때"
+      "thresholdSuffix": "확률 ≥ {confidence}%일 때",
+      "regressionConditionSuffix": "예측값 {operator} {threshold}일 때",
+      "directionSuffix": "예측이 {direction}일 때",
+      "confidenceBased": "신뢰 구간 기반",
+      "confidenceBasedDesc": "95% 신뢰구간으로 확신할 때",
+      "confidenceSuffix": "{direction}을(를) 95% 신뢰도로 예측할 때 (샘플: {samples})",
+      "mcDropoutSamplesLabel": "MC Dropout 샘플 수",
+      "mcDropoutSamplesDesc": "불확실성 추정을 위한 예측 반복 횟수",
+      "predictionTargetLabel": "예측 대상 (읽기 전용)",
+      "conditionOperatorLabel": "조건 연산자"
     }
   },
   "ParameterPopover": {
@@ -2452,7 +2473,9 @@
       "viewDetail": "상세 보기",
       "testPrediction": "예측 테스트",
       "delete": "삭제",
-      "daysSuffix": "일"
+      "daysSuffix": "일",
+      "classificationBadge": "분류",
+      "regressionBadge": "회귀"
     },
     "validations": {
       "durationMinError": "학습 기간은 최소 30일 이상이어야 합니다.",
@@ -2479,7 +2502,12 @@
         "descriptionPlaceholder": "모델에 대한 간단한 설명...",
         "modelType": "모델 타입",
         "lstmDesc": "LSTM은 장기 패턴을 학습하는 데 효과적입니다.",
-        "gruDesc": "GRU는 LSTM보다 빠르고 가벼우며 유사한 성능을 제공합니다."
+        "gruDesc": "GRU는 LSTM보다 구조가 간단하여 학습 속도가 빠를 수 있습니다.",
+        "taskType": "모델 유형",
+        "classification": "분류 (Classification)",
+        "classificationDesc": "가격의 상승/하락/횡보 신호를 예측합니다.",
+        "regression": "회귀 (Regression)",
+        "regressionDesc": "미래의 수익률이나 가격 변동폭을 직접 예측합니다."
       },
       "step2": {
         "symbol": "학습 심볼",
@@ -2508,9 +2536,20 @@
         "takeProfit": "Take Profit (TP):",
         "stopLoss": "Stop Loss (SL):",
         "horizon": "시간 제한 (Horizon): {value} 봉",
-        "horizonDesc": "{timeframe}봉 기준 약 {hours}시간"
+        "horizonDesc": "{timeframe}봉 기준 약 {hours}시간",
+        "regressionTitle": "회귀 예측 타겟 설정",
+        "regressionDesc": "예측하고자 하는 목표 변수와 기간을 설정합니다.",
+        "targetType": "예측 대상",
+        "return_pct": "수익률 (%)",
+        "price_change": "가격 변동",
+        "volatility": "변동성"
       },
       "step5": {
+        "metricsRegression": {
+          "rmse": "RMSE",
+          "mae": "MAE",
+          "r2": "R-Squared"
+        },
         "manual": "수동 설정",
         "auto": "Optuna 자동 최적화",
         "manualTab": {

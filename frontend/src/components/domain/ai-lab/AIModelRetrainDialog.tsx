@@ -26,12 +26,15 @@ import { Button } from "@/components/ui/Button";
 import { DateRangePickerCustom } from "@/components/ui/DateRangePickerCustom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
 import { retrainModel, estimateAIModelCost } from "@/lib/api/ai";
-import { CostEstimationResponse } from "@/types/ai";
+import { CostEstimationResponse, AIModelType } from "@/types/ai";
+import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/utils";
 
 interface AIModelRetrainDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   modelId: string;
+  taskType?: AIModelType;
   initialStartDate?: string;
   initialEndDate?: string;
   onSuccess?: () => void;
@@ -41,6 +44,7 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
   open,
   onOpenChange,
   modelId,
+  taskType,
   initialStartDate,
   initialEndDate,
   onSuccess,
@@ -126,6 +130,27 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <span className="text-sm text-muted-foreground">
+              {t("new.step1.taskType")}
+            </span>
+            <Badge
+              variant="secondary"
+              className={cn(
+                "uppercase font-bold tracking-wider",
+                (taskType || "classification") === "classification"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                  : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+              )}
+            >
+              {t(
+                (taskType || "classification") === "classification"
+                  ? "card.classificationBadge"
+                  : "card.regressionBadge"
+              )}
+            </Badge>
+          </div>
+
           <div className="space-y-2">
             <h4 className="text-sm font-medium">
               {t("detail.retrainDialog.periodLabel")}

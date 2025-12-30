@@ -723,7 +723,12 @@ class SignalService:
                     model_id=block.model_id,
                     signal_type=block.signal_type,
                     evaluation_mode=getattr(block, 'evaluation_mode', 'highest'),
-                    min_confidence=getattr(block, 'min_confidence', 0.5) or 0.5
+                    min_confidence=getattr(block, 'min_confidence', 0.5) or 0.5,
+                    task_type=getattr(block, 'task_type', "classification"),
+                    direction_signal=getattr(block, 'direction_signal', None),
+                    use_uncertainty=getattr(block, 'use_uncertainty', False),
+                    mc_dropout_samples=getattr(block, 'mc_dropout_samples', 10),
+                    uncertainty_threshold=getattr(block, 'uncertainty_threshold', None),
                 )
             except Exception as e:
                 logger.error(f"AI signal evaluation failed for model {block.model_id}: {e}")

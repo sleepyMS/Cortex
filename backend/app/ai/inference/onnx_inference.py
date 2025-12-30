@@ -97,7 +97,14 @@ class ONNXInferenceSession:
                 sample = X[i:i+1]
                 outputs = self.session.run(None, {input_name: sample})
                 logits = outputs[0]
-                prob = self._softmax(logits)
+                logits = outputs[0]
+                
+                # Check for regression (dim=1)
+                if logits.shape[-1] == 1:
+                    prob = logits
+                else:
+                    prob = self._softmax(logits)
+                    
                 probs_list.append(prob)
             
             # (n_samples, 3) 형태로 결합
@@ -107,7 +114,11 @@ class ONNXInferenceSession:
             outputs = self.session.run(None, {input_name: X})
             logits = outputs[0]
         
-        # Softmax 적용하여 확률로 변환
+        # 출력 차원에 따라 처리 (1: Regression, 3: Classification)
+        if logits.shape[-1] == 1:
+            return logits # Raw value
+        else:
+            # Softmax 적용하여 확률로 변환
             probs = self._softmax(logits)
             return probs
     
@@ -121,12 +132,9 @@ class ONNXInferenceSession:
             batch_size: 배치 크기
             
         Returns:
-            {
-                "probabilities": (n, 3) - 클래스 확률,
-                "predictions": (n,) - 예측 클래스,
-                "buy_prob": (n,) - 매수 확률,
-                "sell_prob": (n,) - 매도 확률,
-            }
+            Dict containing predictions. Keys vary by task type.
+            Classification: probabilities, predictions, buy_prob, sell_prob
+            Regression: predicted_value, probabilities (raw)
         """
         if self.feature_engineer is None:
             raise RuntimeError("Feature engineer not initialized")
@@ -140,6 +148,7 @@ class ONNXInferenceSession:
                 "predictions": np.array([]),
                 "buy_prob": np.array([]),
                 "sell_prob": np.array([]),
+                "predicted_value": np.array([]),
             }
         
         # 배치 처리
@@ -151,55 +160,60 @@ class ONNXInferenceSession:
         
         probs = np.vstack(all_probs)
         
-        return {
-            "probabilities": probs,
-            "predictions": probs.argmax(axis=1),
-            "buy_prob": probs[:, 0],   # BUY = class 0
-            "hold_prob": probs[:, 1],  # HOLD = class 1
-            "sell_prob": probs[:, 2],  # SELL = class 2
-        }
+        # Regression check
+        if probs.shape[1] == 1:
+            return {
+                "probabilities": probs, # Raw values (N, 1)
+                "predicted_value": probs.flatten(), # (N,)
+                "predictions": np.zeros(len(probs)), # Dummy
+                "buy_prob": np.zeros(len(probs)), # Dummy
+                "sell_prob": np.zeros(len(probs)), # Dummy
+            }
+        else:
+            # Classification
+            return {
+                "probabilities": probs,
+                "predictions": probs.argmax(axis=1),
+                "buy_prob": probs[:, 0],   # BUY = class 0
+                "hold_prob": probs[:, 1],  # HOLD = class 1
+                "sell_prob": probs[:, 2],  # SELL = class 2
+            }
     
     def get_latest_prediction(self, df) -> Dict[str, Any]:
         """
         가장 최신 시점의 예측 결과 반환 (실시간 봇용)
-        
-        Args:
-            df: 최근 OHLCV 데이터프레임 (sequence_length + rolling_window 이상)
-            
-        Returns:
-            {
-                "buy_probability": float,
-                "sell_probability": float,
-                "hold_probability": float,
-                "predicted_class": int,
-                "predicted_label": str,
-            }
         """
         result = self.predict_from_ohlcv(df)
         
-        if len(result["probabilities"]) == 0:
+        if (isinstance(result["probabilities"], np.ndarray) and len(result["probabilities"]) == 0) or len(result["probabilities"]) == 0:
+             return {"error": "Insufficient data"}
+        
+        # Regression check
+        is_regression = result.get("predicted_value") is not None and len(result["predicted_value"]) > 0
+        
+        if is_regression:
+            pred_value = float(result["predicted_value"][-1])
             return {
-                "buy_probability": 0.0,
-                "sell_probability": 0.0,
-                "hold_probability": 1.0,
-                "predicted_class": 1,
-                "predicted_label": "HOLD",
-                "error": "Insufficient data",
+                "predicted_value": pred_value,
+                "predicted_class": -1, # Not applicable
+                "predicted_label": f"Value: {pred_value:.4f}",
+                "task_type": "regression"
             }
-        
-        # 가장 마지막 예측
-        probs = result["probabilities"][-1]
-        pred_class = int(result["predictions"][-1])
-        
-        labels = ["BUY", "HOLD", "SELL"]
-        
-        return {
-            "buy_probability": float(probs[0]),
-            "hold_probability": float(probs[1]),
-            "sell_probability": float(probs[2]),
-            "predicted_class": pred_class,
-            "predicted_label": labels[pred_class],
-        }
+        else:
+            # 가장 마지막 예측
+            probs = result["probabilities"][-1]
+            pred_class = int(result["predictions"][-1])
+            
+            labels = ["BUY", "HOLD", "SELL"]
+            
+            return {
+                "buy_probability": float(probs[0]),
+                "hold_probability": float(probs[1]),
+                "sell_probability": float(probs[2]),
+                "predicted_class": pred_class,
+                "predicted_label": labels[pred_class],
+                "task_type": "classification"
+            }
     
     @staticmethod
     def _softmax(x: np.ndarray) -> np.ndarray:
@@ -215,6 +229,117 @@ class ONNXInferenceSession:
             "has_feature_engineer": self.feature_engineer is not None,
             "metadata": self.metadata,
         }
+    
+    def predict_with_uncertainty(
+        self, 
+        df, 
+        n_samples: int = 10,
+        batch_size: int = 100
+    ) -> Dict[str, np.ndarray]:
+        """
+        MC Dropout을 사용한 불확실성 추정 (회귀 모델 전용)
+        
+        PyTorch 모델(.pt)을 로드하여 dropout을 활성화한 상태로
+        N번의 forward pass를 수행하여 예측 분포를 추정합니다.
+        
+        Args:
+            df: OHLCV 데이터프레임
+            n_samples: MC Dropout 샘플 수 (기본값: 10)
+            batch_size: 배치 크기
+            
+        Returns:
+            Dict containing:
+            - mean: 평균 예측값 (N,)
+            - std: 표준편차/불확실성 (N,)
+            - lower_bound: 95% CI 하한 (mean - 1.96*std)
+            - upper_bound: 95% CI 상한 (mean + 1.96*std)
+        """
+        if self.feature_engineer is None:
+            raise RuntimeError("Feature engineer not initialized")
+        
+        # PyTorch 모델 경로 확인
+        pt_path = self.model_dir / "model.pt"
+        if not pt_path.exists():
+            logger.warning(f"PyTorch model not found at {pt_path}, falling back to ONNX")
+            # Fallback: ONNX 결과만 반환 (불확실성 없음)
+            result = self.predict_from_ohlcv(df, batch_size)
+            pred_values = result.get("predicted_value", np.array([]))
+            return {
+                "mean": pred_values,
+                "std": np.zeros_like(pred_values),
+                "lower_bound": pred_values,
+                "upper_bound": pred_values,
+            }
+        
+        try:
+            import torch
+            
+            # 1. 피처 추출
+            X = self.feature_engineer.transform(df)
+            if len(X) == 0:
+                return {
+                    "mean": np.array([]),
+                    "std": np.array([]),
+                    "lower_bound": np.array([]),
+                    "upper_bound": np.array([]),
+                }
+            
+            # 2. PyTorch 모델 로드
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            checkpoint = torch.load(pt_path, map_location=device)
+            config = checkpoint['config']
+            
+            # 모델 타입에 따른 모델 클래스 선택
+            model_type = self.metadata.get("model_type", "lstm")
+            if model_type == "gru":
+                from ..models.gru import GRUNetwork
+                model = GRUNetwork(config).to(device)
+            else:
+                from ..models.lstm import LSTMNetwork
+                model = LSTMNetwork(config).to(device)
+            
+            model.load_state_dict(checkpoint['model_state_dict'])
+            
+            # 3. MC Dropout 추론 (Dropout 활성화)
+            model.train()  # Dropout 활성화
+            X_tensor = torch.FloatTensor(X).to(device)
+            
+            all_predictions = []
+            with torch.no_grad():
+                for _ in range(n_samples):
+                    outputs = model(X_tensor)
+                    all_predictions.append(outputs.cpu().numpy())
+            
+            # 4. 통계 계산
+            predictions = np.array(all_predictions)  # (n_samples, n_data, output_dim)
+            
+            # Squeeze if output is single value (regression)
+            if predictions.shape[-1] == 1:
+                predictions = predictions.squeeze(-1)  # (n_samples, n_data)
+            
+            mean_pred = np.mean(predictions, axis=0)
+            std_pred = np.std(predictions, axis=0)
+            
+            # 5. 신뢰구간 계산 (95% CI)
+            lower_bound = mean_pred - 1.96 * std_pred
+            upper_bound = mean_pred + 1.96 * std_pred
+            
+            logger.info(f"MC Dropout inference completed: {n_samples} samples, data points: {len(mean_pred)}")
+            
+            return {
+                "mean": mean_pred,
+                "std": std_pred,
+                "lower_bound": lower_bound,
+                "upper_bound": upper_bound,
+            }
+            
+        except ImportError:
+            logger.error("PyTorch not available for MC Dropout inference")
+            raise RuntimeError("PyTorch required for MC Dropout uncertainty estimation")
+        except Exception as e:
+            logger.error(f"MC Dropout inference failed: {e}")
+            raise
+
 
 
 class AIModelRegistry:
