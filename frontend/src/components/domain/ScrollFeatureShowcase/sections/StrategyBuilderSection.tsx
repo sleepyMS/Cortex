@@ -272,7 +272,7 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
     <section
       id="section-strategy"
       ref={containerRef}
-      className="scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-24 md:scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       <div className="max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -281,6 +281,7 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
             initial={{ opacity: 0, x: -50 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6 }}
+            className="hidden lg:block"
           >
             <div className="relative rounded-2xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden shadow-2xl">
               {/* Pass MotionValue directly to avoid re-renders */}

@@ -225,7 +225,7 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
     <section
       id="section-optimization"
       ref={containerRef}
-      className="scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="scroll-mt-24 md:scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent pointer-events-none" />
@@ -300,7 +300,7 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
             initial={{ opacity: 0, x: 50 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="order-1 lg:order-2"
+            className="hidden lg:block order-1 lg:order-2"
           >
             <div className="relative rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl">
               <ParameterSpaceVisual progress={progressValue} />
