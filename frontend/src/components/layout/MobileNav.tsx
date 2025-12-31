@@ -212,6 +212,7 @@ export function MobileNav() {
             <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
               {tMobile("services")}
             </div>
+            <NavItem href="/ai-lab" icon={Brain} label={tNav("aiLab")} />
             <NavItem
               href="/strategies"
               icon={LineChart}
@@ -227,13 +228,12 @@ export function MobileNav() {
               icon={Zap}
               label={tNav("optimization")}
             />
-            <NavItem href="/ai-lab" icon={Brain} label={tNav("aiLab")} />
+            <NavItem href="/bots" icon={Bot} label={tNav("liveBots")} />
             <NavItem
               href="/marketplace"
               icon={Store}
               label={tNav("marketplace")}
             />
-            <NavItem href="/bots" icon={Bot} label={tNav("liveBots")} />
 
             <Separator className="my-4" />
 

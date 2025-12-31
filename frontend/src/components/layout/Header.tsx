@@ -96,12 +96,12 @@ export function Header() {
           {isAuthInitialized && (
             <>
               {[
+                { href: "/ai-lab", label: tNav("aiLab") },
                 { href: "/strategies", label: tNav("strategies") },
                 { href: "/backtester", label: tNav("backtester") },
                 { href: "/optimization", label: tNav("optimization") },
-                { href: "/ai-lab", label: tNav("aiLab") },
-                { href: "/marketplace", label: tNav("marketplace") },
                 { href: "/bots", label: tNav("liveBots") },
+                { href: "/marketplace", label: tNav("marketplace") },
               ].map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 return (
