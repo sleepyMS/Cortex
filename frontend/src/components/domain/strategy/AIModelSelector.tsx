@@ -115,6 +115,10 @@ export function AIModelSelector({
         selectedModel.taskType === "regression" ? "direction" : evaluationMode,
       minConfidence: evaluationMode === "threshold" ? minConfidence : undefined,
       trainingEndDate: selectedModel.trainingEndDate,
+      // Regression models: set default directionSignal for direction mode
+      ...(selectedModel.taskType === "regression" && {
+        directionSignal: "positive" as const,
+      }),
     });
 
     // Reset state
