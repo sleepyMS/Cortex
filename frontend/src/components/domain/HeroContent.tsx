@@ -114,7 +114,7 @@ export const HeroContent = ({
 
             {/* Main Title */}
             <motion.h1
-              className="text-4xl md:text-7xl font-bold pb-4 tracking-tight text-center flex flex-col gap-2"
+              className="text-3xl md:text-7xl font-bold pb-4 tracking-tight text-center flex flex-col gap-2"
               variants={itemVariants}
             >
               <span className="text-foreground">{titleLine1}</span>
