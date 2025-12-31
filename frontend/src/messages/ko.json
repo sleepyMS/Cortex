@@ -169,7 +169,7 @@
         "aiBlock": {
           "header": "AI 예측 시그널",
           "model": {
-            "name": "1시간 1년",
+            "name": "LSTM / GRU",
             "type": "머신러닝 예측 모델"
           },
           "actions": {
@@ -189,7 +189,7 @@
     "StrategyBuilderMockUI": {
       "header": "AI 예측 시그널",
       "model": {
-        "name": "1시간 1년",
+        "name": "LSTM / GRU",
         "type": "머신러닝 예측 모델"
       },
       "actions": {
