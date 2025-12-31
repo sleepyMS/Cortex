@@ -721,7 +721,7 @@ class SignalService:
                 parent_series = evaluator.evaluate(
                     df=df,
                     model_id=block.model_id,
-                    signal_type=block.signal_type,
+                    signal_type=getattr(block, 'signal_type', None),
                     evaluation_mode=getattr(block, 'evaluation_mode', 'highest'),
                     min_confidence=getattr(block, 'min_confidence', 0.5) or 0.5,
                     task_type=getattr(block, 'task_type', "classification"),

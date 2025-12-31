@@ -170,13 +170,18 @@ class ONNXInferenceSession:
                 "sell_prob": np.zeros(len(probs)), # Dummy
             }
         else:
-            # Classification
+            # Classification - use class order from metadata (with fallback defaults)
+            class_order = self.metadata.get("class_order", {"buy": 0, "hold": 1, "sell": 2})
+            buy_idx = class_order.get("buy", 0)
+            hold_idx = class_order.get("hold", 1)
+            sell_idx = class_order.get("sell", 2)
+            
             return {
                 "probabilities": probs,
                 "predictions": probs.argmax(axis=1),
-                "buy_prob": probs[:, 0],   # BUY = class 0
-                "hold_prob": probs[:, 1],  # HOLD = class 1
-                "sell_prob": probs[:, 2],  # SELL = class 2
+                "buy_prob": probs[:, buy_idx],
+                "hold_prob": probs[:, hold_idx],
+                "sell_prob": probs[:, sell_idx],
             }
     
     def get_latest_prediction(self, df) -> Dict[str, Any]:
@@ -204,14 +209,21 @@ class ONNXInferenceSession:
             probs = result["probabilities"][-1]
             pred_class = int(result["predictions"][-1])
             
-            labels = ["BUY", "HOLD", "SELL"]
+            # Use class labels from metadata (with fallback defaults)
+            class_labels = self.metadata.get("class_labels", ["buy", "hold", "sell"])
+            class_order = self.metadata.get("class_order", {"buy": 0, "hold": 1, "sell": 2})
+            labels = [label.upper() for label in class_labels]
+            
+            buy_idx = class_order.get("buy", 0)
+            hold_idx = class_order.get("hold", 1)
+            sell_idx = class_order.get("sell", 2)
             
             return {
-                "buy_probability": float(probs[0]),
-                "hold_probability": float(probs[1]),
-                "sell_probability": float(probs[2]),
+                "buy_probability": float(probs[buy_idx]),
+                "hold_probability": float(probs[hold_idx]),
+                "sell_probability": float(probs[sell_idx]),
                 "predicted_class": pred_class,
-                "predicted_label": labels[pred_class],
+                "predicted_label": labels[pred_class] if pred_class < len(labels) else "UNKNOWN",
                 "task_type": "classification"
             }
     
@@ -260,7 +272,12 @@ class ONNXInferenceSession:
         # PyTorch 모델 경로 확인
         pt_path = self.model_dir / "model.pt"
         if not pt_path.exists():
-            logger.warning(f"PyTorch model not found at {pt_path}, falling back to ONNX")
+            logger.warning(
+                f"MC Dropout unavailable: PyTorch model not found at {pt_path}. "
+                f"Falling back to ONNX with deterministic predictions. "
+                f"'confidence' evaluation mode will have NO uncertainty filtering - "
+                f"consider using 'direction' mode instead for more reliable signals."
+            )
             # Fallback: ONNX 결과만 반환 (불확실성 없음)
             result = self.predict_from_ohlcv(df, batch_size)
             pred_values = result.get("predicted_value", np.array([]))
@@ -269,6 +286,7 @@ class ONNXInferenceSession:
                 "std": np.zeros_like(pred_values),
                 "lower_bound": pred_values,
                 "upper_bound": pred_values,
+                "_fallback_used": True,  # 폴백 사용 플래그
             }
         
         try:

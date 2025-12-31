@@ -191,8 +191,9 @@ class AISignalEvaluator:
         if len(probs) == 0:
             return pd.Series(False, index=df.index)
         
-        # 4. 신호 타입에 따른 확률 컬럼 선택
-        prob_map = {"buy": 0, "hold": 1, "sell": 2}
+        # 4. 신호 타입에 따른 확률 컬럼 선택 (메타데이터에서 class_order 읽기, 없으면 기본값)
+        default_prob_map = {"buy": 0, "hold": 1, "sell": 2}
+        prob_map = session.metadata.get("class_order", default_prob_map) if session else default_prob_map
         signal_idx = prob_map.get(signal_type.lower(), 0)
         signal_probs = probs[:, signal_idx]
         

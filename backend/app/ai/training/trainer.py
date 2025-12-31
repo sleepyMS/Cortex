@@ -310,9 +310,14 @@ class AIModelTrainer:
             json.dump(feature_config, f, indent=2, default=str)
         
         # 4. 메타데이터 저장
+        # 클래스 레이블 순서 (분류 모델용)
+        class_labels = ["buy", "hold", "sell"]
+        class_order = {"buy": 0, "hold": 1, "sell": 2}
+        
         metadata = {
             "created_at": datetime.utcnow().isoformat(),
             "model_type": self.config.model_type,
+            "task_type": self.config.task_type,  # classification or regression
             "training_symbol": self.config.training_symbol,
             "training_timeframe": self.config.training_timeframe,
             "training_start_date": self.config.training_start_date,
@@ -325,6 +330,11 @@ class AIModelTrainer:
                 "final_metrics": training_result.final_metrics,
             },
             "model_info": self.model.get_model_info(),
+            # 분류 모델용 클래스 매핑 정보
+            "class_labels": class_labels if self.config.task_type == "classification" else None,
+            "class_order": class_order if self.config.task_type == "classification" else None,
+            # 회귀 모델용 예측 대상 정보
+            "prediction_target": self.config.labeling_config.get("target_type") if self.config.task_type == "regression" else None,
         }
         
         metadata_path = self.save_dir / "metadata.json"

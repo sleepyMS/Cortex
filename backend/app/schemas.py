@@ -1,6 +1,6 @@
 # file: backend/app/schemas.py
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 from datetime import datetime
 from typing import List, Dict, Any, Literal, Union, Optional
@@ -414,6 +414,43 @@ class AISignalLogic(BaseLogicBlock):
     # 프론트엔드 표시용 (읽기 전용)
     model_name: Optional[str] = None
     training_end_date: Optional[str] = None  # 미래 참조 경고용
+    
+    @model_validator(mode='after')
+    def validate_task_mode_compatibility(self) -> 'AISignalLogic':
+        """
+        task_type과 evaluation_mode의 호환성을 검증합니다.
+        
+        - Classification: 'highest', 'threshold' 모드만 사용 가능, signal_type 필수
+        - Regression: 'direction', 'confidence', 'threshold' 모드 사용 가능
+        """
+        task = self.task_type or "classification"
+        mode = self.evaluation_mode
+        
+        if task == "classification":
+            # 분류 모델 검증
+            if mode in ["direction", "confidence"]:
+                raise ValueError(
+                    f"evaluation_mode '{mode}'는 회귀(regression) 모델에서만 사용 가능합니다. "
+                    f"분류 모델에서는 'highest' 또는 'threshold' 모드를 사용하세요."
+                )
+            if not self.signal_type:
+                raise ValueError(
+                    "분류(classification) 모델에서는 signal_type ('buy', 'sell', 'hold')이 필수입니다."
+                )
+        
+        elif task == "regression":
+            # 회귀 모델 검증
+            if mode == "highest":
+                raise ValueError(
+                    "evaluation_mode 'highest'는 분류(classification) 모델에서만 사용 가능합니다. "
+                    "회귀 모델에서는 'direction', 'confidence', 또는 'threshold' 모드를 사용하세요."
+                )
+            if mode in ["direction", "confidence"] and not self.direction_signal:
+                raise ValueError(
+                    f"회귀 모델의 '{mode}' 모드에서는 direction_signal ('positive', 'negative')이 필수입니다."
+                )
+        
+        return self
 
 LogicBlock = Union[
     ComparisonLogic, CrossoverLogic, StateLogic, TrendSignalLogic, 
