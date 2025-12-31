@@ -87,11 +87,15 @@ const formatRuleTitle = (
           lowerBound: format(block.lowerBound),
           upperBound: format(block.upperBound),
         });
-      case "ai_signal":
+      case "ai_signal": {
+        const aiBlock = block as any;
+        const sigType =
+          aiBlock.signalType || aiBlock.directionSignal || "signal";
         return t("ruleTitles.ai_signal", {
-          modelName: block.modelName || block.modelId,
-          signalType: block.signalType.toUpperCase(),
+          modelName: aiBlock.modelName || aiBlock.modelId,
+          signalType: sigType.toUpperCase(),
         });
+      }
       default:
         return t("ruleTitles.default", { type: block.type });
     }
@@ -494,15 +498,25 @@ const RuleDisplay = React.memo(
 
         // AI 신호 규칙
         case "ai_signal": {
+          const aiBlock = block as any;
           const signalTypeMap: Record<string, string> = {
             buy: "buySignal",
             sell: "sellSignal",
             hold: "holdSignal",
           };
+          const directionMap: Record<string, string> = {
+            positive: "aiSignal.positiveDirection",
+            negative: "aiSignal.negativeDirection",
+          };
           const evalModeMap: Record<string, string> = {
             highest: "highestProbability",
             threshold: "thresholdBased",
+            direction: "aiSignal.directionBased",
+            confidence: "aiSignal.confidenceBased",
           };
+
+          const isRegression = aiBlock.taskType === "regression";
+
           return (
             <div className="overflow-x-auto custom-scrollbar">
               <div className="grid grid-cols-2 items-stretch gap-4 min-w-max sm:min-w-0">
@@ -510,30 +524,54 @@ const RuleDisplay = React.memo(
                 <div className="space-y-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-lg h-full flex flex-col justify-center">
                   <ReadOnlyLogicDisplay
                     label={t("aiModelLabel")}
-                    value={block.modelName || block.modelId}
+                    value={aiBlock.modelName || aiBlock.modelId}
                   />
-                  <ReadOnlyLogicDisplay
-                    label={tRule("signalLabel")}
-                    value={tRule(
-                      signalTypeMap[block.signalType] || block.signalType
-                    )}
-                  />
+                  {isRegression ? (
+                    <ReadOnlyLogicDisplay
+                      label={tRule("aiSignal.directionLabel")}
+                      value={tRule(
+                        directionMap[aiBlock.directionSignal || ""] ||
+                          aiBlock.directionSignal ||
+                          "signal"
+                      )}
+                    />
+                  ) : (
+                    <ReadOnlyLogicDisplay
+                      label={tRule("signalLabel")}
+                      value={tRule(
+                        signalTypeMap[aiBlock.signalType || ""] ||
+                          aiBlock.signalType ||
+                          "signal"
+                      )}
+                    />
+                  )}
                 </div>
                 {/* 평가 설정 */}
                 <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
                   <ReadOnlyLogicDisplay
                     label={t("evaluationModeLabel")}
                     value={t(
-                      evalModeMap[block.evaluationMode] || block.evaluationMode
+                      evalModeMap[aiBlock.evaluationMode] ||
+                        aiBlock.evaluationMode
                     )}
                   />
-                  {block.evaluationMode === "threshold" &&
-                    block.minConfidence !== undefined && (
-                      <ReadOnlyLogicDisplay
-                        label={t("minConfidenceLabel")}
-                        value={`${Math.round(block.minConfidence * 100)}%`}
-                      />
-                    )}
+                  {(aiBlock.evaluationMode === "threshold" ||
+                    aiBlock.evaluationMode === "confidence") && (
+                    <ReadOnlyLogicDisplay
+                      label={
+                        aiBlock.evaluationMode === "confidence"
+                          ? tRule("aiSignal.mcDropoutSamplesLabel")
+                          : t("minConfidenceLabel")
+                      }
+                      value={
+                        aiBlock.evaluationMode === "confidence"
+                          ? String(aiBlock.mcDropoutSamples || 10)
+                          : `${Math.round(
+                              (aiBlock.minConfidence || 0.5) * 100
+                            )}%`
+                      }
+                    />
+                  )}
                 </div>
               </div>
             </div>
