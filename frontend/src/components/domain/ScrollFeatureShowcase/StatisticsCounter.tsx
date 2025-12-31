@@ -183,7 +183,7 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
 
   return (
     // 1. Placeholder: Maintains layout space in document flow (196px)
-    <div className="relative w-full z-40" style={{ height: 196 }}>
+    <div className="relative w-full z-40 h-20 md:h-[196px]">
       {/* Sentinel for Scroll Detection */}
       <div ref={sentinelRef} className="absolute top-0 h-[1px] w-full" />
 
@@ -194,7 +194,7 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
           isPinned
             ? "fixed top-[60px] left-0 right-0 z-40 bg-background/80 backdrop-blur-xl shadow-lg"
             : "absolute top-0 left-0 right-0 bg-gradient-to-r from-violet-500/5 via-transparent to-violet-500/5",
-          navIsCompact ? "h-[64px]" : "h-[196px]" // Height is controlled by animation state, not pin state
+          navIsCompact ? "h-[64px]" : "h-20 md:h-[196px]" // Height is controlled by animation state, not pin state
         )}
       >
         <motion.div
@@ -228,17 +228,16 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
                     layout: { duration: 0.3, type: "tween", ease: "easeInOut" },
                   }} // Consistent easing
                 >
-                  {/* Icon Container */}
                   <motion.div
                     layout
                     className={cn(
-                      "flex items-center justify-center rounded-2xl border transition-colors duration-500", // transition-colors only
+                      "flex items-center justify-center rounded-lg md:rounded-2xl border transition-colors duration-500", // transition-colors only
                       feature.bg,
                       feature.border,
                       isActive && feature.glow,
                       navIsCompact
-                        ? "w-9 h-9 rounded-lg"
-                        : "w-14 h-14 md:w-16 md:h-16"
+                        ? "w-9 h-9 rounded-lg md:rounded-lg"
+                        : "w-10 h-10 md:w-16 md:h-16"
                     )}
                   >
                     {/* Icon Wrapper for Layout Sync */}
@@ -246,7 +245,7 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
                       layout
                       className={cn(
                         "flex items-center justify-center",
-                        navIsCompact ? "w-4 h-4" : "w-6 h-6 md:w-7 md:h-7"
+                        navIsCompact ? "w-4 h-4" : "w-5 h-5 md:w-7 md:h-7"
                       )}
                     >
                       <Icon
@@ -284,7 +283,7 @@ export const StatisticsCounter: React.FC<FeatureNavProps> = ({
                         >
                           <span
                             className={cn(
-                              "font-medium text-sm md:text-base whitespace-nowrap text-center",
+                              "hidden md:block font-medium text-sm md:text-base whitespace-nowrap text-center",
                               isActive
                                 ? "text-foreground"
                                 : "text-muted-foreground group-hover:text-foreground"
