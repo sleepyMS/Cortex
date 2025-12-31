@@ -207,36 +207,38 @@ export function MobileNav() {
 
           {/* 메인 네비게이션 */}
           <nav className="flex-1 overflow-y-auto px-3 py-4">
+            {/* 1. Services (Always visible) */}
+            <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
+              서비스
+            </div>
+            <NavItem
+              href="/strategies"
+              icon={LineChart}
+              label={tNav("strategies")}
+            />
+            <NavItem
+              href="/backtester"
+              icon={FlaskConical}
+              label={tNav("backtester")}
+            />
+            <NavItem
+              href="/optimization"
+              icon={Zap}
+              label={tNav("optimization")}
+            />
+            <NavItem href="/ai-lab" icon={Brain} label={tNav("aiLab")} />
+            <NavItem
+              href="/marketplace"
+              icon={Store}
+              label={tNav("marketplace")}
+            />
+            <NavItem href="/bots" icon={Bot} label={tNav("liveBots")} />
+
+            <Separator className="my-4" />
+
+            {/* 2. Account (User only) */}
             {user && (
               <>
-                <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
-                  서비스
-                </div>
-                <NavItem
-                  href="/strategies"
-                  icon={LineChart}
-                  label={tNav("strategies")}
-                />
-                <NavItem
-                  href="/backtester"
-                  icon={FlaskConical}
-                  label={tNav("backtester")}
-                />
-                <NavItem
-                  href="/optimization"
-                  icon={Zap}
-                  label={tNav("optimization")}
-                />
-                <NavItem href="/ai-lab" icon={Brain} label={tNav("aiLab")} />
-                <NavItem
-                  href="/marketplace"
-                  icon={Store}
-                  label={tNav("marketplace")}
-                />
-                <NavItem href="/bots" icon={Bot} label={tNav("liveBots")} />
-
-                <Separator className="my-4" />
-
                 <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
                   계정
                 </div>
@@ -267,153 +269,96 @@ export function MobileNav() {
                 />
 
                 <Separator className="my-4" />
-
-                {/* 환경 설정 섹션 */}
-                <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
-                  환경 설정
-                </div>
-
-                {/* 언어 선택 */}
-                <div className="px-3 py-2">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">언어</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {locales.map((locale) => (
-                      <button
-                        key={locale}
-                        onClick={() => handleLocaleChange(locale)}
-                        className={cn(
-                          "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                          currentLocale === locale
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        {currentLocale === locale && (
-                          <Check className="h-3.5 w-3.5" />
-                        )}
-                        {localeConfig[locale].nativeName}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 테마 토글 */}
-                {hasHydrated && (
-                  <button
-                    onClick={toggleTheme}
-                    className={cn(
-                      "w-full flex items-center justify-between rounded-lg px-3 py-3",
-                      "text-muted-foreground transition-colors",
-                      "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      {theme === "dark" ? (
-                        <Moon className="h-5 w-5" />
-                      ) : (
-                        <Sun className="h-5 w-5" />
-                      )}
-                      <span className="font-medium">
-                        {theme === "dark" ? "다크 모드" : "라이트 모드"}
-                      </span>
-                    </div>
-                    <Switch
-                      checked={theme === "dark"}
-                      onCheckedChange={toggleTheme}
-                      aria-label="Toggle theme"
-                    />
-                  </button>
-                )}
               </>
             )}
 
+            {/* 3. Auth Buttons (Guest only) */}
             {!user && (
-              <div className="space-y-2">
-                <SheetClose asChild>
-                  <Link href="/login" className="block">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3"
-                    >
-                      <LogIn className="h-5 w-5" />
-                      {t("login")}
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/pricing" className="block">
-                    <Button className="w-full justify-start gap-3">
-                      <Sparkles className="h-5 w-5" />
-                      {t("startPro")}
-                    </Button>
-                  </Link>
-                </SheetClose>
+              <>
+                <div className="space-y-2">
+                  <SheetClose asChild>
+                    <Link href="/login" className="block">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3"
+                      >
+                        <LogIn className="h-5 w-5" />
+                        {t("login")}
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="/pricing" className="block">
+                      <Button className="w-full justify-start gap-3">
+                        <Sparkles className="h-5 w-5" />
+                        {t("startPro")}
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                </div>
 
                 <Separator className="my-4" />
+              </>
+            )}
 
-                {/* 비로그인 사용자용 환경 설정 */}
-                <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
-                  환경 설정
-                </div>
+            {/* 4. Settings (Common) */}
+            <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
+              환경 설정
+            </div>
 
-                {/* 언어 선택 */}
-                <div className="px-3 py-2">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">언어</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {locales.map((locale) => (
-                      <button
-                        key={locale}
-                        onClick={() => handleLocaleChange(locale)}
-                        className={cn(
-                          "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                          currentLocale === locale
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        {currentLocale === locale && (
-                          <Check className="h-3.5 w-3.5" />
-                        )}
-                        {localeConfig[locale].nativeName}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 테마 토글 */}
-                {hasHydrated && (
+            {/* 언어 선택 */}
+            <div className="px-3 py-2">
+              <div className="flex items-center gap-3 mb-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">언어</span>
+              </div>
+              <div className="flex gap-2">
+                {locales.map((locale) => (
                   <button
-                    onClick={toggleTheme}
+                    key={locale}
+                    onClick={() => handleLocaleChange(locale)}
                     className={cn(
-                      "w-full flex items-center justify-between rounded-lg px-3 py-3",
-                      "text-muted-foreground transition-colors",
-                      "hover:bg-accent hover:text-accent-foreground"
+                      "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      currentLocale === locale
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80"
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      {theme === "dark" ? (
-                        <Moon className="h-5 w-5" />
-                      ) : (
-                        <Sun className="h-5 w-5" />
-                      )}
-                      <span className="font-medium">
-                        {theme === "dark" ? "다크 모드" : "라이트 모드"}
-                      </span>
-                    </div>
-                    <Switch
-                      checked={theme === "dark"}
-                      onCheckedChange={toggleTheme}
-                      aria-label="Toggle theme"
-                    />
+                    {currentLocale === locale && (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                    {localeConfig[locale].nativeName}
                   </button>
-                )}
+                ))}
               </div>
+            </div>
+
+            {/* 테마 토글 */}
+            {hasHydrated && (
+              <button
+                onClick={toggleTheme}
+                className={cn(
+                  "w-full flex items-center justify-between rounded-lg px-3 py-3",
+                  "text-muted-foreground transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {theme === "dark" ? (
+                    <Moon className="h-5 w-5" />
+                  ) : (
+                    <Sun className="h-5 w-5" />
+                  )}
+                  <span className="font-medium">
+                    {theme === "dark" ? "다크 모드" : "라이트 모드"}
+                  </span>
+                </div>
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={toggleTheme}
+                  aria-label="Toggle theme"
+                />
+              </button>
             )}
           </nav>
 

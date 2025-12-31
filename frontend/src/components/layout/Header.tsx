@@ -93,7 +93,7 @@ export function Header() {
 
         {/* 중앙 네비게이션 (데스크탑) - Grid 중앙 배치 */}
         <nav className="hidden md:flex items-center gap-8 justify-self-center">
-          {isAuthInitialized && user && (
+          {isAuthInitialized && (
             <>
               {[
                 { href: "/strategies", label: tNav("strategies") },
