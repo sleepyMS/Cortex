@@ -531,7 +531,10 @@ export default function NewAIModelPage() {
 
                   {indicatorCategories.map((cat) => (
                     <TabsContent key={cat} value={cat} className="mt-4">
-                      <ScrollArea className="h-[280px] pr-4">
+                      <div
+                        className="h-[280px] pr-4 overflow-y-auto custom-scrollbar"
+                        data-lenis-prevent
+                      >
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {filteredIndicators
                             .filter(
@@ -604,7 +607,7 @@ export default function NewAIModelPage() {
                               );
                             })}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </TabsContent>
                   ))}
                 </Tabs>
