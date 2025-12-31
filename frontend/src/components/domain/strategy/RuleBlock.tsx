@@ -469,6 +469,25 @@ export function RuleBlock({
   const renderAISignalLogic = (logic: AISignalLogic) => {
     const isRegression = logic.taskType === "regression";
 
+    // Handler for regression evaluation mode changes with default values
+    const handleRegressionModeChange = (newMode: string) => {
+      const updates: Partial<AISignalLogic> = {
+        evaluationMode: newMode as AISignalLogic["evaluationMode"],
+      };
+
+      // Set default values based on the selected mode
+      if (newMode === "threshold") {
+        // Set defaults for threshold mode if not already set
+        if (logic.threshold === undefined) updates.threshold = 0;
+        if (!logic.conditionOperator) updates.conditionOperator = ">";
+      } else if (newMode === "direction" || newMode === "confidence") {
+        // Set default direction if not already set
+        if (!logic.directionSignal) updates.directionSignal = "positive";
+      }
+
+      onUpdate(item.id, { ...logic, ...updates } as AISignalLogic);
+    };
+
     // 분류 모델: 신호 타입별 설정
     const signalConfig = {
       buy: {
@@ -569,9 +588,7 @@ export function RuleBlock({
               </div>
               <Select
                 value={logic.evaluationMode}
-                onValueChange={(val) =>
-                  handleUpdateField("evaluationMode", val)
-                }
+                onValueChange={handleRegressionModeChange}
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue>

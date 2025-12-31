@@ -729,6 +729,9 @@ class SignalService:
                     use_uncertainty=getattr(block, 'use_uncertainty', False),
                     mc_dropout_samples=getattr(block, 'mc_dropout_samples', 10),
                     uncertainty_threshold=getattr(block, 'uncertainty_threshold', None),
+                    # Regression threshold mode parameters
+                    threshold=getattr(block, 'threshold', None),
+                    condition_operator=getattr(block, 'condition_operator', None),
                 )
             except Exception as e:
                 logger.error(f"AI signal evaluation failed for model {block.model_id}: {e}")

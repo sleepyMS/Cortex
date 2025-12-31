@@ -398,10 +398,16 @@ class AISignalLogic(BaseLogicBlock):
     signal_type: Optional[Literal["buy", "sell", "hold"]] = None  # 분류 모델용
     
     evaluation_mode: Literal["threshold", "highest", "direction", "confidence"] = "highest"
-    min_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)  # threshold 모드용 최소 신뢰도
+    min_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)  # threshold 모드용 최소 신뢰도 (classification)
     
     # Regression 전용 파라미터
     direction_signal: Optional[Literal["positive", "negative"]] = None  # direction/confidence 모드용
+    
+    # Regression threshold 모드용 파라미터
+    threshold: Optional[float] = Field(None, description="예측값 임계값 (예: 2.0 → 2% 이상)")
+    condition_operator: Optional[Literal[">", "<", ">=", "<="]] = Field(
+        None, description="임계값 조건 연산자"
+    )
     
     # Regression MC Dropout Uncertainty 파라미터
     use_uncertainty: bool = Field(False, description="MC Dropout 불확실성 추정 사용 여부")
@@ -449,6 +455,8 @@ class AISignalLogic(BaseLogicBlock):
                 raise ValueError(
                     f"회귀 모델의 '{mode}' 모드에서는 direction_signal ('positive', 'negative')이 필수입니다."
                 )
+            # Note: threshold mode uses defaults if threshold/condition_operator not provided
+            # threshold defaults to 0.0, condition_operator defaults to '>'
         
         return self
 

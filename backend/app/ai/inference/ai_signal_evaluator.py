@@ -48,6 +48,9 @@ class AISignalEvaluator:
         use_uncertainty: bool = False,
         mc_dropout_samples: int = 10,
         uncertainty_threshold: Optional[float] = None,
+        # Regression threshold mode parameters
+        threshold: Optional[float] = None,
+        condition_operator: Optional[str] = None,
     ) -> pd.Series:
         """
         AI 모델 예측을 수행하고 조건을 평가합니다.
@@ -175,8 +178,43 @@ class AISignalEvaluator:
                 except Exception as e:
                     logger.error(f"MC Dropout confidence evaluation failed: {e}")
                     condition_met = np.zeros(n_original, dtype=bool)
+                    
+            elif evaluation_mode == "threshold":
+                # Regression threshold mode: compare predicted value against threshold
+                # Apply default values if not provided
+                actual_threshold = threshold if threshold is not None else 0.0
+                actual_operator = condition_operator if condition_operator else ">"
+                
+                logger.debug(
+                    f"Regression threshold mode: threshold={actual_threshold}%, operator='{actual_operator}'"
+                )
+                
+                # Apply threshold condition
+                # Note: pred_values are typically in decimal form (e.g., 0.02 for 2%)
+                # Frontend sends threshold as percentage value (e.g., -10 for -10%)
+                # Convert threshold to decimal for comparison
+                threshold_decimal = actual_threshold / 100.0
+                
+                if actual_operator == ">":
+                    condition_met = pred_values > threshold_decimal
+                elif actual_operator == "<":
+                    condition_met = pred_values < threshold_decimal
+                elif actual_operator == ">=":
+                    condition_met = pred_values >= threshold_decimal
+                elif actual_operator == "<=":
+                    condition_met = pred_values <= threshold_decimal
+                else:
+                    logger.warning(f"Unknown condition_operator: {actual_operator}")
+                    condition_met = np.zeros(n_original, dtype=bool)
+                    
+                logger.debug(
+                    f"Regression threshold mode: {np.sum(condition_met)} / {n_original} signals pass "
+                    f"condition 'prediction {actual_operator} {actual_threshold}%'"
+                )
+                    
             else:
                 # Unknown regression mode
+                logger.warning(f"Unknown regression evaluation_mode: {evaluation_mode}")
                 condition_met = np.zeros(n_original, dtype=bool)
                 
             return pd.Series(condition_met, index=df.index)
