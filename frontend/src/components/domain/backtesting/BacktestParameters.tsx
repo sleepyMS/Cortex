@@ -5,7 +5,7 @@
 import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Backtest } from "@/types/backtest";
-import { LogicBlock, IndicatorValue } from "@/types/strategy";
+import { LogicBlock, IndicatorValue, AISignalLogic } from "@/types/strategy";
 import { IndicatorMetadata } from "@/types/indicator";
 import { useIndicatorStore } from "@/store/indicatorStore";
 import {
@@ -498,7 +498,7 @@ const RuleDisplay = React.memo(
 
         // AI 신호 규칙
         case "ai_signal": {
-          const aiBlock = block as any;
+          const aiBlock = block as AISignalLogic;
           const signalTypeMap: Record<string, string> = {
             buy: "buySignal",
             sell: "sellSignal",
@@ -555,21 +555,26 @@ const RuleDisplay = React.memo(
                         aiBlock.evaluationMode
                     )}
                   />
-                  {(aiBlock.evaluationMode === "threshold" ||
-                    aiBlock.evaluationMode === "confidence") && (
+                  {aiBlock.evaluationMode === "confidence" && (
                     <ReadOnlyLogicDisplay
-                      label={
-                        aiBlock.evaluationMode === "confidence"
-                          ? tRule("aiSignal.mcDropoutSamplesLabel")
-                          : t("minConfidenceLabel")
-                      }
-                      value={
-                        aiBlock.evaluationMode === "confidence"
-                          ? String(aiBlock.mcDropoutSamples || 10)
-                          : `${Math.round(
-                              (aiBlock.minConfidence || 0.5) * 100
-                            )}%`
-                      }
+                      label={tRule("aiSignal.mcDropoutSamplesLabel")}
+                      value={String(aiBlock.mcDropoutSamples || 10)}
+                    />
+                  )}
+                  {aiBlock.evaluationMode === "threshold" && !isRegression && (
+                    <ReadOnlyLogicDisplay
+                      label={t("minConfidenceLabel")}
+                      value={`${Math.round(
+                        (aiBlock.minConfidence || 0.5) * 100
+                      )}%`}
+                    />
+                  )}
+                  {aiBlock.evaluationMode === "threshold" && isRegression && (
+                    <ReadOnlyLogicDisplay
+                      label={tRule("aiSignal.thresholdLabel")}
+                      value={`${aiBlock.conditionOperator || ">"} ${
+                        aiBlock.threshold || 0
+                      }%`}
                     />
                   )}
                 </div>

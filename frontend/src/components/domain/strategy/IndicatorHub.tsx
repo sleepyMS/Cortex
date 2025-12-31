@@ -146,14 +146,7 @@ export function IndicatorHub({
       // AI 모델인 경우
       const model = selectedItem.item.model;
       if (onAIModelSelect) {
-        onAIModelSelect(
-          model.id,
-          model.name,
-          logicType,
-          (model.taskType || "classification") as
-            | "classification"
-            | "regression"
-        );
+        onAIModelSelect(model.id, model.name, logicType, model.taskType);
       }
     } else {
       // 일반 지표인 경우
@@ -293,14 +286,12 @@ export function IndicatorHub({
                             <Badge
                               variant="outline"
                               className={`mt-1 text-xs ${
-                                (model.taskType || "classification") ===
-                                "regression"
+                                model.taskType === "regression"
                                   ? "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
                                   : "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
                               }`}
                             >
-                              {(model.taskType || "classification") ===
-                              "regression"
+                              {model.taskType === "regression"
                                 ? "회귀"
                                 : "분류"}
                             </Badge>
@@ -346,14 +337,12 @@ export function IndicatorHub({
                                 <Badge
                                   variant="outline"
                                   className={`mt-1 text-xs ${
-                                    (model.taskType || "classification") ===
-                                    "regression"
+                                    model.taskType === "regression"
                                       ? "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
                                       : "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
                                   }`}
                                 >
-                                  {(model.taskType || "classification") ===
-                                  "regression"
+                                  {model.taskType === "regression"
                                     ? "회귀"
                                     : "분류"}
                                 </Badge>

@@ -148,8 +148,8 @@ export interface AIModelSummary {
   description?: string;
   modelType: string; // 아키텍처 타입 (예: "LSTM_Classifier")
 
-  // AI 작업 타입 (분류/회귀 구분)
-  taskType?: AIModelType; // "classification" | "regression"
+  // AI 작업 타입 (분류/회귀 구분) - 백엔드에서 항상 제공됨
+  taskType: AIModelType; // "classification" | "regression"
   predictionTarget?: string; // "signal" | "return_pct" | "price_change" | "volatility"
   predictionHorizon?: number; // 예측 기간 (캔들 수)
 

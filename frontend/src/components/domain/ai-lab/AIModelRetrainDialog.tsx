@@ -138,13 +138,13 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
               variant="secondary"
               className={cn(
                 "uppercase font-bold tracking-wider",
-                (taskType || "classification") === "classification"
+                taskType === "classification"
                   ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                   : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
               )}
             >
               {t(
-                (taskType || "classification") === "classification"
+                taskType === "classification"
                   ? "card.classificationBadge"
                   : "card.regressionBadge"
               )}

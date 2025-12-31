@@ -92,8 +92,7 @@ export function AIModelSelector({
   const completedModels =
     models?.filter((m: AIModelSummary) => {
       if (m.status !== "completed") return false;
-      if (taskType && (m.taskType || "classification") !== taskType)
-        return false;
+      if (taskType && m.taskType !== taskType) return false;
       return true;
     }) || [];
 
@@ -110,12 +109,10 @@ export function AIModelSelector({
     onSelect({
       modelId: selectedModel.id,
       modelName: selectedModel.name,
-      taskType: selectedModel.taskType || "classification",
+      taskType: selectedModel.taskType,
       signalType,
       evaluationMode:
-        (selectedModel.taskType || "classification") === "regression"
-          ? "direction"
-          : evaluationMode,
+        selectedModel.taskType === "regression" ? "direction" : evaluationMode,
       minConfidence: evaluationMode === "threshold" ? minConfidence : undefined,
       trainingEndDate: selectedModel.trainingEndDate,
     });
@@ -193,13 +190,12 @@ export function AIModelSelector({
                               variant="outline"
                               className={cn(
                                 "text-[10px] h-5 px-1.5 ml-2",
-                                (model.taskType || "classification") ===
-                                  "classification"
+                                model.taskType === "classification"
                                   ? "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
                                   : "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
                               )}
                             >
-                              {(model.taskType || "classification").slice(0, 4)}
+                              {model.taskType.slice(0, 4)}
                             </Badge>
                           </div>
                           {hasLookahead && (
@@ -334,15 +330,14 @@ export function AIModelSelector({
           )}
 
           {/* 회귀 모델 설정 안내 */}
-          {selectedModel &&
-            (selectedModel.taskType || "classification") === "regression" && (
-              <div className="p-4 rounded-lg bg-muted text-sm text-center text-muted-foreground">
-                <p>{t("aiModelSelector.regressionNotice")}</p>
-                <p className="text-xs mt-1 opacity-70">
-                  {t("aiModelSelector.regressionNoticeDesc")}
-                </p>
-              </div>
-            )}
+          {selectedModel && selectedModel.taskType === "regression" && (
+            <div className="p-4 rounded-lg bg-muted text-sm text-center text-muted-foreground">
+              <p>{t("aiModelSelector.regressionNotice")}</p>
+              <p className="text-xs mt-1 opacity-70">
+                {t("aiModelSelector.regressionNoticeDesc")}
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

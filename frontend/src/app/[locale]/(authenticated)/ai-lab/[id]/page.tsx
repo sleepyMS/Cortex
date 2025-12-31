@@ -1185,8 +1185,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
                           {t("detail.configDetails.labelStrategy")}
                         </span>
-                        {(model.taskType || "classification") ===
-                        "classification" ? (
+                        {model.taskType === "classification" ? (
                           <div className="text-sm font-mono font-bold flex flex-wrap gap-x-3 gap-y-1">
                             <span className="text-emerald-400">
                               TP:{" "}

@@ -57,6 +57,7 @@ import {
 import type {
   AIModelCreateRequest,
   AIModelType,
+  AIRegressionTargetType,
   AIArchitectureConfig,
   AIFeatureConfig,
   AILabelingConfig,
@@ -845,7 +846,7 @@ export default function NewAIModelPage() {
                   onValueChange={(v) =>
                     setLabelingConfig((prev) => ({
                       ...prev,
-                      targetType: v as any,
+                      targetType: v as AIRegressionTargetType,
                     }))
                   }
                 >
