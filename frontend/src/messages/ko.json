@@ -24,6 +24,19 @@
       }
     }
   },
+  "MobileNav": {
+    "menu": "메뉴",
+    "services": "서비스",
+    "account": "계정",
+    "settings": "환경 설정",
+    "language": "언어",
+    "darkMode": "다크 모드",
+    "lightMode": "라이트 모드",
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침",
+    "login": "로그인",
+    "signup": "회원가입"
+  },
   "Payment": {
     "userCancel": "결제를 취소했습니다.",
     "genericError": "결제 처리 중 알 수 없는 오류가 발생했습니다."

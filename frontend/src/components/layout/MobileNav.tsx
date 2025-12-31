@@ -118,6 +118,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const t = useTranslations("Header");
   const tNav = useTranslations("Navigation");
+  const tMobile = useTranslations("MobileNav");
   const router = useRouter();
   const { user, logout, isAuthInitialized, creditBalance } = useUserStore();
   const { currentPlan, isPro, isTrader } = useUserSubscription();
@@ -153,13 +154,13 @@ export function MobileNav() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <IconButton className="md:hidden" aria-label="메뉴 열기">
+        <IconButton className="md:hidden" aria-label={tMobile("menu")}>
           <Menu className="h-5 w-5" />
         </IconButton>
       </SheetTrigger>
       <SheetContent side="left" className="w-[300px] p-0">
         <SheetHeader className="border-b px-6 py-4">
-          <SheetTitle className="text-left">메뉴</SheetTitle>
+          <SheetTitle className="text-left">{tMobile("menu")}</SheetTitle>
         </SheetHeader>
 
         <div className="flex flex-col h-[calc(100vh-65px)]">
@@ -209,7 +210,7 @@ export function MobileNav() {
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             {/* 1. Services (Always visible) */}
             <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
-              서비스
+              {tMobile("services")}
             </div>
             <NavItem
               href="/strategies"
@@ -240,7 +241,7 @@ export function MobileNav() {
             {user && (
               <>
                 <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
-                  계정
+                  {tMobile("account")}
                 </div>
                 <NavItem
                   href="/dashboard"
@@ -283,7 +284,7 @@ export function MobileNav() {
                         className="w-full justify-start gap-3"
                       >
                         <LogIn className="h-5 w-5" />
-                        {t("login")}
+                        {tMobile("login")}
                       </Button>
                     </Link>
                   </SheetClose>
@@ -303,14 +304,16 @@ export function MobileNav() {
 
             {/* 4. Settings (Common) */}
             <div className="mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground/70">
-              환경 설정
+              {tMobile("settings")}
             </div>
 
             {/* 언어 선택 */}
             <div className="px-3 py-2">
               <div className="flex items-center gap-3 mb-2">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">언어</span>
+                <span className="text-sm text-muted-foreground">
+                  {tMobile("language")}
+                </span>
               </div>
               <div className="flex gap-2">
                 {locales.map((locale) => (
@@ -350,7 +353,9 @@ export function MobileNav() {
                     <Sun className="h-5 w-5" />
                   )}
                   <span className="font-medium">
-                    {theme === "dark" ? "다크 모드" : "라이트 모드"}
+                    {theme === "dark"
+                      ? tMobile("darkMode")
+                      : tMobile("lightMode")}
                   </span>
                 </div>
                 <Switch
@@ -382,7 +387,7 @@ export function MobileNav() {
                   href="/terms"
                   className="hover:text-foreground transition-colors"
                 >
-                  이용약관
+                  {tMobile("terms")}
                 </Link>
               </SheetClose>
               <SheetClose asChild>
@@ -390,7 +395,7 @@ export function MobileNav() {
                   href="/privacy"
                   className="hover:text-foreground transition-colors"
                 >
-                  개인정보처리방침
+                  {tMobile("privacy")}
                 </Link>
               </SheetClose>
             </div>

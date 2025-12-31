@@ -24,6 +24,19 @@
       }
     }
   },
+  "MobileNav": {
+    "menu": "Menu",
+    "services": "Services",
+    "account": "Account",
+    "settings": "Settings",
+    "language": "Language",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "login": "Log In",
+    "signup": "Sign Up"
+  },
   "Payment": {
     "userCancel": "Payment was cancelled by the user.",
     "genericError": "An unknown error occurred during payment processing."
