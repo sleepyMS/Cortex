@@ -304,7 +304,7 @@ class ONNXInferenceSession:
             
             # 2. PyTorch 모델 로드
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            checkpoint = torch.load(pt_path, map_location=device)
+            checkpoint = torch.load(pt_path, map_location=device, weights_only=False)
             config = checkpoint['config']
             
             # 모델 타입에 따른 모델 클래스 선택
