@@ -115,7 +115,7 @@ export function useStrategyFormSync({
   useEffect(() => {
     if (!isEditMode) {
       initialStrategyRef.current = null;
-      strategyState.reset();
+      reset();
       resetForm({
         name: "",
         description: "",

@@ -1429,7 +1429,11 @@ export default function NewAIModelPage() {
                       {t("new.step4.targetType")}
                     </span>
                     <span className="font-medium">
-                      {t(`new.step4.${labelingConfig.targetType}`)}
+                      {t(
+                        `new.step4.${
+                          labelingConfig.targetType ?? "return_pct"
+                        }` as any
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between p-3 rounded-lg bg-muted/50">
