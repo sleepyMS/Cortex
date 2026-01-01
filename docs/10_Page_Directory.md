@@ -124,6 +124,41 @@
   - `TargetCoinForm`, `TpslForm`
   - **수정 페이지 기능**: 기존 전략 데이터 로딩 및 폼 채우기, `StrategyBacktestHistory` 컴포넌트 통합
 
+### **AI Lab 목록 페이지 (`/ai-lab`)**
+
+- **개발 단계:** `[Phase 5]`
+- **역할:** 사용자가 생성한 모든 AI 예측 모델을 관리합니다.
+- **주요 기능 및 컴포넌트:**
+  - AI 모델 카드 (상태, 정확도, 학습 정보 표시)
+  - 새 모델 생성 버튼
+  - 상태별 필터링 (학습 중, 완료, 실패)
+  - 모델 유형별 필터링 (LSTM, GRU, TFT)
+
+### **새 AI 모델 생성 페이지 (`/ai-lab/new`)**
+
+- **개발 단계:** `[Phase 5]`
+- **역할:** 새로운 AI 예측 모델을 설정하고 학습을 시작합니다.
+- **주요 기능 및 컴포넌트:**
+  - 모델 유형 선택 (LSTM, GRU, TFT)
+  - 태스크 유형 선택 (Classification, Regression)
+  - 피처 선택 (50+ 기술적 지표)
+  - Triple Barrier 라벨링 설정
+  - 하이퍼파라미터 설정 (hidden_size, dropout, learning_rate 등)
+  - 학습 기간 및 심볼 설정
+  - 비용 견적 표시 및 크레딧 잔액 확인
+
+### **AI 모델 상세 페이지 (`/ai-lab/:id`)**
+
+- **개발 단계:** `[Phase 5]`
+- **역할:** AI 모델의 상세 정보, 학습 진행 상황, 버전 관리를 제공합니다.
+- **주요 기능 및 컴포넌트:**
+  - `AIModelFeatureImportance`: 피처 중요도 시각화
+  - `AIModelVersionsTable`: 버전 목록 및 롤백 기능
+  - `AIModelRetrainDialog`: 수동 재학습 다이얼로그
+  - 실시간 학습 진행률 표시 (WebSocket 연동)
+  - 예측 테스트 기능 (현재 시점 데이터로 예측 수행)
+  - 학습 메트릭 시각화 (Loss 곡선, Accuracy 추이)
+
 ---
 
 ## 3. 커뮤니티 페이지 (인증 필요)

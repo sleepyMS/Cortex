@@ -120,3 +120,36 @@
   - [ ] **페이퍼 트레이딩 엔진**: 실시간 시세 기반 모의 거래 엔진 개발
   - [x] **전략 최적화 로직**: 대규모 병렬 백테스팅을 위한 비동기 태스크 큐(Celery) 도입
   - [ ] **알림 서비스**: 이메일, 웹 푸시 등 알림 시스템 연동
+
+---
+
+### 🤖 Phase 5: AI Lab - 머신러닝 기반 예측
+
+> **목표:** 머신러닝 모델을 활용한 시장 예측 기능을 제공하여 전략에 AI 신호를 통합할 수 있게 한다.
+
+- **Pages**
+
+  - [x] **AI Lab 목록 페이지 (`/ai-lab`)**: 생성된 AI 모델 관리
+  - [x] **AI 모델 생성 페이지 (`/ai-lab/new`)**: 새 모델 설정 및 학습 시작
+  - [x] **AI 모델 상세 페이지 (`/ai-lab/:id`)**: 학습 진행, 버전 관리, 예측 테스트
+
+- **Core Components**
+
+  - [x] `AIModelFeatureImportance`: 피처 중요도 차트
+  - [x] `AIModelVersionsTable`: 버전 관리 테이블
+  - [x] `AIModelRetrainDialog`: 수동 재학습 다이얼로그
+
+- **Backend & Infrastructure**
+
+  - [x] **AI 모델 학습 파이프라인**: LSTM/GRU/TFT 모델 학습 Celery 태스크 (`train_ai_model_task`)
+  - [x] **Triple Barrier Labeling**: 금융 데이터 라벨링 알고리즘 (Classification/Regression 지원)
+  - [x] **피처 엔지니어링**: 50+ 기술적 지표 자동 계산 (`FeatureEngineer`)
+  - [x] **Optuna 하이퍼파라미터 최적화**: 베이지안 기반 자동 튜닝
+  - [x] **ONNX 추론 엔진**: 경량화된 모델 추론 (`ONNXInferenceSession`)
+  - [x] **Walk-Forward Retraining**: 자동 재학습 스케줄링 (`check_and_retrain_models`)
+  - [x] **Walk-Forward Retraining**: 자동 재학습 스케줄링 (`check_and_retrain_models`)
+  - [x] **AI 모델 마켓플레이스**: 모델 공개 및 구매 기능 (`UserPurchasedAIModel`)
+  - [x] **실시간 학습 모니터링**: WebSocket + React Query 하이브리드 아키텍처 적용
+
+- **Strategy Builder Integration**
+  - [x] **AI 신호 규칙**: 전략 빌더에서 AI 모델 예측을 조건으로 사용 (aiSignal rule type)

@@ -1251,3 +1251,333 @@
     }
   ]
   ```
+
+---
+
+## 17. AI 모델 (AI Models)
+
+### `POST /ai-models/estimate-cost`
+
+- **Description:** AI 모델 학습 비용 견적을 동적으로 계산합니다.
+- **Authorization:** `Required (User)`
+- **Request Body:**
+  ```json
+  {
+    "modelType": "lstm",
+    "taskType": "classification",
+    "trainingSymbol": "BTCUSDT",
+    "trainingTimeframe": "1h",
+    "trainingStartDate": "2024-01-01T00:00:00Z",
+    "trainingEndDate": "2024-12-31T23:59:59Z",
+    "enableOptimization": true
+  }
+  ```
+- **Success Response (200 OK):**
+  ```json
+  {
+    "originalCost": 200,
+    "discountPct": 0.25,
+    "finalCost": 150,
+    "userBalance": 1000,
+    "isSufficient": true
+  }
+  ```
+
+### `POST /ai-models`
+
+- **Description:** AI 모델을 생성하고 비동기 학습을 시작합니다. 크레딧이 자동 차감됩니다.
+- **Authorization:** `Required (User)`
+- **Request Body:**
+  ```json
+  {
+    "name": "BTC 1H Prediction Model",
+    "description": "LSTM-based price direction prediction",
+    "modelType": "lstm",
+    "taskType": "classification",
+    "architectureConfig": {
+      "hiddenSize": 64,
+      "numLayers": 2,
+      "dropout": 0.2
+    },
+    "featureConfig": {
+      "indicators": ["RSI", "MACD", "BB", "ATR", "OBV"],
+      "lookbackPeriod": 60
+    },
+    "labelingConfig": {
+      "method": "triple_barrier",
+      "upperBarrier": 0.02,
+      "lowerBarrier": 0.01,
+      "maxHoldingPeriod": 24
+    },
+    "trainingConfig": {
+      "epochs": 100,
+      "batchSize": 32,
+      "learningRate": 0.001,
+      "validationSplit": 0.2
+    },
+    "trainingSymbol": "BTCUSDT",
+    "trainingTimeframe": "1h",
+    "trainingStartDate": "2024-01-01T00:00:00Z",
+    "trainingEndDate": "2024-12-31T23:59:59Z"
+  }
+  ```
+- **Success Response (202 Accepted):**
+  ```json
+  {
+    "id": "ai_abc123...",
+    "name": "BTC 1H Prediction Model",
+    "modelType": "lstm",
+    "status": "pending",
+    "createdAt": "2025-09-17T20:00:00Z"
+  }
+  ```
+- **Error Response:** `402 Payment Required`: 크레딧 잔액이 부족할 경우 반환됩니다.
+
+### `GET /ai-models`
+
+- **Description:** 현재 사용자의 AI 모델 목록을 조회합니다.
+- **Authorization:** `Required (User)`
+- **Query Parameters:** `status (string)`, `limit (integer)`, `offset (integer)`
+- **Success Response (200 OK):**
+  ```json
+  [
+    {
+      "id": "ai_abc123...",
+      "name": "BTC 1H Prediction Model",
+      "modelType": "lstm",
+      "taskType": "classification",
+      "status": "completed",
+      "isPublic": false,
+      "trainingSymbol": "BTCUSDT",
+      "trainingTimeframe": "1h",
+      "trainingMetrics": {
+        "accuracy": 0.68,
+        "f1Score": 0.65
+      },
+      "createdAt": "2025-09-17T20:00:00Z"
+    }
+  ]
+  ```
+
+### `GET /ai-models/public`
+
+- **Description:** 마켓플레이스에 공개된 AI 모델 목록을 조회합니다.
+- **Authorization:** `Public`
+- **Query Parameters:** `limit (integer)`, `offset (integer)`
+- **Success Response (200 OK):** (위 `GET /ai-models` 응답과 유사하나 공개 모델만 포함)
+
+### `GET /ai-models/{model_id}`
+
+- **Description:** 특정 AI 모델의 상세 정보를 조회합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "id": "ai_abc123...",
+    "name": "BTC 1H Prediction Model",
+    "description": "LSTM-based price direction prediction",
+    "modelType": "lstm",
+    "taskType": "classification",
+    "architectureConfig": { "...": "..." },
+    "featureConfig": { "...": "..." },
+    "labelingConfig": { "...": "..." },
+    "trainingConfig": { "...": "..." },
+    "trainingSymbol": "BTCUSDT",
+    "trainingTimeframe": "1h",
+    "trainingStartDate": "2024-01-01T00:00:00Z",
+    "trainingEndDate": "2024-12-31T23:59:59Z",
+    "trainingMetrics": { "accuracy": 0.68, "f1Score": 0.65 },
+    "validationMetrics": { "accuracy": 0.65, "f1Score": 0.62 },
+    "status": "completed",
+    "isPublic": false,
+    "isAutoRetrainEnabled": true,
+    "retrainIntervalDays": 30,
+    "nextRetrainAt": "2025-10-17T00:00:00Z",
+    "activeVersionId": "ver_xyz...",
+    "createdAt": "2025-09-17T20:00:00Z"
+  }
+  ```
+
+### `GET /ai-models/{model_id}/training-status`
+
+- **Description:** AI 모델의 학습 진행 상태를 조회합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "status": "training",
+    "progressPct": 45,
+    "currentEpoch": 45,
+    "totalEpochs": 100,
+    "currentMetrics": {
+      "trainLoss": 0.32,
+      "valLoss": 0.38,
+      "accuracy": 0.62
+    },
+    "epochLogs": [
+      { "epoch": 1, "trainLoss": 0.8, "valLoss": 0.85 },
+      { "epoch": 2, "trainLoss": 0.6, "valLoss": 0.65 }
+    ]
+  }
+  ```
+
+### `POST /ai-models/{model_id}/predict`
+
+- **Description:** AI 모델을 사용하여 예측 테스트를 수행합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Request Body:**
+  ```json
+  {
+    "ticker": "BTCUSDT",
+    "timeframe": "1h"
+  }
+  ```
+- **Success Response (200 OK):**
+  ```json
+  {
+    "prediction": "long",
+    "confidence": 0.72,
+    "probabilities": {
+      "long": 0.72,
+      "short": 0.18,
+      "hold": 0.1
+    },
+    "timestamp": "2025-09-17T20:30:00Z"
+  }
+  ```
+
+### `GET /ai-models/{model_id}/versions`
+
+- **Description:** AI 모델의 버전 목록을 조회합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Success Response (200 OK):**
+  ```json
+  [
+    {
+      "id": "ver_xyz...",
+      "versionNumber": 2,
+      "isActive": true,
+      "trainingStartDate": "2024-10-01T00:00:00Z",
+      "trainingEndDate": "2024-12-31T23:59:59Z",
+      "metrics": { "accuracy": 0.68, "f1Score": 0.65 },
+      "createdAt": "2025-09-17T20:00:00Z"
+    },
+    {
+      "id": "ver_abc...",
+      "versionNumber": 1,
+      "isActive": false,
+      "trainingStartDate": "2024-01-01T00:00:00Z",
+      "trainingEndDate": "2024-09-30T23:59:59Z",
+      "metrics": { "accuracy": 0.62, "f1Score": 0.58 },
+      "createdAt": "2025-08-01T10:00:00Z"
+    }
+  ]
+  ```
+
+### `POST /ai-models/{model_id}/versions/{version_id}/activate`
+
+- **Description:** 특정 버전을 활성 버전으로 설정합니다 (롤백 기능).
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`, `version_id`: `string (UUID)`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "message": "Version activated successfully.",
+    "activeVersionId": "ver_abc..."
+  }
+  ```
+
+### `DELETE /ai-models/{model_id}`
+
+- **Description:** AI 모델과 관련 데이터를 영구 삭제합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Success Response (204 No Content):** (No content)
+
+### `PATCH /ai-models/{model_id}/public`
+
+- **설명**: 모델 공개 여부(Marketplace 등록)를 전환합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Payload**: `{"is_public": true}`
+- **Response**: `AIModelSchema`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "id": "ai_abc123...",
+    "isPublic": true
+  }
+  ```
+
+### `GET /ai-models/{model_id}/download`
+
+- **Description:** AI 모델 파일(ONNX)을 다운로드합니다.
+- **Authorization:** `Required (User)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Success Response (200 OK):** `application/octet-stream` (ONNX 모델 파일)
+
+### `POST /ai-models/{model_id}/retrain`
+
+- **Description:** AI 모델의 수동 재학습을 요청합니다. (Pro Plan 전용, 크레딧 50 차감)
+- **Authorization:** `Required (User, Pro Plan)`
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Request Body:**
+  ```json
+  {
+    "startDate": "2024-06-01T00:00:00Z",
+    "endDate": "2025-01-01T00:00:00Z"
+  }
+  ```
+- **Success Response (202 Accepted):**
+  ```json
+  {
+    "message": "Retraining started.",
+    "jobId": "job_xyz..."
+  }
+  ```
+- **Error Response:** `402 Payment Required`: 크레딧 잔액이 부족할 경우 반환됩니다.
+
+---
+
+## 8. 실시간 통신 (WebSockets)
+
+### `WS /ws/ai-training/{model_id}`
+
+- **Description:** AI 모델의 학습 및 최적화 진행 상황을 실시간으로 스트리밍합니다.
+- **Authorization:** `Public` (클라이언트에서 연결)
+- **Path Parameters:** `model_id`: `string (UUID)`
+- **Message Format (Server -> Client):**
+  ```json
+  {
+    "status": "training", // "pending" | "training" | "optimizing" | "completed" | "failed"
+    "progressPct": 45,
+    "message": "Epoch 5/100 completed",
+    "currentMetrics": {
+      "phase": "training", // "training" | "optimization" | "final_training"
+      "epoch": 5,
+      "total_epochs": 100,
+      "train_loss": 0.0245,
+      "val_loss": 0.0312,
+      "accuracy": 0.65,
+      "rmse": 0.045
+    }
+  }
+  ```
+- **Optimization Phase Metrics:**
+  ```json
+  {
+    "status": "optimizing",
+    "progressPct": 30,
+    "message": "Trial 15/50 completed",
+    "currentMetrics": {
+      "phase": "optimization",
+      "trial": 15,
+      "total_trials": 50,
+      "best_value": 0.7823 // Best Optimization Objective Value (e.g., accuracy)
+    }
+  }
+  ```

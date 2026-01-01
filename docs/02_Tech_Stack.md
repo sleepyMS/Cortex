@@ -39,6 +39,17 @@
 - **Data Processing: Pandas & Pandas-TA**
   - **이유:** `Pandas`는 데이터 조작의 표준이며, `Pandas-TA`는 수백 가지의 기술적 지표(다이버전스, 캔들스틱 패턴 포함) 계산을 지원하는 가장 성숙한 라이브러리입니다. 이를 통해 복잡한 계산 로직을 안정적으로 구현할 수 있습니다.
 
+### AI/ML (Machine Learning)
+
+- **Deep Learning Framework: PyTorch**
+  - **이유:** 동적 계산 그래프, 직관적인 API, 금융 시계열 모델링(LSTM, GRU, TFT)에 적합한 유연성을 제공합니다. 학계와 산업계 모두에서 널리 사용되어 풍부한 레퍼런스를 확보할 수 있습니다.
+- **Inference Runtime: ONNX Runtime**
+  - **이유:** 학습된 PyTorch 모델을 ONNX 포맷으로 변환하여, 추론 시 Python 런타임 오버헤드 없이 빠르고 경량화된 예측을 가능하게 합니다.
+- **Hyperparameter Optimization: Optuna**
+  - **이유:** 베이지안 최적화 기반으로 모델 하이퍼파라미터(hidden_size, dropout, learning_rate 등)를 효율적으로 탐색하여 최적의 모델 성능을 도출합니다.
+- **ML Utilities: scikit-learn**
+  - **이유:** 데이터 전처리(StandardScaler), 평가 지표(Accuracy, F1, Confusion Matrix), 데이터 분할(TimeSeriesSplit) 등 ML 파이프라인 전반에 활용됩니다.
+
 ### Database & Auth
 
 - **ORM & Driver: SQLAlchemy (Asyncio) & asyncpg**
@@ -49,9 +60,9 @@
 ### Async & Background Tasks
 
 - **Task Queue: Celery & Redis**
-  - **이유:** 백테스팅, 자동매매, 데이터 수집 등 시간이 오래 걸리는 작업을 웹 요청과 분리하여 백그라운드에서 안정적으로 처리하기 위한 Python 표준 조합입니다.
+  - **이유:** 백테스팅, AI 모델 학습, 자동매매, 데이터 수집 등 시간이 오래 걸리는 작업을 웹 요청과 분리하여 백그라운드에서 안정적으로 처리하기 위한 Python 표준 조합입니다.
 - **Scheduling: Celery Beat**
-  - **이유:** Celery에 내장된 스케줄러로, 주기적인 작업(예: 매시간 데이터 수집)을 별도의 라이브러리 없이 안정적으로 관리할 수 있습니다.
+  - **이유:** Celery에 내장된 스케줄러로, 주기적인 작업(예: 매시간 데이터 수집, AI 모델 자동 재학습)을 별도의 라이브러리 없이 안정적으로 관리할 수 있습니다.
 - **Data Fetching: CCXT (async support)**
   - **이유:** 전 세계 대부분의 암호화폐 거래소 API를 표준화된 비동기 방식으로 호출할 수 있게 해주는 필수 라이브러리입니다.
 
@@ -70,5 +81,5 @@
   - **이유:** Next.js와 최고의 궁합을 보이며, CI/CD 파이프라인 구축, 글로벌 CDN 등 강력한 기능을 제공합니다.
 - **Backend Deployment: Docker on Cloud (e.g., AWS, GCP)**
   - **이유:** Docker 컨테이너를 통해 어떤 클라우드 환경에서든 일관성 있는 서버 배포를 보장합니다.
-- **Payment Gateway: Stripe / I'mport (아임포트)**
-  - **이유:** 구독 시스템 구현을 위한 결제 연동 서비스입니다.
+- **Payment Gateway: Toss Payments**
+  - **이유:** 국내 결제 환경에 최적화된 구독 시스템 구현을 위한 결제 연동 서비스입니다.

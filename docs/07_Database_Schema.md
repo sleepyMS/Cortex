@@ -299,6 +299,72 @@ erDiagram
         %% Unique(user_id, post_id)
     }
 
+    %% --- 7. AI 모델 ---
+    ai_models {
+        UUID id PK
+        UUID user_id FK
+        String name
+        String model_type "lstm, gru, tft"
+        String task_type "classification, regression"
+        JSONB architecture_config
+        JSONB feature_config
+        JSONB labeling_config
+        JSONB training_config
+        JSONB optimization_config
+        String training_symbol
+        String training_timeframe
+        DateTime training_start_date
+        DateTime training_end_date
+        JSONB training_metrics
+        JSONB validation_metrics
+        String model_weights_path
+        String status "pending, training, completed, failed"
+        Boolean is_public
+        Boolean is_auto_retrain_enabled
+        Integer retrain_interval_days
+        DateTime next_retrain_at
+        UUID active_version_id FK
+        DateTime created_at
+        DateTime updated_at
+    }
+    ai_model_versions {
+        UUID id PK
+        UUID model_id FK
+        Integer version_number
+        DateTime training_start_date
+        DateTime training_end_date
+        String model_weights_path
+        JSONB metrics
+        Boolean is_active
+        DateTime created_at
+        %% Unique(model_id, version_number)
+    }
+    ai_training_jobs {
+        UUID id PK
+        UUID model_id FK
+        UUID user_id FK
+        String status "pending, running, completed, failed"
+        Integer progress_pct
+        Integer current_epoch
+        Integer total_epochs
+        JSONB current_metrics
+        JSONB epoch_logs
+        JSONB optimization_result
+        Text error_message
+        String celery_task_id
+        DateTime started_at
+        DateTime completed_at
+        DateTime created_at
+    }
+    user_purchased_ai_models {
+        UUID id PK
+        UUID user_id FK
+        UUID ai_model_id FK
+        UUID order_item_id FK
+        DateTime created_at
+        %% Unique(user_id, ai_model_id)
+    }
+
     %% --- 관계 정의 (Relationships) ---
     users ||--o{ social_accounts : links
     users ||--o| subscription : "has one"
@@ -351,6 +417,11 @@ erDiagram
     community_posts ||--|{ comments : has
     community_posts ||--|{ likes : receives
 
+    users ||--|{ ai_models : "creates"
+    ai_models ||--|{ ai_model_versions : "has"
+    ai_models ||--|{ ai_training_jobs : "tracks"
+    ai_models ||--o{ user_purchased_ai_models : "purchased by"
+
 ```
 
 ---
@@ -378,6 +449,10 @@ erDiagram
 - **`refresh_tokens`**: JWT 리프레시 토큰 관리.
 - **`optimization_jobs`**: 최적화 작업(General/WFO)의 메인 테이블. 실행 설정(`config`), 전략 스냅샷(`strategy_snapshot`), 최종 요약 결과(`result_summary`), WFO 상세 결과(`wfo_result`) 등을 JSONB로 저장합니다.
 - **`optimization_trials`**: 개별 최적화 시도(Trial)의 파라미터 조합(`params`)과 성과 지표(`metrics`)를 저장하는 경량 테이블입니다.
+- **`ai_models`**: AI/ML 모델 메타데이터 (LSTM, GRU, TFT 지원). 학습 설정(`architecture_config`), 피처 설정(`feature_config`), 라벨링 설정(`labeling_config`), 학습 결과 메트릭(`training_metrics`)을 JSONB로 저장합니다.
+- **`ai_model_versions`**: Walk-Forward Retraining을 위한 모델 버전 관리. 각 버전은 독립적인 가중치 파일(`model_weights_path`)과 성능 지표(`metrics`)를 가집니다.
+- **`ai_training_jobs`**: Celery 태스크와 연동하여 AI 모델 학습 진행 상황을 실시간 추적. 에폭별 로그(`epoch_logs`)와 Optuna 최적화 결과(`optimization_result`)를 저장합니다.
+- **`user_purchased_ai_models`**: 마켓플레이스에서 구매한 AI 모델 소유권 기록.
 
 ---
 
