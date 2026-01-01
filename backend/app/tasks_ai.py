@@ -167,7 +167,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     model_id, 
                     "training", 
                     f"Epoch {metrics.get('epoch', '?')}/{metrics.get('total_epochs', '?')}", 
-                    int(min(progress, 99)),
+                    round(min(progress, 99), 1),
                     metrics
                 )
 
@@ -198,10 +198,41 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             
             # 최적화 진행률 콜백
             def opt_progress_callback(trial_num, total_trials, metrics):
-                # 0~80% 구간 사용
-                progress = (trial_num / total_trials) * 80
-                training_job.progress_pct = int(progress)
-                training_job.current_metrics = metrics
+                # 기본 진행률 (Trial 단위)
+                base_progress = (trial_num / total_trials) * 80
+                
+                # [Fix] Intra-trial progress calculation
+                # metrics에 epoch 정보가 있으면 더 세밀하게 계산
+                if metrics.get("phase") == "optimization_inner" and "epoch" in metrics:
+                    current_epoch = metrics["epoch"]
+                    total_epochs = metrics.get("total_epochs", 1)
+                    # 현재 Trial 내에서의 진행률 (0~1 사이)
+                    trial_progress = current_epoch / total_epochs
+                    # 전체 진행률에 반영 (다음 Trial까지의 구간을 채움)
+                    # 1개 Trial이 차지하는 비중 = 1/total_trials * 80
+                    additional_progress = (trial_progress / total_trials) * 80
+                    progress = base_progress + additional_progress
+                    
+                    # Update current metrics for UI
+                    training_job.current_metrics = {
+                        "phase": "optimization", # UI 통일을 위해 optimization 유지
+                        "trial": metrics.get("trial", trial_num + 1),
+                        "totalTrials": total_trials,
+                        "epoch": current_epoch,
+                        "totalEpochs": total_epochs,
+                        "trainLoss": metrics.get("current_trial_metrics", {}).get("train_loss"),
+                        "valLoss": metrics.get("current_trial_metrics", {}).get("val_loss"),
+                    }
+                else:
+                    progress = base_progress
+                    training_job.current_metrics = {
+                        "phase": "optimization",
+                        "trial": trial_num,
+                        "totalTrials": total_trials,
+                        "bestValue": metrics.get("best_value")
+                    }
+
+                training_job.progress_pct = int(min(progress, 80)) # Cap at 80%
                 
                 # Check for NaN values in metrics to avoid JSON serialization errors
                 if metrics.get("best_params"):
@@ -209,31 +240,14 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                           if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
                                metrics["best_params"][k] = 0
 
-                # Trial log update (optional)
-                if "trial_log" in metrics:
-                   pass # TODO: Add per-trial logs if needed
-
-                # Update history
-                if "best_value" in metrics:
-                   # 이전 optimization_result 가져와서 업데이트하거나 새로 덮어쓰기
-                   pass
-
-                # Store optimization progress in history or logs if needed
-                # Here we just update the current_metrics field for realtime UI
-                training_job.current_metrics = {
-                    "phase": "optimization",
-                    "trial": trial_num,
-                    "totalTrials": total_trials,
-                    "bestValue": metrics.get("best_value")
-                }
                 db.commit()
 
                 # [WebSocket Update] - Optimization Phase
                 WebSocketManager.send_ai_training_update(
                     model_id, 
                     "optimizing", 
-                    f"Trial {trial_num}/{total_trials}", 
-                    int(progress),
+                    f"Trial {metrics.get('trial', trial_num)}/{total_trials}", 
+                    round(min(progress, 80), 1),
                     training_job.current_metrics
                 )
 
@@ -388,17 +402,27 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     progress = base_progress
                 
                 training_job.progress_pct = int(min(progress, 99))
+                training_job.current_epoch = metrics.get("epoch")
+                training_job.total_epochs = metrics.get("total_epochs")
+                training_job.current_metrics = {
+                    "train_loss": metrics.get("train_loss"),
+                    "val_loss": metrics.get("val_loss"),
+                    "phase": "final_training",
+                }
+                
+                db.commit()
                 
                 # [WebSocket Update] - Final Training Phase
                 WebSocketManager.send_ai_training_update(
                     model_id, 
                     "training", 
                     f"Final Training: Epoch {metrics.get('epoch', '?')}", 
-                    int(min(progress, 99)),
+                    round(min(progress, 99), 1),
                     metrics
                 )
 
-                original_callback(step, total, metrics)
+                # [Fix] Do NOT call original_callback to avoid double updates and progress sticking
+                # original_callback(step, total, metrics)
 
             trainer = AIModelTrainer(
                 config=pipeline_config,
@@ -425,6 +449,16 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             AIModelVersion.model_id == ai_model.id
         ).update({"is_active": False})
         
+        # [Metrics Construction] Include epoch_logs and feature_importance for future rollback support
+        final_metrics = result.get("training_metrics", {}).get("final_metrics", {})
+        if training_job.epoch_logs:
+            final_metrics["epoch_logs"] = training_job.epoch_logs
+        
+        # Include feature importance
+        feature_importance = result.get("feature_importance", {})
+        if feature_importance:
+            final_metrics["feature_importance"] = feature_importance
+
         # AIModelVersion 생성
         new_version = AIModelVersion(
             model_id=ai_model.id,
@@ -432,7 +466,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             training_start_date=ai_model.training_start_date,
             training_end_date=ai_model.training_end_date,
             model_weights_path=result["model_path"],
-            metrics=result.get("training_metrics", {}).get("final_metrics", {}),
+            metrics=final_metrics,
             is_active=True
         )
         db.add(new_version)

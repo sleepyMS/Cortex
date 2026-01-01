@@ -255,7 +255,7 @@ class AIModelTrainer:
         current_step += 1
         self._report_progress(current_step, total_steps, {"phase": "saving"})
         
-        self._save_all(feature_store_config, training_result, label_stats, X.shape)
+        self._save_all(feature_store_config, training_result, label_stats, X.shape, feature_importance)
         
         # 최종 결과 반환
         total_time = time.time() - start_time
@@ -291,7 +291,8 @@ class AIModelTrainer:
         feature_config: Dict[str, Any],
         training_result: TrainingResult,
         label_stats: Dict[str, Any],
-        input_shape: tuple
+        input_shape: tuple,
+        feature_importance: Dict[str, float] = None
     ) -> None:
         """모델 및 설정 저장"""
         
@@ -341,6 +342,13 @@ class AIModelTrainer:
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2, default=str)
         
+        
+        # 5. Feature Importance 저장
+        if feature_importance:
+            fi_path = self.save_dir / "feature_importance.json"
+            with open(fi_path, 'w') as f:
+                json.dump(feature_importance, f, indent=2)
+
         logger.info(f"All files saved to {self.save_dir}")
     
     def _report_progress(self, step: int, total: int, metrics: Dict[str, Any]) -> None:

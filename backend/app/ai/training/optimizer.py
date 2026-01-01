@@ -150,6 +150,17 @@ class AIOptimizer:
                 val_loss = metrics.get("val_loss", float('inf'))
                 trial.report(val_loss, epoch)
                 
+                # [Fix] Intra-trial progress reporting
+                if self.progress_callback:
+                    # 현재 진행중인 trial의 진행 상황을 외부로 알림
+                    self.progress_callback(trial.number, self.n_trials, {
+                        "phase": "optimization_inner", # Phase 구분 (inner loop)
+                        "trial": trial.number + 1,
+                        "epoch": epoch,
+                        "total_epochs": total_epochs,
+                        "current_trial_metrics": metrics
+                    })
+
                 # Pruning 여부 체크
                 if trial.should_prune():
                     logger.info(f"Trial {trial.number} pruned at epoch {epoch}")

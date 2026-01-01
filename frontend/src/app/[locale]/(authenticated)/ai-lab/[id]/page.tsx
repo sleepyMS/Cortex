@@ -391,6 +391,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
   const searchParams = useSearchParams();
   const [isRetrainDialogOpen, setIsRetrainDialogOpen] = useState(false);
   const [hasAutoTested, setHasAutoTested] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   // Real-time state for WebSocket updates
   const [realtimeLogs, setRealtimeLogs] = useState<any[]>([]);
@@ -451,12 +452,25 @@ export default function AIModelDetailPage({ params }: PageProps) {
   }, [lastMessage]);
 
   // Initial Sync from DB logs
-  // Initial Sync from DB logs
   useEffect(() => {
+    // If we have an active training status (new job) but model still shows old job,
+    // skip syncing logs to avoid showing stale data.
+    if (
+      initialTrainingStatus?.id &&
+      model?.latestTrainingJob?.id &&
+      initialTrainingStatus.id !== model.latestTrainingJob.id
+    ) {
+      return;
+    }
+
     if (model?.latestTrainingJob?.epochLogs) {
       setRealtimeLogs(model.latestTrainingJob.epochLogs);
     }
-  }, [model?.latestTrainingJob?.epochLogs]);
+  }, [
+    model?.latestTrainingJob?.epochLogs,
+    model?.latestTrainingJob?.id,
+    initialTrainingStatus?.id,
+  ]);
 
   // Determine active status to display (Prefer Realtime > Initial > Null)
   const trainingStatus = realtimeStatus
@@ -969,7 +983,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
             )}
 
             {/* Feature Configuration & Feature Importance */}
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/30">
                 <TabsTrigger value="overview">
                   {t("detail.tabLabels.overview")}
@@ -1878,6 +1896,9 @@ export default function AIModelDetailPage({ params }: PageProps) {
         initialStartDate={model.trainingStartDate}
         initialEndDate={model.trainingEndDate}
         onSuccess={() => {
+          setIsRetrainDialogOpen(false);
+          setActiveTab("overview");
+          setRealtimeLogs([]);
           refetchStatus();
           refetchModel();
         }}

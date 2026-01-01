@@ -371,16 +371,79 @@ class AIModelService:
         model.active_version_id = version.id
         model.model_weights_path = version.model_weights_path
         
+        # [Log Recovery for Chart]
+        # 1. Check if logs are already in version.metrics
+        logs = version.metrics.get("epoch_logs") if version.metrics else None
+        
+        # 2. If not in metrics, try to find matching TrainingJob (Heuristic)
+        if not logs:
+            # Find the job that completed just before or at version creation time
+            job_query = select(AITrainingJob)\
+                .filter(AITrainingJob.model_id == model_id)\
+                .filter(AITrainingJob.status == "completed")\
+                .filter(AITrainingJob.completed_at <= version.created_at)\
+                .order_by(desc(AITrainingJob.completed_at))\
+                .limit(1)
+                
+            job_res = await self.db.execute(job_query)
+            job = job_res.scalar_one_or_none()
+            
+            if job and job.epoch_logs:
+                logs = job.epoch_logs
+                # (Optional) Persist back to version metrics for faster future access
+                if version.metrics:
+                    new_metrics = dict(version.metrics)
+                    new_metrics["epoch_logs"] = logs
+                    # Use update query to avoid ORM tracking issues with JSONB
+                    await self.db.execute(
+                        update(AIModelVersion).where(AIModelVersion.id == version_id).values(metrics=new_metrics)
+                    )
+        
+        # 3. Sync model.training_metrics with active version metrics
+        # This allows frontend to see the correct stats & logs for the active version
+        if version.metrics:
+            active_metrics = dict(version.metrics)
+            # Ensure logs are included (from heuristic or persistence)
+            if logs:
+                active_metrics["epoch_logs"] = logs
+            model.training_metrics = active_metrics
+
+        # [Feature Importance Recovery]
+        # 1. Start with current validation metrics or empty
+        val_metrics = dict(model.validation_metrics or {})
+        
+        # 2. Try to find feature importance in version metrics (New versions)
+        feature_importance = version.metrics.get("feature_importance") if version.metrics else None
+        
+        # 3. If missing, try to read from file system (Old versions if file exists)
+        if not feature_importance and version.model_weights_path:
+            import json
+            try:
+                # model_weights_path is like .../v1/model.onnx
+                version_dir = Path(version.model_weights_path).parent
+                fi_path = version_dir / "feature_importance.json"
+                if fi_path.exists():
+                    with open(fi_path, 'r') as f:
+                        feature_importance = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to recover feature importance from file: {e}")
+        
+        # 4. Update validation metrics
+        if feature_importance:
+            val_metrics["feature_importance"] = feature_importance
+        else:
+            # If rolling back to a version without feature stats, clear them to avoid confusion
+            if "feature_importance" in val_metrics:
+                del val_metrics["feature_importance"]
+                
+        model.validation_metrics = val_metrics
+
         # Update is_active flags
         # 1. Reset all
         await self.db.execute(
             update(AIModelVersion).where(AIModelVersion.model_id == model_id).values(is_active=False)
         )
         # 2. Set target
-        # session 객체 내의 version 객체를 직접 수정해도 되지만, 
-        # 위 update 쿼리가 실행되면 session 내 객체가 expire될 수 있음.
-        # 명시적으로 다시 업데이트하거나 version.is_active = True 하고 commit하면 됨.
-        # 여기서는 쿼리로 atomic 하게 처리
         await self.db.execute(
             update(AIModelVersion).where(AIModelVersion.id == version_id).values(is_active=True)
         )

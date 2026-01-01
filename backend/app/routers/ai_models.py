@@ -162,6 +162,14 @@ async def get_model_detail(
     response = schemas.AIModelDetail.model_validate(model)
     if training_job:
         response.latest_training_job = schemas.AITrainingJobResponse.model_validate(training_job)
+        
+        # [Fix for Rollback] Ensure latest_training_job reflects the ACTIVE version logs if available
+        # When a version is activated, model.training_metrics is updated with version.metrics (which contains epoch_logs)
+        if model.status == AIModelStatus.COMPLETED and model.training_metrics:
+            epoch_logs = model.training_metrics.get("epoch_logs")
+            if epoch_logs:
+                # Overwrite logs with active version's logs
+                response.latest_training_job.epoch_logs = epoch_logs
     
     return response
 

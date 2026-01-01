@@ -33,7 +33,7 @@ class WebSocketManager:
 
     @staticmethod
     def send_ai_training_update(model_id: str, status: str, message: str, 
-                                progress_pct: int, current_metrics: Optional[dict] = None):
+                                progress_pct: float | int, current_metrics: Optional[dict] = None):
         """
         [신규 함수] AI 학습 진행 상황을 전송합니다.
         current_metrics: { "phase": str, "epoch": int, "trainLoss": float, "valLoss": float, ... }
