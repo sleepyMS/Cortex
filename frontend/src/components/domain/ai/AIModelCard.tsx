@@ -66,6 +66,11 @@ const statusConfig: Record<
     color: "text-rose-600 dark:text-rose-400",
     bgColor: "bg-rose-100 dark:bg-rose-900/30",
   },
+  optimizing: {
+    icon: Sparkles,
+    color: "text-violet-600 dark:text-violet-400",
+    bgColor: "bg-violet-100 dark:bg-violet-900/30",
+  },
 };
 
 export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {

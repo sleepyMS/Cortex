@@ -14,7 +14,12 @@ export type AIRegressionTargetType =
   | "volatility";
 
 // AI 모델 상태
-export type AIModelStatus = "pending" | "training" | "completed" | "failed";
+export type AIModelStatus =
+  | "pending"
+  | "training"
+  | "optimizing"
+  | "completed"
+  | "failed";
 
 // 기술적 지표 설정
 export interface AIIndicatorConfig {

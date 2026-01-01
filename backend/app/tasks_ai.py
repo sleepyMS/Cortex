@@ -21,6 +21,7 @@ from .database import SyncSessionLocal, AsyncSessionLocal
 from .models import AIModel, AITrainingJob, AIModelStatus, AIModelVersion, User, Plan, PlanType
 from .services.cost_calculator import cost_calculator_service
 from .services.credit_service import credit_service
+from .utils.communication import WebSocketManager
 from .utils.async_utils import run_async
 from sqlalchemy.orm import selectinload
 import uuid
@@ -158,7 +159,18 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                         updated_logs.append(new_log)
                         training_job.epoch_logs = updated_logs
                 
+                
                 db.commit()
+
+                # [WebSocket Update] - Training Phase
+                WebSocketManager.send_ai_training_update(
+                    model_id, 
+                    "training", 
+                    f"Epoch {metrics.get('epoch', '?')}/{metrics.get('total_epochs', '?')}", 
+                    int(min(progress, 99)),
+                    metrics
+                )
+
             except Exception as e:
                 logger.warning(f"Progress callback error: {e}")
         
@@ -215,6 +227,15 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     "bestValue": metrics.get("best_value")
                 }
                 db.commit()
+
+                # [WebSocket Update] - Optimization Phase
+                WebSocketManager.send_ai_training_update(
+                    model_id, 
+                    "optimizing", 
+                    f"Trial {trial_num}/{total_trials}", 
+                    int(progress),
+                    training_job.current_metrics
+                )
 
             # Best Model 저장을 위한 임시 경로 설정
             best_model_temp_dir = save_dir / "optimization_best"
@@ -367,6 +388,16 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     progress = base_progress
                 
                 training_job.progress_pct = int(min(progress, 99))
+                
+                # [WebSocket Update] - Final Training Phase
+                WebSocketManager.send_ai_training_update(
+                    model_id, 
+                    "training", 
+                    f"Final Training: Epoch {metrics.get('epoch', '?')}", 
+                    int(min(progress, 99)),
+                    metrics
+                )
+
                 original_callback(step, total, metrics)
 
             trainer = AIModelTrainer(
@@ -467,6 +498,9 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         except Exception as e:
             logger.warning(f"Failed to clear inference cache: {e}")
         
+        # [WebSocket Update] - Completed
+        WebSocketManager.send_ai_training_update(model_id, "completed", "학습 완료", 100, {})
+
         return {
             "status": "completed",
             "model_id": model_id,
@@ -495,7 +529,10 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             logger.error(f"DB error while handling failure: {db_error}")
         
         return {"status": "failed", "error": str(e)}
-    
+
+        # [WebSocket Update] - Failed
+        WebSocketManager.send_ai_training_update(model_id, "failed", f"학습 실패: {str(e)}", 0, {})
+        
     finally:
         db.close()
 

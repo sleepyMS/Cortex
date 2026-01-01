@@ -20,6 +20,10 @@ import {
   deleteAIModel,
   getAIModelVersions,
 } from "@/lib/api/ai";
+import {
+  useAITrainingSocket,
+  AIWebSocketMessage,
+} from "@/hooks/useAITrainingSocket";
 import { Button } from "@/components/ui/Button";
 import { GlassPane } from "@/components/ui/GlassPane";
 import { Badge } from "@/components/ui/Badge";
@@ -388,6 +392,11 @@ export default function AIModelDetailPage({ params }: PageProps) {
   const [isRetrainDialogOpen, setIsRetrainDialogOpen] = useState(false);
   const [hasAutoTested, setHasAutoTested] = useState(false);
 
+  // Real-time state for WebSocket updates
+  const [realtimeLogs, setRealtimeLogs] = useState<any[]>([]);
+  const [realtimeStatus, setRealtimeStatus] =
+    useState<AIWebSocketMessage | null>(null);
+
   // Fetch model data
   const {
     data: model,
@@ -398,13 +407,95 @@ export default function AIModelDetailPage({ params }: PageProps) {
     queryFn: () => getAIModelDetail(modelId),
   });
 
-  // Fetch training status (only if model is training)
-  const { data: trainingStatus, refetch: refetchStatus } = useQuery({
+  // Fetch training status (Initial load only - no polling)
+  const { data: initialTrainingStatus, refetch: refetchStatus } = useQuery({
     queryKey: ["ai-model-status", modelId],
     queryFn: () => getTrainingStatus(modelId),
     enabled: model?.status === "training" || model?.status === "pending",
-    refetchInterval: model?.status === "training" ? 5000 : false,
+    refetchInterval: false, // [WebSocket Migration] Polling disabled
   });
+
+  // WebSocket Integration
+  const { lastMessage, isConnected } = useAITrainingSocket(
+    modelId,
+    model?.status === "training" ||
+      model?.status === "pending" ||
+      model?.status === "optimizing"
+  );
+
+  // Sync WebSocket message to local state
+  useEffect(() => {
+    if (lastMessage) {
+      setRealtimeStatus(lastMessage);
+
+      // Accumulate logs if new metrics arrive
+      if (lastMessage.currentMetrics && lastMessage.currentMetrics.epoch) {
+        setRealtimeLogs((prev) => {
+          // Avoid duplicate epochs
+          const exists = prev.some(
+            (l) => l.epoch === lastMessage.currentMetrics?.epoch
+          );
+          if (exists) return prev;
+
+          return [
+            ...prev,
+            {
+              epoch: lastMessage.currentMetrics?.epoch,
+              ...lastMessage.currentMetrics,
+              timestamp: new Date().toISOString(),
+            },
+          ];
+        });
+      }
+    }
+  }, [lastMessage]);
+
+  // Initial Sync from DB logs
+  // Initial Sync from DB logs
+  useEffect(() => {
+    if (model?.latestTrainingJob?.epochLogs) {
+      setRealtimeLogs(model.latestTrainingJob.epochLogs);
+    }
+  }, [model?.latestTrainingJob?.epochLogs]);
+
+  // Determine active status to display (Prefer Realtime > Initial > Null)
+  const trainingStatus = realtimeStatus
+    ? {
+        status: realtimeStatus.status,
+        progressPct: realtimeStatus.progressPct,
+        currentMetrics: realtimeStatus.currentMetrics,
+        message: realtimeStatus.message,
+        startedAt:
+          initialTrainingStatus?.startedAt ||
+          model?.latestTrainingJob?.startedAt,
+        totalEpochs:
+          realtimeStatus.currentMetrics?.total_epochs ||
+          initialTrainingStatus?.totalEpochs ||
+          model?.latestTrainingJob?.totalEpochs,
+        currentEpoch:
+          realtimeStatus.currentMetrics?.epoch ||
+          initialTrainingStatus?.currentEpoch ||
+          model?.latestTrainingJob?.currentEpoch,
+        errorMessage:
+          realtimeStatus.status === "failed"
+            ? realtimeStatus.message
+            : undefined,
+        epochLogs: realtimeLogs,
+        optimizationResult:
+          initialTrainingStatus?.optimizationResult ||
+          model?.latestTrainingJob?.optimizationResult,
+        // Include other required properties from AITrainingJob to satisfy usage
+        id: initialTrainingStatus?.id || model?.latestTrainingJob?.id || "",
+        modelId: modelId,
+        createdAt:
+          initialTrainingStatus?.createdAt ||
+          model?.latestTrainingJob?.createdAt ||
+          "",
+        completedAt:
+          initialTrainingStatus?.completedAt ||
+          model?.latestTrainingJob?.completedAt,
+      }
+    : initialTrainingStatus;
 
   // Effect to detect training completion and refresh model data
   useEffect(() => {
@@ -721,7 +812,7 @@ export default function AIModelDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column (Main) */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Training Progress (Prominent) */}
+            {/* Model Architecture Info */}
             {/* Training Progress (Prominent) */}
             {(model.status === "training" || model.status === "pending") && (
               <motion.div
@@ -736,7 +827,12 @@ export default function AIModelDetailPage({ params }: PageProps) {
                   )}
                 >
                   <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <RefreshCw className="h-24 w-24 animate-spin-slow" />
+                    <RefreshCw
+                      className={cn(
+                        "h-24 w-24",
+                        isConnected ? "animate-spin-slow" : "opacity-50"
+                      )}
+                    />
                   </div>
                   <div className="flex items-center justify-between mb-6 relative z-10">
                     <h2 className="text-xl font-bold flex items-center gap-2">
@@ -762,15 +858,15 @@ export default function AIModelDetailPage({ params }: PageProps) {
                         ? t("detail.training.finalTraining")
                         : t("detail.training.trainingInProgress")}
                     </h2>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refetchStatus()}
-                      className="bg-background/50"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />{" "}
-                      {t("detail.training.refresh")}
-                    </Button>
+                    {isConnected ? (
+                      <div className="flex items-center text-green-500 text-xs gap-1">
+                        <Activity className="h-3 w-3" /> Live
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-muted-foreground text-xs gap-1">
+                        Socket Disconnected
+                      </div>
+                    )}
                   </div>
                   {trainingStatus && (
                     <div className="space-y-6 relative z-10">

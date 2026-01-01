@@ -17,7 +17,8 @@ class WebSocketManager:
 
     @staticmethod
     def send_optimization_update(optimization_id: str, status: str, message: str, 
-                                 progress_data: Optional[dict] = None): # [수정] progress: int -> progress_data: dict
+                                 progress_data: Optional[dict] = None):
+
         """
         [신규 함수] 최적화 채널로 상태를 전송합니다.
         """
@@ -27,6 +28,22 @@ class WebSocketManager:
             "status": status, 
             "message": message, 
             "progress": progress_data  # 예: {"currentStep": 5, "totalSteps": 100}
+        })
+        redis_client.publish(channel, payload)
+
+    @staticmethod
+    def send_ai_training_update(model_id: str, status: str, message: str, 
+                                progress_pct: int, current_metrics: Optional[dict] = None):
+        """
+        [신규 함수] AI 학습 진행 상황을 전송합니다.
+        current_metrics: { "phase": str, "epoch": int, "trainLoss": float, "valLoss": float, ... }
+        """
+        channel = f"ws:ai-training:{model_id}"
+        payload = json.dumps({
+            "status": status,
+            "message": message,
+            "progressPct": progress_pct,
+            "currentMetrics": current_metrics or {}
         })
         redis_client.publish(channel, payload)
 

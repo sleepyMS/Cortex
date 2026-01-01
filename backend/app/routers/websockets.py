@@ -36,6 +36,30 @@ async def websocket_endpoint(websocket: WebSocket, backtest_id: str):
         await pubsub.unsubscribe(channel)
         await pubsub.close()
 
+@router.websocket("/ai-training/{model_id}")
+async def websocket_ai_training_endpoint(websocket: WebSocket, model_id: str):
+    """AI 학습 진행 상황을 실시간으로 전달하는 WebSocket 엔드포인트"""
+    await websocket.accept()
+    
+    channel = f"ws:ai-training:{model_id}"
+    pubsub = redis_client.pubsub()
+    await pubsub.subscribe(channel)
+
+    try:
+        while True:
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
+            if message:
+                await websocket.send_text(message['data'])
+
+    except WebSocketDisconnect:
+        # print(f"Client disconnected from ai-training {model_id}")
+        pass
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        await pubsub.unsubscribe(channel)
+        await pubsub.close()
+
 @router.websocket("/optimization/{optimization_id}")
 async def websocket_optimization_endpoint(websocket: WebSocket, optimization_id: str):
     """최적화 진행 상황을 실시간으로 전달하는 WebSocket 엔드포인트"""

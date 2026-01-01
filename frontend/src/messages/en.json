@@ -2494,6 +2494,7 @@
     "status": {
       "pending": "Pending",
       "training": "Training",
+      "optimizing": "Optimizing",
       "completed": "Completed",
       "failed": "Failed"
     },
@@ -2816,7 +2817,9 @@
         "bestMetric": "Best Metric ({metric})",
         "elapsedTime": "Elapsed Time",
         "currentEpoch": "Current Epoch",
-        "timeElapsed": "Time Elapsed"
+        "timeElapsed": "Time Elapsed",
+        "completed": "Training Completed",
+        "failed": "Training Failed"
       },
       "analysis": {
         "title": "Training Log Analysis",

@@ -2480,6 +2480,7 @@
     "status": {
       "pending": "대기중",
       "training": "학습중",
+      "optimizing": "최적화 중",
       "completed": "완료",
       "failed": "실패"
     },
@@ -2802,7 +2803,9 @@
         "bestMetric": "최고 평가지표 ({metric})",
         "elapsedTime": "경과 시간",
         "currentEpoch": "현재 Epoch",
-        "timeElapsed": "소요 시간"
+        "timeElapsed": "소요 시간",
+        "completed": "학습 완료",
+        "failed": "학습 실패"
       },
       "analysis": {
         "title": "학습 프로세스 분석",
