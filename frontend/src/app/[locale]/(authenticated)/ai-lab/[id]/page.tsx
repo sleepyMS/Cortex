@@ -933,9 +933,15 @@ export default function AIModelDetailPage({ params }: PageProps) {
                                 })}
                               </span>
                               <span className="text-xl font-bold font-mono text-purple-400">
-                                {trainingStatus.currentMetrics?.bestValue?.toFixed(
-                                  4
-                                ) || "0.0000"}
+                                {model.optimizationConfig?.maximizeMetric ===
+                                "rmse"
+                                  ? Math.abs(
+                                      trainingStatus.currentMetrics
+                                        ?.bestValue ?? 0
+                                    ).toFixed(4)
+                                  : trainingStatus.currentMetrics?.bestValue?.toFixed(
+                                      4
+                                    ) || "0.0000"}
                               </span>
                             </div>
                             <div className="bg-background/40 p-3 rounded-lg border border-purple-500/20">
@@ -1642,7 +1648,10 @@ export default function AIModelDetailPage({ params }: PageProps) {
                                   {trial.params?.batch_size}
                                 </td>
                                 <td className="px-6 py-4 font-bold text-purple-400">
-                                  {trial.value?.toFixed(4)}
+                                  {model.optimizationConfig?.maximizeMetric ===
+                                  "rmse"
+                                    ? Math.abs(trial.value ?? 0).toFixed(4)
+                                    : trial.value?.toFixed(4)}
                                 </td>
                                 <td className="px-6 py-4">
                                   <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 text-[10px] font-bold">

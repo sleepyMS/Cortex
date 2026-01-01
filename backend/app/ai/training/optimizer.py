@@ -240,20 +240,35 @@ class AIOptimizer:
         for i in range(self.n_trials):
             # 트라이얼 시작 전 진행 상황 보고 (현재 진행 중인 트라이얼 번호)
             if self.progress_callback:
+                # Safe access for best_value/best_params (may not exist if no trials completed)
+                try:
+                    current_best_value = study.best_value
+                    current_best_params = study.best_params
+                except ValueError:
+                    current_best_value = 0.0
+                    current_best_params = {}
+                    
                 self.progress_callback(i, self.n_trials, {
                     "phase": "optimization",
                     "trial": i + 1,  # 1-indexed (진행 중인 트라이얼)
-                    "best_value": study.best_value if study.trials else 0.0,
-                    "best_params": study.best_params if study.trials else {}
+                    "best_value": current_best_value,
+                    "best_params": current_best_params
                 })
             
             study.optimize(objective, n_trials=1)
 
-        logger.info(f"Optimization completed. Best value: {study.best_value}, Best params: {study.best_params}")
+        # Safe access for final best values
+        try:
+            best_value = study.best_value
+            best_params = study.best_params
+            logger.info(f"Optimization completed. Best value: {best_value}, Best params: {best_params}")
+        except ValueError:
+            logger.error("All trials failed. No valid best parameters found.")
+            raise ValueError("All optimization trials failed. Please check data quality and model configuration.")
         
         return {
-            "best_params": study.best_params,
-            "best_value": study.best_value,
+            "best_params": best_params,
+            "best_value": best_value,
             "all_trials": [
                 {
                     "number": t.number,

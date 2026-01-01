@@ -32,6 +32,22 @@ logger = logging.getLogger(__name__)
 AI_MODELS_BASE_PATH = Path(__file__).parent.parent / "ai_models"
 
 
+def sanitize_for_json(obj):
+    """
+    PostgreSQL JSONB에 저장하기 전에 NaN/Inf 값을 None으로 변환.
+    JSON 표준에서 NaN/Inf는 유효하지 않은 토큰이므로 필터링 필요.
+    """
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(v) for v in obj]
+    elif isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return obj
+    return obj
+
+
 @celery_app.task(bind=True, queue="cpu_bound_queue", max_retries=1)
 def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str = None, manual_end_date: str = None):
     """
@@ -214,14 +230,18 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     progress = base_progress + additional_progress
                     
                     # Update current metrics for UI
+                    current_trial_metrics = metrics.get("current_trial_metrics", {})
                     training_job.current_metrics = {
                         "phase": "optimization", # UI 통일을 위해 optimization 유지
                         "trial": metrics.get("trial", trial_num + 1),
                         "totalTrials": total_trials,
                         "epoch": current_epoch,
                         "totalEpochs": total_epochs,
-                        "trainLoss": metrics.get("current_trial_metrics", {}).get("train_loss"),
-                        "valLoss": metrics.get("current_trial_metrics", {}).get("val_loss"),
+                        "trainLoss": current_trial_metrics.get("train_loss"),
+                        "valLoss": current_trial_metrics.get("val_loss"),
+                        # Regression metrics
+                        "rmse": current_trial_metrics.get("rmse"),
+                        "accuracy": current_trial_metrics.get("accuracy"),  # For regression: Dir. Acc
                     }
                 else:
                     progress = base_progress
@@ -233,6 +253,9 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     }
 
                 training_job.progress_pct = int(min(progress, 80)) # Cap at 80%
+                
+                # Sanitize metrics to avoid JSON serialization errors (NaN, Inf)
+                training_job.current_metrics = sanitize_for_json(training_job.current_metrics)
                 
                 # Check for NaN values in metrics to avoid JSON serialization errors
                 if metrics.get("best_params"):
@@ -331,6 +354,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
             train_loss_hist = result.get("train_loss_history", [])
             val_loss_hist = result.get("val_loss_history", [])
             accuracy_hist = result.get("accuracy_history", []) # 만약 있다면
+            rmse_hist = result.get("rmse_history", [])  # RMSE history for regression
             
             reconstructed_logs = []
             for i in range(len(train_loss_hist)):
@@ -339,6 +363,7 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
                     "train_loss": train_loss_hist[i],
                     "val_loss": val_loss_hist[i] if i < len(val_loss_hist) else None,
                     "accuracy": accuracy_hist[i] if i < len(accuracy_hist) else None,
+                    "rmse": rmse_hist[i] if i < len(rmse_hist) else None,  # Add RMSE to logs
                     "timestamp": datetime.utcnow().isoformat()
                 }
                 reconstructed_logs.append(log)

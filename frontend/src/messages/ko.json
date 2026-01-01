@@ -2531,7 +2531,8 @@
         "timeframe": "타임프레임",
         "timeframeDesc": "1시간봉(1h)은 노이즈를 줄이면서 충분한 데이터 양을 제공합니다.",
         "startDate": "시작일",
-        "endDate": "종료일"
+        "endDate": "종료일",
+        "dateRange": "학습 기간 선택"
       },
       "step3": {
         "basicData": "기본 데이터",

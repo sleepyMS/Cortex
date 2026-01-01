@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { differenceInDays } from "date-fns";
+import { differenceInDays, parseISO, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -74,6 +74,7 @@ import {
 import { useIndicatorStore } from "@/store/indicatorStore";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import { DateRangePickerCustom } from "@/components/ui/DateRangePickerCustom";
 
 const STEPS = [
   { id: 1, title: "new.steps.basicInfo", icon: Brain },
@@ -224,6 +225,14 @@ export default function NewAIModelPage() {
     setStartDate(start.toISOString().split("T")[0]);
     setEndDate(end.toISOString().split("T")[0]);
   }, []);
+
+  // Sync optimization metric default with task type
+  React.useEffect(() => {
+    setOptimizationConfig((prev) => ({
+      ...prev,
+      maximizeMetric: taskType === "classification" ? "accuracy" : "rmse",
+    }));
+  }, [taskType]);
 
   const syncCreditBalance = useUserStore((state) => state.syncCreditBalance);
 
@@ -426,27 +435,20 @@ export default function NewAIModelPage() {
                 {t("new.step2.timeframeDesc")}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-base font-medium">
-                  {t("new.step2.startDate")}
-                </Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label className="text-base font-medium">
-                  {t("new.step2.endDate")}
-                </Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="mt-2"
+            <div>
+              <Label className="text-base font-medium">
+                {t("new.step2.dateRange")}
+              </Label>
+              <div className="mt-2">
+                <DateRangePickerCustom
+                  startDate={startDate ? parseISO(startDate) : undefined}
+                  endDate={endDate ? parseISO(endDate) : undefined}
+                  onStartDateChange={(date) =>
+                    setStartDate(date ? format(date, "yyyy-MM-dd") : "")
+                  }
+                  onEndDateChange={(date) =>
+                    setEndDate(date ? format(date, "yyyy-MM-dd") : "")
+                  }
                 />
               </div>
             </div>

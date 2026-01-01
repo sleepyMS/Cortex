@@ -2545,7 +2545,8 @@
         "timeframe": "Timeframe",
         "timeframeDesc": "1h timeframe provides sufficient data with less noise.",
         "startDate": "Start Date",
-        "endDate": "End Date"
+        "endDate": "End Date",
+        "dateRange": "Training Period"
       },
       "step3": {
         "basicData": "Basic Data",

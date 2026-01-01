@@ -37,10 +37,12 @@ class LSTMNetwork(nn.Module):
             bidirectional=config.bidirectional
         )
         
-        # FC 레이어
+        # FC 레이어 - 회귀는 출력 1개, 분류는 num_classes개
         lstm_output_size = config.hidden_size * (2 if config.bidirectional else 1)
         self.dropout = nn.Dropout(config.dropout)
-        self.fc = nn.Linear(lstm_output_size, config.num_classes)
+        
+        output_dim = 1 if config.task_type == "regression" else config.num_classes
+        self.fc = nn.Linear(lstm_output_size, output_dim)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -172,6 +174,7 @@ class LSTMClassifier(BaseAIModel):
         train_loss_history = []
         val_loss_history = []
         accuracy_history = []
+        rmse_history = []  # RMSE per epoch (for regression)
         best_val_loss = float('inf')
         best_epoch = 0
         patience_counter = 0
@@ -205,6 +208,11 @@ class LSTMClassifier(BaseAIModel):
                 self.model.eval()
                 with torch.no_grad():
                     val_outputs = self.model(X_val_t)
+                    
+                    # [Debug] Log shapes for regression validation
+                    if is_regression and epoch == 0:
+                        logger.info(f"[DEBUG] Regression val_outputs shape: {val_outputs.shape}, y_val_t shape: {y_val_t.shape}")
+                    
                     val_loss = criterion(val_outputs, y_val_t).item()
                     val_loss_history.append(val_loss)
                     
@@ -221,6 +229,8 @@ class LSTMClassifier(BaseAIModel):
                         da = float(np.mean(correct_dir))
                         
                         metrics_epoch = {"rmse": rmse_val, "accuracy": da}
+                        rmse_history.append(rmse_val)  # Record RMSE history
+                        accuracy_history.append(da)  # Record Directional Accuracy for regression too
                     else:
                         preds = val_outputs.argmax(dim=1).cpu().numpy()
                         acc = float(accuracy_score(y_val_t.cpu().numpy(), preds))
@@ -289,7 +299,8 @@ class LSTMClassifier(BaseAIModel):
             best_val_loss=best_val_loss,
             training_time_seconds=training_time,
             final_metrics=final_metrics,
-            accuracy_history=accuracy_history
+            accuracy_history=accuracy_history,
+            rmse_history=rmse_history if is_regression else None
         )
     
     def _compute_metrics(self, X: torch.Tensor, y: torch.Tensor, labeling_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

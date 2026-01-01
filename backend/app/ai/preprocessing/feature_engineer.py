@@ -96,6 +96,19 @@ class FeatureEngineer:
         else:
             y = np.array([])
         
+        # 7. NaN 처리 - X 또는 y에 NaN이 있는 행 제거
+        # X의 각 시퀀스에서 NaN이 있는지 확인
+        x_has_nan = np.isnan(X).any(axis=(1, 2))  # (n_samples,)
+        y_has_nan = np.isnan(y) if len(y) > 0 else np.zeros(len(X), dtype=bool)
+        
+        nan_mask = x_has_nan | y_has_nan
+        nan_count = nan_mask.sum()
+        
+        if nan_count > 0:
+            logger.warning(f"Removing {nan_count} samples containing NaN values (X: {x_has_nan.sum()}, y: {y_has_nan.sum()})")
+            X = X[~nan_mask]
+            y = y[~nan_mask] if len(y) > 0 else y
+        
         self._is_fitted = True
         
         logger.info(f"Feature engineering completed: X shape={X.shape}, y shape={y.shape}")

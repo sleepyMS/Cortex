@@ -44,6 +44,7 @@ class TrainingResult:
     training_time_seconds: float
     final_metrics: Dict[str, Any]
     accuracy_history: list = None
+    rmse_history: list = None  # RMSE values per epoch (for regression)
 
 
 class BaseAIModel(ABC):

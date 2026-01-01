@@ -130,7 +130,7 @@ export function CalendarGrid({
             <SelectTrigger className="w-[110px] h-8 text-sm focus:ring-0">
               <SelectValue>{getYear(currentMonth)}</SelectValue>
             </SelectTrigger>
-            <SelectContent className="max-h-[200px]">
+            <SelectContent className="max-h-[200px] overflow-y-auto">
               {/* ▼▼▼ [수정] 생략되었던 년도 옵션 렌더링 코드 ▼▼▼ */}
               {years.map((year) => (
                 <SelectItem key={year} value={year.toString()}>
@@ -147,7 +147,7 @@ export function CalendarGrid({
             <SelectTrigger className="w-[90px] h-8 text-sm focus:ring-0">
               <SelectValue>{format(currentMonth, "M")}</SelectValue>
             </SelectTrigger>
-            <SelectContent className="max-h-[200px]">
+            <SelectContent className="max-h-[200px] overflow-y-auto">
               {/* ▼▼▼ [수정] 생략되었던 월 옵션 렌더링 코드 ▼▼▼ */}
               {months.map((month, idx) => (
                 <SelectItem key={idx} value={idx.toString()}>
