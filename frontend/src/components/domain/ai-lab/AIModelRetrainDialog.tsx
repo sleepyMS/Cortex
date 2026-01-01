@@ -11,6 +11,7 @@ import {
   Tag,
   Percent,
   Ticket,
+  Calendar,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -22,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog";
+import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Button } from "@/components/ui/Button";
 import { DateRangePickerCustom } from "@/components/ui/DateRangePickerCustom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
@@ -129,134 +131,141 @@ export const AIModelRetrainDialog: React.FC<AIModelRetrainDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <span className="text-sm text-muted-foreground">
-              {t("new.step1.taskType")}
-            </span>
-            <Badge
-              variant="secondary"
-              className={cn(
-                "uppercase font-bold tracking-wider",
-                taskType === "classification"
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                  : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
-              )}
+        <ScrollArea className="max-h-[60vh] flex-1">
+          <div className="space-y-6 p-6">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
+              <span className="text-sm font-medium text-muted-foreground mr-4">
+                {t("new.step1.taskType")}
+              </span>
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "uppercase font-bold tracking-wider shrink-0",
+                  taskType === "classification"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                    : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+                )}
+              >
+                {t(
+                  taskType === "classification"
+                    ? "card.classificationBadge"
+                    : "card.regressionBadge"
+                )}
+              </Badge>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-violet-500" />
+                {t("detail.retrainDialog.periodLabel")}
+              </h4>
+              <DateRangePickerCustom
+                startDate={dateRange?.from}
+                endDate={dateRange?.to}
+                onStartDateChange={(date) =>
+                  setDateRange((prev) => ({ from: date, to: prev?.to }))
+                }
+                onEndDateChange={(date) =>
+                  setDateRange((prev) => ({ from: prev?.from, to: date }))
+                }
+                className="w-full"
+              />
+            </div>
+
+            <Alert
+              variant="destructive"
+              className="bg-amber-500/10 text-amber-500 border-amber-500/20"
             >
-              {t(
-                taskType === "classification"
-                  ? "card.classificationBadge"
-                  : "card.regressionBadge"
-              )}
-            </Badge>
-          </div>
+              <AlertTriangle className="h-4 w-4" color="orange" />
+              <AlertTitle className="text-amber-500 text-sm font-bold">
+                {t("detail.retrainDialog.biasWarningTitle")}
+              </AlertTitle>
+              <AlertDescription className="text-amber-500/90 text-xs mt-1 leading-relaxed">
+                {t("detail.retrainDialog.biasWarningDesc")}
+              </AlertDescription>
+            </Alert>
 
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">
-              {t("detail.retrainDialog.periodLabel")}
-            </h4>
-            <DateRangePickerCustom
-              startDate={dateRange?.from}
-              endDate={dateRange?.to}
-              onStartDateChange={(date) =>
-                setDateRange((prev) => ({ from: date, to: prev?.to }))
-              }
-              onEndDateChange={(date) =>
-                setDateRange((prev) => ({ from: prev?.from, to: date }))
-              }
-              className="w-full"
-            />
-          </div>
-
-          <Alert
-            variant="destructive"
-            className="bg-amber-500/10 text-amber-500 border-amber-500/20"
-          >
-            <AlertTriangle className="h-4 w-4" color="orange" />
-            <AlertTitle className="text-amber-500">
-              {t("detail.retrainDialog.biasWarningTitle")}
-            </AlertTitle>
-            <AlertDescription className="text-amber-500/90 text-xs mt-1">
-              {t("detail.retrainDialog.biasWarningDesc")}
-            </AlertDescription>
-          </Alert>
-
-          <div className="rounded-lg bg-card/50 border border-border p-4 space-y-4">
-            <h4 className="font-semibold text-sm">
-              {t("detail.retrainDialog.costDetails")}
-            </h4>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  <span>{t("detail.retrainDialog.originalCost")}</span>
-                </div>
-                <span>
-                  {costData && !isCheckingCost
-                    ? `${costData.originalCost.toLocaleString()} CC`
-                    : "..."}
-                </span>
+            <div className="rounded-lg bg-card/50 border border-border overflow-hidden">
+              <div className="bg-muted/10 px-4 py-3 border-b border-border">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  {t("detail.retrainDialog.costDetails")}
+                </h4>
               </div>
-
-              {costData && costData.discountPct > 0 && (
-                <div className="flex justify-between text-sm text-blue-400">
-                  <div className="flex items-center gap-2">
-                    <Percent className="h-4 w-4" />
+              <div className="p-4 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      <span>{t("detail.retrainDialog.originalCost")}</span>
+                    </div>
                     <span>
-                      {t("detail.retrainDialog.planDiscount", {
-                        value: (costData.discountPct * 100).toFixed(0),
-                      })}
+                      {costData && !isCheckingCost
+                        ? `${costData.originalCost.toLocaleString()} CC`
+                        : "..."}
                     </span>
                   </div>
-                  <span>
-                    -
-                    {Math.ceil(
-                      costData.originalCost - costData.finalCost
-                    ).toLocaleString()}{" "}
-                    CC
+
+                  {costData && costData.discountPct > 0 && (
+                    <div className="flex justify-between text-sm text-blue-400">
+                      <div className="flex items-center gap-2">
+                        <Percent className="h-4 w-4" />
+                        <span>
+                          {t("detail.retrainDialog.planDiscount", {
+                            value: (costData.discountPct * 100).toFixed(0),
+                          })}
+                        </span>
+                      </div>
+                      <span>
+                        -
+                        {Math.ceil(
+                          costData.originalCost - costData.finalCost
+                        ).toLocaleString()}{" "}
+                        CC
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-px bg-border my-2" />
+
+                <div className="flex justify-between items-center text-violet-400">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <Ticket className="h-5 w-5" />
+                    <span>{t("detail.retrainDialog.finalCost")}</span>
+                  </div>
+                  <span className="text-xl font-bold">
+                    {isCheckingCost ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      `${costData?.finalCost.toLocaleString() ?? 0} CC`
+                    )}
                   </span>
                 </div>
-              )}
-            </div>
 
-            <div className="h-px bg-border" />
-
-            <div className="flex justify-between items-center text-violet-400">
-              <div className="flex items-center gap-2 font-semibold">
-                <Ticket className="h-5 w-5" />
-                <span>{t("detail.retrainDialog.finalCost")}</span>
+                <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                  <span>{t("detail.retrainDialog.balance")}</span>
+                  <span
+                    className={
+                      costData && !costData.isSufficient
+                        ? "text-red-500 font-medium"
+                        : ""
+                    }
+                  >
+                    {costData?.userBalance.toLocaleString()} CC
+                  </span>
+                </div>
               </div>
-              <span className="text-xl font-bold">
-                {isCheckingCost ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  `${costData?.finalCost.toLocaleString() ?? 0} CC`
-                )}
-              </span>
             </div>
-
-            <div className="flex justify-between text-xs text-muted-foreground pt-2">
-              <span>{t("detail.retrainDialog.balance")}</span>
-              <span
-                className={
-                  costData && !costData.isSufficient
-                    ? "text-red-500 font-medium"
-                    : ""
-                }
-              >
-                {costData?.userBalance.toLocaleString()} CC
-              </span>
-            </div>
+            {costData && !costData.isSufficient && (
+              <div className="text-xs text-red-500 font-medium text-right mt-1 bg-red-500/10 p-2 rounded">
+                {t("detail.retrainDialog.insufficient", {
+                  value: costData.userBalance,
+                })}
+              </div>
+            )}
           </div>
-          {costData && !costData.isSufficient && (
-            <div className="text-xs text-red-500 font-medium text-right mt-1">
-              {t("detail.retrainDialog.insufficient", {
-                value: costData.userBalance,
-              })}
-            </div>
-          )}
-        </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button
