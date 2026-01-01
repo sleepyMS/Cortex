@@ -1192,6 +1192,7 @@
       "minConfidenceLabel": "최소 신뢰도",
       "minConfidenceDesc": "예측 확률이 이 값 이상일 때 신호 발생",
       "thresholdLabel": "임계값",
+      "signalConditionLabel": "신호 조건",
       "thresholdDesc": "예측값이 이 조건을 충족할 때 신호 발생",
       "directionLabel": "방향",
       "positiveDirection": "상승 예측 (양수)",
@@ -1328,7 +1329,7 @@
     "unknownError": "알 수 없는 오류"
   },
   "BacktesterPage": {
-    "title": "나의 백테스트",
+    "title": "백테스트",
     "subtitle": "백테스트 관리 및 분석",
     "filterStrategyPlaceholder": "전략 선택",
     "searchStrategy": "전략 검색...",
@@ -1505,7 +1506,7 @@
       "comparison": "{operandA} {operator} {operandB}",
       "crossover": "{mainLine}가 {signalLine}를 {crossDirection}",
       "state": "{indicator}가 {lowerBound}과(와) {upperBound} 사이",
-      "ai_signal": "{modelName} 모델 → {signalType} 신호",
+      "ai_signal": "AI 예측 시그널",
       "default": "{type} 규칙"
     },
     "operandTitles": {
@@ -1526,7 +1527,9 @@
       "atrPeriod": "ATR 기간",
       "atrStopLossMultiplier": "ATR 손절 배수",
       "atrTakeProfitMultiplier": "ATR 익절 배수"
-    }
+    },
+    "aiModelLabel": "AI 모델",
+    "evaluationModeLabel": "평가 방식"
   },
   "BacktestDetailPage": {
     "Header": {
@@ -1621,7 +1624,7 @@
         "comparison": "{operandA} {operator} {operandB}",
         "crossover": "{mainLine}가 {signalLine}를 {crossDirection}",
         "state": "{indicator}가 {lowerBound}과(와) {upperBound} 사이",
-        "ai_signal": "{modelName} 모델 → {signalType} 신호",
+        "ai_signal": "AI 예측 시그널",
         "default": "{type} 규칙"
       },
       "aiModelLabel": "AI 모델",
@@ -1707,7 +1710,7 @@
     }
   },
   "OptimizationPage": {
-    "title": "나의 최적화",
+    "title": "최적화",
     "subtitle": "전략에 가장 적합한 파라미터를 찾아보세요",
     "searchStrategy": "전략 검색...",
     "noStrategyFound": "전략을 찾을 수 없습니다.",

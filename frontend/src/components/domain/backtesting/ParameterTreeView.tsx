@@ -4,7 +4,12 @@
 
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { LogicBlock, Strategy, IndicatorValue } from "@/types/strategy";
+import {
+  LogicBlock,
+  Strategy,
+  IndicatorValue,
+  AISignalLogic,
+} from "@/types/strategy";
 import { IndicatorMetadata } from "@/types/indicator";
 import { useTranslations } from "next-intl";
 
@@ -512,6 +517,78 @@ const RuleBlock = React.memo(
                 label={tRule("directionLabel")}
                 value={tRule(dirMap[block.direction] || block.direction)}
               />
+            </div>
+          );
+        }
+
+        // AI 신호 규칙
+        case "ai_signal": {
+          const aiBlock = block as AISignalLogic;
+          const isRegression = aiBlock.taskType === "regression";
+
+          const signalTypeMap: Record<string, string> = {
+            buy: "buySignal",
+            sell: "sellSignal",
+            hold: "holdSignal",
+          };
+          const directionMap: Record<string, string> = {
+            positive: "aiSignal.positiveDirection",
+            negative: "aiSignal.negativeDirection",
+          };
+          const evalModeMap: Record<string, string> = {
+            highest: "aiSignal.highestProbability",
+            threshold: "aiSignal.thresholdBased",
+            direction: "aiSignal.directionBased",
+            confidence: "aiSignal.confidenceBased",
+          };
+
+          return (
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-2 items-stretch gap-4 min-w-max sm:min-w-0">
+                <div className="space-y-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={t("aiModelLabel")}
+                    value={aiBlock.modelName || aiBlock.modelId}
+                  />
+                  {isRegression ? (
+                    aiBlock.evaluationMode === "threshold" ? (
+                      <ReadOnlyLogicDisplay
+                        label={tRule("aiSignal.signalConditionLabel")}
+                        value={`${aiBlock.conditionOperator || ">"} ${
+                          aiBlock.threshold ?? 0
+                        }%`}
+                      />
+                    ) : (
+                      <ReadOnlyLogicDisplay
+                        label={tRule("aiSignal.directionLabel")}
+                        value={tRule(
+                          directionMap[aiBlock.directionSignal || ""] ||
+                            aiBlock.directionSignal ||
+                            "signal"
+                        )}
+                      />
+                    )
+                  ) : (
+                    <ReadOnlyLogicDisplay
+                      label={tRule("signalLabel")}
+                      value={tRule(
+                        signalTypeMap[aiBlock.signalType || ""] ||
+                          aiBlock.signalType ||
+                          "signal"
+                      )}
+                    />
+                  )}
+                </div>
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
+                  <ReadOnlyLogicDisplay
+                    label={t("evaluationModeLabel")}
+                    value={tRule(
+                      evalModeMap[aiBlock.evaluationMode] ||
+                        aiBlock.evaluationMode
+                    )}
+                  />
+                </div>
+              </div>
             </div>
           );
         }

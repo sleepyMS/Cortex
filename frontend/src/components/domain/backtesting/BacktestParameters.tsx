@@ -527,14 +527,24 @@ const RuleDisplay = React.memo(
                     value={aiBlock.modelName || aiBlock.modelId}
                   />
                   {isRegression ? (
-                    <ReadOnlyLogicDisplay
-                      label={tRule("aiSignal.directionLabel")}
-                      value={tRule(
-                        directionMap[aiBlock.directionSignal || ""] ||
-                          aiBlock.directionSignal ||
-                          "signal"
-                      )}
-                    />
+                    // Regression models: show different info based on evaluation mode
+                    aiBlock.evaluationMode === "threshold" ? (
+                      <ReadOnlyLogicDisplay
+                        label={tRule("aiSignal.signalConditionLabel")}
+                        value={`${aiBlock.conditionOperator || ">"} ${
+                          aiBlock.threshold ?? 0
+                        }%`}
+                      />
+                    ) : (
+                      <ReadOnlyLogicDisplay
+                        label={tRule("aiSignal.directionLabel")}
+                        value={tRule(
+                          directionMap[aiBlock.directionSignal || ""] ||
+                            aiBlock.directionSignal ||
+                            "signal"
+                        )}
+                      />
+                    )
                   ) : (
                     <ReadOnlyLogicDisplay
                       label={tRule("signalLabel")}
@@ -550,10 +560,16 @@ const RuleDisplay = React.memo(
                 <div className="space-y-2 p-3 bg-muted/50 rounded-lg h-full flex flex-col justify-center">
                   <ReadOnlyLogicDisplay
                     label={t("evaluationModeLabel")}
-                    value={t(
-                      evalModeMap[aiBlock.evaluationMode] ||
-                        aiBlock.evaluationMode
-                    )}
+                    value={
+                      evalModeMap[aiBlock.evaluationMode]?.startsWith(
+                        "aiSignal."
+                      )
+                        ? tRule(evalModeMap[aiBlock.evaluationMode])
+                        : t(
+                            evalModeMap[aiBlock.evaluationMode] ||
+                              aiBlock.evaluationMode
+                          )
+                    }
                   />
                   {aiBlock.evaluationMode === "confidence" && (
                     <ReadOnlyLogicDisplay

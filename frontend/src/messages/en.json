@@ -1201,6 +1201,7 @@
       "minConfidenceLabel": "Min Confidence",
       "minConfidenceDesc": "Signal triggers when probability ≥ this value",
       "thresholdLabel": "Threshold",
+      "signalConditionLabel": "Signal Condition",
       "thresholdDesc": "Signal triggers when prediction meets this condition",
       "directionLabel": "Direction",
       "positiveDirection": "Bullish Prediction (Positive)",
@@ -1337,7 +1338,7 @@
     "unknownError": "Unknown Error"
   },
   "BacktesterPage": {
-    "title": "My Backtests",
+    "title": "Backtests",
     "subtitle": "Manage and analyze your backtests",
     "filterStrategyPlaceholder": "Select Strategy",
     "searchStrategy": "Search strategies...",
@@ -1514,7 +1515,7 @@
       "comparison": "{operandA} {operator} {operandB}",
       "crossover": "{mainLine} {crossDirection} {signalLine}",
       "state": "{indicator} between {lowerBound} and {upperBound}",
-      "ai_signal": "{modelName} Model → {signalType} Signal",
+      "ai_signal": "AI Prediction Signal",
       "default": "{type} rule"
     },
     "operandTitles": {
@@ -1535,7 +1536,9 @@
       "atrPeriod": "ATR Period",
       "atrStopLossMultiplier": "ATR Stop Loss Multiplier",
       "atrTakeProfitMultiplier": "ATR Take Profit Multiplier"
-    }
+    },
+    "aiModelLabel": "AI Model",
+    "evaluationModeLabel": "Evaluation Mode"
   },
   "BacktestDetailPage": {
     "Header": {
@@ -1630,7 +1633,7 @@
         "comparison": "{operandA} {operator} {operandB}",
         "crossover": "{mainLine} {crossDirection} {signalLine}",
         "state": "{indicator} between {lowerBound} and {upperBound}",
-        "ai_signal": "{modelName} Model → {signalType} Signal",
+        "ai_signal": "AI Prediction Signal",
         "default": "{type} rule"
       },
       "aiModelLabel": "AI Model",
@@ -1716,7 +1719,7 @@
     }
   },
   "OptimizationPage": {
-    "title": "My Optimizations",
+    "title": "Optimizations",
     "subtitle": "Find the best parameters for your strategy.",
     "searchStrategy": "Search strategy...",
     "noStrategyFound": "No strategy found.",
