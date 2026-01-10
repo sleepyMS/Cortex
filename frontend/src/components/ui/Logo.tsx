@@ -14,12 +14,13 @@ const Logo = React.forwardRef<HTMLDivElement, LogoProps>(
         className={clsx("flex items-center gap-2.5", className)}
         {...props}
       >
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/images/logo.svg"
           alt="Cortex Logo"
           width={24}
           height={24}
-          className="w-auto h-6 transform transition-transform group-hover:scale-110"
+          className="h-6 w-auto transform transition-transform group-hover:scale-110"
         />
         <div className="text-xl font-bold tracking-tighter">
           <span className="bg-gradient-to-r from-violet-400 to-purple-500 bg-clip-text text-transparent">

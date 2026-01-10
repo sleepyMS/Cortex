@@ -149,7 +149,7 @@ export function CreditSummaryCard() {
           <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="relative flex items-center justify-center h-48">
+          <div className="relative flex items-center justify-center h-48 min-h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

@@ -1,10 +1,7 @@
 // file: frontend/i18n.ts
 
 import { notFound } from "next/navigation";
-import {
-  getRequestConfig,
-  unstable_setRequestLocale as requestLocale,
-} from "next-intl/server";
+import { getRequestConfig } from "next-intl/server";
 import { Pathnames } from "next-intl/routing";
 
 export const locales = ["ko", "en"] as const;
@@ -29,12 +26,15 @@ export const pathnames = {
 
 export const timeZone = "Asia/Seoul";
 
-export default getRequestConfig(async (props) => {
-  const locale = props.locale;
+export default getRequestConfig(async ({ requestLocale }) => {
+  // This typically corresponds to the `[locale]` segment
+  const requested = await requestLocale;
 
-  const validatedLocale = locales.includes(locale as any)
-    ? locale
+  // Ensure that the incoming locale is valid
+  const validatedLocale = locales.includes(requested as any)
+    ? requested
     : defaultLocale;
+
   if (!locales.includes(validatedLocale as any)) {
     console.error(
       `Locale '${validatedLocale}' is not supported. Redirecting to notFound.`
@@ -43,8 +43,8 @@ export default getRequestConfig(async (props) => {
   }
 
   return {
+    locale: validatedLocale,
     messages: (await import(`./src/messages/${validatedLocale}.json`)).default,
     timeZone,
-    locale: validatedLocale,
   };
 });

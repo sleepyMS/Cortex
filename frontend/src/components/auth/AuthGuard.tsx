@@ -16,7 +16,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthInitialized, accessToken, router, pathname]);
 
-  if (isAuthInitialized && !accessToken) {
+  // 인증 초기화 중이거나 토큰이 없으면 스피너만 표시 (children 렌더링 방지)
+  if (!isAuthInitialized || !accessToken) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="lg" />

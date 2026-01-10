@@ -225,7 +225,7 @@ export const OptimizationSection: React.FC<OptimizationSectionProps> = ({
     <section
       id="section-optimization"
       ref={containerRef}
-      className="scroll-mt-24 md:scroll-mt-[160px] relative flex items-center py-24 px-6 md:px-12 overflow-hidden"
+      className="relative scroll-mt-24 md:scroll-mt-[160px] flex items-center py-24 px-6 md:px-12 overflow-hidden"
     >
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent pointer-events-none" />

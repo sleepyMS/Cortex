@@ -847,54 +847,52 @@ const MockTradingTerminal = () => {
 
           <div className="p-4 flex-1 overflow-hidden flex flex-col">
             <div className="h-32 w-full mb-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockData}>
-                  <defs>
-                    <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="currentColor"
-                    className="text-border"
-                    vertical={false}
-                    horizontalCoordinatesGenerator={({ height }) => {
-                      const lines = 5;
-                      return Array.from(
-                        { length: lines },
-                        (_, i) => (height / (lines - 1)) * i
-                      );
-                    }}
-                  />
-                  <YAxis hide domain={["dataMin", "dataMax"]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "11px",
-                      padding: "8px 12px",
-                    }}
-                    labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                    itemStyle={{ color: "#8b5cf6" }}
-                    formatter={(value: any) => [
-                      `$${Number(value).toLocaleString()}`,
-                      "Balance",
-                    ]}
-                    labelFormatter={(label) => `Time: ${label}`}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="val"
-                    stroke="#8b5cf6"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorVal)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <AreaChart data={mockData} width={280} height={128}>
+                <defs>
+                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="currentColor"
+                  className="text-border"
+                  vertical={false}
+                  horizontalCoordinatesGenerator={({ height }) => {
+                    const lines = 5;
+                    return Array.from(
+                      { length: lines },
+                      (_, i) => (height / (lines - 1)) * i
+                    );
+                  }}
+                />
+                <YAxis hide domain={["dataMin", "dataMax"]} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "11px",
+                    padding: "8px 12px",
+                  }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                  itemStyle={{ color: "#8b5cf6" }}
+                  formatter={(value: any) => [
+                    `$${Number(value).toLocaleString()}`,
+                    "Balance",
+                  ]}
+                  labelFormatter={(label) => `Time: ${label}`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="val"
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorVal)"
+                />
+              </AreaChart>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">

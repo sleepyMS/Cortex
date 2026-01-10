@@ -36,13 +36,13 @@ export default function RootLayout({
   const messages = useMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning className="relative">
       <head>
         <ThemeScript />
       </head>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans text-foreground flex flex-col",
+          "relative min-h-screen bg-background font-sans text-foreground flex flex-col",
           fontSans.variable
         )}
       >
@@ -50,7 +50,7 @@ export default function RootLayout({
           <Background />
           <Header />
           <PageWrapper>
-            <main className="flex-grow flex flex-col">{children}</main>
+            <main className="relative flex-grow flex flex-col">{children}</main>
           </PageWrapper>
           <Footer />
         </Providers>
