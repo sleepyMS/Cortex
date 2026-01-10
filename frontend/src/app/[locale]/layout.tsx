@@ -15,7 +15,7 @@ import "../globals.css";
 import { ThemeScript } from "@/lib/ThemeScript";
 
 const fontSans = localFont({
-  src: "../../../public/fonts/PretendardJPVariable.woff2",
+  src: "../../../public/fonts/PretendardSubset.woff2",
   display: "swap",
   weight: "400 500 700",
   variable: "--font-sans",
