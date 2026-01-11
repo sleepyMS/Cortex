@@ -179,13 +179,16 @@ export const PricingCard = ({
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`relative flex flex-col justify-between rounded-2xl p-8 backdrop-blur-md transition-transform duration-300 hover:scale-[1.03]
+      className={`relative flex flex-col justify-between rounded-2xl p-8 transition-transform duration-300 hover:scale-[1.03]
         ${cardStyles}
       `}
       style={{
-        // GPU 레이어 프로모션으로 backdrop-blur 성능 최적화
+        // GPU 레이어 프로모션 + backdrop-blur 대신 반투명 배경 사용 (성능 ↑↑)
         transform: "translateZ(0)",
-        contain: "layout style paint",
+        contain: "layout style",
+        backgroundColor: isDark
+          ? "rgba(0, 0, 0, 0.6)"
+          : "rgba(255, 255, 255, 0.85)",
       }}
     >
       {isTrader && (

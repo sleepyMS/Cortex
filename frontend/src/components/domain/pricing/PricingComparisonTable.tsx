@@ -177,8 +177,8 @@ export const PricingComparisonTable = ({
   return (
     <div className="w-full overflow-x-auto">
       <div className="container mx-auto max-w-5xl py-12">
-        {/* Glass Pane Wrapper */}
-        <div className="rounded-3xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-background/50 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
+        {/* Glass Pane Wrapper - backdrop-blur 제거하고 반투명 배경 사용 (성능 ↑↑) */}
+        <div className="rounded-3xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-black/70 p-6 md:p-8 shadow-2xl">
           {/* 테이블 헤더 */}
           <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mb-6 text-xl font-bold border-b border-black/5 dark:border-white/10 pb-4 sticky top-0 z-10">
             <div className="text-muted-foreground">
