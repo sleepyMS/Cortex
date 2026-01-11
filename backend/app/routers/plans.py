@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/plans", tags=["Subscription Plans"])
 
-@router.get("/", response_model=List[schemas.PlanSchema], summary="Get all available subscription plans")
+@router.get("", response_model=List[schemas.PlanSchema], summary="Get all available subscription plans")
 async def get_all_plans(
     db: AsyncSession = Depends(get_async_db)
 ):
