@@ -66,13 +66,13 @@ export const PricingBackground = () => {
   return (
     <>
       {/* Animated Aurora Background */}
-      <div className="absolute inset-0 -z-20">
+      <div className="absolute inset-0 -z-20" style={{ contain: "strict" }}>
         <div className="absolute bottom-0 left-[-20%] right-0 top-[-10%] h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle_farthest-side,rgba(100,50,200,0.5),rgba(255,255,255,0))] animate-[spin_20s_linear_infinite]"></div>
         <div className="absolute bottom-[-40%] right-[-20%] top-auto h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle_farthest-side,rgba(80,40,180,0.55),rgba(255,255,255,0))] animate-[spin_25s_linear_infinite_reverse]"></div>
       </div>
 
       {/* Floating Circles and Blobs Overlay */}
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 -z-10" style={{ contain: "strict" }}>
         {floatingData.map((el) => (
           <div
             key={`${el.isBlob ? "blob" : "circle"}-${el.id}`}
@@ -85,7 +85,6 @@ export const PricingBackground = () => {
               left: `${el.x}%`,
               animation: `float ${el.duration}s ease-in-out infinite ${el.delay}s ${el.direction}`,
               opacity: el.isBlob ? 0.3 : 0.35,
-              willChange: "transform",
               zIndex: -1,
             }}
           />

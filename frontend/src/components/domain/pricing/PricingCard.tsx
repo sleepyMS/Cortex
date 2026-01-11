@@ -182,6 +182,11 @@ export const PricingCard = ({
       className={`relative flex flex-col justify-between rounded-2xl p-8 backdrop-blur-md transition-transform duration-300 hover:scale-[1.03]
         ${cardStyles}
       `}
+      style={{
+        // GPU 레이어 프로모션으로 backdrop-blur 성능 최적화
+        transform: "translateZ(0)",
+        contain: "layout style paint",
+      }}
     >
       {isTrader && (
         <div
