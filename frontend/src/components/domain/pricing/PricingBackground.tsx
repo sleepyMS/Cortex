@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 
 // --- page.tsx에서 복사해 온 애니메이션 로직 ---
 const floatingColors = [
@@ -15,39 +15,35 @@ function getRandom(min: number, max: number): number {
   return Math.random() * (max - min) + min;
 }
 
-function createFloatingElements(
+interface FloatingElementData {
+  id: number;
+  size: number;
+  x: number;
+  y: number;
+  color: string;
+  duration: number;
+  delay: number;
+  direction: string;
+  isBlob: boolean;
+}
+
+function generateFloatingElementsData(
   count: number,
   isBlob: boolean = false
-): JSX.Element[] {
-  const elements: JSX.Element[] = [];
+): FloatingElementData[] {
+  const elements: FloatingElementData[] = [];
   for (let i = 0; i < count; i++) {
-    const size = isBlob ? getRandom(250, 600) : getRandom(50, 100);
-    const x = getRandom(-20, 120);
-    const y = getRandom(-20, 120);
-    const color =
-      floatingColors[Math.floor(Math.random() * floatingColors.length)];
-    const duration = getRandom(25, 45);
-    const delay = getRandom(0, 15);
-    const direction = Math.random() > 0.5 ? "normal" : "reverse";
-    const blurClass = isBlob ? "blur-xl" : "";
-
-    elements.push(
-      <div
-        key={i}
-        className={`absolute rounded-full ${blurClass}`}
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          backgroundColor: color,
-          top: `${y}%`,
-          left: `${x}%`,
-          animation: `float ${duration}s ease-in-out infinite ${delay}s ${direction}`,
-          opacity: isBlob ? 0.3 : 0.35,
-          willChange: "transform",
-          zIndex: -1,
-        }}
-      />
-    );
+    elements.push({
+      id: i,
+      size: isBlob ? getRandom(250, 600) : getRandom(50, 100),
+      x: getRandom(-20, 120),
+      y: getRandom(-20, 120),
+      color: floatingColors[Math.floor(Math.random() * floatingColors.length)],
+      duration: getRandom(25, 45),
+      delay: getRandom(0, 15),
+      direction: Math.random() > 0.5 ? "normal" : "reverse",
+      isBlob,
+    });
   }
   return elements;
 }
@@ -57,9 +53,15 @@ function createFloatingElements(
  * 가격 페이지의 모든 클라이언트 사이드 배경 애니메이션을 담당하는 컴포넌트.
  */
 export const PricingBackground = () => {
-  // useMemo 훅을 사용하므로 "use client"가 필요합니다.
-  const floatingCircles = useMemo(() => createFloatingElements(15, false), []);
-  const floatingBlobs = useMemo(() => createFloatingElements(5, true), []);
+  // 클라이언트에서만 랜덤 요소 생성 (하이드레이션 불일치 방지)
+  const [floatingData, setFloatingData] = useState<FloatingElementData[]>([]);
+
+  useEffect(() => {
+    // 클라이언트에서만 실행되므로 SSR/CSR 불일치 없음
+    const circles = generateFloatingElementsData(15, false);
+    const blobs = generateFloatingElementsData(5, true);
+    setFloatingData([...circles, ...blobs]);
+  }, []);
 
   return (
     <>
@@ -71,8 +73,23 @@ export const PricingBackground = () => {
 
       {/* Floating Circles and Blobs Overlay */}
       <div className="absolute inset-0 -z-10">
-        {floatingCircles}
-        {floatingBlobs}
+        {floatingData.map((el) => (
+          <div
+            key={`${el.isBlob ? "blob" : "circle"}-${el.id}`}
+            className={`absolute rounded-full ${el.isBlob ? "blur-xl" : ""}`}
+            style={{
+              width: `${el.size}px`,
+              height: `${el.size}px`,
+              backgroundColor: el.color,
+              top: `${el.y}%`,
+              left: `${el.x}%`,
+              animation: `float ${el.duration}s ease-in-out infinite ${el.delay}s ${el.direction}`,
+              opacity: el.isBlob ? 0.3 : 0.35,
+              willChange: "transform",
+              zIndex: -1,
+            }}
+          />
+        ))}
       </div>
     </>
   );
