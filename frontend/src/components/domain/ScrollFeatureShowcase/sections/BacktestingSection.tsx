@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useScroll,
+  useSpring,
+  useMotionValue,
+} from "framer-motion";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/Button";
 import { Zap, LineChart, Target, CheckCircle2 } from "lucide-react";
@@ -428,12 +434,24 @@ export const BacktestingSection: React.FC<BacktestingSectionProps> = ({
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.15, 0.4], [0, 1]);
+  // Trigger threshold: when scrollYProgress reaches 0.30, animation starts
+  const TRIGGER_THRESHOLD = 0.15;
+  const targetProgress = useMotionValue(0);
+  const smoothProgress = useSpring(targetProgress, {
+    stiffness: 100,
+    damping: 20,
+  });
   const [progressValue, setProgressValue] = useState(0);
 
   useEffect(() => {
-    return progress.on("change", (v) => setProgressValue(v));
-  }, [progress]);
+    return scrollYProgress.on("change", (v) => {
+      targetProgress.set(v >= TRIGGER_THRESHOLD ? 1 : 0);
+    });
+  }, [scrollYProgress, targetProgress]);
+
+  useEffect(() => {
+    return smoothProgress.on("change", (v) => setProgressValue(v));
+  }, [smoothProgress]);
 
   const highlightIcons = [Zap, LineChart, Target];
 

@@ -235,7 +235,7 @@
         "aiLab": {
           "badge": "NEW",
           "title": "AI로 전략을 진화시키세요",
-          "description": "LSTM/GRU 딥러닝이 시장 패턴을 학습하고, Optuna TPE 엔진이 최적의 하이퍼파라미터를 자동으로 찾아냅니다.",
+          "description": "**LSTM/GRU 딥러닝**이 시장의 복잡한 패턴을 학습합니다.\n**Optuna TPE 엔진**이 최적의 하이퍼파라미터를 자동으로 탐색하여, 당신만의 **고성능 예측 모델**을 손쉽게 구축하세요.",
           "highlights": [
             "자가 검증 딥러닝",
             "TPE 자동 최적화",

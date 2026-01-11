@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useRef } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+} from "framer-motion";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/Button";
 import { Brain, Sparkles, Target, Zap } from "lucide-react";
@@ -217,12 +224,25 @@ export const AILabSection: React.FC<AILabSectionProps> = ({ translations }) => {
     offset: ["start end", "end start"],
   });
 
-  const progress = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
+  // Trigger threshold: when scrollYProgress reaches 0.30, animation starts
+  const TRIGGER_THRESHOLD = 0.15;
+  const targetProgress = useMotionValue(0);
+  const smoothProgress = useSpring(targetProgress, {
+    stiffness: 30,
+    damping: 28,
+  });
   const [progressValue, setProgressValue] = React.useState(0);
 
   React.useEffect(() => {
-    return progress.on("change", (v) => setProgressValue(v));
-  }, [progress]);
+    return scrollYProgress.on("change", (v) => {
+      // When scroll passes threshold, animate to 1; otherwise stay at 0
+      targetProgress.set(v >= TRIGGER_THRESHOLD ? 1 : 0);
+    });
+  }, [scrollYProgress, targetProgress]);
+
+  React.useEffect(() => {
+    return smoothProgress.on("change", (v) => setProgressValue(v));
+  }, [smoothProgress]);
 
   const highlightIcons = [Target, Zap, Sparkles];
 

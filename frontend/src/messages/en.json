@@ -235,7 +235,7 @@
         "aiLab": {
           "badge": "NEW",
           "title": "Evolve Your Strategy with AI",
-          "description": "LSTM/GRU deep learning models learn market patterns while Optuna TPE engine automatically finds optimal hyperparameters.",
+          "description": "**LSTM/GRU deep learning** models learn complex market patterns.\n**Optuna TPE engine** automatically discovers optimal hyperparameters, enabling you to effortlessly build **high-performance prediction models**.",
           "highlights": [
             "Self-Validating Deep Learning",
             "TPE Auto-Optimization",

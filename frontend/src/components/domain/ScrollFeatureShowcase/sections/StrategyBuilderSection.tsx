@@ -2,12 +2,14 @@
 
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   motion,
   useInView,
   useScroll,
   useTransform,
+  useSpring,
+  useMotionValue,
   MotionValue,
 } from "framer-motion";
 import { Link } from "@/i18n/navigation";
@@ -39,30 +41,30 @@ const BlockAssemblyVisual: React.FC<{ progress: MotionValue<number> }> = ({
   progress,
 }) => {
   const t = useTranslations("Landing.StrategyBuilderMockUI");
-  // Transformations for each animation step
-  // Step 0: Container appears (0.2)
-  const containerOpacity = useTransform(progress, [0.15, 0.25], [0, 1]);
-  const containerY = useTransform(progress, [0.15, 0.25], [50, 0]);
+  // Transformations for each animation step - spread out over wider ranges for slower animation
+  // Step 0: Container appears (0 - 0.15)
+  const containerOpacity = useTransform(progress, [0, 0.15], [0, 1]);
+  const containerY = useTransform(progress, [0, 0.15], [50, 0]);
 
-  // Step 1: Crossover Block (0.3)
-  const crossoverOpacity = useTransform(progress, [0.25, 0.35], [0, 1]);
-  const crossoverX = useTransform(progress, [0.25, 0.35], [-50, 0]);
+  // Step 1: Crossover Block (0.1 - 0.3)
+  const crossoverOpacity = useTransform(progress, [0.1, 0.3], [0, 1]);
+  const crossoverX = useTransform(progress, [0.1, 0.3], [-50, 0]);
 
-  // Step 2: Crossover Items (0.4 - 0.5)
-  const ema1Scale = useTransform(progress, [0.35, 0.45], [0, 1]);
-  const compareScale = useTransform(progress, [0.4, 0.5], [0, 1]);
-  const ema2Scale = useTransform(progress, [0.45, 0.55], [0, 1]);
+  // Step 2: Crossover Items (0.25 - 0.6) - spread out more
+  const ema1Scale = useTransform(progress, [0.25, 0.4], [0, 1]);
+  const compareScale = useTransform(progress, [0.35, 0.5], [0, 1]);
+  const ema2Scale = useTransform(progress, [0.45, 0.6], [0, 1]);
 
-  // Step 3: State Block (0.6)
-  const stateOpacity = useTransform(progress, [0.55, 0.65], [0, 1]);
-  const stateX = useTransform(progress, [0.55, 0.65], [-50, 0]);
+  // Step 3: State Block (0.5 - 0.7)
+  const stateOpacity = useTransform(progress, [0.5, 0.7], [0, 1]);
+  const stateX = useTransform(progress, [0.5, 0.7], [-50, 0]);
 
-  // Step 4: State Items (0.7)
-  const rsiOpacity = useTransform(progress, [0.65, 0.75], [0, 1]);
+  // Step 4: State Items (0.6 - 0.8)
+  const rsiOpacity = useTransform(progress, [0.6, 0.8], [0, 1]);
 
-  // Step 5: Valid Banner (0.8)
-  const bannerOpacity = useTransform(progress, [0.75, 0.85], [0, 1]);
-  const bannerHeight = useTransform(progress, [0.75, 0.85], [0, 40]); // approx 40px height
+  // Step 5: Valid Banner (0.85 - 0.95) - shorter range for faster appearance
+  const bannerOpacity = useTransform(progress, [0.85, 0.95], [0, 1]);
+  const bannerHeight = useTransform(progress, [0.85, 0.95], [0, 40]); // approx 40px height
 
   return (
     <div className="relative w-full h-full min-h-[450px] p-6 overflow-hidden">
@@ -263,8 +265,16 @@ export const StrategyBuilderSection: React.FC<StrategyBuilderSectionProps> = ({
     offset: ["start end", "end start"],
   });
 
-  // Map scroll progress to animation range [0, 1]
-  const progress = useTransform(scrollYProgress, [0.1, 0.5], [0, 1]);
+  // Trigger threshold: when scrollYProgress reaches 0.30, animation starts
+  const TRIGGER_THRESHOLD = 0.15;
+  const targetProgress = useMotionValue(0);
+  const progress = useSpring(targetProgress, { stiffness: 30, damping: 28 });
+
+  useEffect(() => {
+    return scrollYProgress.on("change", (v) => {
+      targetProgress.set(v >= TRIGGER_THRESHOLD ? 1 : 0);
+    });
+  }, [scrollYProgress, targetProgress]);
 
   const highlightIcons = ["📦", "🔗", "💡"];
 
