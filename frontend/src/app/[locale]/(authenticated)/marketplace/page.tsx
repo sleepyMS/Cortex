@@ -75,7 +75,7 @@ const PaymentWidgetModal = ({
         try {
           const { widgets, cleanup } = await renderPaymentWidgets(
             "#payment-widget",
-            checkoutData.amount
+            checkoutData.amount,
           );
           widgetsRef.current = widgets;
           cleanupRef.current = cleanup; // 받아온 cleanup 함수를 ref에 저장
@@ -153,7 +153,7 @@ export default function MarketplacePage() {
     "STRATEGY" | "SHOP_ITEM" | "AI_MODEL"
   >(
     (searchParams.get("tab") as "STRATEGY" | "SHOP_ITEM" | "AI_MODEL") ||
-      "STRATEGY"
+      "STRATEGY",
   );
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<Partial<ProductFilters>>({});
@@ -170,7 +170,7 @@ export default function MarketplacePage() {
   // --- 데이터 로직 ---
   const productQueryFilters = useMemo(
     () => ({ page, limit: 12, productType: activeTab, ...filters }),
-    [page, activeTab, filters]
+    [page, activeTab, filters],
   );
   const {
     data: productsData,
@@ -212,7 +212,7 @@ export default function MarketplacePage() {
       toast.error(
         t("orderCreationError", {
           error: err.response?.data?.detail || err.message,
-        })
+        }),
       );
     },
   });
@@ -226,7 +226,7 @@ export default function MarketplacePage() {
       setFilters({});
       router.push(`/marketplace?tab=${newTab}`);
     },
-    [router]
+    [router],
   );
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -245,7 +245,7 @@ export default function MarketplacePage() {
         setIsConfirmModalOpen(true);
       }
     },
-    [cashCheckoutMutation]
+    [cashCheckoutMutation],
   );
   const handleConfirmPurchase = useCallback(() => {
     if (!productToPurchase) return;
@@ -377,7 +377,7 @@ export default function MarketplacePage() {
                 {t("chargeModalDescription")}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="gap-2">
               <Button
                 variant="outline"
                 onClick={() => setIsChargeModalOpen(false)}
