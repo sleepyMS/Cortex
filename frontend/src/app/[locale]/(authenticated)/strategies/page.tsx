@@ -191,7 +191,7 @@ function StrategiesPageContent() {
 
   // 모달을 열기 위해 사용자가 클릭한 '요약' 전략 정보
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(
-    null
+    null,
   );
 
   // API로부터 받아온 '상세' 전략 정보 (모달 UI의 진실의 원천)
@@ -292,7 +292,7 @@ function StrategiesPageContent() {
           ? [...strategyDetailData.backtests].sort(
               (a, b) =>
                 new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
+                new Date(a.createdAt).getTime(),
             )[0]
           : null;
 
@@ -311,7 +311,7 @@ function StrategiesPageContent() {
 
       if (!strategyDetailData.marketplaceListing?.positionType) {
         toast.info(
-          `전략 분석 결과, '${autoDetectedType}' 타입으로 자동 선택되었습니다.`
+          `전략 분석 결과, '${autoDetectedType}' 타입으로 자동 선택되었습니다.`,
         );
       }
     }
@@ -328,7 +328,7 @@ function StrategiesPageContent() {
       watchedPositionType !== autoDetectedPositionType
     ) {
       toast.warning(
-        "자동 분석된 포지션 타입과 다른 옵션을 선택하셨습니다. 이 전략은 선택된 타입으로 거래 시 의도와 다르게 동작할 수 있습니다."
+        "자동 분석된 포지션 타입과 다른 옵션을 선택하셨습니다. 이 전략은 선택된 타입으로 거래 시 의도와 다르게 동작할 수 있습니다.",
         // {
         //   id: "position-type-warning", // ID를 부여하여 중복 토스트 방지
         // }
@@ -371,7 +371,7 @@ function StrategiesPageContent() {
           setIsListingModalOpen(false);
           setSelectedStrategy(null);
         },
-      }
+      },
     );
   };
 
@@ -518,9 +518,6 @@ function StrategiesPageContent() {
         <div className="container mx-auto max-w-7xl px-4 py-12">
           {/* 1. Enhanced page header with gradient */}
           <div className="relative mb-12">
-            <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse-slow pointer-events-none" />
-            <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -z-10 pointer-events-none" />
-
             <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8 pb-8 border-b border-border/40">
               <div className="space-y-4 text-center md:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2">
@@ -530,7 +527,7 @@ function StrategiesPageContent() {
                   </span>
                   Strategy Hub
                 </div>
-                <h1 className="text-5xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">
+                <h1 className="text-5xl font-extrabold tracking-tight text-foreground">
                   {t("title")}
                 </h1>
                 <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
@@ -550,7 +547,7 @@ function StrategiesPageContent() {
                     aria-label="Grid view"
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg transition-all",
-                      effectiveViewMode === "grid" ? "shadow-sm" : ""
+                      effectiveViewMode === "grid" ? "shadow-sm" : "",
                     )}
                   >
                     <LayoutGrid className="h-4.5 w-4.5" />
@@ -564,7 +561,7 @@ function StrategiesPageContent() {
                     aria-label="List view"
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg transition-all",
-                      effectiveViewMode === "list" ? "shadow-sm" : ""
+                      effectiveViewMode === "list" ? "shadow-sm" : "",
                     )}
                   >
                     <List className="h-4.5 w-4.5" />

@@ -230,7 +230,7 @@ export default function OptimizationPage() {
       toast.error(
         t("cancelError", {
           error: error?.response?.data?.detail || error.message,
-        })
+        }),
       ),
   });
 
@@ -245,7 +245,7 @@ export default function OptimizationPage() {
       toast.error(
         t("deleteError", {
           error: error?.response?.data?.detail || error.message,
-        })
+        }),
       ),
   });
 
@@ -289,9 +289,6 @@ export default function OptimizationPage() {
     <div className="container mx-auto max-w-7xl px-4 py-12">
       {/* 고도화된 헤더 - 그라데이션 배경 및 배지 포함 */}
       <div className="relative mb-12">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse-slow" />
-        <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -z-10" />
-
         <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8 pb-8 border-b border-border/40">
           <div className="space-y-4 text-center md:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2">
@@ -301,7 +298,7 @@ export default function OptimizationPage() {
               </span>
               Optimization Lab
             </div>
-            <h1 className="text-5xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">
+            <h1 className="text-5xl font-extrabold tracking-tight text-foreground">
               {t("title")}
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
@@ -358,7 +355,7 @@ export default function OptimizationPage() {
                       {t(
                         `filterStatus${
                           status.charAt(0).toUpperCase() + status.slice(1)
-                        }` as any
+                        }` as any,
                       )}
                     </TabsTrigger>
                   ))}
@@ -381,13 +378,13 @@ export default function OptimizationPage() {
                         "w-full sm:w-[220px] h-10 rounded-lg justify-between bg-background/40 backdrop-blur-sm border-border/40 hover:bg-background transition-all px-4",
                         !strategyFilter || strategyFilter === "all"
                           ? "text-muted-foreground font-medium"
-                          : "text-foreground font-bold"
+                          : "text-foreground font-bold",
                       )}
                     >
                       <span className="truncate">
                         {strategyFilter && strategyFilter !== "all"
                           ? strategiesData?.find(
-                              (strategy) => strategy.id === strategyFilter
+                              (strategy) => strategy.id === strategyFilter,
                             )?.name
                           : t("filterStrategyPlaceholder")}
                       </span>
@@ -416,7 +413,7 @@ export default function OptimizationPage() {
                                 "mr-2 h-4 w-4 text-primary",
                                 strategyFilter === "all"
                                   ? "opacity-100"
-                                  : "opacity-0"
+                                  : "opacity-0",
                               )}
                             />
                             {t("filterStrategyAll")}
@@ -429,7 +426,7 @@ export default function OptimizationPage() {
                                 setStrategyFilter(
                                   strategy.id === strategyFilter
                                     ? "all"
-                                    : strategy.id
+                                    : strategy.id,
                                 );
                               }}
                               className="rounded-lg h-9 px-2 cursor-pointer mb-1"
@@ -439,7 +436,7 @@ export default function OptimizationPage() {
                                   "mr-2 h-4 w-4 text-primary",
                                   strategyFilter === strategy.id
                                     ? "opacity-100"
-                                    : "opacity-0"
+                                    : "opacity-0",
                                 )}
                               />
                               {strategy.name}
@@ -497,7 +494,7 @@ export default function OptimizationPage() {
                     `filterStatus${
                       statusFilter.charAt(0).toUpperCase() +
                       statusFilter.slice(1)
-                    }` as any
+                    }` as any,
                   )}
                   <button
                     onClick={() => setStatusFilter("all")}
