@@ -1123,9 +1123,14 @@ class ShopItemProduct(BaseProduct):
 class AIModelProduct(BaseProduct):
     """AI 모델 상품 목록에 표시될 정보"""
     model_type: str  # 'lstm', 'gru', 'tft'
+    task_type: Optional[str] = None  # 'classification', 'regression'
+    training_timeframe: Optional[str] = None  # '1h', '4h', '1d'
     training_start_date: Optional[str] = None
     training_end_date: Optional[str] = None
     accuracy: Optional[float] = None
+    mae: Optional[float] = None
+    rmse: Optional[float] = None
+    r2: Optional[float] = None
 
 class BacktestPublic(CamelCaseModel):
     """마켓플레이스 등 공개용 백테스트 스키마 (민감 정보 제외, 차트 포함)"""
@@ -1168,7 +1173,7 @@ class ShopItemProductDetail(ShopItemProduct):
 
 class PaginatedProductsResponse(CamelCaseModel):
     """페이지네이션된 상품 목록 응답"""
-    products: List[Union[StrategyProduct, ShopItemProduct]]
+    products: List[Union[StrategyProduct, ShopItemProduct, AIModelProduct]]
     meta: Dict[str, int]
 
 class UserPurchasedStrategyResponse(CamelCaseModel):

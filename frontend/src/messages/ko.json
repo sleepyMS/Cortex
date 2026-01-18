@@ -1923,11 +1923,17 @@
         "estimatedBalance": "결제 후 잔액"
       },
       "warnings": {
-        "paidCreditOnly": "이 프리미엄 전략은 유료 크레딧으로만 구매할 수 있습니다. 이벤트 또는 보너스 크레딧은 마켓플레이스 거래에 사용할 수 없습니다."
+        "paidCreditOnly": "이 프리미엄 전략은 유료 크레딧으로만 구매할 수 있습니다. 이벤트 또는 보너스 크레딧은 마켓플레이스 거래에 사용할 수 없습니다.",
+        "paidCredit": "유료 크레딧 전용"
       },
       "buttons": {
         "claimNow": "지금 받기",
-        "confirmPurchase": "구매 확정"
+        "confirmPurchase": "구매 확정",
+        "processing": "처리 중..."
+      },
+      "aiModelBadge": {
+        "classification": "분류",
+        "regression": "회귀"
       }
     },
     "purchaseConfirmDescriptionCredit": "'{productName}' 상품을 {price} 크레딧으로 구매하시겠습니까?",

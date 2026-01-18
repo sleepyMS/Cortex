@@ -38,10 +38,15 @@ class MarketplaceService:
              .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.STRATEGY)
         elif filters.product_type == models.ProductType.AI_MODEL:
             # AI 모델 상품 조회
+            # AI 모델 상품 조회
             query = select(
                 models.MarketplaceProduct, models.User.username, models.AIModel.model_type,
-                models.AIModel.training_start_date, models.AIModel.training_end_date,
-                models.AIModel.validation_metrics
+                models.AIModel.task_type,
+                models.AIModel.training_timeframe,
+                models.AIModel.training_start_date,
+                models.AIModel.training_end_date,
+                models.AIModel.validation_metrics,
+                models.AIModel.training_metrics
             ).join(models.User, models.MarketplaceProduct.seller_id == models.User.id)\
              .join(models.AIModel, models.MarketplaceProduct.linked_resource_id == models.AIModel.id)\
              .filter(models.MarketplaceProduct.is_active == True, models.MarketplaceProduct.product_type == models.ProductType.AI_MODEL)
@@ -72,15 +77,27 @@ class MarketplaceService:
                 validated_product = schemas.StrategyProduct.model_validate({**product.__dict__, 'author': {'username': username}, 'latest_backtest_summary': summary}, from_attributes=True)
                 products_response.append(validated_product)
         elif filters.product_type == models.ProductType.AI_MODEL:
-            for product, username, model_type, training_start, training_end, validation_metrics in db_results:
-                accuracy = validation_metrics.get('accuracy') if validation_metrics else None
+            for product, username, model_type, task_type, training_timeframe, training_start, training_end, validation_metrics, training_metrics in db_results:
+                # Metrics source strategy: training_metrics has the final evaluation results (accuracy, rmse, etc.)
+                metrics_source = training_metrics if training_metrics else (validation_metrics or {})
+                
+                accuracy = metrics_source.get('accuracy')
+                mae = metrics_source.get('mae')
+                rmse = metrics_source.get('rmse')
+                r2 = metrics_source.get('r2')
+                
                 ai_model_data = {
                     **product.__dict__, 
                     'author': {'username': username},
                     'model_type': model_type,
+                    'task_type': task_type,
+                    'training_timeframe': training_timeframe,
                     'training_start_date': training_start.isoformat() if training_start else None,
                     'training_end_date': training_end.isoformat() if training_end else None,
                     'accuracy': accuracy,
+                    'mae': mae,
+                    'rmse': rmse,
+                    'r2': r2,
                 }
                 validated_product = schemas.AIModelProduct.model_validate(ai_model_data, from_attributes=True)
                 products_response.append(validated_product)
@@ -509,10 +526,21 @@ class MarketplaceService:
             logger.error(f"Data integrity error: Product {product.id} links to non-existent AIModel {product.linked_resource_id}")
             raise HTTPException(status_code=404, detail="연결된 AI 모델을 찾을 수 없습니다.")
 
-        # 2. 정확도 추출
+        # 2. 메트릭 추출
         accuracy = None
-        if ai_model.validation_metrics:
-            accuracy = ai_model.validation_metrics.get('accuracy')
+        mae = None
+        rmse = None
+        r2 = None
+        
+        if ai_model:
+            training_timeframe = ai_model.training_timeframe
+            # Extract metrics from training_metrics preferably
+            metrics_source = ai_model.training_metrics if ai_model.training_metrics else (ai_model.validation_metrics or {})
+            
+            accuracy = metrics_source.get('accuracy')
+            mae = metrics_source.get('mae')
+            rmse = metrics_source.get('rmse')
+            r2 = metrics_source.get('r2')
 
         # 3. 응답 데이터 조합
         return schemas.AIModelProduct(
@@ -524,9 +552,14 @@ class MarketplaceService:
             product_metadata=product.product_metadata or {},
             author=schemas.ProductAuthor(username=ai_model.user.username if ai_model.user else None),
             model_type=ai_model.model_type,
+            task_type=ai_model.task_type,
+            training_timeframe=ai_model.training_timeframe,
             training_start_date=ai_model.training_start_date.isoformat() if ai_model.training_start_date else None,
             training_end_date=ai_model.training_end_date.isoformat() if ai_model.training_end_date else None,
-            accuracy=accuracy
+            accuracy=accuracy,
+            mae=mae,
+            rmse=rmse,
+            r2=r2
         )
 
     async def list_ai_model_as_product(

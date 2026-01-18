@@ -91,6 +91,8 @@ export interface ShopItem extends BaseProduct<
  */
 export interface AIModelMetadata {
   modelType: string;
+  taskType?: string; // 'classification' | 'regression'
+  trainingTimeframe?: string;
   trainingSymbol?: string;
 }
 
@@ -102,9 +104,14 @@ export interface MarketplaceAIModel extends BaseProduct<
   "AI_MODEL"
 > {
   modelType: string;
+  taskType?: string; // 'classification' | 'regression'
+  trainingTimeframe?: string;
   trainingStartDate?: string;
   trainingEndDate?: string;
   accuracy?: number;
+  mae?: number;
+  rmse?: number;
+  r2?: number;
 }
 
 export type AIModelProduct = MarketplaceAIModel;

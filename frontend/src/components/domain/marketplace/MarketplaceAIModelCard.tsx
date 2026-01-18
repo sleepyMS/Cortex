@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Calendar,
   Activity,
+  Clock,
 } from "lucide-react";
 import { useUserStore } from "@/store/userStore";
 import { MarketplaceAIModel } from "@/types/marketplace";
@@ -105,28 +106,60 @@ export const MarketplaceAIModelCard = ({
             </div>
             <CardTitle className="text-lg">{model.name}</CardTitle>
           </div>
-          <Badge variant="outline" className="shrink-0 uppercase">
-            {model.modelType}
-          </Badge>
+          <div className="flex flex-wrap gap-1.5">
+            {model.modelType && (
+              <Badge
+                variant="outline"
+                className="shrink-0 uppercase text-violet-400 border-violet-500/50 bg-violet-500/10"
+              >
+                {model.modelType}
+              </Badge>
+            )}
+            {model.taskType && (
+              <Badge
+                variant="outline"
+                className={`shrink-0 text-xs ${
+                  model.taskType === "classification"
+                    ? "text-blue-400 border-blue-500/50 bg-blue-500/10"
+                    : "text-emerald-400 border-emerald-500/50 bg-emerald-500/10"
+                }`}
+              >
+                {model.taskType === "classification" ? "분류" : "회귀"}
+              </Badge>
+            )}
+          </div>
         </div>
-        <CardDescription className="line-clamp-2 mt-2">
-          {model.description || "설명이 없습니다."}
-        </CardDescription>
+        {/* Description removed for cleaner look */}
       </CardHeader>
       <CardContent className="flex-grow space-y-4 text-sm">
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2 text-muted-foreground bg-muted/30 p-2 rounded">
-            <Activity className="h-4 w-4 text-violet-500" />
-            <span className="text-xs">정확도</span>
+            <Activity
+              className={`h-4 w-4 ${
+                model.taskType === "regression"
+                  ? "text-amber-500"
+                  : "text-violet-500"
+              }`}
+            />
+            <span className="text-xs">
+              {model.taskType === "regression" ? "RMSE" : "정확도"}
+            </span>
             <span className="ml-auto font-medium text-foreground">
-              {model.accuracy ? `${(model.accuracy * 100).toFixed(1)}%` : "N/A"}
+              {model.taskType === "regression"
+                ? model.rmse
+                  ? model.rmse.toFixed(4)
+                  : "N/A"
+                : model.accuracy
+                  ? `${(model.accuracy * 100).toFixed(1)}%`
+                  : "N/A"}
             </span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground bg-muted/30 p-2 rounded">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
-            <span className="text-xs">심볼</span>
-            <span className="ml-auto font-medium text-foreground">
+            <span className="text-xs">타겟</span>
+            <span className="ml-auto font-medium text-foreground text-xs">
               {model.productMetadata?.trainingSymbol || "Unknown"}
+              {model.trainingTimeframe && ` · ${model.trainingTimeframe}`}
             </span>
           </div>
         </div>

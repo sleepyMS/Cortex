@@ -1932,11 +1932,17 @@
         "estimatedBalance": "After Payment"
       },
       "warnings": {
-        "paidCreditOnly": "This premium strategy requires Paid Credits. Event-based or bonus credits cannot be applied to C2C marketplace transactions."
+        "paidCreditOnly": "This premium strategy requires Paid Credits. Event-based or bonus credits cannot be applied to C2C marketplace transactions.",
+        "paidCredit": "Paid Credits Only"
       },
       "buttons": {
         "claimNow": "Claim Now",
-        "confirmPurchase": "Confirm Purchase"
+        "confirmPurchase": "Confirm Purchase",
+        "processing": "Processing..."
+      },
+      "aiModelBadge": {
+        "classification": "Classification",
+        "regression": "Regression"
       }
     },
     "purchaseConfirmDescriptionCredit": "Are you sure you want to purchase '{productName}' for {price} Credits?",
