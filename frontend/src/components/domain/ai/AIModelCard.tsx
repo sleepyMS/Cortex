@@ -94,7 +94,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
     const start = new Date(model.trainingStartDate);
     const end = new Date(model.trainingEndDate);
     const days = Math.ceil(
-      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
     );
     return `${days}${t("card.daysSuffix")}`;
   };
@@ -116,7 +116,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
           </div>
         )}
 
-        <div className="relative p-6 flex flex-col flex-grow space-y-5">
+        <div className="relative p-5 flex flex-col flex-grow space-y-4">
           {/* Header */}
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1 min-w-0 space-y-1.5">
@@ -136,13 +136,13 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
                     "text-[10px] font-bold uppercase tracking-wider h-5 px-2 rounded-full border",
                     model.taskType === "classification"
                       ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                      : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800"
+                      : "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800",
                   )}
                 >
                   {t(
                     model.taskType === "classification"
                       ? "card.classificationBadge"
-                      : "card.regressionBadge"
+                      : "card.regressionBadge",
                   )}
                 </Badge>
                 {model.isOptimized && (
@@ -168,13 +168,13 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border border-current/20 backdrop-blur-md",
                 config.bgColor,
-                config.color
+                config.color,
               )}
             >
               <StatusIcon
                 className={cn(
                   "h-3 w-3",
-                  model.status === "training" && "animate-spin"
+                  model.status === "training" && "animate-spin",
                 )}
               />
               {t(`status.${model.status}`)}
@@ -182,7 +182,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
           </div>
 
           {/* Stats Box */}
-          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/20 border border-border/50 group-hover:bg-muted/30 transition-colors">
+          <div className="grid grid-cols-2 gap-4 p-3 rounded-xl bg-muted/20 border border-border/50 group-hover:bg-muted/30 transition-colors">
             <div className="space-y-1.5 text-center">
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {t("card.timeframe")}
@@ -214,7 +214,7 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
           <div className="flex-grow" />
 
           {/* Footer */}
-          <div className="flex justify-between items-center pt-5 border-t border-border/40">
+          <div className="flex justify-between items-center pt-4 border-t border-border/40">
             <div className="flex items-center gap-2 text-muted-foreground/60">
               <Calendar className="h-3.5 w-3.5" />
               <span className="text-[11px] font-medium tracking-tight">
@@ -223,10 +223,6 @@ export function AIModelCard({ model, onDelete, isDeleting }: AIModelCardProps) {
             </div>
 
             <div className="flex items-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                <ChevronRight className="h-4 w-4 text-primary" />
-              </div>
-
               {/* Actions dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
