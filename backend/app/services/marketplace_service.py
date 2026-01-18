@@ -106,7 +106,7 @@ class MarketplaceService:
         if len(products_map) != len(product_ids):
             raise HTTPException(status_code=404, detail="일부 상품을 찾을 수 없습니다.")
 
-        is_c2c_order = any(p.product_type == models.ProductType.STRATEGY for p in products_map.values())
+        is_c2c_order = any(p.product_type in [models.ProductType.STRATEGY, models.ProductType.AI_MODEL] for p in products_map.values())
         
         order_items_to_create = []
         for item_data in payload.items:
@@ -118,12 +118,13 @@ class MarketplaceService:
                 models.MarketplaceOrderItem(product_id=product.id, quantity=item_data.quantity, price_at_purchase=product.price)
             )
 
-        # 2. 거래 유형에 맞는 크레딧 차감 로직 호출
+        # 2. 거래 유형에 맞는 크레딧 차감 로직 호출 (무료 상품일 경우 스킵)
         from .credit_service import credit_service
-        if is_c2c_order:
-            await credit_service.deduct_cash_credits_only(db, user_id=buyer.id, amount_to_deduct=int(total_cost), related_entity_type="MARKETPLACE_C2C_ORDER")
-        else:
-            await credit_service.deduct_credits(db, user_id=buyer.id, amount_to_deduct=int(total_cost), discount_pct=0.0, related_entity_type="MARKETPLACE_B2C_ORDER")
+        if total_cost > 0:
+            if is_c2c_order:
+                await credit_service.deduct_cash_credits_only(db, user_id=buyer.id, amount_to_deduct=int(total_cost), related_entity_type="MARKETPLACE_C2C_ORDER")
+            else:
+                await credit_service.deduct_credits(db, user_id=buyer.id, amount_to_deduct=int(total_cost), discount_pct=0.0, related_entity_type="MARKETPLACE_B2C_ORDER")
 
         # 3. 주문을 'COMPLETED' 상태로 즉시 생성
         paid_order = models.MarketplaceOrder(

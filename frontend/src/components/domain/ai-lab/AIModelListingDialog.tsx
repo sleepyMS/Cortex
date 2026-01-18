@@ -53,6 +53,7 @@ interface AIModelListingDialogProps {
 }
 
 const COMMISSION_RATE = 0.1; // 10%
+const MIN_PRICE = 10; // 최소 등록 가격
 
 export const AIModelListingDialog: React.FC<AIModelListingDialogProps> = ({
   open,
@@ -121,7 +122,7 @@ export const AIModelListingDialog: React.FC<AIModelListingDialogProps> = ({
   const canSubmit =
     agreedToTerms &&
     agreedToCommission &&
-    price >= 0 &&
+    price >= MIN_PRICE &&
     !listingMutation.isPending;
 
   const handleSubmit = () => {
@@ -275,12 +276,17 @@ export const AIModelListingDialog: React.FC<AIModelListingDialogProps> = ({
                       }
                     }}
                     className="pl-10 pr-12"
-                    placeholder="0"
+                    placeholder="10"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                     CC
                   </span>
                 </div>
+                {price > 0 && price < MIN_PRICE && (
+                  <p className="text-xs text-red-500">
+                    최소 {MIN_PRICE} 크레딧 이상 입력해주세요
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {t("detail.management.listingDialog.priceHint")}
                 </p>

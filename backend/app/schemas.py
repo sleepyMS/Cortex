@@ -1084,7 +1084,7 @@ class StrategyListPayload(CamelCaseModel):
 class AIModelListPayload(CamelCaseModel):
     """AI 모델을 마켓플레이스에 등록하기 위한 요청 본문"""
     model_id: uuid.UUID
-    price: float = Field(..., ge=0)
+    price: float = Field(..., ge=10, description="최소 10 크레딧 이상")
     description: Optional[str] = None
 
 

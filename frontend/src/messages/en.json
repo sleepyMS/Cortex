@@ -1,4 +1,8 @@
 {
+  "Common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
   "formats": {
     "dateTime": {
       "short": {
@@ -1894,13 +1898,54 @@
     "emptyTitle": "No Products Found",
     "emptyDescription": "There are currently no products for sale in this category.",
     "purchaseConfirmTitle": "Confirm Purchase",
+    "purchaseConfirmation": {
+      "productIntelligence": "Product Intelligence",
+      "paymentDetails": "Payment Details",
+      "productTypes": {
+        "strategy": "Strategy",
+        "aiModel": "AI Model",
+        "shopItem": "Item",
+        "creditPack": "Credits",
+        "default": "Product"
+      },
+      "stats": {
+        "return": "Return",
+        "mdd": "MDD",
+        "winRate": "Win Rate",
+        "accuracy": "Accuracy",
+        "symbol": "Symbol",
+        "generic": "Generic",
+        "noPerformance": "High-quality asset optimized for trading utility."
+      },
+      "author": {
+        "anonymous": "Anonymous Seller"
+      },
+      "inventoryType": {
+        "unlock": "Permanent Access",
+        "consumable": "Usage Based"
+      },
+      "receipt": {
+        "unitPrice": "Unit Price",
+        "totalCharge": "Total Charge",
+        "free": "Free",
+        "currentBalance": "Current Balance",
+        "estimatedBalance": "After Payment"
+      },
+      "warnings": {
+        "paidCreditOnly": "This premium strategy requires Paid Credits. Event-based or bonus credits cannot be applied to C2C marketplace transactions."
+      },
+      "buttons": {
+        "claimNow": "Claim Now",
+        "confirmPurchase": "Confirm Purchase"
+      }
+    },
     "purchaseConfirmDescriptionCredit": "Are you sure you want to purchase '{productName}' for {price} Credits?",
     "purchaseConfirmDescriptionPaidCredit": "Are you sure you want to purchase '{productName}' for {price} Paid Credits?",
     "chargeModalTitle": "Insufficient Credits",
     "chargeModalDescription": "You need more credits to purchase this item. Would you like to go to the shop to charge credits?",
     "goToChargePageButton": "Go to Credit Shop",
     "purchaseSuccessTitle": "Purchase Complete",
-    "purchaseSuccessDescription": "'{productName}' was successfully purchased.",
+    "purchaseSuccessDescription": "{productName} was successfully purchased.",
     "paymentRedirecting": "Redirecting to payment page...",
     "orderCreationError": "Order Creation Failed: {error}",
     "purchaseError": "Purchase Error: {error}",
@@ -2689,7 +2734,7 @@
           "description": "List your AI model on the marketplace so other users can purchase it.",
           "previewTitle": "Marketplace Preview",
           "priceLabel": "Sale Price (Cortex Credits)",
-          "priceHint": "Set to 0 to offer for free",
+          "priceHint": "Minimum 10 credits required",
           "descriptionLabel": "Product Description",
           "descriptionPlaceholder": "Write a description for potential buyers...",
           "revenueTitle": "Revenue Estimate",

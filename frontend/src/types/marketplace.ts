@@ -51,8 +51,10 @@ export interface BaseProduct<T, U extends string> {
 /**
  * [수정] 전략 상품의 productType은 항상 'STRATEGY'임을 명시합니다.
  */
-export interface MarketplaceStrategy
-  extends BaseProduct<StrategyMetadata, "STRATEGY"> {
+export interface MarketplaceStrategy extends BaseProduct<
+  StrategyMetadata,
+  "STRATEGY"
+> {
   latestBacktestSummary: {
     backtestId: string | null;
     totalReturnPct: number | null;
@@ -77,8 +79,10 @@ export interface MarketplaceStrategyDetail extends MarketplaceStrategy {
 /**
  * [수정] 상점 아이템의 productType은 'SHOP_ITEM' 또는 'CREDIT_PACK'이 될 수 있음을 명시합니다.
  */
-export interface ShopItem
-  extends BaseProduct<ShopItemMetadata, "SHOP_ITEM" | "CREDIT_PACK"> {
+export interface ShopItem extends BaseProduct<
+  ShopItemMetadata,
+  "SHOP_ITEM" | "CREDIT_PACK"
+> {
   // ShopItem에만 특화된 속성이 있다면 여기에 추가
 }
 
@@ -93,13 +97,17 @@ export interface AIModelMetadata {
 /**
  * AI 모델 상품 타입
  */
-export interface MarketplaceAIModel
-  extends BaseProduct<AIModelMetadata, "AI_MODEL"> {
+export interface MarketplaceAIModel extends BaseProduct<
+  AIModelMetadata,
+  "AI_MODEL"
+> {
   modelType: string;
   trainingStartDate?: string;
   trainingEndDate?: string;
   accuracy?: number;
 }
+
+export type AIModelProduct = MarketplaceAIModel;
 
 export interface PaginatedProductsResponse {
   products: (MarketplaceStrategy | ShopItem | MarketplaceAIModel)[];

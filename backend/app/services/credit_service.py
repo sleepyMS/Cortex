@@ -30,7 +30,7 @@ class CreditService:
 
         breakdown = schemas.CreditBalanceBreakdown()
         for ledger in ledgers:
-            if ledger.source_type in ["PURCHASE", "SUBSCRIPTION_BONUS"]:
+            if ledger.source_type in ["PURCHASE", "SUBSCRIPTION_BONUS", "C2C_SALE_REVENUE"]:
                 breakdown.purchased += ledger.remaining_amount
             elif ledger.source_type in ["ATTENDANCE_DAILY", "ATTENDANCE_BONUS"]:
                 breakdown.expiring_weekly += ledger.remaining_amount
@@ -170,15 +170,17 @@ class CreditService:
         related_entity_type: Optional[str] = None,
         related_entity_id: Optional[uuid.UUID] = None
     ) -> models.CreditTransaction:
-        """[신규 C2C용] 오직 '유료 크레딧'만 사용하여 차감하고 거래 내역을 기록합니다."""
+        """[C2C용] 오직 '유료 크레딧'만 사용하여 차감하고 거래 내역을 기록합니다."""
         if amount_to_deduct <= 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="차감할 크레딧은 0보다 커야 합니다.")
 
-        # 1. 'PURCHASE' 타입의 원장만 잠금(Lock)하여 조회합니다.
+        # 1. '유료 크레딧' 타입의 원장만 잠금(Lock)하여 조회합니다.
+        # PURCHASE, SUBSCRIPTION_BONUS, C2C_SALE_REVENUE 모두 유료 크레딧으로 취급
+        paid_credit_types = ["PURCHASE", "SUBSCRIPTION_BONUS", "C2C_SALE_REVENUE"]
         query = select(models.CreditLedger).filter(
             models.CreditLedger.user_id == user_id,
             models.CreditLedger.remaining_amount > 0,
-            models.CreditLedger.source_type == "PURCHASE" # 핵심 필터링 조건
+            models.CreditLedger.source_type.in_(paid_credit_types)  # 유료 크레딧 타입들
         ).order_by(models.CreditLedger.created_at.asc()).with_for_update() # FIFO
 
         result = await db.execute(query)
