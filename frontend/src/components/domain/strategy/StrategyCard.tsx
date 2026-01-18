@@ -382,7 +382,7 @@ export function StrategyCard({
                 "flex items-center gap-1.5 h-6 px-2 font-medium border-border/50",
                 strategy.isPublic
                   ? "bg-blue-500/5 text-blue-500 border-blue-500/20"
-                  : "bg-muted text-muted-foreground border-border"
+                  : "bg-muted text-muted-foreground border-border",
               )}
             >
               {strategy.isPublic ? (
@@ -441,7 +441,7 @@ export function StrategyCard({
                   "flex items-center gap-1 h-5 px-1.5 text-[9px] font-bold uppercase tracking-wider border-border/50",
                   strategy.isPublic
                     ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                    : "bg-muted text-muted-foreground"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 {strategy.isPublic ? (
@@ -474,7 +474,7 @@ export function StrategyCard({
           <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-widest font-bold opacity-60">
             <span>Performance Analytics</span>
           </div>
-          <div className="transform transition-transform duration-300 group-hover:translate-x-1">
+          <div>
             <StrategyPerformanceBadges
               summary={strategy.latestBacktestSummary}
             />
