@@ -176,15 +176,6 @@ export const MarketplaceAIModelCard = ({
             </div>
           </div>
         )}
-
-        <Separator />
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>판매자</span>
-          <span className="font-medium text-foreground">
-            {model.author?.username || "Unknown"}
-          </span>
-        </div>
       </CardContent>
       <CardFooter className="flex-col items-stretch pt-4 border-t bg-muted/50">
         <div className="flex items-center justify-end text-3xl font-bold text-right mb-4">

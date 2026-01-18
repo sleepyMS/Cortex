@@ -26,7 +26,6 @@ import {
   Brain,
   LineChart,
   ShoppingBag,
-  User,
   Coins,
   AlertCircle,
   Gem,
@@ -325,20 +324,6 @@ export const PurchaseConfirmationModal = ({
               </h3>
 
               {/* Author line */}
-              <div
-                className={`
-                  flex items-center gap-2 pt-1
-                  transition-all duration-500 delay-150
-                  ${isAnimated ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"}
-                `}
-              >
-                <div className="w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                  <User className="h-2.5 w-2.5 text-white/80" />
-                </div>
-                <span className="text-xs text-white/70">
-                  {product.author.username || tConf("author.anonymous")}
-                </span>
-              </div>
             </div>
           </div>
         </div>
