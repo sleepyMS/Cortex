@@ -103,6 +103,14 @@ const DialogFooter = ({
 );
 DialogFooter.displayName = "DialogFooter";
 
+const DialogBody = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={clsx("px-6 py-4", className)} {...props} />
+);
+DialogBody.displayName = "DialogBody";
+
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -139,6 +147,7 @@ export {
   DialogContent,
   DialogHeader,
   DialogFooter,
+  DialogBody,
   DialogTitle,
   DialogDescription,
 };

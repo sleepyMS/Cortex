@@ -460,11 +460,23 @@ def train_ai_model_task(self, model_id: str, job_id: str, manual_start_date: str
         # 6. 성공 - 결과 저장
         ai_model.status = AIModelStatus.COMPLETED
         ai_model.model_weights_path = result["model_path"]
-        ai_model.training_metrics = result.get("training_metrics", {}).get("final_metrics", {})
+        
+        # training_metrics 추출: 최적화 모델과 일반 모델의 구조가 다름
+        # - 최적화 모델: result["final_metrics"] (training_result.json에서 직접 로드)
+        # - 일반 모델: result["training_metrics"]["final_metrics"] (TrainingResult dataclass)
+        training_metrics_data = result.get("training_metrics", {})
+        if isinstance(training_metrics_data, dict) and "final_metrics" in training_metrics_data:
+            # 일반 모델: 중첩 구조
+            ai_model.training_metrics = training_metrics_data.get("final_metrics", {})
+        else:
+            # 최적화 모델: 직접 final_metrics 사용
+            ai_model.training_metrics = result.get("final_metrics", {})
+        
+        # validation_metrics도 동일한 방식으로 처리
         ai_model.validation_metrics = {
             "label_stats": result.get("label_stats", {}),
-            "best_epoch": result.get("training_metrics", {}).get("best_epoch"),
-            "best_val_loss": result.get("training_metrics", {}).get("best_val_loss"),
+            "best_epoch": training_metrics_data.get("best_epoch") if isinstance(training_metrics_data, dict) else result.get("best_epoch"),
+            "best_val_loss": training_metrics_data.get("best_val_loss") if isinstance(training_metrics_data, dict) else result.get("best_val_loss"),
             "feature_importance": result.get("feature_importance", {}),
         }
         ai_model.feature_config = result.get("feature_config", ai_model.feature_config)

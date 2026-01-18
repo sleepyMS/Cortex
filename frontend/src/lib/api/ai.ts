@@ -147,3 +147,43 @@ export const estimateAIModelCost = async (
   );
   return data;
 };
+
+// ========== 마켓플레이스 관련 API ==========
+
+// 마켓플레이스 등록 상태 조회
+export interface AIModelListingStatus {
+  listed: boolean;
+  productId: string | null;
+  price: number | null;
+  description: string | null;
+}
+
+export const getAIModelListingStatus = async (
+  modelId: string
+): Promise<AIModelListingStatus> => {
+  const { data } = await apiClient.get<AIModelListingStatus>(
+    `/ai-models/${modelId}/listing-status`
+  );
+  return data;
+};
+
+// 마켓플레이스 등록
+export interface AIModelListPayload {
+  modelId: string;
+  price: number;
+  description?: string;
+}
+
+export const listAIModelOnMarketplace = async (
+  payload: AIModelListPayload
+): Promise<unknown> => {
+  const { data } = await apiClient.post("/marketplace/ai-listings", payload);
+  return data;
+};
+
+// 마켓플레이스 등록 해제
+export const unlistAIModelFromMarketplace = async (
+  productId: string
+): Promise<void> => {
+  await apiClient.delete(`/marketplace/listings/${productId}`);
+};

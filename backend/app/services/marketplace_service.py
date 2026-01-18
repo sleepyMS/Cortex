@@ -14,6 +14,9 @@ from .credit_service import credit_service
 
 logger = logging.getLogger(__name__)
 
+# 플랫폼 수수료율 (C2C 거래에서 플랫폼이 가져가는 비율)
+PLATFORM_COMMISSION_RATE = 0.10  # 10%
+
 class MarketplaceService:
     """
     마켓플레이스의 상품 조회, 주문 생성, 자산 지급 등 핵심 비즈니스 로직을 처리하는 서비스
@@ -296,6 +299,29 @@ class MarketplaceService:
                     ownership_exists = await db.scalar(select(ownership_exists_query.exists()))
                     if not ownership_exists:
                         db.add(models.UserPurchasedStrategy(user_id=order.buyer_id, strategy_id=product.linked_resource_id, order_item_id=item.id))
+                
+                # [C2C 판매자 정산] 전략 또는 AI 모델 구매 시 판매자에게 수익 지급
+                if product.product_type in [models.ProductType.STRATEGY, models.ProductType.AI_MODEL]:
+                    sale_amount = int(item.price_at_purchase * item.quantity)
+                    
+                    # 자기 자신의 상품을 구매한 경우는 정산 스킵 (테스트 케이스 등)
+                    if sale_amount > 0 and product.seller_id != order.buyer_id:
+                        commission = int(sale_amount * PLATFORM_COMMISSION_RATE)
+                        seller_payout = sale_amount - commission
+                        
+                        if seller_payout > 0:
+                            await credit_service.grant_credits(
+                                db=db,
+                                user_id=product.seller_id,
+                                amount=seller_payout,
+                                source_type="C2C_SALE_REVENUE",
+                                source_id=str(order.id)
+                            )
+                            logger.info(
+                                f"C2C Sale: Paid seller {product.seller_id} "
+                                f"amount {seller_payout} CC (commission: {commission} CC, rate: {PLATFORM_COMMISSION_RATE*100}%)"
+                            )
+                            
             elif product.inventory_type == models.InventoryType.CONSUMABLE:
                 existing_inventory_item = await db.scalar(select(models.UserInventory).filter_by(user_id=order.buyer_id, product_id=product.id))
                 if existing_inventory_item:
@@ -551,6 +577,19 @@ class MarketplaceService:
         
         await db.flush()
         product.seller = seller
+
+        # Pydantic response_model (schemas.AIModelProduct) 매핑을 위한 속성 주입
+        # MarketplaceProduct 모델에는 없는 필드들이지만, API 응답 스키마가 요구하므로 동적으로 할당합니다.
+        product.model_type = ai_model.model_type
+        product.training_start_date = ai_model.training_start_date.isoformat() if ai_model.training_start_date else None
+        product.training_end_date = ai_model.training_end_date.isoformat() if ai_model.training_end_date else None
+        
+        product.accuracy = None
+        if ai_model.validation_metrics:
+             product.accuracy = ai_model.validation_metrics.get("accuracy")
+        
+        # BaseProduct 스키마의 author 필드 매핑
+        product.author = seller
         
         return product
 

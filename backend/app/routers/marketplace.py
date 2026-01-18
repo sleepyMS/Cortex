@@ -157,6 +157,34 @@ async def list_strategy_on_marketplace(
     return product
 
 
+@router.post(
+    "/ai-listings",
+    response_model=schemas.AIModelProduct,
+    status_code=status.HTTP_201_CREATED,
+    summary="List an AI model on the marketplace"
+)
+async def list_ai_model_on_marketplace(
+    payload: schemas.AIModelListPayload,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """사용자의 AI 모델을 마켓플레이스에 상품으로 등록하거나 업데이트합니다."""
+    ai_model = await db.get(models.AIModel, payload.model_id)
+    
+    if not ai_model or ai_model.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="자신의 AI 모델만 마켓에 등록할 수 있습니다.")
+    
+    if ai_model.status != "completed":
+        raise HTTPException(status_code=400, detail="학습이 완료된 모델만 등록할 수 있습니다.")
+    
+    product = await marketplace_service.list_ai_model_as_product(
+        db=db, ai_model=ai_model, listing_data=payload, seller=current_user
+    )
+    await db.commit()
+    logger.info(f"AI Model '{ai_model.name}' listed/updated on marketplace by user {current_user.email}.")
+    return product
+
+
 @router.delete(
     "/listings/{product_id}",
     status_code=status.HTTP_204_NO_CONTENT,

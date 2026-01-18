@@ -15,10 +15,11 @@ import Link from "next/link";
 import {
   getAIModelDetail,
   getTrainingStatus,
-  setModelPublic,
   testPrediction,
   deleteAIModel,
   getAIModelVersions,
+  getAIModelListingStatus,
+  unlistAIModelFromMarketplace,
 } from "@/lib/api/ai";
 import {
   useAITrainingSocket,
@@ -67,6 +68,8 @@ import {
   Zap,
   Trophy,
   Layout,
+  Store,
+  StoreIcon,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
@@ -75,6 +78,7 @@ import { cn } from "@/lib/utils";
 import { AIModelFeatureImportance } from "@/components/domain/ai-lab/AIModelFeatureImportance";
 import { AIModelVersionsTable } from "@/components/domain/ai-lab/AIModelVersionsTable";
 import { AIModelRetrainDialog } from "@/components/domain/ai-lab/AIModelRetrainDialog";
+import { AIModelListingDialog } from "@/components/domain/ai-lab/AIModelListingDialog";
 import {
   LineChart,
   Line,
@@ -559,16 +563,23 @@ export default function AIModelDetailPage({ params }: PageProps) {
     },
   });
 
-  // Toggle public mutation
-  const togglePublicMutation = useMutation({
-    mutationFn: (isPublic: boolean) => setModelPublic(modelId, isPublic),
-    onSuccess: (_, isPublic) => {
-      queryClient.invalidateQueries({ queryKey: ["ai-model", modelId] });
-      toast.success(
-        isPublic
-          ? t("detail.actions.publicSuccess")
-          : t("detail.actions.privateSuccess")
-      );
+  // Marketplace listing status
+  const { data: listingStatus, refetch: refetchListingStatus } = useQuery({
+    queryKey: ["ai-model-listing-status", modelId],
+    queryFn: () => getAIModelListingStatus(modelId),
+    enabled: !!modelId && model?.status === "completed",
+  });
+
+  const [isListingDialogOpen, setIsListingDialogOpen] = useState(false);
+
+  // Unlist mutation
+  const unlistMutation = useMutation({
+    mutationFn: (productId: string) => unlistAIModelFromMarketplace(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["ai-model-listing-status", modelId],
+      });
+      toast.success(t("detail.management.unlistDialog.success"));
     },
     onError: () => {
       toast.error(t("detail.actions.updateFail"));
@@ -1828,24 +1839,78 @@ export default function AIModelDetailPage({ params }: PageProps) {
                 {t("detail.management.title")}
               </h3>
               <div className="flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3 h-11"
-                  onClick={() => togglePublicMutation.mutate(!model.isPublic)}
-                  disabled={togglePublicMutation.isPending}
-                >
-                  {model.isPublic ? (
-                    <>
-                      <Lock className="h-4 w-4 text-violet-500" />{" "}
-                      {t("detail.management.switchToPrivate")}
-                    </>
+                {/* Marketplace Listing Button */}
+                {model.status === "completed" ? (
+                  listingStatus?.listed ? (
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11 border-emerald-500/30 bg-emerald-500/5"
+                        onClick={() => setIsListingDialogOpen(true)}
+                      >
+                        <Store className="h-4 w-4 text-emerald-500" />
+                        {t("detail.management.editListing")}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 h-11 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                            disabled={unlistMutation.isPending}
+                          >
+                            <StoreIcon className="h-4 w-4" />
+                            {t("detail.management.unlistFromMarketplace")}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {t("detail.management.unlistDialog.title")}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t("detail.management.unlistDialog.description")}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>
+                              {t("detail.management.unlistDialog.cancel")}
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                if (listingStatus?.productId) {
+                                  unlistMutation.mutate(
+                                    listingStatus.productId
+                                  );
+                                }
+                              }}
+                              className="bg-amber-500 text-white hover:bg-amber-600"
+                            >
+                              {t("detail.management.unlistDialog.confirm")}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   ) : (
-                    <>
-                      <Globe className="h-4 w-4 text-emerald-500" />{" "}
-                      {t("detail.management.makePublic")}
-                    </>
-                  )}
-                </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => setIsListingDialogOpen(true)}
+                    >
+                      <Store className="h-4 w-4 text-emerald-500" />
+                      {t("detail.management.listOnMarketplace")}
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-3 h-11 opacity-50"
+                    disabled
+                  >
+                    <Store className="h-4 w-4 text-muted-foreground" />
+                    {t("detail.management.listOnMarketplaceDisabled")}
+                  </Button>
+                )}
 
                 <Button
                   variant="outline"
@@ -1910,6 +1975,15 @@ export default function AIModelDetailPage({ params }: PageProps) {
           setRealtimeLogs([]);
           refetchStatus();
           refetchModel();
+        }}
+      />
+      <AIModelListingDialog
+        open={isListingDialogOpen}
+        onOpenChange={setIsListingDialogOpen}
+        model={model}
+        existingListing={listingStatus}
+        onSuccess={() => {
+          refetchListingStatus();
         }}
       />
     </>

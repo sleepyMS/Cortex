@@ -323,6 +323,35 @@ async def set_model_public(
     return schemas.AIModelSummary.model_validate(model)
 
 
+@router.get("/{model_id}/listing-status", response_model=schemas.AIModelListingStatusResponse)
+async def get_model_listing_status(
+    model_id: str,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """AI 모델의 마켓플레이스 등록 상태를 확인합니다."""
+    from sqlalchemy import select
+    from ..models import MarketplaceProduct, ProductType
+    
+    product = await db.scalar(
+        select(MarketplaceProduct)
+        .filter(
+            MarketplaceProduct.linked_resource_id == model_id,
+            MarketplaceProduct.product_type == ProductType.AI_MODEL,
+            MarketplaceProduct.is_active == True
+        )
+    )
+    
+    if product:
+        return {
+            "listed": True,
+            "product_id": product.id,
+            "price": product.price,
+            "description": product.description
+        }
+    return {"listed": False, "product_id": None, "price": None, "description": None}
+
+
 @router.get("/{model_id}/download")
 async def download_model(
     model_id: str,

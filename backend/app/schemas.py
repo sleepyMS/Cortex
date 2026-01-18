@@ -1088,6 +1088,14 @@ class AIModelListPayload(CamelCaseModel):
     description: Optional[str] = None
 
 
+class AIModelListingStatusResponse(CamelCaseModel):
+    """AI 모델의 마켓플레이스 등록 상태 응답"""
+    listed: bool
+    product_id: Optional[uuid.UUID] = None
+    price: Optional[float] = None
+    description: Optional[str] = None
+
+
 # --- API 응답(Response) 스키마 ---
 
 class ProductAuthor(CamelCaseModel):
