@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI 로직 블록 시스템 기술 설명서</title>
+    <style>
+      body {
+        font-family: "Pretendard", "Malgun Gothic", sans-serif;
+        line-height: 1.6;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20px;
+        color: #333;
+      }
+      h1 {
+        border-bottom: 3px solid #000;
+        padding-bottom: 10px;
+        font-size: 2em;
+        margin-bottom: 20px;
+      }
+      h2 {
+        border-bottom: 1px solid #666;
+        padding-bottom: 5px;
+        margin-top: 40px;
+        font-size: 1.5em;
+      }
+      h3 {
+        margin-top: 25px;
+        font-size: 1.2em;
+        color: #444;
+      }
+      p {
+        margin-bottom: 10px;
+        text-align: justify;
+      }
+      blockquote {
+        background: #f1f3f5;
+        border-left: 5px solid #228be6;
+        margin: 20px 0;
+        padding: 10px 20px;
+        font-style: italic;
+      }
+      code {
+        background: #f1f3f5;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Consolas", monospace;
+        font-size: 0.9em;
+        color: #e03131;
+      }
+      pre {
+        background: #212529;
+        color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-family: "Consolas", monospace;
+        font-size: 0.85em;
+      }
+      /* CSS Fix: pre 내부의 code는 투명 배경과 부모 색상을 따르도록 초기화 */
+      pre code {
+        background: none;
+        color: inherit;
+        padding: 0;
+        font-size: 1em;
+        border-radius: 0;
+      }
+
+      .diagram-container {
+        text-align: center;
+        margin: 30px 0;
+        border: 1px solid #eee;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      .diagram-container img {
+        max-width: 100%;
+        height: auto;
+      }
+
+      @media print {
+        body {
+          max-width: 100%;
+          padding: 0;
+          margin: 0;
+        }
+        /* 인쇄 시 코드 블록을 흰 배경에 검은 글씨로 변경 */
+        pre {
+          background: #fff;
+          color: #000;
+          border: 1px solid #ccc;
+        }
+        .diagram-container {
+          break-inside: avoid;
+          border: none;
+        }
+        h1,
+        h2,
+        h3 {
+          page-break-after: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>[별첨] AI 로직 블록 시스템 기술 설명서</h1>
+
+    <blockquote>
+      <p>
+        <strong>문서 용도</strong>: 변리사님 전달용 (발명의 구조 및 동작 원리
+        설명)<br />
+        <strong>핵심 주제</strong>: AI 모델을 일반 투자 전략의 '부품(블록)'처럼
+        사용할 수 있게 하는 신호 평가 인터페이스<br />
+        <strong>작성일</strong>: 2026. 01. 29.
+      </p>
+    </blockquote>
+
+    <hr />
+
+    <h2>1. 발명의 배경 및 목적</h2>
+    <p>
+      기존의 퀀트 투자 툴은 'RSI가 30 이하일 때'와 같은 단순한 수식 조건만
+      설정할 수 있었습니다. 사용자가 직접 학습시킨 AI 모델을 사용하려면 복잡한
+      코딩이 필수적이었습니다.
+    </p>
+    <p>
+      본 발명은
+      <strong
+        >AI 모델의 복잡한 출력값(확률, 예측 수치 등)을 '매수/매도'라는 단순한
+        신호로 자동 변환해주는 평가 엔진</strong
+      >을 제공하여, AI를 레고 블록처럼 쉽게 조립할 수 있게 하는 시스템입니다.
+    </p>
+
+    <hr />
+
+    <h2>2. 시스템 구성도 (Structure)</h2>
+    <p>
+      이 시스템은 크게 <strong>설정부(User Input)</strong>,
+      <strong>처리부(Engine)</strong>, <strong>출력부(Result)</strong>로
+      나뉩니다.
+    </p>
+
+    <div class="diagram-container">
+      <!-- 시스템 구성도 이미지 -->
+      <img src="system_structure.png" alt="시스템 구성도" />
+    </div>
+
+    <hr />
+    <div style="padding: 40px"></div>
+    <h2>3. 핵심 동작 원리 (Algorithm)</h2>
+    <p>
+      사용자 말씀대로 <strong>AI 모델의 종류(분류 vs 회귀)</strong>에 따라
+      내부적으로 완전히 다른 평가 로직이 작동합니다. 시스템은 이를 자동으로
+      감지하여 적절한 알고리즘을 적용합니다.
+    </p>
+
+    <h3>3.1. 분류 모델 (Classification) 로직</h3>
+    <p><em>("위/아래"를 맞추는 모델)</em></p>
+    <p>
+      이 모델은 AI가 <strong>[상승확률, 하락확률]</strong>을 출력하므로, 이를
+      해석하는 전용 로직이 필요합니다.
+    </p>
+    <ul>
+      <li>
+        <strong>최고 확률 모드 (Highest Probability)</strong>
+        <ul>
+          <li><strong>로직</strong>: <code>argmax(확률벡터)</code></li>
+          <li>
+            <strong>설명</strong>: 상승 확률이 하락 확률보다 높으면 무조건 매수.
+          </li>
+        </ul>
+      </li>
+      <li>
+        <strong>임계값 모드 (Probability Threshold)</strong>
+        <ul>
+          <li>
+            <strong>로직</strong>:
+            <code>max(확률) >= 사용자설정값(예: 80%)</code>
+          </li>
+          <li>
+            <strong>설명</strong>: "확실할 때만 진입". 아무리 상승 확률이 높아도
+            79%면 매매하지 않음.
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>3.2. 회귀 모델 (Regression) 로직</h3>
+    <p><em>("얼마나 오를지" 가격을 예측하는 모델)</em></p>
+    <p>
+      이 모델은 AI가 <strong>[예측가격]</strong> 또는
+      <strong>[예측수익률]</strong>이라는 하나의 숫자를 출력하므로, 다른 해석
+      방법이 필요합니다.
+    </p>
+    <ul>
+      <li>
+        <strong>방향성 모드 (Direction)</strong>
+        <ul>
+          <li>
+            <strong>로직</strong>:
+            <code>sign(예측수익률) == 사용자설정방향</code>
+          </li>
+          <li>
+            <strong>설명</strong>: 1%가 오르든 10%가 오르든, 일단 "양수(+)"면
+            매수.
+          </li>
+        </ul>
+      </li>
+      <li>
+        <strong>★ 신뢰도 모드 (Confidence / MC Dropout)</strong>
+        <ul>
+          <li><strong>로직</strong>: <code>LowerBound > 0</code> (상승 시)</li>
+          <li>
+            <strong>설명</strong>: AI가 예측한 값의
+            <strong>범위(Range)</strong>를 봅니다. "최악의 경우에도 0보다
+            큰가?"를 검증합니다.<br />
+            예측값이 +3%라도, 불확실성이 커서 범위가 -1% ~ +7%라면 0 이하로
+            떨어질 위험이 있으므로 매수하지 않습니다.
+            <strong>(손실 방어 핵심 기술)</strong>
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <hr />
+
+    <div style="padding: 40px"></div>
+    <h2>4. 처리 흐름도 (Flowchart)</h2>
+    <p>
+      평가 엔진은 모델의 타입(Type)을 먼저 체크한 후, 알맞은 경로로
+      분기(Branching)합니다.
+    </p>
+
+    <div class="diagram-container">
+      <!-- 알고리즘 흐름도 이미지 -->
+      <img src="algorithm_flowchart.png" alt="알고리즘 흐름도" />
+    </div>
+
+    <hr />
+
+    <h2>5. 발명의 기술적 특징 (특허 청구 포인트)</h2>
+    <ol>
+      <li>
+        <strong>이중 모드 평가 엔진 (Dual-Mode Evaluation Engine)</strong>
+        <ul>
+          <li>
+            성격이 전혀 다른 두 가지 AI 모델(분류/회귀)을 하나의 시스템 안에서
+            통합 처리하는 구조.
+          </li>
+          <li>
+            사용자는 모델 내부 수학을 몰라도 "임계값"이나 "신뢰도" 같은 직관적인
+            옵션만 조절하면 됨.
+          </li>
+        </ul>
+      </li>
+      <li>
+        <strong>불확실성 제어 (Uncertainty Control)</strong>
+        <ul>
+          <li>
+            회귀 모델의 <code>Confidence</code> 모드는 단순 예측값이 아니라,
+            AI의 "자신감(신뢰도)"을 매매의 안전장치(Safety Lock)로 활용.
+          </li>
+        </ul>
+      </li>
+    </ol>
+
+    <hr />
+
+    <h2>[부록] 참고용 데이터 명세</h2>
+    <p>
+      <em
+        >변리사님 참고용: 실제 시스템 내부에서 주고받는 데이터의 예시입니다.</em
+      >
+    </p>
+
+    <p><strong>[AI 로직 블록 설정값 예시]</strong></p>
+    <pre><code>{
+  "type": "ai_signal",
+  "modelId": "lstm_price_predictor",
+  "taskType": "regression",      // 모델 타입 명시
+  "evaluationMode": "confidence", // 회귀 전용 모드 사용
+  "parameters": {
+    "direction": "positive",
+    "mcDropoutSamples": 30,
+    "useUncertainty": true
+  }
+}</code></pre>
+  </body>
+</html>
