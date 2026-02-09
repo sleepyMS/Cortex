@@ -9,7 +9,7 @@ export const localeConfig: Record<
 > = {
   ko: { name: "Korean", nativeName: "한국어", flag: "🇰🇷", countryCode: "KR" },
   en: { name: "English", nativeName: "English", flag: "🇺🇸", countryCode: "US" },
-  // 새 언어 추가 예시:
+  // 새 언어 추가
   // ja: { name: "Japanese", nativeName: "日本語", flag: "🇯🇵", countryCode: "JP" },
   // zh: { name: "Chinese", nativeName: "中文", flag: "🇨🇳", countryCode: "CN" },
 };
