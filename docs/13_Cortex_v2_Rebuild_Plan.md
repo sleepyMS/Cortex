@@ -1,6 +1,8 @@
 # 🧠 Cortex v2.0 — SaaS-Level Complete Rebuild 계획서
 
 > **목표**: 프로토타입 수준의 기존 Cortex 프로젝트를 분석하고, 그 경험을 바탕으로 **프로덕션 SaaS 수준**의 완전히 새로운 프로젝트를 설계한다.
+>
+> 📋 **감사 보고서**: 본 계획서는 [14_Cortex_v2_Audit_Report.md](./14_Cortex_v2_Audit_Report.md)의 23건 감사 결과를 반영한 **최종 확정판**이다.
 
 ---
 
@@ -53,22 +55,32 @@ mindmap
 
 ## 🏗️ 새 프로젝트 아키텍처
 
-### 기술 스택
+### 기술 스택 (감사 반영 확정판)
 
-| Layer          | Technology                                         | 선택 이유                               |
-| :------------- | :------------------------------------------------- | :-------------------------------------- |
-| **Frontend**   | Next.js 14 (App Router) + TypeScript + TailwindCSS | SSR/SSG, 파일 기반 라우팅, 타입 안전성  |
-| **UI**         | shadcn/ui + Framer Motion + Lightweight Charts     | 커스터마이징 용이, 금융 차트 최적화     |
-| **상태 관리**  | React Query (서버) + Zustand (클라이언트)          | 캐시 자동화, 경량 전역 상태             |
-| **폼**         | React Hook Form + Zod                              | 성능 최적화, 스키마 기반 검증           |
-| **Backend**    | FastAPI + Pydantic v2                              | 비동기 API, 자동 문서화, 타입 검증      |
-| **Task Queue** | Celery + Redis                                     | 분산 태스크, 스케줄링                   |
-| **Database**   | PostgreSQL + TimescaleDB                           | 관계형 + 시계열 데이터                  |
-| **Cache**      | Redis                                              | 세션, 캐시, Rate Limiting               |
-| **AI/ML**      | PyTorch + ONNX Runtime + Optuna                    | 딥러닝 학습/추론, 하이퍼파라미터 최적화 |
-| **Monitoring** | Sentry + Structured Logging                        | 에러 추적, 로그 관리                    |
-| **배포**       | Docker + Vercel (FE) + AWS ECS (BE)                | 컨테이너화, 자동 스케일링               |
-| **CI/CD**      | GitHub Actions                                     | 자동 테스트/배포 파이프라인             |
+| Layer           | Technology                                                  | 선택 이유                                         |
+| :-------------- | :---------------------------------------------------------- | :------------------------------------------------ |
+| **Frontend**    | **Next.js 16** (App Router) + **React 19** + TypeScript     | Turbopack, Cache Components, PPR, 최신 React 훅   |
+| **CSS**         | **TailwindCSS v4**                                          | CSS-First 설정, Lightning CSS, 자동 콘텐츠 탐지   |
+| **UI**          | shadcn/ui + Framer Motion + Lightweight Charts              | 커스터마이징 용이, 금융 차트 최적화               |
+| **차트**        | **Apache ECharts** (echarts-for-react) + Lightweight Charts | Canvas 렌더링, 히트맵/등고선, 대용량 성능         |
+| **상태 관리**   | React Query v5 (서버) + Zustand (클라이언트 UI만)           | 캐시 자동화, Server Components로 범위 축소        |
+| **폼**          | React Hook Form + Zod                                       | 성능 최적화, 스키마 기반 검증                     |
+| **타입 생성**   | **openapi-typescript** (자동)                               | FastAPI OpenAPI → TypeScript 타입 자동 생성       |
+| **패키지**      | **pnpm**                                                    | 빠른 설치, 엄격한 의존성, 디스크 효율             |
+| **Lint/Format** | **Biome**                                                   | Rust 기반 10-100x 빠름, ESLint+Prettier 통합 대체 |
+| **Backend**     | FastAPI + Pydantic v2 + SQLAlchemy 2.0 async                | 비동기 API, 자동 문서화, 타입 검증                |
+| **엔진 성능**   | **Numba JIT** + 벡터화 NumPy                                | 백테스트 루프 10-100x 성능 향상                   |
+| **Task Queue**  | Celery + Redis + **Flower** 모니터링                        | 분산 태스크, 스케줄링, 작업 모니터링              |
+| **Database**    | PostgreSQL + TimescaleDB (**Timescale Cloud**)              | 관리형 시계열 DB, 운영 부담 제거                  |
+| **Cache**       | Redis (L1: React Query / L2: Redis / L3: DB)                | 계층적 캐싱 전략                                  |
+| **Storage**     | **Cloudflare R2** (S3 호환)                                 | 모델 가중치, 아바타, 리포트 — 이그레스 무료       |
+| **AI/ML**       | **PyTorch Lightning** + ONNX + Optuna + **MLflow**          | 구조화 학습, 실험 추적, 모델 레지스트리           |
+| **실시간**      | **통합 WebSocket Gateway** + Redis Pub/Sub                  | 전 기능 통합 실시간 통신                          |
+| **Monitoring**  | Sentry + Structured Logging                                 | 에러 추적, 로그 관리                              |
+| **배포 (초기)** | Docker + Vercel (FE) + **Railway** (BE)                     | 간소화 배포, ECS 마이그레이션 경로 확보           |
+| **배포 (성장)** | Docker + Vercel (FE) + AWS ECS (BE)                         | 프로덕션 스케일링                                 |
+| **CI/CD**       | GitHub Actions + **Biome** + **pip-audit/npm audit**        | 자동 테스트/배포/보안 체크                        |
+| **API 설계**    | **`/api/v1/`** 버저닝 + **커서 기반 페이지네이션**          | SaaS 필수 하위 호환성 + 대량 데이터 성능          |
 
 ### 백엔드 모듈 구조 (Domain-Driven Design)
 
@@ -160,9 +172,17 @@ frontend/src/
 
 **Backend**
 
-- [ ] 프로젝트 초기화: FastAPI + Pydantic v2 + SQLAlchemy 2.0
-- [ ] Docker Compose: PostgreSQL + TimescaleDB + Redis + Celery
+- [ ] 프로젝트 초기화: FastAPI + Pydantic v2 + SQLAlchemy 2.0 async
+- [ ] **[AUDIT]** API 버저닝: 모든 라우터에 `/api/v1/` 프리픽스 적용
+- [ ] Docker Compose: PostgreSQL + TimescaleDB + Redis + Celery + Flower
 - [ ] Core 모듈: config, database, security, exceptions, middleware
+- [ ] **[AUDIT]** 통합 WebSocket Gateway 인프라:
+  - 연결 관리, JWT 인증, Redis Pub/Sub 기반 수평 확장
+  - 채널 설계: trading, backtest, optimization, ai-training, market, notifications
+- [ ] **[AUDIT]** Cloudflare R2 파일 스토리지 연동 (Pre-signed URL)
+- [ ] **[AUDIT]** 감사 추적 (Audit Trail): `audit_logs` 테이블 + 이벤트 비동기 기록
+- [ ] **[AUDIT]** 계층 캐싱 전략: Redis L2 캐시 레이어 + 무효화 이벤트
+- [ ] **[AUDIT]** 표준 에러 응답 포맷 + 커서 기반 페이지네이션 미들웨어
 - [ ] 인증 시스템:
   - 이메일/비밀번호 회원가입 (Bcrypt + Argon2)
   - JWT Access/Refresh 토큰 (Redis 블랙리스트)
@@ -172,17 +192,21 @@ frontend/src/
   - **[NEW]** TOTP 2FA (Google Authenticator 호환)
   - **[NEW]** 활성 세션 관리 (기기별 조회/원격 로그아웃)
   - Rate Limiting (Redis 슬라이딩 윈도우)
-- [ ] 사용자 프로필 CRUD
+- [ ] 사용자 프로필 CRUD (아바타: R2 업로드)
 - [ ] Admin API: 사용자 관리
 - [ ] Structured Logging + Sentry 연동
 
 **Frontend**
 
-- [ ] Next.js 14 프로젝트 초기화 (App Router, TypeScript strict)
+- [ ] **[AUDIT]** Next.js 16 + React 19 프로젝트 초기화 (App Router, TypeScript strict, Turbopack)
+- [ ] **[AUDIT]** pnpm 패키지 매니저 + Biome 린터/포매터 설정
+- [ ] **[AUDIT]** TailwindCSS v4 설정 (CSS-First, @theme 디렉티브)
+- [ ] **[AUDIT]** openapi-typescript 연동: FastAPI → TypeScript 타입 자동 생성 파이프라인
 - [ ] 디자인 시스템: 색상 토큰, 타이포그래피, 컴포넌트 기반
 - [ ] shadcn/ui 기반 UI Kit 구축
 - [ ] 다크/라이트 모드 전환
 - [ ] i18n 설정 (next-intl: ko/en)
+- [ ] **[AUDIT]** 통합 에러 처리: 라우트별 error.tsx + loading.tsx + Skeleton 패턴
 - [ ] 인증 페이지: 로그인, 회원가입, 비밀번호 찾기, 이메일 인증
 - [ ] 보호된 라우트 가드 (미들웨어)
 - [ ] 반응형 레이아웃 (사이드바 + 헤더)
@@ -237,13 +261,16 @@ frontend/src/
 
 - [ ] **이벤트 기반 백테스팅 엔진** (완전 재설계):
   - 이벤트 루프: MarketData → Signal → Order → Position → PnL
+  - **[AUDIT]** 엔진 코어에 **Numba JIT 컴파일** 적용 (hot path 10-100x 가속)
+  - **[AUDIT]** 지표 계산: **벡터화 NumPy + pandas-ta** (루프 대신 벡터 연산)
+  - **[AUDIT]** Signal Service를 **파이프라인 패턴**으로 재설계 (단계별 캐시 가능)
   - Signal Service: 모든 규칙 타입 평가, 멀티 타임프레임 집계
   - Order Management: Market/Limit/Stop 주문, 부분 체결 시뮬레이션
   - Commission/Fee 모델: maker/taker 수수료 구분
   - Slippage 모델: Volume 기반, 고정, 확률적
   - Leverage 지원 (1x~125x), 청산가 계산
   - **[NEW]** 펀딩 레이트 시뮬레이션 (무기한 선물)
-- [ ] 성과 지표 엔진 (종합):
+- [ ] 성과 지표 엔진 (종합, **[AUDIT]** Numba JIT 적용):
   - 기본: Total Return, CAGR, MDD, Win Rate, Profit Factor
   - 위험조정: Sharpe, Sortino, Calmar Ratio
   - 드로다운 분석: 기간, 회복 시간
@@ -254,7 +281,7 @@ frontend/src/
   - 백테스트 종합 점수 (Backtest Score)
 - [ ] 백테스트 관리:
   - Celery 큐 (플랜별 우선순위)
-  - WebSocket/SSE 실시간 진행률
+  - WebSocket 실시간 진행률 (Sprint 1 통합 WS Gateway 활용)
   - 결과 저장 (요약: PostgreSQL, 에퀴티: TimescaleDB, 거래: PostgreSQL)
   - **[NEW]** 복수 백테스트 비교 API
 
@@ -336,10 +363,13 @@ frontend/src/
   - LSTM, GRU, TFT (기존)
   - **[NEW]** 앙상블 메서드 (가중 투표/평균)
   - **[NEW]** 커스텀 아키텍처 지원 (레이어 설정)
-- [ ] **학습 파이프라인**:
+- [ ] **학습 파이프라인** (**[AUDIT]** PyTorch Lightning 기반):
+  - **[AUDIT]** `LightningModule`로 구조화된 학습 코드
+  - **[AUDIT]** MLflow 실험 추적 (하이퍼파라미터, 메트릭, 아티팩트)
+  - **[AUDIT]** 모델 가중치 R2 스토리지 저장
   - Optuna 하이퍼파라미터 최적화 (Bayesian TPE)
-  - Early Stopping, Learning Rate 스케줄링
-  - 체크포인트 저장 및 재개
+  - Early Stopping, Learning Rate 스케줄링 (Lightning 콜백)
+  - 체크포인트 저장 및 재개 (Lightning Checkpoint)
   - WebSocket 실시간 진행률 (에폭별 로그, 손실 커브)
 - [ ] **모델 평가**:
   - Classification: Accuracy, F1, AUC-ROC, Confusion Matrix
@@ -589,21 +619,26 @@ frontend/src/
 **테스트**
 
 - [ ] Backend: pytest (단위 + 통합) — 80%+ 커버리지 목표
+- [ ] **[AUDIT]** 백테스트 엔진: Property-Based Testing (Hypothesis)
 - [ ] Frontend: Vitest + React Testing Library (컴포넌트 테스트)
 - [ ] E2E: Playwright (핵심 사용자 플로우)
+- [ ] **[AUDIT]** Playwright 시각적 회귀 테스트 (스크린샷 비교)
 - [ ] 부하 테스트: Locust (병목 식별)
+- [ ] **[AUDIT]** 보안 스캔: Bandit (Python), pip-audit, npm audit → CI 연동
 
 **배포 & 인프라**
 
 - [ ] Docker 컨테이너화 (multi-stage build)
-- [ ] GitHub Actions CI/CD (lint → test → build → deploy)
+- [ ] GitHub Actions CI/CD (Biome lint → test → build → deploy)
 - [ ] Frontend: Vercel 배포 (프리뷰 + 프로덕션)
-- [ ] Backend: AWS ECS (또는 Railway) 배포
-- [ ] Database: AWS RDS (PostgreSQL + TimescaleDB)
-- [ ] Redis: AWS ElastiCache
+- [ ] **[AUDIT]** Backend: Railway 배포 (초기) → AWS ECS 마이그레이션 경로 확보
+- [ ] **[AUDIT]** Database: Timescale Cloud (관리형 PostgreSQL + TimescaleDB)
+- [ ] **[AUDIT]** Redis: Upstash 또는 Railway Redis
+- [ ] **[AUDIT]** Storage: Cloudflare R2 (모델 가중치, 아바타, 리포트)
 - [ ] 도메인/SSL 설정
-- [ ] 모니터링: Sentry + Structured Logging
+- [ ] 모니터링: Sentry + Structured Logging + Flower (Celery)
 - [ ] **[NEW]** Staging 환경 구축
+- [ ] **[NEW]** PWA 설정 (푸시 알림, 홈 화면 설치)
 
 **최종 품질 보증**
 
@@ -621,19 +656,20 @@ frontend/src/
 
 ### 신규/변경 테이블
 
-| 테이블              | 변경 유형 | 설명                                       |
-| :------------------ | :-------- | :----------------------------------------- |
-| `mfa_secrets`       | **NEW**   | TOTP 2FA 시크릿 키, 백업 코드 저장         |
-| `user_sessions`     | **NEW**   | 활성 세션 관리 (기기, IP, 마지막 활동)     |
-| `strategy_versions` | **NEW**   | 전략 버전 히스토리 (디프 저장)             |
-| `product_reviews`   | **NEW**   | 마켓플레이스 상품 리뷰/평점                |
-| `referral_codes`    | **NEW**   | 추천인 코드 및 보상 추적                   |
-| `promo_codes`       | **NEW**   | 프로모션 코드 (일회성/다회성)              |
-| `user_follows`      | **NEW**   | 사용자 팔로우 관계                         |
-| `notifications`     | **NEW**   | 인앱 알림 저장                             |
-| `dashboard_layouts` | **NEW**   | 사용자별 대시보드 위젯 레이아웃            |
-| `usage_meters`      | **NEW**   | 플랜별 사용량 측정 (API 호출, 백테스트 등) |
-| `wishlist_items`    | **NEW**   | 마켓플레이스 위시리스트                    |
+| 테이블              | 변경 유형       | 설명                                              |
+| :------------------ | :-------------- | :------------------------------------------------ |
+| `mfa_secrets`       | **NEW**         | TOTP 2FA 시크릿 키, 백업 코드 저장                |
+| `user_sessions`     | **NEW**         | 활성 세션 관리 (기기, IP, 마지막 활동)            |
+| `strategy_versions` | **NEW**         | 전략 버전 히스토리 (디프 저장)                    |
+| `product_reviews`   | **NEW**         | 마켓플레이스 상품 리뷰/평점                       |
+| `referral_codes`    | **NEW**         | 추천인 코드 및 보상 추적                          |
+| `promo_codes`       | **NEW**         | 프로모션 코드 (일회성/다회성)                     |
+| `user_follows`      | **NEW**         | 사용자 팔로우 관계                                |
+| `notifications`     | **NEW**         | 인앱 알림 저장                                    |
+| `dashboard_layouts` | **NEW**         | 사용자별 대시보드 위젯 레이아웃                   |
+| `usage_meters`      | **NEW**         | 플랜별 사용량 측정 (API 호출, 백테스트 등)        |
+| `wishlist_items`    | **NEW**         | 마켓플레이스 위시리스트                           |
+| `audit_logs`        | **NEW** [AUDIT] | 보안 감사 추적 (API키, 봇, 크레딧, 비밀번호 변경) |
 
 ---
 
